@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# LiquiFact Frontend
 
-## Getting Started
+Web app for **LiquiFact** — the global invoice liquidity network on Stellar. Next.js dashboard for SMEs (upload invoices, get liquidity) and investors (fund tokenized invoices, earn yield). Stellar wallet integration is planned.
 
-First, run the development server:
+Part of the LiquiFact stack: **frontend** (this repo) | **backend** (Express API) | **contracts** (Soroban).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## Prerequisites
+
+- **Node.js** 20+ (LTS recommended)
+- **npm** 9+
+
+---
+
+## Setup
+
+1. **Clone the repo**
+
+   ```bash
+   git clone <this-repo-url>
+   cd liquifact-frontend
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   npm ci
+   ```
+
+3. **Configure environment** (optional)
+
+   ```bash
+   cp .env.local.example .env.local
+   # Set NEXT_PUBLIC_API_URL if the API is not at http://localhost:3001
+   ```
+
+---
+
+## Development
+
+| Command         | Description                |
+|-----------------|----------------------------|
+| `npm run dev`   | Start dev server (Turbopack) |
+| `npm run build` | Production build           |
+| `npm run start` | Start production server   |
+| `npm run lint`  | Run ESLint                 |
+
+Default: [http://localhost:3000](http://localhost:3000). The home page can check API health at `NEXT_PUBLIC_API_URL` (default `http://localhost:3001`).
+
+---
+
+## Project structure
+
+```
+liquifact-frontend/
+├── app/
+│   ├── layout.js      # Root layout, LiquiFact metadata
+│   ├── page.js        # Home (wallet CTA, API health check)
+│   ├── invoices/      # Invoices placeholder page
+│   └── invest/       # Invest placeholder page
+├── public/
+├── .env.local.example
+├── eslint.config.mjs
+└── package.json
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Tech: **Next.js 16** (App Router), **React 19**, **Tailwind CSS 4**.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## CI/CD
 
-## Learn More
+GitHub Actions runs on every push and pull request to `main`:
 
-To learn more about Next.js, take a look at the following resources:
+- **Lint** — `npm run lint`
+- **Build** — `npm run build`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Keep both passing before opening a PR.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Contributing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Fork** the repo and clone your fork.
+2. **Create a branch** from `main`: `git checkout -b feature/your-feature` or `fix/your-fix`.
+3. **Setup**: `npm ci`, optionally `cp .env.local.example .env.local`.
+4. **Make changes**:
+   - Follow existing patterns under `app/`.
+   - Run `npm run lint` and `npm run build` locally.
+5. **Commit** with clear messages (e.g. `feat: add X`, `fix: Y`).
+6. **Push** to your fork and open a **Pull Request** to `main`.
+7. Wait for CI and address review feedback.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+We welcome UI improvements, new pages (e.g. invoice upload, marketplace), and Stellar wallet integration aligned with the LiquiFact product.
+
+---
+
+## License
+
+MIT (see root LiquiFact project for full license).
