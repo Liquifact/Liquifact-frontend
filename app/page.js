@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import WalletStatus from '../components/WalletStatus';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -24,13 +25,11 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
       <header className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-        <span className="text-xl font-semibold tracking-tight">LiquiFact</span>
-        <button
-          type="button"
-          className="rounded-full bg-cyan-500/20 text-cyan-400 px-4 py-2 text-sm font-medium hover:bg-cyan-500/30 transition-colors"
-        >
-          Connect Wallet
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-xl font-semibold tracking-tight">LiquiFact</span>
+          <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">Alpha</span>
+        </div>
+        <WalletStatus />
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-16">
