@@ -54,7 +54,9 @@ export default function Home() {
             className="block rounded-xl border border-slate-700 bg-slate-900/50 p-6 hover:border-cyan-500/50 transition-colors"
           >
             <h2 className="text-lg font-semibold text-cyan-400 mb-2">For Investors</h2>
-            <p className="text-slate-400 text-sm">Fund tokenized invoices and earn yield at maturity.</p>
+            <p className="text-slate-400 text-sm">
+              Fund tokenized invoices. Yield shown is an educational on-chain bps reference; payouts occur at maturity.
+            </p>
           </a>
         </div>
 
