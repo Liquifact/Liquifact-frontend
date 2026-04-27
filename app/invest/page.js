@@ -9,6 +9,7 @@ import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
  * is available (follow-up: link backend issue here).
  *
  * Contract per item: { id, issuer, amount, currency, dueDate, yield, status }
+ * NOTE: yield values are illustrative; contracts use on-chain basis points and actual settlement is at maturity.
  */
 const MOCK_INVOICES = [
   {
@@ -65,8 +66,7 @@ export default function InvestPage() {
       <main className="max-w-4xl mx-auto px-6 py-12">
         <h1 className="text-2xl font-bold mb-2">Invest</h1>
         <p className="text-slate-400 mb-8">
-          Browse tokenized invoices and fund them. Principal&nbsp;+&nbsp;yield
-          at maturity.
+          Browse tokenized invoices and fund them. Estimated yield is shown for educational purposes; actual payment is received at invoice maturity.
         </p>
 
         {invoices === null ? (
@@ -94,12 +94,15 @@ export default function InvestPage() {
                   <span>
                     {inv.currency}&nbsp;{inv.amount}
                   </span>
-                  <span>Yield&nbsp;{inv.yield}</span>
-                  <span>Due&nbsp;{inv.dueDate}</span>
+                  <span>Est. yield&nbsp;{inv.yield}</span>
+                  <span>Maturity&nbsp;{inv.dueDate}</span>
                 </div>
               </li>
             ))}
           </ul>
+          <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
+            Note: Yield references are educational only and reflect on-chain basis-point assumptions. Invoice contracts settle at maturity.
+          </div>
         )}
       </main>
     </div>
