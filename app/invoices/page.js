@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ErrorBanner from "../../components/ErrorBanner";
 
 export default function InvoicesPage() {
   return (
