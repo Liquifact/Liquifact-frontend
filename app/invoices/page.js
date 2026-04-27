@@ -1,4 +1,5 @@
-'use client';
+import Link from "next/link";
+import ErrorBanner from "../../components/ErrorBanner";
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
@@ -246,46 +247,14 @@ export default function InvoicesPage() {
           Connect Wallet
         </button>
       </header>
-
-      {/* Main */}
-      <main className="max-w-2xl mx-auto px-6 py-12" id="main-content">
-        <h1 className="text-2xl font-bold mb-2">Upload Invoice</h1>
-        <p className="text-slate-400 mb-8 text-sm leading-relaxed">
-          Tokenize an unpaid invoice on Stellar to unlock instant stablecoin
-          liquidity. File requirements are listed below — check them before
-          selecting your document to avoid upload errors.
+      <main className="max-w-4xl mx-auto px-6 py-12">
+        <h1 className="text-2xl font-bold mb-6">{copy.invoices.title}</h1>
+        <p className="text-slate-400 mb-8">
+          {copy.invoices.subtext}
         </p>
-
-        {/* ── Proactive constraint notice — rendered BEFORE the upload CTA ── */}
-        <FileConstraintNotice />
-
-        {/* Upload zone + CTA */}
-        <section aria-labelledby="upload-heading">
-          <h2 id="upload-heading" className="sr-only">
-            Invoice file upload
-          </h2>
-          <UploadZone />
-        </section>
-
-        {/* Divider */}
-        <div className="my-10 border-t border-slate-800" role="separator" />
-
-        {/* Invoice list placeholder */}
-        <section aria-labelledby="invoices-heading">
-          <h2
-            id="invoices-heading"
-            className="text-lg font-semibold mb-4 text-slate-200"
-          >
-            Your Invoices
-          </h2>
-          <div
-            className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500 text-sm"
-            aria-live="polite"
-          >
-            No invoices yet. Connect your wallet and upload your first invoice
-            above to get started.
-          </div>
-        </section>
+        <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+          {copy.invoices.emptyState}
+        </div>
       </main>
     </div>
   );
