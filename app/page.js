@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import WalletStatus from '../components/WalletStatus';
+import { copy } from './copy/en';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -25,19 +25,21 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
       <header className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-semibold tracking-tight">LiquiFact</span>
-          <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">Alpha</span>
-        </div>
-        <WalletStatus />
+        <span className="text-xl font-semibold tracking-tight">LiquiFact</span>
+        <button
+          type="button"
+          className="rounded-full bg-cyan-500/20 text-cyan-400 px-4 py-2 text-sm font-medium hover:bg-cyan-500/30 transition-colors"
+        >
+          {copy.layout.connectWallet}
+        </button>
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-16">
         <h1 className="text-4xl font-bold tracking-tight mb-4">
-          Global Invoice Liquidity Network on Stellar
+          {copy.home.heroTitle}
         </h1>
         <p className="text-slate-400 text-lg mb-12 max-w-2xl">
-          Unlock liquidity from unpaid invoices instantly. SMEs get working capital; investors earn yield. Tokenized invoices, escrow on Soroban.
+          {copy.home.heroSub}
         </p>
 
         <div className="grid gap-6 sm:grid-cols-2 mb-12">
@@ -45,15 +47,15 @@ export default function Home() {
             href="/invoices"
             className="block rounded-xl border border-slate-700 bg-slate-900/50 p-6 hover:border-cyan-500/50 transition-colors"
           >
-            <h2 className="text-lg font-semibold text-cyan-400 mb-2">For Businesses</h2>
-            <p className="text-slate-400 text-sm">Upload invoices, get instant stablecoin liquidity.</p>
+            <h2 className="text-lg font-semibold text-cyan-400 mb-2">{copy.home.boxBusinessTitle}</h2>
+            <p className="text-slate-400 text-sm">{copy.home.boxBusinessSub}</p>
           </a>
           <a
             href="/invest"
             className="block rounded-xl border border-slate-700 bg-slate-900/50 p-6 hover:border-cyan-500/50 transition-colors"
           >
-            <h2 className="text-lg font-semibold text-cyan-400 mb-2">For Investors</h2>
-            <p className="text-slate-400 text-sm">Fund tokenized invoices and earn yield at maturity.</p>
+            <h2 className="text-lg font-semibold text-cyan-400 mb-2">{copy.home.boxInvestTitle}</h2>
+            <p className="text-slate-400 text-sm">{copy.home.boxInvestSub}</p>
           </a>
         </div>
 
