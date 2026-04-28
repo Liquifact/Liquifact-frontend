@@ -57,7 +57,7 @@ export default function InvestPage() {
       <header className="border-b border-slate-800 px-6 py-4">
         <Link
           href="/"
-          className="text-xl font-semibold tracking-tight text-cyan-400 hover:underline"
+          className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline"
         >
           ← LiquiFact
         </Link>
@@ -76,33 +76,35 @@ export default function InvestPage() {
             No investable invoices. Connect wallet to see the marketplace.
           </div>
         ) : (
-          <ul className="space-y-4">
-            {invoices.map((inv) => (
-              <li
-                key={inv.id}
-                className="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-medium text-slate-100">
-                    {inv.issuer}
-                  </span>
-                  <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
-                    {inv.status}
-                  </span>
-                </div>
-                <div className="flex gap-6 text-sm text-slate-400">
-                  <span>
-                    {inv.currency}&nbsp;{inv.amount}
-                  </span>
-                  <span>Est. yield&nbsp;{inv.yield}</span>
-                  <span>Maturity&nbsp;{inv.dueDate}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
-            Note: Yield references are educational only and reflect on-chain basis-point assumptions. Invoice contracts settle at maturity.
-          </div>
+          <>
+            <ul className="space-y-4">
+              {invoices.map((inv) => (
+                <li
+                  key={inv.id}
+                  className="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-medium text-slate-100">
+                      {inv.issuer}
+                    </span>
+                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
+                      {inv.status}
+                    </span>
+                  </div>
+                  <div className="flex gap-6 text-sm text-slate-400">
+                    <span>
+                      {inv.currency}&nbsp;{inv.amount}
+                    </span>
+                    <span>Est. yield&nbsp;{inv.yield}</span>
+                    <span>Maturity&nbsp;{inv.dueDate}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
+              Note: Yield references are educational only and reflect on-chain basis-point assumptions. Invoice contracts settle at maturity.
+            </div>
+          </>
         )}
       </main>
     </div>
