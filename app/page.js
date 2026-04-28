@@ -28,7 +28,7 @@ export default function Home() {
         <span className="text-xl font-semibold tracking-tight">LiquiFact</span>
         <button
           type="button"
-          className="rounded-full bg-cyan-500/20 text-cyan-400 px-4 py-2 text-sm font-medium hover:bg-cyan-500/30 transition-colors"
+          className="rounded-full bg-cyan-500/20 text-cyan-400 px-4 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors"
         >
           {copy.layout.connectWallet}
         </button>
@@ -65,7 +65,7 @@ export default function Home() {
             type="button"
             onClick={checkApi}
             disabled={loading}
-            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-700 disabled:opacity-50"
+            className="rounded-lg bg-slate-800 px-4 py-3 text-sm font-medium hover:bg-slate-700 disabled:opacity-50"
           >
             {loading ? 'Checking…' : 'Check backend health'}
           </button>
