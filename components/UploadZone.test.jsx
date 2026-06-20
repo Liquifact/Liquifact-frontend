@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import UploadZone from './UploadZone';
 
 function createMockFile(name = 'invoice.pdf', type = 'application/pdf') {
@@ -13,6 +14,22 @@ function createMockTextFile(name = 'test.txt') {
 function createMockLargeFile(sizeMb = 11) {
   const size = sizeMb * 1024 * 1024;
   return new File([new ArrayBuffer(size)], 'large.pdf', { type: 'application/pdf' });
+}
+
+function createDropEvent(file) {
+  return {
+    dataTransfer: {
+      files: [file],
+      items: [
+        {
+          kind: 'file',
+          type: file.type,
+          getAsFile: () => file,
+        },
+      ],
+      types: ['Files'],
+    },
+  };
 }
 
 function mockFetchOk(extra = {}) {
@@ -30,12 +47,7 @@ function mockFetchError(status = 500, message = 'Server error') {
   });
 }
 
-beforeEach(() => {
-  jest.useFakeTimers();
-});
-
 afterEach(() => {
-  jest.useRealTimers();
   jest.restoreAllMocks();
 });
 
@@ -54,6 +66,25 @@ describe('UploadZone', () => {
     ).toBeDisabled();
   });
 
+  it('has no obvious accessibility violations in the rendered form', async () => {
+    const { container } = render(<UploadZone />);
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('shows drag-over styling and resets it on drag leave', () => {
+    render(<UploadZone />);
+
+    const dropZone = screen.getByRole('button', { name: /drop pdf invoice/i });
+    expect(dropZone).toHaveClass('border-slate-700');
+
+    fireEvent.dragOver(dropZone);
+    expect(dropZone).toHaveClass('border-cyan-400');
+
+    fireEvent.dragLeave(dropZone);
+    expect(dropZone).toHaveClass('border-slate-700');
+  });
+
   it('shows file info after valid file selection', () => {
     render(<UploadZone />);
 
@@ -65,6 +96,51 @@ describe('UploadZone', () => {
     expect(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     ).toBeEnabled();
+  });
+
+  it('accepts a valid PDF dropped with a DataTransfer-like payload', () => {
+    render(<UploadZone />);
+
+    const file = createMockFile('dropped-invoice.pdf');
+    const dropZone = screen.getByRole('button', { name: /drop pdf invoice/i });
+
+    fireEvent.dragOver(dropZone);
+    expect(dropZone).toHaveClass('border-cyan-400');
+
+    // JSDOM does not implement a full DataTransfer constructor, so this event
+    // supplies the files/items/types shape that UploadZone reads in production.
+    fireEvent.drop(dropZone, createDropEvent(file));
+
+    expect(screen.getByText('dropped-invoice.pdf')).toBeInTheDocument();
+    expect(dropZone).toHaveClass('border-emerald-500/40');
+    expect(
+      screen.getByRole('button', { name: /upload & tokenize invoice/i })
+    ).toBeEnabled();
+  });
+
+  it('rejects an invalid file dropped with a DataTransfer-like payload', () => {
+    render(<UploadZone />);
+
+    const dropZone = screen.getByRole('button', { name: /drop pdf invoice/i });
+    fireEvent.drop(dropZone, createDropEvent(createMockTextFile()));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/invalid file type/i);
+    expect(dropZone).toHaveClass('border-red-500/50');
+    expect(
+      screen.getByRole('button', { name: /upload & tokenize invoice/i })
+    ).toBeDisabled();
+  });
+
+  it('rejects an oversized PDF dropped with a DataTransfer-like payload', () => {
+    render(<UploadZone />);
+
+    const dropZone = screen.getByRole('button', { name: /drop pdf invoice/i });
+    fireEvent.drop(dropZone, createDropEvent(createMockLargeFile()));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/exceeds the 10 mb limit/i);
+    expect(
+      screen.getByRole('button', { name: /upload & tokenize invoice/i })
+    ).toBeDisabled();
   });
 
   it('shows validation error for non-PDF file', () => {
@@ -121,7 +197,7 @@ describe('UploadZone', () => {
     // fetch resolves with a tokenizationDelay so the component briefly enters tokenizing
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue({ tokenizationDelay: 1000 }),
+      json: jest.fn().mockResolvedValue({ tokenizationDelay: 10 }),
     });
 
     render(<UploadZone />);
@@ -138,18 +214,9 @@ describe('UploadZone', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/uploading invoice/i);
 
     // let the fetch resolve, which moves to tokenizing
-    await act(async () => {
-      await Promise.resolve(); // flush microtasks
-    });
-
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent(/pending tokenization/i)
     );
-
-    // advance through the tokenization delay
-    await act(async () => {
-      jest.advanceTimersByTime(1000);
-    });
 
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent(/queued for tokenization/i)
@@ -192,8 +259,11 @@ describe('UploadZone', () => {
     fireEvent.click(submitBtn);
     fireEvent.click(submitBtn);
 
+    expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(screen.getAllByRole('status')).toHaveLength(1);
-    expect(screen.getByRole('status')).toHaveTextContent(/uploading invoice/i);
+    expect(screen.getByRole('status')).toHaveTextContent('Uploading invoice...');
+    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('opens file dialog on Enter key on the drop zone', () => {
@@ -309,5 +379,9 @@ describe('UploadZone', () => {
     expect(options.method).toBe('POST');
     expect(options.body).toBeInstanceOf(FormData);
     expect(options.body.get('invoice')).toBe(file);
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(/queued for tokenization/i)
+    );
   });
 });

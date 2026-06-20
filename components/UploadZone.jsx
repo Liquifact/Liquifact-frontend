@@ -156,6 +156,16 @@ function UploadZone() {
     <form onSubmit={handleSubmit} noValidate>
       <FileConstraintNotice />
 
+      <input
+        ref={inputRef}
+        id="invoice-file-input"
+        type="file"
+        accept={FILE_CONSTRAINTS.accept}
+        className="sr-only"
+        aria-label="Select PDF invoice file"
+        onChange={handleChange}
+      />
+
       <div
         role="button"
         tabIndex={0}
@@ -167,16 +177,6 @@ function UploadZone() {
         onKeyDown={handleKeyDown}
         className={`cursor-pointer rounded-xl border-2 border-dashed transition-colors duration-200 p-10 text-center ${dropZoneBorder}`}
       >
-        <input
-          ref={inputRef}
-          id="invoice-file-input"
-          type="file"
-          accept={FILE_CONSTRAINTS.accept}
-          className="sr-only"
-          aria-label="Select PDF invoice file"
-          onChange={handleChange}
-        />
-
         {file ? (
           <div className="space-y-2">
             <span className="text-3xl" aria-hidden="true">{'\u2705'}</span>
