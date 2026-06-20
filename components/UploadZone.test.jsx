@@ -15,6 +15,20 @@ function createMockLargeFile(sizeMb = 11) {
   return new File([new ArrayBuffer(size)], 'large.pdf', { type: 'application/pdf' });
 }
 
+function createDataTransfer(files) {
+  return {
+    dataTransfer: {
+      files,
+      items: files.map((file) => ({
+        kind: 'file',
+        type: file.type,
+        getAsFile: () => file,
+      })),
+      types: ['Files'],
+    },
+  };
+}
+
 function mockFetchOk(extra = {}) {
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
@@ -93,6 +107,52 @@ describe('UploadZone', () => {
     ).toBeDisabled();
   });
 
+  it('highlights the drop zone during drag-over and clears it on drag-leave', () => {
+    render(<UploadZone />);
+
+    const dropZone = screen.getByRole('button', { name: /drop pdf invoice/i });
+
+    fireEvent.dragOver(dropZone);
+
+    expect(dropZone).toHaveClass('border-cyan-400');
+    expect(dropZone).toHaveClass('bg-cyan-500/10');
+
+    fireEvent.dragLeave(dropZone);
+
+    expect(dropZone).not.toHaveClass('border-cyan-400');
+    expect(dropZone).not.toHaveClass('bg-cyan-500/10');
+  });
+
+  it('accepts a PDF dropped on the drop zone and enables submission', () => {
+    render(<UploadZone />);
+
+    const file = createMockFile('dragged-invoice.pdf');
+    const dropZone = screen.getByRole('button', { name: /drop pdf invoice/i });
+
+    fireEvent.drop(dropZone, createDataTransfer([file]));
+
+    expect(screen.getByText('dragged-invoice.pdf')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /upload & tokenize invoice/i })
+    ).toBeEnabled();
+  });
+
+  it('rejects an invalid file dropped on the drop zone with an alert', () => {
+    render(<UploadZone />);
+
+    const file = createMockTextFile('notes.txt');
+    const dropZone = screen.getByRole('button', { name: /drop pdf invoice/i });
+
+    fireEvent.drop(dropZone, createDataTransfer([file]));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/invalid file type/i);
+    expect(screen.queryByText('notes.txt')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /upload & tokenize invoice/i })
+    ).toBeDisabled();
+  });
+
   it('progresses through uploading, tokenizing, and success on submit', async () => {
     mockFetchOk();
     render(<UploadZone />);
@@ -107,12 +167,14 @@ describe('UploadZone', () => {
     fireEvent.click(submitBtn);
 
     // uploading state shown immediately
-    expect(screen.getByRole('status')).toHaveTextContent(/uploading invoice/i);
+    expect(screen.getByRole('status')).toHaveTextContent('Uploading invoice...');
     expect(submitBtn).toBeDisabled();
 
     // after fetch resolves → tokenizing then success
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent(/queued for tokenization/i)
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Invoice queued for tokenization. Blockchain confirmation pending.'
+      )
     );
     expect(submitBtn).toBeEnabled();
   });
@@ -135,7 +197,7 @@ describe('UploadZone', () => {
     );
 
     // uploading while fetch is in-flight
-    expect(screen.getByRole('status')).toHaveTextContent(/uploading invoice/i);
+    expect(screen.getByRole('status')).toHaveTextContent('Uploading invoice...');
 
     // let the fetch resolve, which moves to tokenizing
     await act(async () => {
@@ -143,21 +205,26 @@ describe('UploadZone', () => {
     });
 
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent(/pending tokenization/i)
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Invoice uploaded. Pending tokenization...'
+      )
     );
 
     // advance through the tokenization delay
     await act(async () => {
       jest.advanceTimersByTime(1000);
+      await Promise.resolve();
     });
 
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent(/queued for tokenization/i)
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Invoice queued for tokenization. Blockchain confirmation pending.'
+      )
     );
   });
 
   it('uses role="status" with aria-live for progress announcements', async () => {
-    mockFetchOk();
+    global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
     render(<UploadZone />);
 
     const file = createMockFile();
@@ -171,10 +238,6 @@ describe('UploadZone', () => {
     const status = screen.getByRole('status');
     expect(status).toHaveAttribute('aria-live', 'polite');
     expect(status).toHaveTextContent(/uploading invoice/i);
-
-    await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent(/queued for tokenization/i)
-    );
   });
 
   it('prevents double-submission during processing', async () => {
@@ -291,7 +354,7 @@ describe('UploadZone', () => {
   });
 
   it('sends a POST request to /invoices with the file as FormData', async () => {
-    mockFetchOk();
+    global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
     render(<UploadZone />);
 
     const file = createMockFile();
