@@ -49,6 +49,8 @@ Part of the LiquiFact stack: **frontend** (this repo) | **backend** (Express API
 
 Default: [http://localhost:3000](http://localhost:3000). The home page can check API health at `NEXT_PUBLIC_API_URL` (default `http://localhost:3001`).
 
+Loading spinners, pulse skeletons, smooth scrolling, and transitions respect `prefers-reduced-motion: reduce`; loading placeholders remain visible without continuous animation.
+
 ---
 
 ## Project structure
