@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { copy } from './copy/en';
+import { checkBackendHealth } from '../lib/api/health';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -12,11 +13,7 @@ export default function Home() {
   const checkApi = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/health`);
-      const data = await res.json();
-      setHealth(data);
-    } catch (e) {
-      setHealth({ status: 'error', message: e.message });
+      setHealth(await checkBackendHealth(API_URL));
     } finally {
       setLoading(false);
     }
@@ -70,9 +67,28 @@ export default function Home() {
             {loading ? 'Checking…' : 'Check backend health'}
           </button>
           {health && (
-            <pre className="mt-4 p-4 rounded-lg bg-slate-950 text-xs text-slate-300 overflow-auto">
-              {JSON.stringify(health, null, 2)}
-            </pre>
+            <div
+              role="status"
+              aria-live="polite"
+              className="mt-4 rounded-lg border border-slate-800 bg-slate-950 p-4 text-sm text-slate-300"
+            >
+              <p className="font-semibold text-slate-100">
+                {health.state === 'connected' && 'Connected'}
+                {health.state === 'degraded' && 'Degraded'}
+                {health.state === 'unreachable' && 'Unreachable'}
+              </p>
+              <p className="mt-1">{health.message}</p>
+              {health.details && (
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-cyan-400">
+                    Raw health payload
+                  </summary>
+                  <pre className="mt-3 overflow-auto rounded bg-slate-900 p-3 text-xs">
+                    {JSON.stringify(health.details, null, 2)}
+                  </pre>
+                </details>
+              )}
+            </div>
           )}
         </div>
       </main>
