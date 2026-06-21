@@ -49,6 +49,8 @@ Part of the LiquiFact stack: **frontend** (this repo) | **backend** (Express API
 
 Default: [http://localhost:3000](http://localhost:3000). The home page can check API health at `NEXT_PUBLIC_API_URL` (default `http://localhost:3001`).
 
+See [docs/api-integration.md](docs/api-integration.md) for the frontend-backend API contract, including current `/health` and invoice upload behavior plus planned invoice marketplace endpoints.
+
 ---
 
 ## Project structure
