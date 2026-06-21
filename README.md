@@ -49,6 +49,8 @@ Part of the LiquiFact stack: **frontend** (this repo) | **backend** (Express API
 
 Default: [http://localhost:3000](http://localhost:3000). The home page can check API health at `NEXT_PUBLIC_API_URL` (default `http://localhost:3001`).
 
+Invoice uploads are validated in the browser before submission: the file must be a non-empty PDF under 10 MB, use a `.pdf` extension, report `application/pdf`, and start with the `%PDF-` file signature. Rendered filenames are sanitized and shortened before display.
+
 ---
 
 ## Project structure

@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import UploadZone from './UploadZone';
 
 function createMockFile(name = 'invoice.pdf', type = 'application/pdf') {
-  return new File(['mock content'], name, { type });
+  return new File(['%PDF-1.7\nmock content'], name, { type });
 }
 
 function createMockTextFile(name = 'test.txt') {
@@ -54,14 +54,14 @@ describe('UploadZone', () => {
     ).toBeDisabled();
   });
 
-  it('shows file info after valid file selection', () => {
+  it('shows file info after valid file selection', async () => {
     render(<UploadZone />);
 
     const file = createMockFile();
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [file] } });
 
-    expect(screen.getByText('invoice.pdf')).toBeInTheDocument();
+    expect(await screen.findByText('invoice.pdf')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     ).toBeEnabled();
@@ -93,6 +93,46 @@ describe('UploadZone', () => {
     ).toBeDisabled();
   });
 
+  it('shows validation error for zero-byte PDF files', async () => {
+    render(<UploadZone />);
+
+    const file = new File([], 'empty.pdf', { type: 'application/pdf' });
+    const input = screen.getByLabelText(/select pdf invoice file/i);
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/empty/i);
+    expect(
+      screen.getByRole('button', { name: /upload & tokenize invoice/i })
+    ).toBeDisabled();
+  });
+
+  it('shows validation error when PDF extension and content disagree', async () => {
+    render(<UploadZone />);
+
+    const file = new File(['not a pdf'], 'spoofed.pdf', { type: 'application/pdf' });
+    const input = screen.getByLabelText(/select pdf invoice file/i);
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/does not look like a pdf/i);
+    expect(
+      screen.getByRole('button', { name: /upload & tokenize invoice/i })
+    ).toBeDisabled();
+  });
+
+  it('sanitizes and caps the rendered filename', async () => {
+    render(<UploadZone />);
+
+    const file = createMockFile(`${'very-long-name-'.repeat(10)}<bad>|?.pdf`);
+    const input = screen.getByLabelText(/select pdf invoice file/i);
+    fireEvent.change(input, { target: { files: [file] } });
+
+    const displayedName = await screen.findByText(/very-long-name-/i);
+    expect(displayedName.textContent).toHaveLength(80);
+    expect(displayedName.textContent).not.toContain('<');
+    expect(displayedName.textContent).not.toContain('|');
+    expect(displayedName.textContent.endsWith('.pdf')).toBe(true);
+  });
+
   it('progresses through uploading, tokenizing, and success on submit', async () => {
     mockFetchOk();
     render(<UploadZone />);
@@ -100,6 +140,7 @@ describe('UploadZone', () => {
     const file = createMockFile();
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [file] } });
+    await screen.findByText('invoice.pdf');
 
     const submitBtn = screen.getByRole('button', {
       name: /upload & tokenize invoice/i,
@@ -130,6 +171,7 @@ describe('UploadZone', () => {
     fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
       target: { files: [file] },
     });
+    await screen.findByText('invoice.pdf');
     fireEvent.click(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     );
@@ -163,6 +205,7 @@ describe('UploadZone', () => {
     const file = createMockFile();
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [file] } });
+    await screen.findByText('invoice.pdf');
 
     fireEvent.click(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
@@ -185,6 +228,7 @@ describe('UploadZone', () => {
     const file = createMockFile();
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [file] } });
+    await screen.findByText('invoice.pdf');
 
     const submitBtn = screen.getByRole('button', {
       name: /upload & tokenize invoice/i,
@@ -222,7 +266,7 @@ describe('UploadZone', () => {
     clickSpy.mockRestore();
   });
 
-  it('resets to idle when a new valid file is selected after an error', () => {
+  it('resets to idle when a new valid file is selected after an error', async () => {
     render(<UploadZone />);
 
     const input = screen.getByLabelText(/select pdf invoice file/i);
@@ -232,8 +276,8 @@ describe('UploadZone', () => {
 
     fireEvent.change(input, { target: { files: [createMockFile()] } });
 
+    expect(await screen.findByText('invoice.pdf')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(screen.getByText('invoice.pdf')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     ).toBeEnabled();
@@ -258,6 +302,7 @@ describe('UploadZone', () => {
     fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
       target: { files: [file] },
     });
+    await screen.findByText('invoice.pdf');
     fireEvent.click(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     );
@@ -278,6 +323,7 @@ describe('UploadZone', () => {
     fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
       target: { files: [file] },
     });
+    await screen.findByText('invoice.pdf');
     fireEvent.click(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     );
@@ -298,6 +344,7 @@ describe('UploadZone', () => {
     fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
       target: { files: [file] },
     });
+    await screen.findByText('invoice.pdf');
     fireEvent.click(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     );

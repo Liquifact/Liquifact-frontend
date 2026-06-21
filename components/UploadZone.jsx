@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { sanitizeFilename, validatePdfFile } from '../lib/validation/pdf';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -81,9 +82,9 @@ function UploadZone() {
     return null;
   }
 
-  function handleFile(f) {
+  async function handleFile(f) {
     setStatus('idle');
-    const err = validate(f);
+    const err = validate(f) || await validatePdfFile(f, FILE_CONSTRAINTS);
     if (err) {
       setError(err);
       setFile(null);
@@ -97,12 +98,12 @@ function UploadZone() {
     e.preventDefault();
     setDragOver(false);
     const f = e.dataTransfer.files?.[0];
-    if (f) handleFile(f);
+    if (f) void handleFile(f);
   }
 
   function handleChange(e) {
     const f = e.target.files?.[0];
-    if (f) handleFile(f);
+    if (f) void handleFile(f);
   }
 
   async function handleSubmit(e) {
@@ -180,7 +181,7 @@ function UploadZone() {
         {file ? (
           <div className="space-y-2">
             <span className="text-3xl" aria-hidden="true">{'\u2705'}</span>
-            <p className="font-medium text-emerald-400">{file.name}</p>
+            <p className="font-medium text-emerald-400">{sanitizeFilename(file.name)}</p>
             <p className="text-xs text-slate-500">
               {(file.size / 1024 / 1024).toFixed(2)} MB {'\u00B7'} PDF
             </p>
