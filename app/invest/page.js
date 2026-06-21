@@ -45,6 +45,14 @@ const MOCK_INVOICES = [
 
 // DEV-only delay (ms) to make the skeleton visible during local development.
 const DEV_DELAY = process.env.NODE_ENV === "development" ? 1500 : 0;
+const FILTER_PREVIEW_NOTE_ID = "invest-filter-preview-note";
+const FILTER_CONTROLS = [
+  { id: "yield-range", label: "Yield Range", hasDropdown: true },
+  { id: "currency", label: "Currency", hasDropdown: true },
+  { id: "maturity-date", label: "Maturity Date", hasDropdown: true },
+  { id: "sort-options", label: "Sort: Best Yield", hasDropdown: true },
+  { id: "clear-filters", label: "Clear Filters", alignEnd: true },
+];
 
 function loadMockInvoices() {
   return new Promise((resolve) => {
@@ -121,97 +129,61 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           {statusMessage}
         </p>
 
-        {/* Filter Controls - Disabled with Coming Soon Indicators */}
-        <div className="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6">
+        {/* Keep preview controls discoverable to keyboards and screen readers while backend filtering is unavailable. */}
+        <fieldset
+          className="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
+          aria-describedby={FILTER_PREVIEW_NOTE_ID}
+        >
+          <legend className="sr-only">Marketplace filters preview</legend>
+          <p id={FILTER_PREVIEW_NOTE_ID} className="sr-only">
+            Marketplace filters are preview controls and are coming soon. They
+            are not interactive yet.
+          </p>
           <div className="flex flex-wrap gap-4 items-center">
-            {/* Yield Range Filter */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled
-                className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500 cursor-not-allowed opacity-60 transition-colors"
-                aria-label="Yield range filter (coming soon)"
-              >
-                Yield Range
-                <svg className="inline-block ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">
-                Soon
-              </span>
-            </div>
+            {FILTER_CONTROLS.map((control) => {
+              const badgeId = `${control.id}-status`;
 
-            {/* Currency Filter */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled
-                className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500 cursor-not-allowed opacity-60 transition-colors"
-                aria-label="Currency filter (coming soon)"
-              >
-                Currency
-                <svg className="inline-block ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">
-                Soon
-              </span>
-            </div>
-
-            {/* Maturity Date Filter */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled
-                className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500 cursor-not-allowed opacity-60 transition-colors"
-                aria-label="Maturity date filter (coming soon)"
-              >
-                Maturity Date
-                <svg className="inline-block ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">
-                Soon
-              </span>
-            </div>
-
-            {/* Sort Options */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled
-                className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500 cursor-not-allowed opacity-60 transition-colors"
-                aria-label="Sort options (coming soon)"
-              >
-                Sort: Best Yield
-                <svg className="inline-block ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">
-                Soon
-              </span>
-            </div>
-
-            {/* Clear Filters - Also Disabled */}
-            <div className="flex items-center gap-2 ml-auto">
-              <button
-                type="button"
-                disabled
-                className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500 cursor-not-allowed opacity-60 transition-colors"
-                aria-label="Clear filters (coming soon)"
-              >
-                Clear Filters
-              </button>
-              <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">
-                Soon
-              </span>
-            </div>
+              return (
+                <div
+                  key={control.id}
+                  className={`flex items-center gap-2 ${control.alignEnd ? "ml-auto" : ""}`}
+                >
+                  <button
+                    type="button"
+                    aria-disabled="true"
+                    aria-describedby={`${badgeId} ${FILTER_PREVIEW_NOTE_ID}`}
+                    onClick={(event) => event.preventDefault()}
+                    className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-white cursor-not-allowed opacity-60 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+                  >
+                    {control.label}
+                    {control.hasDropdown ? (
+                      <svg
+                        className="inline-block ml-2 w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    ) : null}
+                  </button>
+                  <span
+                    id={badgeId}
+                    className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-200"
+                  >
+                    Soon
+                  </span>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        </fieldset>
 
         {loadError ? (
           <ErrorBanner

@@ -31,10 +31,11 @@ Filter controls are implemented as disabled UI elements with "coming soon" toolt
 - **UI State**: Disabled with "coming soon" tooltip
 
 ## Accessibility Features
-- All disabled buttons have proper `aria-label` attributes
-- Tooltips are announced to screen readers
-- Keyboard navigation is preserved (though buttons are disabled)
-- High contrast design follows existing slate/cyan theme
+- Preview filters use `aria-disabled="true"` instead of the native `disabled` attribute so keyboard and screen-reader users can still discover them.
+- Each visible "Soon" badge has an `id` that is referenced by the related control's `aria-describedby` value.
+- The filter group is a labelled `fieldset` with an off-screen description explaining that the controls are previews and are not interactive yet.
+- The no-op click handler prevents accidental activation while preserving the controls in the accessibility tree.
+- The muted visual state uses high-contrast label text with reduced opacity so disabled-looking labels remain readable against the slate background.
 
 ## Responsive Design
 - Filter controls wrap on smaller screens using `flex-wrap`
