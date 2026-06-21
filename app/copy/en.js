@@ -26,6 +26,33 @@ export const copy = {
   footer: {
     docs: "Documentation",
     status: "System Status",
-    contact: "Contact Support"
+    contact: "Contact Support",
+    discord: "Discord Community",
+    /**
+     * Footer navigation destinations. External targets must be rendered with
+     * noopener/noreferrer because they open in a new tab.
+     */
+    links: [
+      {
+        label: "Documentation",
+        href: "https://github.com/Liquifact/Liquifact-frontend#readme",
+        external: true
+      },
+      {
+        label: "System Status",
+        href: "https://github.com/Liquifact/Liquifact-frontend/actions",
+        external: true
+      },
+      {
+        label: "Contact Support",
+        href: "https://github.com/Liquifact/Liquifact-frontend/issues/new",
+        external: true
+      },
+      {
+        label: "Discord Community",
+        href: "https://discord.gg/JrGPH4V3",
+        external: true
+      }
+    ]
   }
 };

@@ -100,7 +100,7 @@ We welcome UI improvements, new pages (e.g. invoice upload, marketplace), and St
 ## UI Components
 
 ### Footer
-Provides the site footer with navigation links.
+Provides the site footer with real external navigation links for documentation, build status, support, and Discord.
 **Props:** none.
 
 ### ErrorBanner
