@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { copy } from './copy/en';
 
@@ -25,13 +26,17 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
       <header className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-        <span className="text-xl font-semibold tracking-tight">LiquiFact</span>
-        <button
-          type="button"
-          className="rounded-full bg-cyan-500/20 text-cyan-400 px-4 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors"
-        >
-          {copy.layout.connectWallet}
-        </button>
+        <nav className="contents" aria-label="Primary">
+          <Link href="/" className="text-xl font-semibold tracking-tight" aria-label="LiquiFact home">
+            LiquiFact
+          </Link>
+          <button
+            type="button"
+            className="rounded-full bg-cyan-500/20 text-cyan-400 px-4 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors"
+          >
+            {copy.layout.connectWallet}
+          </button>
+        </nav>
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-16">
@@ -45,6 +50,7 @@ export default function Home() {
         <div className="grid gap-6 sm:grid-cols-2 mb-12">
           <a
             href="/invoices"
+            aria-label={copy.home.boxBusinessLabel}
             className="block rounded-xl border border-slate-700 bg-slate-900/50 p-6 hover:border-cyan-500/50 transition-colors"
           >
             <h2 className="text-lg font-semibold text-cyan-400 mb-2">{copy.home.boxBusinessTitle}</h2>
@@ -52,6 +58,7 @@ export default function Home() {
           </a>
           <a
             href="/invest"
+            aria-label={copy.home.boxInvestLabel}
             className="block rounded-xl border border-slate-700 bg-slate-900/50 p-6 hover:border-cyan-500/50 transition-colors"
           >
             <h2 className="text-lg font-semibold text-cyan-400 mb-2">{copy.home.boxInvestTitle}</h2>
@@ -59,8 +66,11 @@ export default function Home() {
           </a>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-6">
-          <h2 className="text-sm font-medium text-slate-400 mb-2">API status</h2>
+        <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-6" aria-labelledby="api-status-label">
+          {/* API status is a panel label, so the home page keeps one h1 followed by CTA h2 headings. */}
+          <span id="api-status-label" className="block text-sm font-medium text-slate-400 mb-2">
+            {copy.home.apiStatusLabel}
+          </span>
           <button
             type="button"
             onClick={checkApi}

@@ -4,8 +4,11 @@ export const copy = {
     heroSub: "Unlock liquidity from unpaid invoices instantly. SMEs get working capital; investors earn yield. Tokenized invoices, escrow on Soroban.",
     boxBusinessTitle: "For Businesses",
     boxBusinessSub: "Upload invoices, get instant stablecoin liquidity.",
+    boxBusinessLabel: "For Businesses: upload invoices and get instant stablecoin liquidity",
     boxInvestTitle: "For Investors",
-    boxInvestSub: "Fund tokenized invoices and earn yield at maturity."
+    boxInvestSub: "Fund tokenized invoices and earn yield at maturity.",
+    boxInvestLabel: "For Investors: fund tokenized invoices and earn yield at maturity",
+    apiStatusLabel: "API status"
   },
   invest: {
     title: "Invest",
