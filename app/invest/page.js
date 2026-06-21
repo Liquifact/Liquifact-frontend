@@ -105,13 +105,13 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
       <header className="border-b border-slate-800 px-6 py-4">
         <Link
           href="/"
-          className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline"
+          className="focus-ring inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline"
         >
           ← LiquiFact
         </Link>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-12">
+      <main id="main-content" tabIndex={-1} className="max-w-4xl mx-auto px-6 py-12">
         <h1 className="text-2xl font-bold mb-2">{copy.invest.title}</h1>
         <p className="text-slate-400 mb-8">
           {copy.invest.subtext}

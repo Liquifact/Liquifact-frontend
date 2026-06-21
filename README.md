@@ -85,6 +85,11 @@ Keep both passing before opening a PR.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow, branch naming convention, local checks, and accessibility expectations.
 
+## Accessibility
+
+- The root layout renders a "Skip to content" link before page content so keyboard and screen-reader users can bypass repeated navigation.
+- Each page-level `<main>` landmark should use `id="main-content"` so the skip link has a reliable target.
+- Use the shared `.focus-ring` utility from `app/globals.css` for interactive links and buttons to keep the cyan focus-visible outline consistent.
 
 1. **Fork** the repo and clone your fork.
 2. **Create a branch** from `main`: `git checkout -b feature/your-feature` or `fix/your-fix`.
