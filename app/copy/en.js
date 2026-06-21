@@ -23,6 +23,15 @@ export const copy = {
     backToHome: "← LiquiFact",
     connectWallet: "Connect Wallet"
   },
+  errors: {
+    boundaryTitle: "Something went wrong",
+    boundaryDescription: "The LiquiFact app could not render this view. Try again, or return home if the issue continues.",
+    boundaryDetails: "Your invoices and wallet state are not changed by this preview error boundary.",
+    resetAction: "Try again",
+    notFoundTitle: "Page not found",
+    notFoundDescription: "The page you requested is not part of the LiquiFact dashboard.",
+    homeAction: "Back to LiquiFact home"
+  },
   footer: {
     docs: "Documentation",
     status: "System Status",

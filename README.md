@@ -49,6 +49,8 @@ Part of the LiquiFact stack: **frontend** (this repo) | **backend** (Express API
 
 Default: [http://localhost:3000](http://localhost:3000). The home page can check API health at `NEXT_PUBLIC_API_URL` (default `http://localhost:3001`).
 
+The app includes branded App Router boundaries: `app/error.js` shows a themed retryable error state, and `app/not-found.js` shows a branded 404 with a link back home.
+
 ---
 
 ## Project structure
@@ -104,10 +106,13 @@ Provides the site footer with navigation links.
 **Props:** none.
 
 ### ErrorBanner
-Displays an error message with variant styling.
+Displays an error message with variant styling and powers the route error boundary.
 **Props:**
 - `variant` (string): `"default"` | `"warning"` | `"error"` – determines color.
 - `message` (string): The error text.
+
+### App Router boundaries
+The root `app/error.js` boundary uses `ErrorBanner` with a retry action. The root `app/not-found.js` page provides a branded 404 and a focusable link back home.
 
 ### InvoiceListSkeleton
 Skeleton placeholder for invoice list while loading.
