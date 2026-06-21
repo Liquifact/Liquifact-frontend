@@ -1,8 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { publicEnv } from '../lib/config/env';
 
 const FILE_CONSTRAINTS = {
   accept: '.pdf',
@@ -116,7 +115,7 @@ function UploadZone() {
       const body = new FormData();
       body.append('invoice', file);
 
-      const res = await fetch(`${API_URL}/invoices`, { method: 'POST', body });
+      const res = await fetch(`${publicEnv.apiUrl}/invoices`, { method: 'POST', body });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

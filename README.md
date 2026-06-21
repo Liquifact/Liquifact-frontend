@@ -35,6 +35,11 @@ Part of the LiquiFact stack: **frontend** (this repo) | **backend** (Express API
    # Set NEXT_PUBLIC_API_URL if the API is not at http://localhost:3001
    ```
 
+   `NEXT_PUBLIC_API_URL` is validated at startup and must be an `http` or
+   `https` origin only, for example `https://api.example.com`. Do not include a
+   path, query string, hash, or non-web scheme. `NEXT_PUBLIC_STELLAR_NETWORK` is
+   optional and must be `testnet`, `public`, or `futurenet` when set.
+
 ---
 
 ## Development

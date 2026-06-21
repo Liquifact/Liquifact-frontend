@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { copy } from './copy/en';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { publicEnv } from '../lib/config/env';
 
 export default function Home() {
   const [health, setHealth] = useState(null);
@@ -12,7 +11,7 @@ export default function Home() {
   const checkApi = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/health`);
+      const res = await fetch(`${publicEnv.apiUrl}/health`);
       const data = await res.json();
       setHealth(data);
     } catch (e) {
