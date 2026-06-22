@@ -126,13 +126,24 @@ Shows connection status of Stellar wallet.
 
 ## Design Tokens
 
+Current global tokens are defined in `app/globals.css` and exported through the Tailwind `@theme` block:
+
 - **Colors**
-  - `--color-bg`: `#0f0f0f` (slate‑950)
-  - `--color-primary`: `#06b6d4` (cyan‑400)
+  - `--color-background`: `#020617` (slate-950)
+  - `--color-foreground`: `#f1f5f9` (slate-100)
+  - `--color-surface`: `#0f172a` (slate-900)
+  - `--color-muted`: `#94a3b8` (slate-400)
+  - `--color-muted-strong`: `#718096` (AA-safe slate muted)
+  - `--color-brand-cyan`: `#06b6d4` (cyan-500)
+  - `--color-brand-cyan-strong`: `#0891b2` (cyan-600)
 
 - **Typography**
-  - Font family: **Geist** – imported via `@fontsource/geist`.
-  - Headings use `font‑bold`, body uses `font‑regular`.
+  - Font family: **Geist** loaded with `next/font/google` in `app/layout.js`.
+  - Global body text uses `var(--font-geist-sans), sans-serif`.
+
+- **Contrast audit**
+  - Body text (`slate-100` on `slate-950`): WCAG AA.
+  - Muted text (`slate-400`/AA-safe slate muted on `slate-950`): WCAG AA.
 
 ## Contracts
 
