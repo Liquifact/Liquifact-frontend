@@ -98,6 +98,8 @@ Consider implementing global state (Context/Zustand) for:
 - Test error scenarios
 - Test network switching
 - Test multiple wallet types
+- Keep `components/WalletStatus.test.jsx` deterministic by mocking `Math.random`
+  and using Jest fake timers for the current mock connection flow.
 
 ## Dependencies
 Add required wallet SDKs:
