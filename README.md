@@ -45,9 +45,11 @@ Part of the LiquiFact stack: **frontend** (this repo) | **backend** (Express API
 | `npm run build` | Production build           |
 | `npm run start` | Start production server   |
 | `npm run lint`  | Run ESLint                 |
+| `npm test`      | Run Jest unit tests        |
 | `npm run test:e2e` | Run Playwright smoke tests |
 
 Default: [http://localhost:3000](http://localhost:3000). The home page can check API health at `NEXT_PUBLIC_API_URL` (default `http://localhost:3001`).
+The home page health check has unit coverage for success, loading-disabled, and network-error rendering states.
 
 ---
 
