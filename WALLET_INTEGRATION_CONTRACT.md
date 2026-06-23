@@ -93,7 +93,8 @@ Consider implementing global state (Context/Zustand) for:
 - Handle wallet disconnection gracefully
 
 ## Testing Requirements
-- Test all wallet states
+- Test all wallet states. `components/WalletStatus.test.jsx` covers the current
+  mock state machine with fake timers and deterministic `Math.random` branches.
 - Test connection flow end-to-end
 - Test error scenarios
 - Test network switching
