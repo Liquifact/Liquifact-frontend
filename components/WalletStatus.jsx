@@ -20,8 +20,8 @@ const mockWalletData = {
   balance: '1,234.56 XLM'
 };
 
-export default function WalletStatus() {
-  const [walletState, setWalletState] = useState(WALLET_STATES.DISCONNECTED);
+export default function WalletStatus({ initialState = WALLET_STATES.DISCONNECTED } = {}) {
+  const [walletState, setWalletState] = useState(initialState);
   const [walletData, setWalletData] = useState(null);
   const [error, setError] = useState(null);
   const toast = useToast();
