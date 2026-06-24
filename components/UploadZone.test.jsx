@@ -3,16 +3,61 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import UploadZone from './UploadZone';
 
 function createMockFile(name = 'invoice.pdf', type = 'application/pdf') {
-  return new File(['mock content'], name, { type });
+  const content = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34]); // %PDF-1.4
+  const file = new File([content], name, { type });
+  Object.defineProperty(file, 'size', { value: content.length });
+  file.slice = (start, end) => {
+    const sliced = content.slice(start, end);
+    return { arrayBuffer: async () => sliced.buffer, size: sliced.length };
+  };
+  return file;
 }
 
 function createMockTextFile(name = 'test.txt') {
-  return new File(['mock content'], name, { type: 'text/plain' });
+  const content = new Uint8Array(Buffer.from('mock content'));
+  const file = new File([content], name, { type: 'text/plain' });
+  Object.defineProperty(file, 'size', { value: content.length });
+  file.slice = (start, end) => {
+    const sliced = content.slice(start, end);
+    return { arrayBuffer: async () => sliced.buffer, size: sliced.length };
+  };
+  return file;
 }
 
 function createMockLargeFile(sizeMb = 11) {
   const size = sizeMb * 1024 * 1024;
-  return new File([new ArrayBuffer(size)], 'large.pdf', { type: 'application/pdf' });
+  const content = new Uint8Array(size);
+  content.set([0x25, 0x50, 0x44, 0x46, 0x2D], 0);
+  const file = new File([content], 'large.pdf', { type: 'application/pdf' });
+  Object.defineProperty(file, 'size', { value: content.length });
+  file.slice = (start, end) => {
+    const sliced = content.slice(start, end);
+    return { arrayBuffer: async () => sliced.buffer, size: sliced.length };
+  };
+  return file;
+}
+
+function createMockSpoofedFile() {
+  const content = new Uint8Array(Buffer.from('this is not a pdf file but an image maybe'));
+  const file = new File([content], 'spoofed.pdf', { type: 'application/pdf' });
+  Object.defineProperty(file, 'size', { value: content.length });
+  file.slice = (start, end) => {
+    const sliced = content.slice(start, end);
+    return { arrayBuffer: async () => sliced.buffer, size: sliced.length };
+  };
+  return file;
+}
+
+function createMockEmptyFile() {
+  const file = new File([], 'empty.pdf', { type: 'application/pdf' });
+  Object.defineProperty(file, 'size', { value: 0 });
+  file.slice = () => ({ arrayBuffer: async () => new ArrayBuffer(0), size: 0 });
+  return file;
+}
+
+function createMockLongNameFile() {
+  const name = 'a'.repeat(100) + '.pdf';
+  return createMockFile(name);
 }
 
 function mockFetchOk(extra = {}) {
@@ -54,43 +99,80 @@ describe('UploadZone', () => {
     ).toBeDisabled();
   });
 
-  it('shows file info after valid file selection', () => {
+  it('shows file info after valid file selection', async () => {
     render(<UploadZone />);
 
     const file = createMockFile();
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [file] } });
 
-    expect(screen.getByText('invoice.pdf')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('invoice.pdf')).toBeInTheDocument());
     expect(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     ).toBeEnabled();
   });
 
-  it('shows validation error for non-PDF file', () => {
+  it('shows validation error for non-PDF file', async () => {
     render(<UploadZone />);
 
     const file = createMockTextFile();
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [file] } });
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/invalid file type/i);
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/invalid file type/i));
     expect(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     ).toBeDisabled();
   });
 
-  it('shows validation error for oversized file', () => {
+  it('shows validation error for oversized file', async () => {
     render(<UploadZone />);
 
     const file = createMockLargeFile();
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [file] } });
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/exceeds/);
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/exceeds/));
     expect(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     ).toBeDisabled();
+  });
+  
+  it('shows validation error for spoofed PDF file (valid extension/MIME but invalid bytes)', async () => {
+    render(<UploadZone />);
+
+    const file = createMockSpoofedFile();
+    const input = screen.getByLabelText(/select pdf invoice file/i);
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/not match a valid PDF document/));
+    expect(
+      screen.getByRole('button', { name: /upload & tokenize invoice/i })
+    ).toBeDisabled();
+  });
+
+  it('shows validation error for zero-byte file', async () => {
+    render(<UploadZone />);
+
+    const file = createMockEmptyFile();
+    const input = screen.getByLabelText(/select pdf invoice file/i);
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/File is empty/));
+    expect(
+      screen.getByRole('button', { name: /upload & tokenize invoice/i })
+    ).toBeDisabled();
+  });
+
+  it('sanitizes and truncates long filenames for display', async () => {
+    render(<UploadZone />);
+
+    const file = createMockLongNameFile();
+    const input = screen.getByLabelText(/select pdf invoice file/i);
+    fireEvent.change(input, { target: { files: [file] } });
+
+    const expectedName = 'a'.repeat(56) + '.pdf';
+    await waitFor(() => expect(screen.getByText(expectedName)).toBeInTheDocument());
   });
 
   it('progresses through uploading, tokenizing, and success on submit', async () => {
@@ -100,6 +182,8 @@ describe('UploadZone', () => {
     const file = createMockFile();
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => expect(screen.getByText('invoice.pdf')).toBeInTheDocument());
 
     const submitBtn = screen.getByRole('button', {
       name: /upload & tokenize invoice/i,
@@ -130,6 +214,9 @@ describe('UploadZone', () => {
     fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
       target: { files: [file] },
     });
+    
+    await waitFor(() => expect(screen.getByText('invoice.pdf')).toBeInTheDocument());
+    
     fireEvent.click(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     );
@@ -164,6 +251,8 @@ describe('UploadZone', () => {
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [file] } });
 
+    await waitFor(() => expect(screen.getByText('invoice.pdf')).toBeInTheDocument());
+
     fireEvent.click(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     );
@@ -185,6 +274,8 @@ describe('UploadZone', () => {
     const file = createMockFile();
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => expect(screen.getByText('invoice.pdf')).toBeInTheDocument());
 
     const submitBtn = screen.getByRole('button', {
       name: /upload & tokenize invoice/i,
@@ -222,32 +313,31 @@ describe('UploadZone', () => {
     clickSpy.mockRestore();
   });
 
-  it('resets to idle when a new valid file is selected after an error', () => {
+  it('resets to idle when a new valid file is selected after an error', async () => {
     render(<UploadZone />);
 
     const input = screen.getByLabelText(/select pdf invoice file/i);
 
     fireEvent.change(input, { target: { files: [createMockTextFile()] } });
-    expect(screen.getByRole('alert')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
 
     fireEvent.change(input, { target: { files: [createMockFile()] } });
 
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
     expect(screen.getByText('invoice.pdf')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     ).toBeEnabled();
   });
 
-  it('shows validation error role="alert" with aria-live="assertive"', () => {
+  it('shows validation error role="alert" with aria-live="assertive"', async () => {
     render(<UploadZone />);
 
     const file = createMockTextFile();
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [file] } });
 
-    const alert = screen.getByRole('alert');
-    expect(alert).toHaveAttribute('aria-live', 'assertive');
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveAttribute('aria-live', 'assertive'));
   });
 
   it('shows error and resets to idle when upload fails with server error', async () => {
@@ -258,6 +348,9 @@ describe('UploadZone', () => {
     fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
       target: { files: [file] },
     });
+    
+    await waitFor(() => expect(screen.getByText('invoice.pdf')).toBeInTheDocument());
+    
     fireEvent.click(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     );
@@ -278,6 +371,9 @@ describe('UploadZone', () => {
     fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
       target: { files: [file] },
     });
+    
+    await waitFor(() => expect(screen.getByText('invoice.pdf')).toBeInTheDocument());
+    
     fireEvent.click(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     );
@@ -298,6 +394,9 @@ describe('UploadZone', () => {
     fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
       target: { files: [file] },
     });
+    
+    await waitFor(() => expect(screen.getByText('invoice.pdf')).toBeInTheDocument());
+    
     fireEvent.click(
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     );

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import ErrorBanner from "../../components/ErrorBanner";
 import InvoiceListSkeleton from "../../components/InvoiceListSkeleton";
+import NavMenu from "../../components/NavMenu";
+import InvoiceSearch from "../../components/InvoiceSearch";
 import { copy } from "../copy/en";
 import { loadMockInvoices } from "./lib";
 

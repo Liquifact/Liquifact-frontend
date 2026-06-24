@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { isValidPdfContent, sanitizeFilename } from '../lib/validation/pdf';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -69,8 +70,9 @@ function UploadZone() {
   const [error, setError] = useState(null);
   const [status, setStatus] = useState('idle');
 
-  function validate(f) {
+  async function validate(f) {
     if (!f) return 'No file selected.';
+    if (f.size === 0) return 'File is empty (0 bytes).';
     if (f.type !== FILE_CONSTRAINTS.mimeType) {
       return `Invalid file type "${f.type || 'unknown'}". Only PDF files are accepted.`;
     }
@@ -78,12 +80,18 @@ function UploadZone() {
       const sizeMb = (f.size / 1024 / 1024).toFixed(1);
       return `File is ${sizeMb} MB — exceeds the ${FILE_CONSTRAINTS.maxSizeMb} MB limit.`;
     }
+
+    const isValidContent = await isValidPdfContent(f);
+    if (!isValidContent) {
+      return 'File content does not match a valid PDF document.';
+    }
+
     return null;
   }
 
-  function handleFile(f) {
+  async function handleFile(f) {
     setStatus('idle');
-    const err = validate(f);
+    const err = await validate(f);
     if (err) {
       setError(err);
       setFile(null);
@@ -93,16 +101,16 @@ function UploadZone() {
     }
   }
 
-  function handleDrop(e) {
+  async function handleDrop(e) {
     e.preventDefault();
     setDragOver(false);
     const f = e.dataTransfer.files?.[0];
-    if (f) handleFile(f);
+    if (f) await handleFile(f);
   }
 
-  function handleChange(e) {
+  async function handleChange(e) {
     const f = e.target.files?.[0];
-    if (f) handleFile(f);
+    if (f) await handleFile(f);
   }
 
   async function handleSubmit(e) {
@@ -180,7 +188,7 @@ function UploadZone() {
         {file ? (
           <div className="space-y-2">
             <span className="text-3xl" aria-hidden="true">{'\u2705'}</span>
-            <p className="font-medium text-emerald-400">{file.name}</p>
+            <p className="font-medium text-emerald-400" title={file.name}>{sanitizeFilename(file.name)}</p>
             <p className="text-xs text-slate-500">
               {(file.size / 1024 / 1024).toFixed(2)} MB {'\u00B7'} PDF
             </p>

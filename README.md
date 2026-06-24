@@ -364,6 +364,12 @@ See [TESTING.md](TESTING.md) for the full guide covering Jest unit/accessibility
 
 ## Security
 
+- **Client-side file validation** — The `UploadZone` component enforces strict client-side
+  validation before uploading invoices. In addition to file size and MIME type checks,
+  it verifies the PDF magic bytes (`%PDF-`) to reject spoofed files. Filenames are also
+  sanitized (stripping control characters and HTML tags) and truncated before rendering
+  to prevent layout breakage or cross-site scripting (XSS) risks.
+
 - **Bounded health rendering** — The home page displays the backend `/health` response
   through a bounded pipeline: recognised fields (`status`, `message`, `version`) are
   extracted and shown in a structured summary. The full payload is hidden behind a

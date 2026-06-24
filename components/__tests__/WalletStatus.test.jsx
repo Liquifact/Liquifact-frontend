@@ -3,11 +3,15 @@ import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import WalletStatus, { WALLET_STATES } from '../WalletStatus';
 import { ToastProvider } from '../ToastProvider';
 
+import { WalletProvider } from '../WalletContext';
+
 // Render with ToastProvider since WalletStatus calls useToast
 function renderWalletStatus() {
   return render(
     <ToastProvider>
-      <WalletStatus />
+      <WalletProvider>
+        <WalletStatus />
+      </WalletProvider>
     </ToastProvider>,
   );
 }
