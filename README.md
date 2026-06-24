@@ -101,6 +101,8 @@ We welcome UI improvements, new pages (e.g. invoice upload, marketplace), and St
 
 See [COMPONENTS.md](COMPONENTS.md) for the full component library reference — props, accessibility notes, and usage examples for every shared component (`ErrorBanner`, `Footer`, `InvoiceListSkeleton`, `ToastProvider`, `UploadZone`, `WalletStatus`).
 
+`Footer` reads its navigation targets from `copy.footer.links` so labels and destinations stay centralized with the rest of the product copy. External footer links are rendered with `target="_blank"` and `rel="noopener noreferrer"`.
+
 ## Design Tokens
 
 - **Colors**
