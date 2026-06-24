@@ -13,6 +13,30 @@ const WALLET_STATES = {
   NO_WALLET: 'no_wallet'
 };
 
+const WALLET_INSTALL_URL = 'https://www.stellar.org/wallets';
+const EXTERNAL_OPEN_FEATURES = 'noopener,noreferrer';
+
+const isTrustedHttpsUrl = (url) => {
+  try {
+    return new URL(url).protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const openTrustedExternalUrl = (url, openWindow = globalThis.window?.open) => {
+  if (!isTrustedHttpsUrl(url) || typeof openWindow !== 'function') {
+    return false;
+  }
+
+  const openedWindow = openWindow(url, '_blank', EXTERNAL_OPEN_FEATURES);
+  if (openedWindow) {
+    openedWindow.opener = null;
+  }
+
+  return true;
+};
+
 // Mock wallet data for UI development
 const mockWalletData = {
   address: 'GABC...XYZ123',
@@ -20,8 +44,8 @@ const mockWalletData = {
   balance: '1,234.56 XLM'
 };
 
-export default function WalletStatus() {
-  const [walletState, setWalletState] = useState(WALLET_STATES.DISCONNECTED);
+export default function WalletStatus({ initialWalletState = WALLET_STATES.DISCONNECTED } = {}) {
+  const [walletState, setWalletState] = useState(initialWalletState);
   const [walletData, setWalletData] = useState(null);
   const [error, setError] = useState(null);
   const toast = useToast();
@@ -162,8 +186,7 @@ export default function WalletStatus() {
         break;
       
       case WALLET_STATES.NO_WALLET:
-        // Open wallet installation page
-        window.open('https://www.stellar.org/wallets', '_blank');
+        openTrustedExternalUrl(WALLET_INSTALL_URL);
         break;
       
       default:
@@ -254,4 +277,4 @@ export default function WalletStatus() {
 }
 
 // Export constants for testing and external usage
-export { WALLET_STATES };
+export { WALLET_STATES, WALLET_INSTALL_URL, isTrustedHttpsUrl, openTrustedExternalUrl };

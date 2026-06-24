@@ -115,6 +115,10 @@ See [COMPONENTS.md](COMPONENTS.md) for the full component library reference — 
 
 See [TESTING.md](TESTING.md) for the full guide covering Jest unit/accessibility tests and Playwright end-to-end setup.
 
+## External Links
+
+Wallet install pages are opened from trusted HTTPS constants only. New-tab launches use `noopener,noreferrer` and clear `opener` when the browser returns a window reference, which helps prevent reverse tabnabbing.
+
 ## Contracts
 
 - [WALLET_INTEGRATION_CONTRACT.md](WALLET_INTEGRATION_CONTRACT.md)
