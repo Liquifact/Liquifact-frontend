@@ -26,6 +26,29 @@ export const copy = {
   footer: {
     docs: "Documentation",
     status: "System Status",
-    contact: "Contact Support"
+    contact: "Contact Support",
+    community: "Discord Community",
+    /**
+     * Footer link metadata rendered by components/Footer.jsx.
+     * External links open in a new tab with noopener noreferrer.
+     */
+    links: [
+      {
+        label: "Documentation",
+        href: "https://github.com/Liquifact/Liquifact-frontend#readme"
+      },
+      {
+        label: "System Status",
+        href: "https://status.stellar.org/"
+      },
+      {
+        label: "Contact Support",
+        href: "https://github.com/Liquifact/Liquifact-frontend/issues"
+      },
+      {
+        label: "Discord Community",
+        href: "https://discord.gg/JrGPH4V3"
+      }
+    ]
   }
 };
