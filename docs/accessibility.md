@@ -8,6 +8,7 @@ LiquiFact Frontend is committed to meeting **WCAG 2.1 AA** accessibility sta
 
 - **Focus Management** – Interactive elements receive a visible focus ring (`outline: 2px solid var(--color-primary)`); focus order follows logical DOM structure.
 - **ARIA Live Regions** – Used in `components/UploadZone.jsx`, `components/WalletStatus.jsx`, and `app/invest/page.js` to announce status updates to assistive technologies.
+- **Single Announcer for Pagination** – `components/Pagination.jsx` keeps the visible "Showing N of M" count non-live. The owning page status region announces pagination changes so assistive technologies hear each update once.
 - **Landmarks** – Page layouts employ semantic HTML landmarks (`<header>`, `<main>`, `<nav>`, `<footer>`) for easy navigation.
 - **Form Labels** – All form controls include associated `<label>` elements or `aria-label` attributes.
 - **Button Roles** – Buttons are native `<button>` elements; where custom elements are used, `role="button"` and keyboard handlers are added.

@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
 import { act, render, screen, fireEvent } from "@testing-library/react";
-import {
+import InvestPage, {
   getInvoiceLoadAnnouncement,
   getPaginationAnnouncement,
   InvestMarketplace,
@@ -279,12 +279,12 @@ describe("InvestMarketplace", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("updates the status region to Showing N of M after Load more", async () => {
+  it("announces the pagination count from exactly one live region after Load more", async () => {
     const total = PAGE_SIZE + 4; // 14 items
     const invoices = makeInvoices(total);
     const loadInvoices = createDeferredLoader(invoices, 50);
 
-    render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    const { container } = render(<InvestMarketplace loadInvoices={loadInvoices} />);
     await flushTimers(50);
 
     await act(async () => {
@@ -296,6 +296,8 @@ describe("InvestMarketplace", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       `Showing ${total} of ${total} investable invoices`,
     );
+    expect(container.querySelectorAll('[aria-live], [role="status"]')).toHaveLength(1);
+    expect(container.querySelector("#pagination-count")).not.toHaveAttribute("aria-live");
   });
 
   it("does not show Load-more when total is fewer than PAGE_SIZE", async () => {

@@ -2,8 +2,8 @@
  * @file Pagination.jsx
  * @description "Load more" pagination control for list views.
  *
- * Renders a count announcement ("Showing N of M invoices") and a
- * "Load more" button.  The button is hidden once all items are visible.
+ * Renders a visible count ("Showing N of M invoices") and a "Load more"
+ * button.  The button is hidden once all items are visible.
  * The ref forwarded to the button lets callers restore focus after each
  * load to preserve keyboard accessibility.
  */
@@ -26,12 +26,10 @@ const Pagination = forwardRef(function Pagination({ shown, total, onLoadMore }, 
 
   return (
     <div className="mt-6 flex flex-col items-center gap-4">
-      {/* Count announcement — always visible for sighted users */}
+      {/* Visible count only; the page-level status region owns announcements. */}
       <p
         id="pagination-count"
         className="text-sm text-slate-400"
-        aria-live="polite"
-        aria-atomic="true"
       >
         Showing <strong className="text-slate-200">{shown}</strong> of{" "}
         <strong className="text-slate-200">{total}</strong> invoice
