@@ -1,8 +1,7 @@
 export const copy = {
   home: {
     heroTitle: "Global Invoice Liquidity Network on Stellar",
-    heroSub:
-      "Unlock liquidity from unpaid invoices instantly. SMEs get working capital; investors earn yield. Tokenized invoices, escrow on Soroban.",
+    heroSub: "Unlock liquidity from unpaid invoices instantly. SMEs get working capital; investors earn yield. Tokenized invoices, escrow on Soroban.",
     boxBusinessTitle: "For Businesses",
     boxBusinessSub: "Upload invoices, get instant stablecoin liquidity.",
     boxInvestTitle: "For Investors",
@@ -50,16 +49,16 @@ export const copy = {
     contactUrl: "mailto:support@liquifact.com",
     discord: "Discord Community",
     discordUrl: "https://discord.gg/JrGPH4V3",
-  }
-    contact: "Contact Support",
   },
+
+  contact: "Contact Support",
+
   uploadZone: {
     requirementsTitle: "Upload requirements",
     badgePdfOnly: "PDF only",
     badgeMaxSize: "Max {maxSizeMb} MB",
     badgeOneFile: "One file per invoice",
-    requirementsBody:
-      "Only PDF documents are accepted. Files larger than {maxSizeMb} MB will be rejected. Ensure your invoice is complete and legible before uploading.",
+    requirementsBody: "Only PDF documents are accepted. Files larger than {maxSizeMb} MB will be rejected. Ensure your invoice is complete and legible before uploading.",
     dropZoneLabel: "Drop PDF invoice here or press Enter to browse files",
     fileInputLabel: "Select PDF invoice file",
     dragDropPrompt: "Drag & drop your invoice PDF here",
@@ -90,10 +89,8 @@ export const copy = {
     toastErrorTitle: "Connection failed",
     toastErrorMsg: "Failed to connect to wallet. Please try again.",
     toastWrongNetworkTitle: "Wrong network",
-    toastWrongNetworkMsg:
-      "Wallet is connected to testnet. Please switch to public network.",
+    toastWrongNetworkMsg: "Wallet is connected to testnet. Please switch to public network.",
     errorConnect: "Failed to connect to wallet. Please try again.",
-    errorWrongNetwork:
-      "Wallet is connected to testnet. Please switch to public network.",
+    errorWrongNetwork: "Wallet is connected to testnet. Please switch to public network.",
   },
 };

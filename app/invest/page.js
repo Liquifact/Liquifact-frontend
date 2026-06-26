@@ -23,12 +23,15 @@ export const SEARCH_DEBOUNCE_MS = 200;
 
 /**
  * Default filter state — all filters cleared.
+ * Key names match InvoiceFilters component's onFilterChange payload:
+ *   yieldMin, yieldMax, currency, maturityFrom, maturityTo, sort.
  */
 const DEFAULT_FILTERS = {
   currency: "",
-  minYield: "",
-  dateFrom: "",
-  dateTo: "",
+  yieldMin: "",
+  yieldMax: "",
+  maturityFrom: "",
+  maturityTo: "",
   sort: "",
 };
 
@@ -37,19 +40,17 @@ const DEFAULT_FILTERS = {
  *
  * @param {Array} invoices - The resolved invoice array (may be empty).
  * @param {object} [options]
- * @param {boolean} [options.filterActive=false] - Whether an issuer filter is applied.
- * @param {number} [options.filteredCount=0] - Number of invoices matching the current filter.
+ * @param {boolean} [options.filterActive=false] - Whether any filter is applied.
+ * @param {number} [options.filteredCount=0] - Number of invoices matching the filter.
  * @returns {string}
  */
 export function getInvoiceLoadAnnouncement(invoices, { filterActive = false, filteredCount = 0 } = {}) {
   if (!Array.isArray(invoices) || invoices.length === 0) {
     return "No invoices available";
   }
-
   if (filterActive) {
     return filteredCount === 0 ? "No invoices match" : `${filteredCount} of ${invoices.length} invoices match`;
   }
-
   return `${invoices.length} investable invoices loaded`;
 }
 
@@ -68,94 +69,82 @@ export function getPaginationAnnouncement(shown, total) {
  * InvestMarketplace — main component for the invest page.
  *
  * Fetches invoices via `loadInvoices`, renders them PAGE_SIZE at a time,
- * and exposes a "Load more" control to append the next batch. Paging
- * resets whenever a new invoice set arrives so filter changes stay
- * non-breaking.
+ * and exposes a "Load more" control to append the next batch.
  *
  * Retry behaviour:
- *   - Clicking "Try again" in the ErrorBanner calls reload(), which increments
- *     retryKey and re-triggers the load useEffect.
- *   - State is reset to loading (invoices=null) and loadError is cleared before
- *     the new request starts.
- *   - The previous AbortController is aborted via the effect cleanup before the
- *     new effect runs, so a stale request can never overwrite fresh state.
+ *   - Clicking "Try again" in the ErrorBanner calls reload(), which resets
+ *     all state synchronously then increments retryKey to re-trigger the
+ *     load effect.
+ *   - The previous AbortController is aborted via the effect cleanup before
+ *     the new effect runs, so a stale request can never overwrite fresh state.
+ *   - statusMessage is derived during render (not stored in a separate effect)
+ *     so filter/search changes are announced without an extra render cycle.
  *
  * @param {object}   props
- * @param {Function} [props.loadInvoices] - Async function that resolves to an
- *   invoice array. Defaults to fetchInvestableInvoices; injectable for testing.
+ * @param {Function} [props.loadInvoices] - Async function resolving to an
+ *   invoice array. Defaults to fetchInvestableInvoices; injectable for tests.
  * @returns {JSX.Element}
  */
 export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [statusMessage, setStatusMessage] = useState("");
+  /**
+   * loadStatusMessage holds announcements owned by the async load path:
+   * the initial "N invoices loaded" message, the error status, and the
+   * "cleared" empty string set on retry. Filter-change announcements are
+   * derived synchronously during render (see statusMessage below).
+   */
+  const [loadStatusMessage, setLoadStatusMessage] = useState("");
   const [loadError, setLoadError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
-
   /**
-   * Incrementing retryKey re-triggers the load effect (retry without page
-   * reload). Starts at 0 so the reset effect is skipped on initial mount.
+   * Incrementing retryKey re-triggers the load effect without a page reload.
+   * reset state is handled synchronously inside reload() so no separate
+   * reset effect is needed (avoids the react-hooks/set-state-in-effect lint rule).
    */
   const [retryKey, setRetryKey] = useState(0);
 
   /** Ref forwarded to the "Load more" button for focus management. */
   const loadMoreRef = useRef(null);
 
-  /**
-   * Reset state only when retry is explicitly triggered (retryKey > 0).
-   * Keeping this separate prevents the reset from firing on initial mount
-   * and avoids a setState-inside-effect loop.
-   */
-  useEffect(() => {
-    if (retryKey === 0) return;
-    setInvoices(null);
-    setLoadError("");
-    setStatusMessage("");
-    setVisibleCount(PAGE_SIZE);
-  }, [retryKey]);
-
+  // ── Load effect ──────────────────────────────────────────────────────────
   useEffect(() => {
     /**
-     * Each render cycle that depends on [loadInvoices, retryKey] gets its own
-     * AbortController. The cleanup function aborts the previous controller and
-     * marks the closure stale (isActive=false) so a slow response that arrives
-     * after unmount or after a retry cannot overwrite fresh state.
+     * Each run gets its own AbortController. The cleanup aborts the previous
+     * controller and marks the closure stale (isActive=false) so a slow
+     * response arriving after unmount or after a retry cannot overwrite state.
      */
     const controller = new AbortController();
     let isActive = true;
 
-    const announceLoadCompletion = async () => {
+    const run = async () => {
       try {
         const nextInvoices = await loadInvoices({ signal: controller.signal });
-
         if (!isActive) return;
 
-        const normalizedInvoices = Array.isArray(nextInvoices) ? nextInvoices : [];
-
-        setInvoices(normalizedInvoices);
+        const normalized = Array.isArray(nextInvoices) ? nextInvoices : [];
+        setInvoices(normalized);
         setVisibleCount(PAGE_SIZE);
-        setStatusMessage(getInvoiceLoadAnnouncement(normalizedInvoices));
+        setLoadStatusMessage(getInvoiceLoadAnnouncement(normalized));
       } catch {
         if (!isActive) return;
-
         setInvoices([]);
         setLoadError(copy.invest.errorDescription);
-        setStatusMessage(copy.invest.errorStatus);
+        setLoadStatusMessage(copy.invest.errorStatus);
       }
     };
 
-    void announceLoadCompletion();
+    void run();
 
     return () => {
       // Abort any in-flight request and mark this closure stale so a late
-      // response from a previous attempt cannot overwrite the fresh state
-      // started by the retry.
+      // response from a previous attempt cannot overwrite fresh state.
       isActive = false;
       controller.abort();
     };
-    // retryKey triggers a fresh load on retry; loadInvoices is stable between renders.
+    // retryKey triggers a fresh load on retry; loadInvoices is stable.
   }, [loadInvoices, retryKey]);
 
   // ── Search debounce ──────────────────────────────────────────────────────
@@ -168,31 +157,34 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
 
   // ── Retry handler ────────────────────────────────────────────────────────
   /**
-   * Re-triggers the load effect by incrementing retryKey.
-   * The effect's cleanup (isActive=false + controller.abort) fires first,
-   * so any in-flight stale request is cancelled before the new one starts.
-   * The polite status region is cleared by the reset effect so screen readers
-   * re-announce once the fresh load completes.
+   * Resets all load-related state synchronously (no separate reset effect
+   * needed, keeping lint clean), then increments retryKey to re-trigger the
+   * load effect. The effect cleanup (isActive=false + controller.abort) fires
+   * first, so any in-flight stale request is cancelled before the new one starts.
    */
   const reload = useCallback(() => {
+    setInvoices(null);
+    setLoadError("");
+    setLoadStatusMessage("");
+    setVisibleCount(PAGE_SIZE);
     setRetryKey((k) => k + 1);
   }, []);
 
   // ── Load-more handler ────────────────────────────────────────────────────
   /**
    * Appends the next PAGE_SIZE items and updates the live-region status.
-   * Focus is moved back to the "Load more" button (if it still exists) so
-   * keyboard users do not lose their place in the page.
+   * Focus is moved back to the "Load more" button so keyboard users do not
+   * lose their place in the page.
    */
   const handleLoadMore = useCallback(() => {
     setVisibleCount((prev) => {
       const next = Math.min(prev + PAGE_SIZE, invoices?.length ?? prev);
       const total = invoices?.length ?? 0;
-      setStatusMessage(getPaginationAnnouncement(next, total));
+      setLoadStatusMessage(getPaginationAnnouncement(next, total));
       return next;
     });
 
-    // Restore focus on next tick so the button is still in the DOM when focused.
+    // Restore focus on next tick so the button is still in the DOM.
     setTimeout(() => {
       loadMoreRef.current?.focus();
     }, 0);
@@ -206,25 +198,42 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
   // ── Derived values ───────────────────────────────────────────────────────
   const allInvoices = Array.isArray(invoices) ? invoices : [];
 
+  /**
+   * filterActive is true when any filter field or search term is non-empty.
+   * Key names match InvoiceFilters' onFilterChange payload.
+   */
+  const filterActive = !!(debouncedQuery || filters.currency || filters.yieldMin || filters.yieldMax || filters.maturityFrom || filters.maturityTo);
+
   const searchFiltered = debouncedQuery ? allInvoices.filter((inv) => inv.issuer.toLowerCase().includes(debouncedQuery.toLowerCase())) : allInvoices;
 
   const filteredInvoices = (() => {
     let result = [...searchFiltered];
 
+    // currency — key matches InvoiceFilters
     if (filters.currency) {
       result = result.filter((inv) => inv.currency === filters.currency);
     }
-    if (filters.minYield) {
-      const min = parseFloat(filters.minYield);
+    // yield minimum — InvoiceFilters key: yieldMin
+    if (filters.yieldMin) {
+      const min = parseFloat(filters.yieldMin);
       if (!Number.isNaN(min)) {
         result = result.filter((inv) => parseFloat(inv.yield) >= min);
       }
     }
-    if (filters.dateFrom) {
-      result = result.filter((inv) => inv.dueDate >= filters.dateFrom);
+    // yield maximum — InvoiceFilters key: yieldMax
+    if (filters.yieldMax) {
+      const max = parseFloat(filters.yieldMax);
+      if (!Number.isNaN(max)) {
+        result = result.filter((inv) => parseFloat(inv.yield) <= max);
+      }
     }
-    if (filters.dateTo) {
-      result = result.filter((inv) => inv.dueDate <= filters.dateTo);
+    // maturity from — InvoiceFilters key: maturityFrom
+    if (filters.maturityFrom) {
+      result = result.filter((inv) => inv.dueDate >= filters.maturityFrom);
+    }
+    // maturity to — InvoiceFilters key: maturityTo
+    if (filters.maturityTo) {
+      result = result.filter((inv) => inv.dueDate <= filters.maturityTo);
     }
     if (filters.sort === "yield_desc") {
       result.sort((a, b) => parseFloat(b.yield) - parseFloat(a.yield));
@@ -241,6 +250,33 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
 
   const visibleInvoices = filteredInvoices.slice(0, visibleCount);
 
+  /**
+   * statusMessage is derived during render rather than stored in a separate
+   * effect, which avoids the react-hooks/set-state-in-effect lint error and
+   * ensures filter/search changes are announced in the same render cycle.
+   *
+   * Priority:
+   *   1. Still loading (invoices === null) — empty so screen readers stay silent.
+   *   2. Error state — load effect already wrote the error status; honour it.
+   *   3. Pagination — load effect wrote "Showing N of M"; honour it.
+   *   4. Filter/search active — derive the match count announcement inline.
+   *   5. Default — use whatever the load effect wrote (e.g. "N invoices loaded").
+   */
+  const statusMessage = (() => {
+    if (invoices === null) return "";
+    if (loadError) return loadStatusMessage;
+    // Pagination announcement starts with "Showing"
+    if (loadStatusMessage.startsWith("Showing")) return loadStatusMessage;
+    // Filter/search active — derive inline so no effect needed
+    if (filterActive) {
+      return getInvoiceLoadAnnouncement(allInvoices, {
+        filterActive: true,
+        filteredCount: filteredInvoices.length,
+      });
+    }
+    return loadStatusMessage;
+  })();
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <header className="border-b border-slate-800 px-6 py-4">
@@ -256,7 +292,7 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
         <h1 className="text-2xl font-bold mb-2">{copy.invest.title}</h1>
         <p className="text-slate-400 mb-8">{copy.invest.subtext}</p>
 
-        {/* Polite live region — announces load results and pagination to screen readers */}
+        {/* Polite live region — announces load results and pagination */}
         <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
           {statusMessage}
         </p>
@@ -276,11 +312,11 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
            * page reload.
            *
            * Abort/cancellation flow:
-           *   1. User clicks "Try again" → reload() increments retryKey.
+           *   1. User clicks "Try again" → reload() resets state synchronously
+           *      then increments retryKey.
            *   2. React re-runs the load useEffect cleanup: isActive=false and
            *      controller.abort() cancel any in-flight stale request.
-           *   3. The reset useEffect (retryKey > 0) clears loadError and sets
-           *      invoices=null so the skeleton reappears immediately.
+           *   3. invoices=null so the skeleton reappears immediately.
            *   4. The load useEffect starts a fresh fetch with a new controller.
            */
           <ErrorBanner

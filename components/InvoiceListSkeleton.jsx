@@ -9,17 +9,9 @@
  */
 export default function InvoiceListSkeleton({ rows = 3 }) {
   return (
-    <ul
-      aria-label="Loading invoices"
-      aria-busy="true"
-      className="space-y-4"
-    >
+    <ul aria-label="Loading investable invoices" aria-busy="true" className="space-y-4">
       {Array.from({ length: rows }).map((_, i) => (
-        <li
-          // Use a prefix with index for a stable, deterministic skeleton key since rows are presentational-only
-          key={`skeleton-row-${i}`}
-          className="rounded-xl border border-slate-800 bg-slate-900/50 p-5 animate-pulse"
-        >
+        <li key={`skeleton-row-${i}`} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5 animate-pulse">
           {/* Row: issuer + status badge */}
           <div className="flex items-center justify-between mb-3">
             <div className="h-4 w-36 rounded bg-slate-700" />
