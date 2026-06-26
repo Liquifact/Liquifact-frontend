@@ -574,3 +574,160 @@ describe("getPaginationAnnouncement", () => {
     );
   });
 });
+
+// ── Issuer search tests ────────────────────────────────────────────────────
+
+describe("InvestMarketplace — issuer search", () => {
+  const SEARCH_INVOICES = [
+    { id: "inv-001", issuer: "Acme Supplies Ltd",   amount: "1,000", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
+    { id: "inv-002", issuer: "Bright Logistics GmbH", amount: "2,000", currency: "EUR", dueDate: "2026-07-01", yield: "6%", status: "Open" },
+    { id: "inv-003", issuer: "Sunrise Exports Pte",  amount: "3,000", currency: "USD", dueDate: "2026-05-30", yield: "7%", status: "Open" },
+  ];
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  });
+
+  it("shows all invoices when the search field is empty", async () => {
+    render(
+      <InvestMarketplace loadInvoices={createDeferredLoader(SEARCH_INVOICES, 0)} />,
+    );
+    await flushTimers(0);
+
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+  });
+
+  it("filters the list by case-insensitive issuer substring match", async () => {
+    render(
+      <InvestMarketplace loadInvoices={createDeferredLoader(SEARCH_INVOICES, 0)} />,
+    );
+    await flushTimers(0);
+
+    // Type into the search field — debounce fires after SEARCH_DEBOUNCE_MS
+    await act(async () => {
+      fireEvent.change(screen.getByRole("searchbox"), {
+        target: { value: "acme" },
+      });
+      jest.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+      await Promise.resolve();
+    });
+
+    const items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent("Acme Supplies Ltd");
+  });
+
+  it("shows no-match state when search yields zero results", async () => {
+    render(
+      <InvestMarketplace loadInvoices={createDeferredLoader(SEARCH_INVOICES, 0)} />,
+    );
+    await flushTimers(0);
+
+    await act(async () => {
+      fireEvent.change(screen.getByRole("searchbox"), {
+        target: { value: "zzznomatch" },
+      });
+      jest.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("No invoices match your filters.")).toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+  });
+
+  it("restores the full list when the query is cleared", async () => {
+    render(
+      <InvestMarketplace loadInvoices={createDeferredLoader(SEARCH_INVOICES, 0)} />,
+    );
+    await flushTimers(0);
+
+    // Apply a filter
+    await act(async () => {
+      fireEvent.change(screen.getByRole("searchbox"), {
+        target: { value: "bright" },
+      });
+      jest.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+      await Promise.resolve();
+    });
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+
+    // Clear via the "Clear" button rendered by InvoiceSearch;
+    // separate the click (which updates searchQuery) from the debounce flush.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /clear search/i }));
+      await Promise.resolve();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+  });
+
+  it("announces the filtered count in the polite live region", async () => {
+    render(
+      <InvestMarketplace loadInvoices={createDeferredLoader(SEARCH_INVOICES, 0)} />,
+    );
+    await flushTimers(0);
+
+    // Initially all 3 loaded
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "3 investable invoices loaded",
+    );
+
+    await act(async () => {
+      fireEvent.change(screen.getByRole("searchbox"), {
+        target: { value: "sunrise" },
+      });
+      jest.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent("1 of 3 invoices match");
+  });
+
+  it("announces no-match when search eliminates all invoices", async () => {
+    render(
+      <InvestMarketplace loadInvoices={createDeferredLoader(SEARCH_INVOICES, 0)} />,
+    );
+    await flushTimers(0);
+
+    await act(async () => {
+      fireEvent.change(screen.getByRole("searchbox"), {
+        target: { value: "zzznomatch" },
+      });
+      jest.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent("No invoices match");
+  });
+
+  it("is case-insensitive — upper-case query matches lower-case issuer", async () => {
+    render(
+      <InvestMarketplace loadInvoices={createDeferredLoader(SEARCH_INVOICES, 0)} />,
+    );
+    await flushTimers(0);
+
+    await act(async () => {
+      fireEvent.change(screen.getByRole("searchbox"), {
+        target: { value: "BRIGHT" },
+      });
+      jest.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+      await Promise.resolve();
+    });
+
+    const items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent("Bright Logistics GmbH");
+  });
+});

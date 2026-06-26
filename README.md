@@ -235,9 +235,38 @@ Default: [http://localhost:3000](http://localhost:3000). The home page can check
 
 The invoices page header also uses the shared `NavMenu` component, replacing the old bespoke header so navigation and wallet entry stay consistent across routes.
 
-### Marketplace search
+### Marketplace search and filtering
 
-The Invest page (`app/invest/page.js`) includes an issuer search field above the invoice list. Typing in the field filters invoices by case-insensitive substring match on `issuer`. Input is debounced at **200ms** so the text field stays responsive while filtering waits for settled input. When a filter is active, the `aria-live` status region announces the match count (e.g. "2 of 3 invoices match"). A distinct "no matches" state is shown when the filter yields zero results, separate from the empty-marketplace state.
+The Invest page (`app/invest/page.js`) provides two complementary ways to narrow the invoice list:
+
+**Issuer search** (`InvoiceSearch`)
+- Filters invoices by case-insensitive substring match on the `issuer` field.
+- Input is debounced at **`SEARCH_DEBOUNCE_MS` (200 ms)** so the list only updates once the user pauses typing.
+- A **Clear** button appears inside the field whenever there is an active query; clicking it resets both the search and the visible page.
+
+**Filter panel** (`InvoiceFilters`)
+- Currency toggle buttons (USD, EUR, GBP, JPY, CHF)
+- Min/max yield range inputs
+- Maturity date from/to pickers
+- Sort dropdown (best yield, lowest yield, highest/lowest amount, earliest/latest maturity)
+- A **Clear Filters** button resets all filter state in one click.
+
+Both search and filter state feed into a shared `applyFilters()` helper that is called on every render — no explicit "Apply" step is needed.
+
+**Accessible announcements** (`aria-live="polite"`)
+
+The status region (`role="status"`) announces three distinct states via `getInvoiceLoadAnnouncement`:
+
+| Condition | Announcement |
+|-----------|-------------|
+| Load complete, no filter active | `"N investable invoices loaded"` |
+| Filter active, some matches | `"M of N invoices match"` |
+| Filter active, no matches | `"No invoices match"` |
+| No invoices at all | `"No invoices available"` |
+
+After "Load more" is clicked the region updates to `"Showing N of M investable invoices"` via `getPaginationAnnouncement`.
+
+Resetting either search or filters resets the visible page count back to `PAGE_SIZE` (10) so users start from the top of the filtered results.
 
 ---
 
