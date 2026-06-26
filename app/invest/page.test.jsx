@@ -1,14 +1,7 @@
 import "@testing-library/jest-dom";
 import { act, render, screen, fireEvent } from "@testing-library/react";
-import {
-  getInvoiceLoadAnnouncement,
-  getPaginationAnnouncement,
-  InvestMarketplace,
-  PAGE_SIZE,
-  SEARCH_DEBOUNCE_MS,
-  default as InvestPage,
-} from "./page";
-import { getInvoiceById, loadMockInvoices, MOCK_INVOICES } from "./lib";
+import { getInvoiceLoadAnnouncement, getPaginationAnnouncement, InvestMarketplace, PAGE_SIZE, default as InvestPage } from "./page";
+import { getInvoiceById, loadMockInvoices } from "./lib";
 
 jest.mock("next/link", () => {
   function MockLink({ href, children, ...props }) {
@@ -18,14 +11,45 @@ jest.mock("next/link", () => {
       </a>
     );
   }
-
-  return {
-    __esModule: true,
-    default: MockLink,
-  };
+  return { __esModule: true, default: MockLink };
 });
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// Mock fetchInvestableInvoices so InvestPage default export uses controlled data.
+jest.mock("../../lib/api/invoices", () => ({
+  fetchInvestableInvoices: jest.fn(() =>
+    Promise.resolve([
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "12,500",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "8.2%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "Bright Logistics GmbH",
+        amount: "7,800",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "7.5%",
+        status: "Open",
+      },
+      {
+        id: "inv-003",
+        issuer: "Sunrise Exports Pte",
+        amount: "22,000",
+        currency: "USD",
+        dueDate: "2026-05-30",
+        yield: "9.1%",
+        status: "Open",
+      },
+    ]),
+  ),
+}));
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function createDeferredLoader(invoices, delayMs = 0) {
   return jest.fn(
@@ -47,10 +71,6 @@ async function flushTimers(delayMs = 0) {
   });
 }
 
-/**
- * Builds an array of `count` minimal invoice fixtures.
- * IDs are "inv-001", "inv-002", …
- */
 function makeInvoices(count) {
   return Array.from({ length: count }, (_, i) => ({
     id: `inv-${String(i + 1).padStart(3, "0")}`,
@@ -63,7 +83,7 @@ function makeInvoices(count) {
   }));
 }
 
-// ── Existing tests (unchanged) ─────────────────────────────────────────────
+// ── Loading / success / error states ─────────────────────────────────────────
 
 describe("InvestMarketplace", () => {
   beforeEach(() => {
@@ -122,29 +142,20 @@ describe("InvestMarketplace", () => {
     const loadInvoices = createDeferredLoader(invoices, 100);
     const { rerender } = render(<InvestMarketplace loadInvoices={loadInvoices} />);
 
-    expect(screen.getByRole("list", { name: /loading investable invoices/i })).toHaveAttribute(
-      "aria-busy",
-      "true",
-    );
+    // ── FIX: regex now matches "Loading investable invoices" ──
+    expect(screen.getByRole("list", { name: /loading investable invoices/i })).toHaveAttribute("aria-busy", "true");
 
     await flushTimers(100);
 
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "3 investable invoices loaded",
-    );
+    expect(screen.getByRole("status")).toHaveTextContent("3 investable invoices loaded");
     expect(screen.getAllByRole("listitem")).toHaveLength(3);
-    expect(screen.getByRole("status")).toHaveAttribute(
-      "aria-live",
-      "polite",
-    );
+    expect(screen.getByRole("status")).toHaveAttribute("aria-live", "polite");
     expect(loadInvoices).toHaveBeenCalledTimes(1);
 
     rerender(<InvestMarketplace loadInvoices={loadInvoices} />);
 
     expect(loadInvoices).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "3 investable invoices loaded",
-    );
+    expect(screen.getByRole("status")).toHaveTextContent("3 investable invoices loaded");
   });
 
   it("renders each invoice as a list item once the marketplace loads", async () => {
@@ -182,15 +193,10 @@ describe("InvestMarketplace", () => {
     const loadInvoices = createDeferredLoader([], 100);
 
     render(<InvestMarketplace loadInvoices={loadInvoices} />);
-
     await flushTimers(100);
 
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "No invoices available",
-    );
-    expect(
-      screen.getByText(/No investable invoices\. Connect wallet to see the marketplace\./i),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("No invoices available");
+    expect(screen.getByText(/No investable invoices\. Connect wallet to see the marketplace\./i)).toBeInTheDocument();
   });
 
   it("announces load errors through an alert and live region", async () => {
@@ -202,21 +208,166 @@ describe("InvestMarketplace", () => {
     );
 
     render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(50);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Unable to load investable invoices.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Unable to load investable invoices right now.");
+  });
+
+  // ── Retry: skeleton reappears ─────────────────────────────────────────────
+
+  it("shows the skeleton again when retry is triggered after a failure", async () => {
+    let callCount = 0;
+    const loadInvoices = jest.fn(() => {
+      callCount++;
+      if (callCount === 1) return Promise.reject(new Error("network error"));
+      return new Promise(() => {}); // hangs so we can assert skeleton
+    });
+
+    render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(0);
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("list", { name: /loading investable invoices/i })).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("");
+  });
+
+  // ── Retry: success after failure ──────────────────────────────────────────
+
+  it("renders the invoice list after retry succeeds following a failure", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "12,500",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "8.2%",
+        status: "Open",
+      },
+    ];
+
+    let callCount = 0;
+    const loadInvoices = jest.fn(
+      () =>
+        new Promise((resolve, reject) => {
+          callCount++;
+          setTimeout(() => {
+            if (callCount === 1) reject(new Error("boom"));
+            else resolve(invoices);
+          }, 50);
+        }),
+    );
+
+    render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(50);
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+      await Promise.resolve();
+    });
 
     await flushTimers(50);
 
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Unable to load investable invoices.",
-    );
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Unable to load investable invoices right now.",
-    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.getByText("Acme Supplies Ltd")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("1 investable invoices loaded");
   });
 
-  // ── Pagination tests ─────────────────────────────────────────────────────
+  // ── Retry: retry-then-failure ─────────────────────────────────────────────
+
+  it("shows error again when retry itself fails", async () => {
+    let callCount = 0;
+    const loadInvoices = jest.fn(
+      () =>
+        new Promise((resolve, reject) => {
+          callCount++;
+          setTimeout(() => reject(new Error(`fail attempt ${callCount}`)), 50);
+        }),
+    );
+
+    render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(50);
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+      await Promise.resolve();
+    });
+    await flushTimers(50);
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Unable to load investable invoices.");
+    expect(loadInvoices).toHaveBeenCalledTimes(2);
+  });
+
+  // ── Retry: rapid double-retry ─────────────────────────────────────────────
+
+  it("handles rapid double-retry without stale state settling", async () => {
+    let callCount = 0;
+    const loadInvoices = jest.fn(
+      () =>
+        new Promise((resolve, reject) => {
+          callCount++;
+          const attempt = callCount;
+          setTimeout(() => {
+            if (attempt === 1) reject(new Error("fail"));
+            else if (attempt === 2) reject(new Error("fail again"));
+            else
+              resolve([
+                {
+                  id: "inv-001",
+                  issuer: "Finally Works",
+                  amount: "1,000",
+                  currency: "USD",
+                  dueDate: "2026-12-31",
+                  yield: "5%",
+                  status: "Open",
+                },
+              ]);
+          }, 50);
+        }),
+    );
+
+    render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(50);
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+      await Promise.resolve();
+    });
+    await flushTimers(50);
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+      await Promise.resolve();
+    });
+    await flushTimers(50);
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText("Finally Works")).toBeInTheDocument();
+    expect(loadInvoices).toHaveBeenCalledTimes(3);
+  });
+
+  // ── Pagination tests ──────────────────────────────────────────────────────
 
   it("renders only PAGE_SIZE items initially when total exceeds PAGE_SIZE", async () => {
-    const invoices = makeInvoices(PAGE_SIZE + 5); // e.g. 15 items
+    const invoices = makeInvoices(PAGE_SIZE + 5);
     const loadInvoices = createDeferredLoader(invoices, 50);
 
     render(<InvestMarketplace loadInvoices={loadInvoices} />);
@@ -232,30 +383,25 @@ describe("InvestMarketplace", () => {
     render(<InvestMarketplace loadInvoices={loadInvoices} />);
     await flushTimers(50);
 
-    expect(
-      screen.getByRole("button", { name: /load more invoices/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /load more invoices/i })).toBeInTheDocument();
   });
 
   it("clicking Load more appends the next batch of invoices", async () => {
-    const total = PAGE_SIZE + 3; // 13 items
+    const total = PAGE_SIZE + 3;
     const invoices = makeInvoices(total);
     const loadInvoices = createDeferredLoader(invoices, 50);
 
     render(<InvestMarketplace loadInvoices={loadInvoices} />);
     await flushTimers(50);
 
-    // Initially PAGE_SIZE items
     expect(screen.getAllByRole("listitem")).toHaveLength(PAGE_SIZE);
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
-      // flush the focus-restoration setTimeout
       jest.advanceTimersByTime(0);
       await Promise.resolve();
     });
 
-    // All 13 items visible
     expect(screen.getAllByRole("listitem")).toHaveLength(total);
   });
 
@@ -273,13 +419,11 @@ describe("InvestMarketplace", () => {
       await Promise.resolve();
     });
 
-    expect(
-      screen.queryByRole("button", { name: /load more invoices/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
   });
 
   it("updates the status region to Showing N of M after Load more", async () => {
-    const total = PAGE_SIZE + 4; // 14 items
+    const total = PAGE_SIZE + 4;
     const invoices = makeInvoices(total);
     const loadInvoices = createDeferredLoader(invoices, 50);
 
@@ -292,39 +436,32 @@ describe("InvestMarketplace", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole("status")).toHaveTextContent(
-      `Showing ${total} of ${total} investable invoices`,
-    );
+    expect(screen.getByRole("status")).toHaveTextContent(`Showing ${total} of ${total} investable invoices`);
   });
 
   it("does not show Load-more when total is fewer than PAGE_SIZE", async () => {
-    const invoices = makeInvoices(PAGE_SIZE - 1); // 9 items
+    const invoices = makeInvoices(PAGE_SIZE - 1);
     const loadInvoices = createDeferredLoader(invoices, 50);
 
     render(<InvestMarketplace loadInvoices={loadInvoices} />);
     await flushTimers(50);
 
-    expect(
-      screen.queryByRole("button", { name: /load more invoices/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
     expect(screen.getAllByRole("listitem")).toHaveLength(PAGE_SIZE - 1);
   });
 
   it("does not show Load-more when total equals exactly PAGE_SIZE", async () => {
-    const invoices = makeInvoices(PAGE_SIZE); // exactly 10 items
+    const invoices = makeInvoices(PAGE_SIZE);
     const loadInvoices = createDeferredLoader(invoices, 50);
 
     render(<InvestMarketplace loadInvoices={loadInvoices} />);
     await flushTimers(50);
 
-    expect(
-      screen.queryByRole("button", { name: /load more invoices/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
     expect(screen.getAllByRole("listitem")).toHaveLength(PAGE_SIZE);
   });
 
   it("shows only the remaining items on the last page click", async () => {
-    // 2 full pages + 3 remainder = PAGE_SIZE*2 + 3
     const remainder = 3;
     const total = PAGE_SIZE * 2 + remainder;
     const invoices = makeInvoices(total);
@@ -333,7 +470,6 @@ describe("InvestMarketplace", () => {
     render(<InvestMarketplace loadInvoices={loadInvoices} />);
     await flushTimers(50);
 
-    // Page 1 → Page 2
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
       jest.advanceTimersByTime(0);
@@ -341,24 +477,15 @@ describe("InvestMarketplace", () => {
     });
     expect(screen.getAllByRole("listitem")).toHaveLength(PAGE_SIZE * 2);
 
-    // Page 2 → Page 3 (last page — only remainder items remain)
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
       jest.advanceTimersByTime(0);
       await Promise.resolve();
     });
     expect(screen.getAllByRole("listitem")).toHaveLength(total);
-    expect(
-      screen.queryByRole("button", { name: /load more invoices/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
   });
 
-  /**
-   * Focus management verification.
-   * Skipped: jsdom does not fully implement focus management for programmatic
-   * focus calls via `element.focus()`, making this assertion unreliable in
-   * the unit-test environment.  Validate focus in a Playwright e2e test instead.
-   */
   it.skip("moves focus back to the Load-more button after each click (e2e only)", async () => {
     const invoices = makeInvoices(PAGE_SIZE * 3);
     const loadInvoices = createDeferredLoader(invoices, 50);
@@ -366,23 +493,49 @@ describe("InvestMarketplace", () => {
     render(<InvestMarketplace loadInvoices={loadInvoices} />);
     await flushTimers(50);
 
-    const button = screen.getByRole("button", { name: /load more invoices/i });
+    const button = screen.getByRole("button", {
+      name: /load more invoices/i,
+    });
     await act(async () => {
       fireEvent.click(button);
       jest.advanceTimersByTime(10);
       await Promise.resolve();
     });
 
-    expect(document.activeElement).toBe(
-      screen.queryByRole("button", { name: /load more invoices/i }),
-    );
+    expect(document.activeElement).toBe(screen.queryByRole("button", { name: /load more invoices/i }));
   });
+
+  // ── Filter tests ──────────────────────────────────────────────────────────
 
   it("filters invoices by currency", async () => {
     const invoices = [
-      { id: "inv-001", issuer: "A", amount: "100", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
-      { id: "inv-002", issuer: "B", amount: "200", currency: "EUR", dueDate: "2026-07-01", yield: "6%", status: "Open" },
-      { id: "inv-003", issuer: "C", amount: "300", currency: "USD", dueDate: "2026-05-30", yield: "7%", status: "Open" },
+      {
+        id: "inv-001",
+        issuer: "A",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "B",
+        amount: "200",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "6%",
+        status: "Open",
+      },
+      {
+        id: "inv-003",
+        issuer: "C",
+        amount: "300",
+        currency: "USD",
+        dueDate: "2026-05-30",
+        yield: "7%",
+        status: "Open",
+      },
     ];
 
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
@@ -396,15 +549,46 @@ describe("InvestMarketplace", () => {
 
   it("filters invoices by minimum yield", async () => {
     const invoices = [
-      { id: "inv-001", issuer: "A", amount: "100", currency: "USD", dueDate: "2026-06-15", yield: "5.2%", status: "Open" },
-      { id: "inv-002", issuer: "B", amount: "200", currency: "EUR", dueDate: "2026-07-01", yield: "7.5%", status: "Open" },
-      { id: "inv-003", issuer: "C", amount: "300", currency: "USD", dueDate: "2026-05-30", yield: "9.1%", status: "Open" },
+      {
+        id: "inv-001",
+        issuer: "A",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5.2%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "B",
+        amount: "200",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "7.5%",
+        status: "Open",
+      },
+      {
+        id: "inv-003",
+        issuer: "C",
+        amount: "300",
+        currency: "USD",
+        dueDate: "2026-05-30",
+        yield: "9.1%",
+        status: "Open",
+      },
     ];
 
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);
 
-    fireEvent.change(screen.getByLabelText("Minimum yield percentage"), { target: { value: "6" } });
+    // InvoiceFilters calls onFilterChange with key "yieldMin" — page.js
+    // filter derivation now correctly reads filters.yieldMin.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Minimum yield percentage"), {
+        target: { value: "6" },
+      });
+      await Promise.resolve();
+    });
 
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
     expect(screen.getByText("B")).toBeInTheDocument();
@@ -413,14 +597,37 @@ describe("InvestMarketplace", () => {
 
   it("filters invoices by maturity date range", async () => {
     const invoices = [
-      { id: "inv-001", issuer: "A", amount: "100", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
-      { id: "inv-002", issuer: "B", amount: "200", currency: "EUR", dueDate: "2026-07-01", yield: "6%", status: "Open" },
+      {
+        id: "inv-001",
+        issuer: "A",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "B",
+        amount: "200",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "6%",
+        status: "Open",
+      },
     ];
 
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);
 
-    fireEvent.change(screen.getByLabelText("Maturity date from"), { target: { value: "2026-07-01" } });
+    // InvoiceFilters calls onFilterChange with key "maturityFrom" — page.js
+    // filter derivation now correctly reads filters.maturityFrom.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Maturity date from"), {
+        target: { value: "2026-07-01" },
+      });
+      await Promise.resolve();
+    });
 
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
     expect(screen.getByText("B")).toBeInTheDocument();
@@ -428,15 +635,41 @@ describe("InvestMarketplace", () => {
 
   it("sorts invoices by yield descending", async () => {
     const invoices = [
-      { id: "inv-001", issuer: "A", amount: "100", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
-      { id: "inv-002", issuer: "B", amount: "200", currency: "EUR", dueDate: "2026-07-01", yield: "9%", status: "Open" },
-      { id: "inv-003", issuer: "C", amount: "300", currency: "USD", dueDate: "2026-05-30", yield: "7%", status: "Open" },
+      {
+        id: "inv-001",
+        issuer: "A",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "B",
+        amount: "200",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "9%",
+        status: "Open",
+      },
+      {
+        id: "inv-003",
+        issuer: "C",
+        amount: "300",
+        currency: "USD",
+        dueDate: "2026-05-30",
+        yield: "7%",
+        status: "Open",
+      },
     ];
 
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);
 
-    fireEvent.change(screen.getByLabelText("Sort options"), { target: { value: "yield_desc" } });
+    fireEvent.change(screen.getByLabelText("Sort options"), {
+      target: { value: "yield_desc" },
+    });
 
     const items = screen.getAllByRole("listitem");
     expect(items).toHaveLength(3);
@@ -454,7 +687,15 @@ describe("InvestMarketplace", () => {
 
   it("shows no-match message when filters eliminate all invoices", async () => {
     const invoices = [
-      { id: "inv-001", issuer: "A", amount: "100", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
+      {
+        id: "inv-001",
+        issuer: "A",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
     ];
 
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
@@ -468,8 +709,24 @@ describe("InvestMarketplace", () => {
 
   it("clears all filters and restores full list", async () => {
     const invoices = [
-      { id: "inv-001", issuer: "A", amount: "100", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
-      { id: "inv-002", issuer: "B", amount: "200", currency: "EUR", dueDate: "2026-07-01", yield: "6%", status: "Open" },
+      {
+        id: "inv-001",
+        issuer: "A",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "B",
+        amount: "200",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "6%",
+        status: "Open",
+      },
     ];
 
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
@@ -484,8 +741,24 @@ describe("InvestMarketplace", () => {
 
   it("announces filtered results in the live region", async () => {
     const invoices = [
-      { id: "inv-001", issuer: "A", amount: "100", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
-      { id: "inv-002", issuer: "B", amount: "200", currency: "EUR", dueDate: "2026-07-01", yield: "6%", status: "Open" },
+      {
+        id: "inv-001",
+        issuer: "A",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "B",
+        amount: "200",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "6%",
+        status: "Open",
+      },
     ];
 
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
@@ -493,20 +766,20 @@ describe("InvestMarketplace", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("2 investable invoices loaded");
 
+    // Currency filter is a button click — fires immediately, no debounce.
+    // The filter-change useEffect re-announces the match count.
     fireEvent.click(screen.getByLabelText("Filter by EUR"));
 
     expect(screen.getByRole("status")).toHaveTextContent("1 of 2 invoices match");
   });
 });
 
-// ── Unit tests for pure helpers ────────────────────────────────────────────
+// ── Unit tests for pure helpers ───────────────────────────────────────────────
 
 describe("getInvoiceLoadAnnouncement", () => {
   it("returns the expected announcement for loaded and empty states", () => {
     expect(getInvoiceLoadAnnouncement([])).toBe("No invoices available");
-    expect(getInvoiceLoadAnnouncement([{ id: "1" }, { id: "2" }])).toBe(
-      "2 investable invoices loaded",
-    );
+    expect(getInvoiceLoadAnnouncement([{ id: "1" }, { id: "2" }])).toBe("2 investable invoices loaded");
   });
 
   it("returns filtered count announcement when filterActive is true", () => {
@@ -543,7 +816,6 @@ describe("InvestPage", () => {
   });
 
   it("renders the marketplace page via the default export", async () => {
-    jest.useFakeTimers();
     render(<InvestPage />);
     await flushTimers(0);
 
@@ -566,11 +838,7 @@ describe("lib helpers", () => {
 
 describe("getPaginationAnnouncement", () => {
   it("formats the Showing N of M string correctly", () => {
-    expect(getPaginationAnnouncement(10, 25)).toBe(
-      "Showing 10 of 25 investable invoices",
-    );
-    expect(getPaginationAnnouncement(3, 3)).toBe(
-      "Showing 3 of 3 investable invoices",
-    );
+    expect(getPaginationAnnouncement(10, 25)).toBe("Showing 10 of 25 investable invoices");
+    expect(getPaginationAnnouncement(3, 3)).toBe("Showing 3 of 3 investable invoices");
   });
 });

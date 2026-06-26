@@ -1,68 +1,36 @@
 "use client";
-import Button from '@/components/Button';
 
-import Button from '@/components/Button'
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import ErrorBanner from "@/components/ErrorBanner";
-import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
-import Pagination from "@/components/Pagination";
-import Button from '@/components/Button'
+import InvoiceListSkeleton from "../../components/InvoiceListSkeleton";
+import Pagination from "../../components/Pagination";
+import InvoiceSearch from "../../components/InvoiceSearch";
+import InvoiceFilters from "../../components/InvoiceFilters";
 import { copy } from "../copy/en";
-import Button from '@/components/Button'
 import { fetchInvestableInvoices } from "../../lib/api/invoices";
+import ErrorBanner from "../../components/ErrorBanner";
 
 /**
- * Number of invoices rendered per page.  Export allows tests to reference
+ * Number of invoices rendered per page. Export allows tests to reference
  * the same constant without hard-coding a magic number.
  */
 export const PAGE_SIZE = 10;
 
 /**
- * Mock invoice data â€” replace with real API call once the backend endpoint
- * is available (follow-up: link backend issue here).
- *
- * Contract per item: { id, issuer, amount, currency, dueDate, yield, status }
- * NOTE: yield values are illustrative; contracts use on-chain basis points and actual settlement is at maturity.
+ * Debounce delay (ms) for the issuer search field.
  */
-const MOCK_INVOICES = [
-  {
-    id: "inv-001",
-    issuer: "Acme Supplies Ltd",
-    amount: "12,500",
-    currency: "USD",
-    dueDate: "2026-06-15",
-    yield: "8.2%",
-    status: "Open",
-  },
-  {
-    id: "inv-002",
-    issuer: "Bright Logistics GmbH",
-    amount: "7,800",
-    currency: "EUR",
-    dueDate: "2026-07-01",
-    yield: "7.5%",
-    status: "Open",
-  },
-  {
-    id: "inv-003",
-    issuer: "Sunrise Exports Pte",
-    amount: "22,000",
-    currency: "USD",
-    dueDate: "2026-05-30",
-    yield: "9.1%",
-    status: "Open",
-  },
-];
+export const SEARCH_DEBOUNCE_MS = 200;
 
-// DEV-only delay (ms) to make the skeleton visible during local development.
-const DEV_DELAY = process.env.NODE_ENV === "development" ? 1500 : 0;
-
-function loadMockInvoices() {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(MOCK_INVOICES), DEV_DELAY);
-  });
-}
+/**
+ * Default filter state — all filters cleared.
+ */
+const DEFAULT_FILTERS = {
+  currency: "",
+  minYield: "",
+  dateFrom: "",
+  dateTo: "",
+  sort: "",
+};
 
 /**
  * Returns the screen-reader announcement text for the initial invoice load.
@@ -73,18 +41,13 @@ function loadMockInvoices() {
  * @param {number} [options.filteredCount=0] - Number of invoices matching the current filter.
  * @returns {string}
  */
-export function getInvoiceLoadAnnouncement(
-  invoices,
-  { filterActive = false, filteredCount = 0 } = {},
-) {
+export function getInvoiceLoadAnnouncement(invoices, { filterActive = false, filteredCount = 0 } = {}) {
   if (!Array.isArray(invoices) || invoices.length === 0) {
     return "No invoices available";
   }
 
   if (filterActive) {
-    return filteredCount === 0
-      ? "No invoices match"
-      : `${filteredCount} of ${invoices.length} invoices match`;
+    return filteredCount === 0 ? "No invoices match" : `${filteredCount} of ${invoices.length} invoices match`;
   }
 
   return `${invoices.length} investable invoices loaded`;
@@ -102,32 +65,64 @@ export function getPaginationAnnouncement(shown, total) {
 }
 
 /**
- * InvestMarketplace â€” main component for the invest page.
+ * InvestMarketplace — main component for the invest page.
  *
  * Fetches invoices via `loadInvoices`, renders them PAGE_SIZE at a time,
- * and exposes a "Load more" control to append the next batch.  Paging
- * resets whenever a new invoice set arrives so filter changes (future) stay
+ * and exposes a "Load more" control to append the next batch. Paging
+ * resets whenever a new invoice set arrives so filter changes stay
  * non-breaking.
+ *
+ * Retry behaviour:
+ *   - Clicking "Try again" in the ErrorBanner calls reload(), which increments
+ *     retryKey and re-triggers the load useEffect.
+ *   - State is reset to loading (invoices=null) and loadError is cleared before
+ *     the new request starts.
+ *   - The previous AbortController is aborted via the effect cleanup before the
+ *     new effect runs, so a stale request can never overwrite fresh state.
  *
  * @param {object}   props
  * @param {Function} [props.loadInvoices] - Async function that resolves to an
- *   invoice array.  Defaults to the mock loader; injectable for testing.
+ *   invoice array. Defaults to fetchInvestableInvoices; injectable for testing.
  * @returns {JSX.Element}
  */
 export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [paginationAnnouncement, setPaginationAnnouncement] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
   const [loadError, setLoadError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
 
-  /** Ref forwarded to the \"Load more\" button for focus management. */
+  /**
+   * Incrementing retryKey re-triggers the load effect (retry without page
+   * reload). Starts at 0 so the reset effect is skipped on initial mount.
+   */
+  const [retryKey, setRetryKey] = useState(0);
+
+  /** Ref forwarded to the "Load more" button for focus management. */
   const loadMoreRef = useRef(null);
 
-  // ——————————————————————————————————————————————————————————————————————————
+  /**
+   * Reset state only when retry is explicitly triggered (retryKey > 0).
+   * Keeping this separate prevents the reset from firing on initial mount
+   * and avoids a setState-inside-effect loop.
+   */
   useEffect(() => {
+    if (retryKey === 0) return;
+    setInvoices(null);
+    setLoadError("");
+    setStatusMessage("");
+    setVisibleCount(PAGE_SIZE);
+  }, [retryKey]);
+
+  useEffect(() => {
+    /**
+     * Each render cycle that depends on [loadInvoices, retryKey] gets its own
+     * AbortController. The cleanup function aborts the previous controller and
+     * marks the closure stale (isActive=false) so a slow response that arrives
+     * after unmount or after a retry cannot overwrite fresh state.
+     */
     const controller = new AbortController();
     let isActive = true;
 
@@ -135,43 +130,55 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
       try {
         const nextInvoices = await loadInvoices({ signal: controller.signal });
 
-        if (!isActive) {
-          return;
-        }
+        if (!isActive) return;
 
         const normalizedInvoices = Array.isArray(nextInvoices) ? nextInvoices : [];
 
         setInvoices(normalizedInvoices);
         setVisibleCount(PAGE_SIZE);
-        setPaginationAnnouncement("");
+        setStatusMessage(getInvoiceLoadAnnouncement(normalizedInvoices));
       } catch {
-        if (!isActive) {
-          return;
-        }
+        if (!isActive) return;
 
         setInvoices([]);
         setLoadError(copy.invest.errorDescription);
-        setPaginationAnnouncement("");
+        setStatusMessage(copy.invest.errorStatus);
       }
     };
 
     void announceLoadCompletion();
 
     return () => {
+      // Abort any in-flight request and mark this closure stale so a late
+      // response from a previous attempt cannot overwrite the fresh state
+      // started by the retry.
       isActive = false;
       controller.abort();
     };
-  }, [loadInvoices]);
+    // retryKey triggers a fresh load on retry; loadInvoices is stable between renders.
+  }, [loadInvoices, retryKey]);
 
-  // ——————————————————————————————————————————————————————————————————————————
+  // ── Search debounce ──────────────────────────────────────────────────────
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
-    }, 200);
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // â”€â”€ Load-more handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Retry handler ────────────────────────────────────────────────────────
+  /**
+   * Re-triggers the load effect by incrementing retryKey.
+   * The effect's cleanup (isActive=false + controller.abort) fires first,
+   * so any in-flight stale request is cancelled before the new one starts.
+   * The polite status region is cleared by the reset effect so screen readers
+   * re-announce once the fresh load completes.
+   */
+  const reload = useCallback(() => {
+    setRetryKey((k) => k + 1);
+  }, []);
+
+  // ── Load-more handler ────────────────────────────────────────────────────
   /**
    * Appends the next PAGE_SIZE items and updates the live-region status.
    * Focus is moved back to the "Load more" button (if it still exists) so
@@ -185,16 +192,54 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
       return next;
     });
 
-    // Restore focus on next tick so the button is still in the DOM when we focus it.
+    // Restore focus on next tick so the button is still in the DOM when focused.
     setTimeout(() => {
       loadMoreRef.current?.focus();
     }, 0);
   }, [invoices]);
 
-  // â”€â”€ Derived values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const visibleInvoices = Array.isArray(invoices)
-    ? invoices.slice(0, visibleCount)
-    : [];
+  // ── Search change handler ────────────────────────────────────────────────
+  const handleSearchChange = useCallback((e) => {
+    setSearchQuery(e.target.value);
+  }, []);
+
+  // ── Derived values ───────────────────────────────────────────────────────
+  const allInvoices = Array.isArray(invoices) ? invoices : [];
+
+  const searchFiltered = debouncedQuery ? allInvoices.filter((inv) => inv.issuer.toLowerCase().includes(debouncedQuery.toLowerCase())) : allInvoices;
+
+  const filteredInvoices = (() => {
+    let result = [...searchFiltered];
+
+    if (filters.currency) {
+      result = result.filter((inv) => inv.currency === filters.currency);
+    }
+    if (filters.minYield) {
+      const min = parseFloat(filters.minYield);
+      if (!Number.isNaN(min)) {
+        result = result.filter((inv) => parseFloat(inv.yield) >= min);
+      }
+    }
+    if (filters.dateFrom) {
+      result = result.filter((inv) => inv.dueDate >= filters.dateFrom);
+    }
+    if (filters.dateTo) {
+      result = result.filter((inv) => inv.dueDate <= filters.dateTo);
+    }
+    if (filters.sort === "yield_desc") {
+      result.sort((a, b) => parseFloat(b.yield) - parseFloat(a.yield));
+    } else if (filters.sort === "yield_asc") {
+      result.sort((a, b) => parseFloat(a.yield) - parseFloat(b.yield));
+    } else if (filters.sort === "date_asc") {
+      result.sort((a, b) => (a.dueDate > b.dueDate ? 1 : -1));
+    } else if (filters.sort === "date_desc") {
+      result.sort((a, b) => (a.dueDate < b.dueDate ? 1 : -1));
+    }
+
+    return result;
+  })();
+
+  const visibleInvoices = filteredInvoices.slice(0, visibleCount);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -211,6 +256,7 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
         <h1 className="text-2xl font-bold mb-2">{copy.invest.title}</h1>
         <p className="text-slate-400 mb-8">{copy.invest.subtext}</p>
 
+        {/* Polite live region — announces load results and pagination to screen readers */}
         <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
           {statusMessage}
         </p>
@@ -218,24 +264,32 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
         {/* Filter Controls */}
         <div className="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6">
           <div className="flex flex-wrap gap-4 items-center">
-            <InvoiceSearch
-              value={searchQuery}
-              onChange={handleSearchChange}
-            />
-            <InvoiceFilters
-              filters={filters}
-              onFilterChange={setFilters}
-              onClearFilters={() => setFilters(DEFAULT_FILTERS)}
-            />
+            <InvoiceSearch value={searchQuery} onChange={handleSearchChange} />
+            <InvoiceFilters filters={filters} onFilterChange={setFilters} onClearFilters={() => setFilters(DEFAULT_FILTERS)} />
           </div>
         </div>
 
         {loadError ? (
+          /*
+           * Error state — actionLabel/onAction wire the existing ErrorBanner
+           * action button to reload() so the user can retry without a full
+           * page reload.
+           *
+           * Abort/cancellation flow:
+           *   1. User clicks "Try again" → reload() increments retryKey.
+           *   2. React re-runs the load useEffect cleanup: isActive=false and
+           *      controller.abort() cancel any in-flight stale request.
+           *   3. The reset useEffect (retryKey > 0) clears loadError and sets
+           *      invoices=null so the skeleton reappears immediately.
+           *   4. The load useEffect starts a fresh fetch with a new controller.
+           */
           <ErrorBanner
             variant="error"
             title={copy.invest.errorTitle}
             description={loadError}
             previewLabel="Marketplace status"
+            actionLabel="Try again"
+            onAction={reload}
           />
         ) : invoices === null ? (
           <InvoiceListSkeleton rows={3} />
@@ -246,7 +300,7 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
         ) : (
           <>
             <ul className="space-y-4">
-              {filteredInvoices.map((inv) => (
+              {visibleInvoices.map((inv) => (
                 <li key={inv.id}>
                   <Link
                     href={`/invest/${inv.id}`}
@@ -254,12 +308,8 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
                     aria-label={`View details for ${inv.issuer} invoice ${inv.id}`}
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <span className="font-medium text-slate-100">
-                        {inv.issuer}
-                      </span>
-                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
-                        {inv.status}
-                      </span>
+                      <span className="font-medium text-slate-100">{inv.issuer}</span>
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">{inv.status}</span>
                     </div>
                     <div className="flex gap-6 text-sm text-slate-300">
                       <span>
@@ -273,12 +323,7 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
               ))}
             </ul>
 
-            <Pagination
-              ref={loadMoreRef}
-              shown={visibleInvoices.length}
-              total={filteredInvoices.length}
-              onLoadMore={handleLoadMore}
-            />
+            <Pagination ref={loadMoreRef} shown={visibleInvoices.length} total={filteredInvoices.length} onLoadMore={handleLoadMore} />
 
             <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-300">
               Note: Yield references are educational only and reflect on-chain basis-point assumptions. Invoice contracts settle at maturity.
@@ -293,4 +338,3 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
 export default function InvestPage() {
   return <InvestMarketplace />;
 }
-

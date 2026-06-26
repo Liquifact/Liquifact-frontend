@@ -1,21 +1,9 @@
-import Button from './Button';
+import Button from "./Button";
 
-export default function ErrorBanner({
-  variant = "server",
-  title,
-  description,
-  details,
-  actionLabel,
-  onAction,
-  previewLabel = "Preview only",
-}) {
+export default function ErrorBanner({ variant = "server", title, description, details, actionLabel = "Retry", onAction, previewLabel = "Preview only" }) {
   const variantLabel = variant === "validation" ? "Validation error" : "Server error";
   return (
-    <div
-      role="alert"
-      aria-live="assertive"
-      className="rounded-3xl border border-red-500/30 bg-red-500/10 p-5 text-slate-50 shadow-sm sm:p-6"
-    >
+    <div role="alert" aria-live="assertive" className="rounded-3xl border border-red-500/30 bg-red-500/10 p-5 text-slate-50 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-start gap-4">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-red-500/20 text-red-200 ring-1 ring-red-300/30">
           <span aria-hidden="true" className="text-lg font-semibold">
@@ -24,12 +12,8 @@ export default function ErrorBanner({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-3">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-red-200">
-              {variantLabel}
-            </p>
-            <span className="rounded-full bg-slate-800/80 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-300">
-              {previewLabel}
-            </span>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-red-200">{variantLabel}</p>
+            <span className="rounded-full bg-slate-800/80 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-300">{previewLabel}</span>
           </div>
           <h2 className="mt-3 text-xl font-semibold text-white">{title}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">{description}</p>
@@ -39,8 +23,8 @@ export default function ErrorBanner({
       {actionLabel ? (
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <Button variant="primary" onClick={onAction}>
-  Retry
-</Button>
+            {actionLabel}
+          </Button>
         </div>
       ) : null}
     </div>
