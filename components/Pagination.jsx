@@ -58,12 +58,12 @@ const Pagination = forwardRef(function Pagination({ shown, total, onLoadMore }, 
 
   return (
     <div className="mt-6 flex flex-col items-center gap-4">
-      {/* Count announcement — always visible for sighted users */}
+    {/* visible count for sighted users only — AT announcements come from
+          the single role="status" region in app/invest/page.js */}
       <p
         id="pagination-count"
         className="text-sm text-slate-400"
-        aria-live="polite"
-        aria-atomic="true"
+        aria-hidden="true"
       >
         Showing <strong className="text-slate-200">{shown}</strong> of{" "}
         <strong className="text-slate-200">{total}</strong> invoice

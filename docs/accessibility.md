@@ -79,6 +79,20 @@ When adding or modifying UI:
 - [ ] Run `npm run test:accessibility` locally and fix any violations.
 - [ ] Document any known accessibility gaps in this statement.
 
+ ## Single-Announcer Pattern (Pagination)
+
+`components/Pagination.jsx` renders a visible "Showing N of M invoices" count
+for sighted users, but that paragraph does **not** carry `aria-live`.
+
+`app/invest/page.js` owns a single `role="status"` live region that announces
+every count change — on load, filter change, and after "Load more" — exactly
+once. The count paragraph in `Pagination` uses `aria-hidden="true"` so
+assistive technologies skip it entirely.
+
+This prevents the double-announcement bug where two live regions fired
+simultaneously, causing screen-readers to read the count twice.
+
+
 
 ## Maintenance
 
