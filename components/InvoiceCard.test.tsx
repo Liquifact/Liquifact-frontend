@@ -63,7 +63,13 @@ describe("InvoiceCard — basic rendering", () => {
 
   it("renders the formatted amount and currency", () => {
     renderCard();
-    expect(screen.getByText("50,000.00 USDC")).toBeInTheDocument();
+    expect(screen.getByText("50K USDC")).toBeInTheDocument();
+  });
+  it("preserves the full amount in title and aria-label when compacted", () => {
+    renderCard({ amount: 1250000, currency: "USD" });
+    const amount = screen.getByLabelText("Amount 1,250,000.00 USD");
+    expect(amount).toHaveTextContent("1.25M USD");
+    expect(amount).toHaveAttribute("title", "1,250,000.00 USD");
   });
 
   it("renders the yield percentage", () => {
@@ -148,9 +154,9 @@ describe("InvoiceCard — missing optional fields", () => {
     expect(screen.getByText("—")).toBeInTheDocument();
   });
 
-  it("renders the raw string when amount is a non-numeric string", () => {
+  it("renders compact formatting when amount is a grouped numeric string", () => {
     renderCard({ amount: "12,500" });
-    expect(screen.getByText(/12,500/)).toBeInTheDocument();
+    expect(screen.getByText("12.5K USDC")).toBeInTheDocument();
   });
 
   it("renders em-dash when dueDate is missing", () => {

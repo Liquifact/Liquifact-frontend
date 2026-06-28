@@ -10,6 +10,7 @@
 
 import Link from "next/link";
 import StatusPill from "@/components/StatusPill";
+import { formatAmount as formatDisplayAmount } from "@/lib/format/currency";
 import { resolveStatusPill } from "@/lib/types/invoice";
 
 /** @typedef {import("@/lib/types/invoice").Invoice} Invoice */
@@ -35,14 +36,19 @@ function formatDate(dateStr) {
  * Formats an amount with its currency code.
  * @param {number|string|undefined} amount
  * @param {string|undefined} currency
+ * @param {object} [options]
+ * @param {boolean} [options.compact=false]
  * @returns {string}
  */
-function formatAmount(amount, currency) {
+function formatInvoiceAmount(amount, currency, { compact = false } = {}) {
   if (amount == null) return "—";
-  const formatted = Number(amount).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
+  const formatted = formatDisplayAmount(amount, {
+    minimumFractionDigits: compact ? 0 : 2,
     maximumFractionDigits: 2,
+    compact,
   });
+
+  if (formatted === "—") return formatted;
   return currency ? `${formatted} ${currency}` : formatted;
 }
 
@@ -81,6 +87,8 @@ export default function InvoiceCard({ invoice }) {
   // status.  Computed as a small constant so the template literal below
   // stays readable and avoids any encoding pitfalls around em-dash.
   const statusSuffix = statusLabel && statusLabel !== "Unknown" ? ` \u2014 ${statusLabel}` : "";
+  const compactAmount = formatInvoiceAmount(amount, currency, { compact: true });
+  const fullAmount = formatInvoiceAmount(amount, currency);
 
   return (
     <Link
@@ -100,7 +108,13 @@ export default function InvoiceCard({ invoice }) {
 
         {/* Amount — w-1/5 */}
         <div className="basis-1/5 text-right">
-          <p className="font-mono text-slate-200">{formatAmount(amount, currency)}</p>
+          <p
+            className="font-mono text-slate-200"
+            title={fullAmount}
+            aria-label={`Amount ${fullAmount}`}
+          >
+            {compactAmount}
+          </p>
           <p className="text-xs text-slate-500 mt-0.5">Amount</p>
         </div>
 
