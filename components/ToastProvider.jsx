@@ -197,16 +197,20 @@ export function ToastProvider({ children }) {
     [removeToast]
   );
 
-  // Ref that always points at the latest dismissNewest implementation.
-  // Updated on every render so the global Escape listener (bound once on
-  // mount) can invoke the version that closes over the current `toasts`
-  // state without needing to re-bind on every toast change.
-  const dismissNewestRef = useRef(() => {});
-  dismissNewestRef.current = () => {
+  // Latest-ref pattern: holds a reference to the most recent dismissNewest
+  // closure so the global Escape listener (bound once on mount) always
+  // invokes the version that closes over the current `toasts` state. The ref
+  // is updated in an effect so we never write to refs during render (which
+  // would trip react-hooks/refs).
+  const dismissNewest = useCallback(() => {
     if (toasts.length === 0) return;
     pendingUserDismissRef.current = true;
     removeToast(toasts[0].id);
-  };
+  }, [toasts, removeToast]);
+  const dismissNewestRef = useRef(dismissNewest);
+  useEffect(() => {
+    dismissNewestRef.current = dismissNewest;
+  }, [dismissNewest]);
 
   // Global document-level Escape listener. Skips when focus is already inside
   // the toast region so the local onKeyDown handler (preDismissFocusRef path)
