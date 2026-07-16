@@ -1,6 +1,8 @@
 import { render } from "@testing-library/react";
 import ErrorBanner from "../ErrorBanner";
-import { axe } from "jest-axe";
+import { axe, toHaveNoViolations } from "jest-axe";
+
+expect.extend(toHaveNoViolations);
 
 test("ErrorBanner has no accessibility violations", async () => {
   const { container } = render(

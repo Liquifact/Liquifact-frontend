@@ -1,9 +1,9 @@
 import React from "react";
 import { render } from "@testing-library/react";
 import { ToastProvider } from "../ToastProvider";
-import { WalletProvider } from "../WalletProvider"; // Imported the missing provider
+import { WalletProvider } from "../WalletProvider";
 import WalletStatus from "../WalletStatus";
-import { axe } from "jest-axe";
+import { axe, toHaveNoViolations } from "jest-axe";
 
 expect.extend(toHaveNoViolations);
 
