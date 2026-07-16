@@ -37,13 +37,6 @@ async function flushTimers(delayMs: number) {
 // `useWallet`; instead we just render the component bare, which lets the
 // tests stay focused on the live-region announcement behaviour.
 // eslint-disable-next-line react/jsx-no-undef
-function renderWithProvidersWithWallet(ui: React.ReactElement) {
-  return render(
-    <ToastProvider>
-      <WalletProvider>{ui}</WalletProvider>
-    </ToastProvider>
-  );
-}
 
 // `WalletProvider` is intentionally not imported; the live-region tests below
 // use the simpler `renderWithProviders` helper (without WalletProvider). The

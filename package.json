@@ -9,7 +9,7 @@
     "lint": "eslint",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "size-limit": "size-limit",
+    "size-limit": "^12.1.0",
     "test": "jest"
   },
   "dependencies": {
@@ -33,7 +33,7 @@
     "@types/node": "^26.1.0",
     "@types/react": "19.2.17",
     "babel-jest": "^30.4.1",
-    "size-limit": "^11.2.0",
+    "size-limit": "^12.1.0",
     "typescript": "^5.6.3",
     "eslint": "^10",
     "eslint-config-next": "16.2.10",

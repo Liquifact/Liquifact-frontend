@@ -1,3 +1,4 @@
+/* eslint-disable react/no-danger -- filename is sanitized via sanitizeFilename() before injection; see comment above the dangerouslySetInnerHTML line for the full safety argument. */
 "use client";
 
 import { useRef, useState } from "react";
@@ -248,7 +249,6 @@ function UploadZone({ onUploadSuccess, progress }) {
               {"\u2705"}
             </span>
             <p 
-              // eslint-disable-next-line react/no-danger
               className="font-medium text-emerald-400" 
               dangerouslySetInnerHTML={{ __html: sanitizeFilename(file.name) }}
             />

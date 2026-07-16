@@ -40,7 +40,7 @@ function renderForNetwork(network?: string) {
   jest.isolateModules(() => {
     NetworkBadge = require("./NetworkBadge").default;
   });
-  return render(<NetworkBadge! />);
+  return render(<NetworkBadge />);
 }
 
 describe("NetworkBadge", () => {
@@ -89,7 +89,7 @@ describe("NetworkBadge", () => {
     jest.isolateModules(() => {
       NetworkBadge = require("./NetworkBadge").default;
     });
-    render(<NetworkBadge! className="md:hidden" />);
+    render(<NetworkBadge className="md:hidden" />);
     expect(screen.getByRole("status")).toHaveClass("md:hidden");
   });
 });
