@@ -9,7 +9,7 @@
     "lint": "eslint",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "size-limit": "^12.1.0",
+    "size-limit": "size-limit",
     "test": "jest"
   },
   "dependencies": {

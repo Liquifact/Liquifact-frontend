@@ -247,6 +247,7 @@ export default function WalletStatus() {
       prevStateRef.current = rawState;
       const msg = getTransitionAnnouncement(rawState);
       if (msg) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLiveAnnouncement("");
         // Use a microtask-level delay so the DOM registers the empty string
         // before the new message, ensuring screen readers re-read it.
