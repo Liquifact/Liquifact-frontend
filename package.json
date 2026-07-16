@@ -35,7 +35,7 @@
     "babel-jest": "^30.4.1",
     "size-limit": "^12.1.0",
     "typescript": "^5.6.3",
-    "eslint": "^10",
+    "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "eslint-plugin-react": "^7.37.5",
     "jest": "^30.4.2",
