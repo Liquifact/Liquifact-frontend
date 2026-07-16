@@ -247,8 +247,6 @@ export default function WalletStatus() {
       prevStateRef.current = rawState;
       const msg = getTransitionAnnouncement(rawState);
       if (msg) {
-        // Briefly clear then set so the same message re-announces if the
-        // user toggles connect/disconnect repeatedly.
         setLiveAnnouncement("");
         // Use a microtask-level delay so the DOM registers the empty string
         // before the new message, ensuring screen readers re-read it.

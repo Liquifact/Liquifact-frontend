@@ -4,6 +4,7 @@
 import { useRef, useState } from "react";
 import { copy } from "../app/copy/en";
 import { isPdfMagicValid, validatePdfFile, sanitizeFilename } from "../lib/validation/pdf";
+import { env } from "../lib/config/env";
 
 // Base URL for backend API; validated and centralized in lib/config/env.
 const API_URL = env.apiUrl;

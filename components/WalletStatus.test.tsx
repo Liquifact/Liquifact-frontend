@@ -36,7 +36,6 @@ async function flushTimers(delayMs: number) {
 // component under test). Defining an inline stub here would require mocking
 // `useWallet`; instead we just render the component bare, which lets the
 // tests stay focused on the live-region announcement behaviour.
-// eslint-disable-next-line react/jsx-no-undef
 
 // `WalletProvider` is intentionally not imported; the live-region tests below
 // use the simpler `renderWithProviders` helper (without WalletProvider). The
