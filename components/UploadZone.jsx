@@ -248,6 +248,7 @@ function UploadZone({ onUploadSuccess, progress }) {
               {"\u2705"}
             </span>
             <p 
+              // eslint-disable-next-line react/no-danger
               className="font-medium text-emerald-400" 
               dangerouslySetInnerHTML={{ __html: sanitizeFilename(file.name) }}
             />

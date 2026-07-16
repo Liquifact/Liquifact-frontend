@@ -90,6 +90,10 @@ const Pagination = forwardRef(function Pagination(
     const itemsPerPage = pageSize ?? shown;
     const firstItem = (page - 1) * itemsPerPage + 1;
     const lastItem = Math.min(page * itemsPerPage, total);
+    // The page-change announcement is intentionally set inside the effect (not
+    // computed during render) so it only fires on actual user-driven page
+    // changes; the previous-page guard above skips the initial render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAnnouncement(`Page ${page} of ${totalPages}, showing items ${firstItem}–${lastItem}`);
   }, [page, totalPages, pageSize, shown, total, isPageMode]);
 

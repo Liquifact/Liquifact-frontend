@@ -86,6 +86,11 @@ export default function GlobalLayoutError({ error, reset }) {
             >
               {copy.globalError.reloadLabel}
             </button>
+            {/* The global error boundary replaces the entire root layout, so it
+                cannot import `next/link` (its dependency graph expects the
+                layout to be mounted). Use a plain anchor that triggers a full
+                reload — acceptable here because we already lost the app shell. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a
               href="/"
               data-testid="global-error-home-link"

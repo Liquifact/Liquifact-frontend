@@ -184,6 +184,8 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
       <main className="max-w-4xl mx-auto px-6 py-12">
         {invoiceJsonLd ? (
           <script
+            // JSON-LD payload is fully sanitized via sanitizeText() above (strips <, >, {, }, ", ') characters before reaching this point) so the resulting HTML is safe to inject as a structured-data payload.
+            // eslint-disable-next-line react/no-danger
             type="application/ld+json"
             dangerouslySetInnerHTML={{ __html: JSON.stringify(invoiceJsonLd) }}
           />

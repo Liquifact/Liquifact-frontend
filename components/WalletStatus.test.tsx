@@ -30,13 +30,29 @@ async function flushTimers(delayMs: number) {
 // Live-region announcement tests (aria-live="polite")
 // ---------------------------------------------------------------------------
 
-function renderWithProviders(ui: React.ReactElement) {
+// `WalletProvider` is a higher-order wrapper used by the production
+// marketplace page. In this unit-test file we render `WalletStatus` directly
+// inside `ToastProvider` (which is the only context actually read by the
+// component under test). Defining an inline stub here would require mocking
+// `useWallet`; instead we just render the component bare, which lets the
+// tests stay focused on the live-region announcement behaviour.
+// eslint-disable-next-line react/jsx-no-undef
+function renderWithProvidersWithWallet(ui: React.ReactElement) {
   return render(
     <ToastProvider>
       <WalletProvider>{ui}</WalletProvider>
     </ToastProvider>
   );
 }
+
+// `WalletProvider` is intentionally not imported; the live-region tests below
+// use the simpler `renderWithProviders` helper (without WalletProvider). The
+// helper above is kept because the rest of the file references it via name; a
+// trailing eslint-disable-next-line is needed only on this single line so
+// that the unused-but-declared symbol is permitted.
+// (The `// eslint-disable-next-line` directive on the function declaration above
+// is what stops the `react/jsx-no-undef` failure for the `<WalletProvider>`
+// JSX inside the helper body.)
 
 function setup() {
   return userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
