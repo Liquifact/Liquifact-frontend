@@ -15,6 +15,9 @@
     "module": "esnext",
     "esModuleInterop": true,
     "moduleResolution": "bundler",
+    // TypeScript 5.1+ accepts only "5.0" as the value here; this opt-in
+    // enables the deprecated-but-supported TS 5.x compiler flags used by
+    // this codebase. Remove this line when upgrading to TypeScript 6+.
     "ignoreDeprecations": "5.0",
     "resolveJsonModule": true,
     "isolatedModules": true,
