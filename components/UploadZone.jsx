@@ -16,7 +16,6 @@ const FILE_CONSTRAINTS = {
   maxSizeBytes: MAX_UPLOAD_BYTES,
 };
 
-const MAX_UPLOAD_BYTES = FILE_CONSTRAINTS.maxSizeBytes;
 
 function ConstraintBadge({ icon, label }) {
   return (
