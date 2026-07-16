@@ -303,7 +303,6 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
         </Link>
       </header> */}
       <NavMenu />
-      
 
       <main className="max-w-4xl mx-auto px-6 py-12">
         {/* Polite live region – announced to screen readers on every state change */}

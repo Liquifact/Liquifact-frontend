@@ -1,6 +1,10 @@
 import "@testing-library/jest-dom";
 import { render, screen, fireEvent } from "@testing-library/react";
-import InvoiceFilters, { DEFAULT_FILTERS, hasActiveFilters, StatusLegendFilter } from "./InvoiceFilters";
+import InvoiceFilters, {
+  DEFAULT_FILTERS,
+  hasActiveFilters,
+  StatusLegendFilter,
+} from "./InvoiceFilters";
 
 describe("DEFAULT_FILTERS", () => {
   it("has the expected shape with empty values", () => {
@@ -311,8 +315,14 @@ describe("StatusLegendFilter", () => {
 
     expect(screen.getByRole("button", { name: "Open" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: "Funded" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: "Settled" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: "Overdue" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Settled" })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+    expect(screen.getByRole("button", { name: "Overdue" })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
   });
 
   it("marks a selected status chip as aria-pressed=true", () => {
@@ -327,7 +337,10 @@ describe("StatusLegendFilter", () => {
     expect(screen.getByRole("button", { name: "Open" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Overdue" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Funded" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: "Settled" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Settled" })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
   });
 
   it("calls onStatusToggle with the clicked status", () => {

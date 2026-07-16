@@ -10,11 +10,7 @@
 
 import Link from "next/link";
 import StatusPill from "@/components/StatusPill";
-import {
-  formatAmount,
-  formatCurrency,
-  INVALID_VALUE_FALLBACK,
-} from "@/lib/format/currency";
+import { formatAmount, formatCurrency, INVALID_VALUE_FALLBACK } from "@/lib/format/currency";
 import { resolveStatusPill } from "@/lib/types/invoice";
 
 /** @typedef {import("@/lib/types/invoice").Invoice} Invoice */

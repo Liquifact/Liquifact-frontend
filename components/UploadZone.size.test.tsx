@@ -44,7 +44,9 @@ describe("UploadZone Size Validation", () => {
     const user = userEvent.setup();
     render(<UploadZone onUploadSuccess={jest.fn()} />);
 
-    const validFile = new File(["%PDF-1.4\n dummy content"], "invoice.pdf", { type: "application/pdf" });
+    const validFile = new File(["%PDF-1.4\n dummy content"], "invoice.pdf", {
+      type: "application/pdf",
+    });
 
     // Simulate valid file selection using the input element directly
     const input = document.getElementById("invoice-file-input") as HTMLInputElement;

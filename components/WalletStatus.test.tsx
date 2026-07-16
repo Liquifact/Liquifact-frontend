@@ -57,77 +57,79 @@ async function flushTimersTs(delayMs: number) {
   });
 }
 
-describe('WalletStatus live region', () => {
+describe("WalletStatus live region", () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    if (typeof window !== 'undefined') window.localStorage.clear();
+    if (typeof window !== "undefined") window.localStorage.clear();
   });
 
   afterEach(async () => {
-    await act(async () => { jest.runOnlyPendingTimers(); });
+    await act(async () => {
+      jest.runOnlyPendingTimers();
+    });
     jest.useRealTimers();
     jest.restoreAllMocks();
   });
 
-  it('renders a polite live region with no announcement on initial mount', () => {
+  it("renders a polite live region with no announcement on initial mount", () => {
     renderWithProviders(<WalletStatus />);
-    const region = screen.getByTestId('wallet-live-region');
-    expect(region).toHaveAttribute('aria-live', 'polite');
-    expect(region).toHaveAttribute('role', 'status');
+    const region = screen.getByTestId("wallet-live-region");
+    expect(region).toHaveAttribute("aria-live", "polite");
+    expect(region).toHaveAttribute("role", "status");
     // No announcement yet — initial render should be silent
-    expect(region).toHaveTextContent('');
+    expect(region).toHaveTextContent("");
   });
 
   it('announces "Wallet connected." after a successful connection', async () => {
     const user = setup();
-    jest.spyOn(Math, 'random').mockReturnValue(0); // success scenario
+    jest.spyOn(Math, "random").mockReturnValue(0); // success scenario
 
     renderWithProviders(<WalletStatus />);
-    const btn = screen.getByRole('button', { name: /connect wallet/i });
+    const btn = screen.getByRole("button", { name: /connect wallet/i });
     await user.click(btn);
     await flushTimersTs(1500);
 
-    const region = screen.getByTestId('wallet-live-region');
-    await waitFor(() => expect(region).toHaveTextContent('Wallet connected.'));
+    const region = screen.getByTestId("wallet-live-region");
+    await waitFor(() => expect(region).toHaveTextContent("Wallet connected."));
   });
 
   it('announces "Wallet disconnected." after disconnect', async () => {
     const user = setup();
-    jest.spyOn(Math, 'random').mockReturnValue(0); // success
+    jest.spyOn(Math, "random").mockReturnValue(0); // success
 
     renderWithProviders(<WalletStatus />);
-    await user.click(screen.getByRole('button', { name: /connect wallet/i }));
+    await user.click(screen.getByRole("button", { name: /connect wallet/i }));
     await flushTimersTs(1500);
 
     // Now disconnect
-    await user.click(screen.getByRole('button', { name: /disconnect/i }));
+    await user.click(screen.getByRole("button", { name: /disconnect/i }));
 
-    const region = screen.getByTestId('wallet-live-region');
-    await waitFor(() => expect(region).toHaveTextContent('Wallet disconnected.'));
+    const region = screen.getByTestId("wallet-live-region");
+    await waitFor(() => expect(region).toHaveTextContent("Wallet disconnected."));
   });
 
   it('announces "Wallet connection failed." on error state', async () => {
     const user = setup();
-    jest.spyOn(Math, 'random').mockReturnValue(0.34); // error scenario (index 1)
+    jest.spyOn(Math, "random").mockReturnValue(0.34); // error scenario (index 1)
 
     renderWithProviders(<WalletStatus />);
-    await user.click(screen.getByRole('button', { name: /connect wallet/i }));
+    await user.click(screen.getByRole("button", { name: /connect wallet/i }));
     await flushTimersTs(1500);
 
-    const region = screen.getByTestId('wallet-live-region');
-    await waitFor(() => expect(region).toHaveTextContent('Wallet connection failed.'));
+    const region = screen.getByTestId("wallet-live-region");
+    await waitFor(() => expect(region).toHaveTextContent("Wallet connection failed."));
   });
 
-  it('does not include the wallet public key in the live region announcement', async () => {
+  it("does not include the wallet public key in the live region announcement", async () => {
     const user = setup();
-    jest.spyOn(Math, 'random').mockReturnValue(0); // success
+    jest.spyOn(Math, "random").mockReturnValue(0); // success
 
     renderWithProviders(<WalletStatus />);
-    await user.click(screen.getByRole('button', { name: /connect wallet/i }));
+    await user.click(screen.getByRole("button", { name: /connect wallet/i }));
     await flushTimersTs(1500);
 
-    const region = screen.getByTestId('wallet-live-region');
-    await waitFor(() => expect(region).toHaveTextContent('Wallet connected.'));
+    const region = screen.getByTestId("wallet-live-region");
+    await waitFor(() => expect(region).toHaveTextContent("Wallet connected."));
     // Must not expose any part of the public key
     expect(region).not.toHaveTextContent(/GABC/i);
     expect(region).not.toHaveTextContent(/XYZ123/i);

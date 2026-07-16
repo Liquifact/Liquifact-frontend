@@ -64,5 +64,5 @@ export function getInvoiceById(id) {
   return MOCK_INVOICES.find((invoice) => invoice.id === id);
 }
 
-// NOTE: This file is the single source of truth for mock invoice data 
+// NOTE: This file is the single source of truth for mock invoice data
 // until the API client is fully integrated.

@@ -12,7 +12,12 @@ import {
   useWallet,
   writeStoredSnapshot,
 } from "./WalletProvider";
-import { isFreighterConnected, connectFreighter, getFreighterNetwork, assertExpectedNetwork } from "../lib/wallet/freighter";
+import {
+  isFreighterConnected,
+  connectFreighter,
+  getFreighterNetwork,
+  assertExpectedNetwork,
+} from "../lib/wallet/freighter";
 
 jest.mock("../lib/wallet/freighter", () => ({
   isFreighterConnected: jest.fn(),

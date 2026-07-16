@@ -36,16 +36,9 @@ export default function GlobalError({ error, reset }) {
       className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-4 py-16"
       data-testid="error-boundary-page"
     >
-      <main
-        id="main-content"
-        className="w-full max-w-lg"
-        aria-labelledby="error-boundary-heading"
-      >
+      <main id="main-content" className="w-full max-w-lg" aria-labelledby="error-boundary-heading">
         {/* Visually hidden heading so screen readers can identify the landmark */}
-        <h1
-          id="error-boundary-heading"
-          className="sr-only"
-        >
+        <h1 id="error-boundary-heading" className="sr-only">
           {copy.error.title}
         </h1>
 

@@ -151,7 +151,15 @@ describe("fetchInvestableInvoices", () => {
 
     const result = await fetchInvestableInvoices();
     expect(result).toEqual([
-      { id: null, issuer: null, amount: null, currency: null, dueDate: null, yield: null, status: null },
+      {
+        id: null,
+        issuer: null,
+        amount: null,
+        currency: null,
+        dueDate: null,
+        yield: null,
+        status: null,
+      },
     ]);
   });
 

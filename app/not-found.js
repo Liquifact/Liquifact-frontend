@@ -35,16 +35,11 @@ export default function NotFound() {
           {copy.notFound.statusLabel}
         </p>
 
-        <h1
-          id="not-found-heading"
-          className="mb-4 text-3xl font-bold tracking-tight text-slate-50"
-        >
+        <h1 id="not-found-heading" className="mb-4 text-3xl font-bold tracking-tight text-slate-50">
           {copy.notFound.heading}
         </h1>
 
-        <p className="mb-8 text-base leading-7 text-slate-400">
-          {copy.notFound.description}
-        </p>
+        <p className="mb-8 text-base leading-7 text-slate-400">{copy.notFound.description}</p>
 
         <Link
           href="/"

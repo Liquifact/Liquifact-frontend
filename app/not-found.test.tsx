@@ -34,7 +34,7 @@ describe("NotFound (app/not-found.js)", () => {
     it("renders the h1 heading with the correct copy", () => {
       renderNotFound();
       expect(
-        screen.getByRole("heading", { level: 1, name: copy.notFound.heading }),
+        screen.getByRole("heading", { level: 1, name: copy.notFound.heading })
       ).toBeInTheDocument();
     });
 

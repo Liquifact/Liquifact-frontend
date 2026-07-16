@@ -92,7 +92,7 @@ describe("GlobalError (app/error.js)", () => {
       renderError();
       expect(screen.getByTestId("error-banner")).toHaveAttribute(
         "data-preview",
-        copy.error.previewLabel,
+        copy.error.previewLabel
       );
     });
 

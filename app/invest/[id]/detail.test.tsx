@@ -29,32 +29,40 @@ jest.mock("@/components/WalletContext", () => ({
   }),
 }));
 
-jest.mock("@/components/WalletStatus", () =>
-  function WalletStatusMock() {
-    return <div>WalletStatus</div>;
-  }
+jest.mock(
+  "@/components/WalletStatus",
+  () =>
+    function WalletStatusMock() {
+      return <div>WalletStatus</div>;
+    }
 );
 
-jest.mock("@/components/ErrorBanner", () =>
-  function ErrorBannerMock() {
-    return <div role="alert">Error</div>;
-  }
+jest.mock(
+  "@/components/ErrorBanner",
+  () =>
+    function ErrorBannerMock() {
+      return <div role="alert">Error</div>;
+    }
 );
 
-jest.mock("@/components/InvoiceListSkeleton", () =>
-  function SkeletonMock() {
-    return <div aria-busy="true" />;
-  }
+jest.mock(
+  "@/components/InvoiceListSkeleton",
+  () =>
+    function SkeletonMock() {
+      return <div aria-busy="true" />;
+    }
 );
 
 jest.mock("@/components/ToastProvider", () => ({
   useToast: () => mockToast,
 }));
 
-jest.mock("@/components/StatusPill", () =>
-  function StatusPillMock({ status }) {
-    return <span role="status">{status}</span>;
-  }
+jest.mock(
+  "@/components/StatusPill",
+  () =>
+    function StatusPillMock({ status }) {
+      return <span role="status">{status}</span>;
+    }
 );
 
 function createDeferredInvoice(invoice, delayMs = 0) {

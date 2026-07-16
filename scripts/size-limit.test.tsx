@@ -28,7 +28,7 @@ describe("size-limit configuration", () => {
         expect.stringMatching(/home/i),
         expect.stringMatching(/invest/i),
         expect.stringMatching(/invoices/i),
-      ]),
+      ])
     );
   });
 
@@ -102,20 +102,14 @@ describe("package.json integration", () => {
 
 describe("CI workflow", () => {
   it("size.yml exists with size-limit step", () => {
-    const workflow = fs.readFileSync(
-      path.join(REPO_ROOT, ".github/workflows/size.yml"),
-      "utf8",
-    );
+    const workflow = fs.readFileSync(path.join(REPO_ROOT, ".github/workflows/size.yml"), "utf8");
     expect(workflow).toContain("size-limit");
     expect(workflow).toContain("npm run build");
     expect(workflow).toContain("pull_request");
   });
 
   it("size.yml uses SHA-pinned action versions", () => {
-    const workflow = fs.readFileSync(
-      path.join(REPO_ROOT, ".github/workflows/size.yml"),
-      "utf8",
-    );
+    const workflow = fs.readFileSync(path.join(REPO_ROOT, ".github/workflows/size.yml"), "utf8");
     // Every `uses:` line should have a SHA hash
     const usesLines = workflow
       .split("\n")

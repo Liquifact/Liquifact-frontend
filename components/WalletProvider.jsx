@@ -10,7 +10,12 @@ import {
   useState,
 } from "react";
 import { ToastContext } from "./ToastProvider";
-import { isFreighterConnected, connectFreighter, getFreighterNetwork, assertExpectedNetwork } from "../lib/wallet/freighter";
+import {
+  isFreighterConnected,
+  connectFreighter,
+  getFreighterNetwork,
+  assertExpectedNetwork,
+} from "../lib/wallet/freighter";
 
 /**
  * Read the toast API when available. Returns null when WalletProvider is

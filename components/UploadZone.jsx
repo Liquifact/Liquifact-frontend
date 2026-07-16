@@ -18,7 +18,6 @@ const FILE_CONSTRAINTS = {
   maxSizeBytes: MAX_UPLOAD_BYTES,
 };
 
-
 function ConstraintBadge({ icon, label }) {
   return (
     <span
@@ -249,8 +248,8 @@ function UploadZone({ onUploadSuccess, progress }) {
             <span className="text-3xl" aria-hidden="true">
               {"\u2705"}
             </span>
-            <p 
-              className="font-medium text-emerald-400" 
+            <p
+              className="font-medium text-emerald-400"
               dangerouslySetInnerHTML={{ __html: sanitizeFilename(file.name) }}
             />
             <p className="text-xs text-slate-500">

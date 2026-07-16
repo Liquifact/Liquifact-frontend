@@ -33,16 +33,28 @@ function ToastConsumer() {
   const toast = useToast();
   return (
     <div>
-      <button type="button" id="trigger-info" onClick={() => toast.info("Info message", "Info Toast")}>
+      <button
+        type="button"
+        id="trigger-info"
+        onClick={() => toast.info("Info message", "Info Toast")}
+      >
         Show Info
       </button>
-      <button type="button" id="trigger-success" onClick={() => toast.success("Done!", "Success Toast")}>
+      <button
+        type="button"
+        id="trigger-success"
+        onClick={() => toast.success("Done!", "Success Toast")}
+      >
         Show Success
       </button>
       <button type="button" id="trigger-error" onClick={() => toast.error("Oops", "Error Toast")}>
         Show Error
       </button>
-      <button type="button" id="trigger-second" onClick={() => toast.info("Second message", "Second Toast")}>
+      <button
+        type="button"
+        id="trigger-second"
+        onClick={() => toast.info("Second message", "Second Toast")}
+      >
         Show Second
       </button>
     </div>
@@ -59,7 +71,9 @@ function renderWithProvider() {
 
 /** Returns the first toast card element for the given title text. */
 function toastCardForTitle(title: string) {
-  return screen.getByText(new RegExp(`^${title}$`)).closest("div.pointer-events-auto") as HTMLElement;
+  return screen
+    .getByText(new RegExp(`^${title}$`))
+    .closest("div.pointer-events-auto") as HTMLElement;
 }
 
 // ---------------------------------------------------------------------------
@@ -393,7 +407,10 @@ describe("ToastProvider — keyboard accessibility", () => {
     // userEvent with delay:null and advanceTimers integrates with Jest fake timers.
     const user = userEvent.setup({
       delay: null,
-      advanceTimers: (ms) => act(() => { jest.advanceTimersByTime(ms); }),
+      advanceTimers: (ms) =>
+        act(() => {
+          jest.advanceTimersByTime(ms);
+        }),
     });
 
     render(

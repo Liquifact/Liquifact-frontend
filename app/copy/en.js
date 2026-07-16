@@ -97,22 +97,19 @@ export const copy = {
   },
   error: {
     title: "Something went wrong",
-    description:
-      "An unexpected error occurred. We\u2019ve been notified and are looking into it.",
+    description: "An unexpected error occurred. We\u2019ve been notified and are looking into it.",
     actionLabel: "Try again",
     previewLabel: "Error boundary",
   },
   notFound: {
     heading: "Page not found",
-    description:
-      "The page you\u2019re looking for doesn\u2019t exist or has been moved.",
+    description: "The page you\u2019re looking for doesn\u2019t exist or has been moved.",
     homeLabel: "\u2190 Back to LiquiFact",
     statusLabel: "404",
   },
   globalError: {
     heading: "Critical error",
-    description:
-      "A layout-level error occurred. Please reload the page or return home.",
+    description: "A layout-level error occurred. Please reload the page or return home.",
     reloadLabel: "Reload page",
     homeLabel: "\u2190 Back to LiquiFact",
   },
