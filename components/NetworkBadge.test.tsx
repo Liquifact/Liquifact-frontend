@@ -36,7 +36,13 @@ function renderForNetwork(network?: string) {
     process.env.NEXT_PUBLIC_STELLAR_NETWORK = network;
   }
 
-  let NetworkBadge: React.ComponentType<{ className?: string }>;
+  // Definite-assignment assertion (`!` after the type) tells TypeScript that
+  // `NetworkBadge` is guaranteed to be assigned by the `jest.isolateModules`
+  // callback before this function returns. We previously used the non-null
+  // assertion operator in JSX (`<NetworkBadge! />`) but that confuses some
+  // parsers and triggers a "Parsing error: Identifier expected" lint failure
+  // from `espree` (the default ESLint parser).
+  let NetworkBadge!: React.ComponentType<{ className?: string }>;
   jest.isolateModules(() => {
     NetworkBadge = require("./NetworkBadge").default;
   });
@@ -85,7 +91,10 @@ describe("NetworkBadge", () => {
 
   it("appends a user-provided className", () => {
     process.env.NEXT_PUBLIC_STELLAR_NETWORK = "testnet";
-    let NetworkBadge: React.ComponentType<{ className?: string }>;
+    // See the rationale on the `NetworkBadge!:` definite-assignment assertion
+    // in `renderForNetwork` above; the same trick is used here so the JSX
+    // `<NetworkBadge className=... />` parses cleanly under all parsers.
+    let NetworkBadge!: React.ComponentType<{ className?: string }>;
     jest.isolateModules(() => {
       NetworkBadge = require("./NetworkBadge").default;
     });
