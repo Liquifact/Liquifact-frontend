@@ -51,6 +51,16 @@ function createToast({ variant = "info", title, message }) {
   };
 }
 
+// Returns true when an element is still in the DOM and supports focus().
+// Used to guard focus restoration against disconnected trigger refs (e.g.
+// when the trigger element has been unmounted by the time Escape is pressed).
+function canReceiveFocus(el) {
+  if (!el || typeof el.focus !== "function") return false;
+  // isConnected is undefined in older JSDOM, so treat undefined as "connected".
+  if (el.isConnected === false) return false;
+  return true;
+}
+
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const timers = useRef(new Map());
@@ -60,6 +70,13 @@ export function ToastProvider({ children }) {
   const preDismissFocusRef = useRef(null);
   // Ref to the toast container so we can detect focus moving outside it.
   const containerRef = useRef(null);
+  // Snapshots the element that was activeElement when the most recent toast in
+  // the current burst was opened. Restored after the queue drains on Escape.
+  const triggerRef = useRef(null);
+  // True while a user-initiated dismiss is pending focus restoration; cleared
+  // once the queue-empty effect runs. Keeps auto-dismiss timers from stealing
+  // focus back to the trigger.
+  const pendingUserDismissRef = useRef(false);
 
   const clearToastTimer = useCallback((id) => {
     const timeout = timers.current.get(id);
@@ -91,6 +108,14 @@ export function ToastProvider({ children }) {
       const nextToast = createToast({ variant, title, message });
       const key = nextToast.key;
       let timerAction = null;
+
+      // Snapshot the element that opened (or was focused at the moment of)
+      // this toast. Overwritten on every addToast so the LAST trigger wins,
+      // matching the user's last interaction before pressing Escape.
+      const ae = document.activeElement;
+      if (canReceiveFocus(ae)) {
+        triggerRef.current = ae;
+      }
 
       setToasts((current) => {
         const existingIndex = current.findIndex((toast) => toast.key === key);
@@ -172,6 +197,45 @@ export function ToastProvider({ children }) {
     [removeToast]
   );
 
+  // Ref that always points at the latest dismissNewest implementation.
+  // Updated on every render so the global Escape listener (bound once on
+  // mount) can invoke the version that closes over the current `toasts`
+  // state without needing to re-bind on every toast change.
+  const dismissNewestRef = useRef(() => {});
+  dismissNewestRef.current = () => {
+    if (toasts.length === 0) return;
+    pendingUserDismissRef.current = true;
+    removeToast(toasts[0].id);
+  };
+
+  // Global document-level Escape listener. Skips when focus is already inside
+  // the toast region so the local onKeyDown handler (preDismissFocusRef path)
+  // can take over and restore focus to the element active BEFORE tabbing in.
+  useEffect(() => {
+    function handleEscape(e) {
+      if (e.key !== "Escape") return;
+      if (containerRef.current?.contains(document.activeElement)) return;
+      e.preventDefault();
+      dismissNewestRef.current();
+    }
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, []);
+
+  // Focus restoration once the queue drains after a user-initiated dismiss.
+  // Timer-driven dismisses do NOT set pendingUserDismissRef, so they leave
+  // focus wherever the user has it.
+  useEffect(() => {
+    if (toasts.length === 0 && pendingUserDismissRef.current) {
+      pendingUserDismissRef.current = false;
+      const target = triggerRef.current;
+      triggerRef.current = null;
+      if (canReceiveFocus(target)) {
+        setTimeout(() => target.focus(), 0);
+      }
+    }
+  }, [toasts.length]);
+
   useEffect(() => {
     const currentTimers = timers.current;
     return () => {
@@ -231,6 +295,8 @@ export function ToastProvider({ children }) {
                 }}
                 // Escape dismisses the currently-focused toast, matching common dialog
                 // and menu patterns so keyboard users have a single consistent shortcut.
+                // No stopPropagation() needed — the global listener already short-circuits
+                // when activeElement is inside the toast container (see useEffect above).
                 onKeyDown={(e) => {
                   if (e.key === "Escape") {
                     e.preventDefault();
