@@ -82,31 +82,66 @@ Displays a structured error message with a variant label, title, description, op
 
 ### Props
 
-| Prop           | Type       | Default          | Description                                             |
-| -------------- | ---------- | ---------------- | ------------------------------------------------------- |
-| `variant`      | `string`   | `"server"`       | `"server"` or `"validation"` — controls the label shown |
-| `title`        | `string`   | —                | Bold heading for the error                              |
-| `description`  | `string`   | —                | Short explanatory text                                  |
-| `details`      | `string`   | —                | Optional secondary detail text                          |
-| `actionLabel`  | `string`   | —                | Button label; omit to hide the action button            |
-| `onAction`     | `function` | —                | Callback when the action button is clicked              |
-| `previewLabel` | `string`   | `"Preview only"` | Badge text shown next to the variant label              |
+| Prop           | Type       | Default          | Description                                                   |
+| -------------- | ---------- | ---------------- | ------------------------------------------------------------- |
+| `variant`      | `string`   | `"server"`       | Controls the label badge — see **Variant set** below          |
+| `title`        | `string`   | —                | Bold heading for the error                                    |
+| `description`  | `string`   | —                | Short explanatory text                                        |
+| `details`      | `string`   | —                | Optional secondary detail text                                |
+| `actionLabel`  | `string`   | —                | Button label text; omit (or pass `""`) to hide the button     |
+| `onAction`     | `function` | —                | Callback invoked when the action button is clicked            |
+| `previewLabel` | `string`   | `"Preview only"` | Badge text rendered next to the variant label                 |
+
+### Variant set
+
+The exhaustive set of allowed `variant` values and their rendered labels:
+
+| `variant`      | Label rendered       | When to use                                              |
+| -------------- | -------------------- | -------------------------------------------------------- |
+| `"server"`     | `Server error`       | API / network failures (default)                         |
+| `"validation"` | `Validation error`   | Form or input validation failures                        |
+| `"error"`      | `Error`              | Generic, non-server errors (e.g. invoice detail failure) |
+
+Unknown values fall back to `"Server error"`.
+
+### actionLabel behaviour
+
+The action button renders `{actionLabel}` as its visible text and accessible name.  
+Pass any string you like (e.g. `"Try again"`, `"Reload page"`, `"Dismiss"`).  
+When `actionLabel` is omitted or empty the button is not rendered at all.
 
 ### Accessibility
 
-- Renders with `role="alert"` and `aria-live="assertive"` so screen readers announce errors immediately.
+- Renders with `role="alert"` and `aria-live="assertive"` so screen readers announce errors immediately when the component mounts.
+- Action button accessible name is derived from `actionLabel` (no separate `aria-label` needed).
 - Action button includes `focus:ring` for keyboard visibility.
 
 ### Example
 
 ```jsx
+// Server error with retry action
 <ErrorBanner
   variant="server"
   title="Could not load invoices"
   description="The API returned an unexpected error."
   details="Status 500 — please try again."
-  actionLabel="Retry"
+  actionLabel="Try again"
   onAction={() => refetch()}
+/>
+
+// Generic error without an action button
+<ErrorBanner
+  variant="error"
+  title="Unable to load invoice details"
+  description="Unable to load invoice details right now."
+  previewLabel="Invoice detail"
+/>
+
+// Validation error
+<ErrorBanner
+  variant="validation"
+  title="Invalid file"
+  description="Only PDF files under 10 MB are accepted."
 />
 ```
 

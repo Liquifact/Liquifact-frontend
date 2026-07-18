@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import ErrorBanner from "@/components/ErrorBanner";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
 import InvoiceSearch from "@/components/InvoiceSearch";
+import NavMenu from "@/components/NavMenu";
 import InvoiceFilters, {
   DEFAULT_FILTERS,
   StatusLegendFilter,
