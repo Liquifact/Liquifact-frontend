@@ -1,3 +1,7 @@
 module.exports = {
-  presets: [["next/babel", { "transform-react-remove-prop-types": false }]],
+  presets: [
+    ["@babel/preset-env", { targets: { node: "current" } }],
+    ["@babel/preset-react", { runtime: "automatic" }],
+    "@babel/preset-typescript",
+  ],
 };
