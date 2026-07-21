@@ -30,9 +30,9 @@ jest.mock("@/components/WalletContext", () => ({
 }));
 
 jest.mock(
-  "@/components/WalletStatus",
+  "@/components/WalletStatusLazy",
   () =>
-    function WalletStatusMock() {
+    function WalletStatusLazyMock() {
       return <div>WalletStatus</div>;
     }
 );

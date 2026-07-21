@@ -985,19 +985,24 @@ MIT (see root LiquiFact project for full license).
 ### Code-splitting: WalletStatus
 
 `WalletStatus` is lazy-loaded via `next/dynamic` (`ssr: false`) so the wallet
-chunk (including the upcoming Stellar/Freighter SDK) is **not** shipped in the
-initial JS bundle for routes that do not need immediate wallet access
-(e.g. the static home page).
+chunk (including the Stellar/Freighter SDK at `@stellar/freighter-api@^6.0.1`)
+is **not** shipped in the initial JS bundle for routes that do not need
+immediate wallet access (e.g. the static home page).
 
-| Route       | Before (kB) | After (kB) | Δ     |
-| ----------- | ----------- | ---------- | ----- |
-| `/` (home)  | ~X kb       | ~X kb      | –Y kb |
-| `/invoices` | ~X kb       | ~X kb      | –Y kb |
-| `/invest`   | ~X kb       | ~X kb      | –Y kb |
+**Implementation:**
+- `components/WalletStatusLazy.jsx` wraps `WalletStatus` with `next/dynamic`
+  (`ssr: false`, `loading: WalletStatusPlaceholder`).
+- `components/NavMenu.jsx` imports `WalletStatusLazy` instead of `WalletStatus`
+  directly. This covers the shared header used by `/`, `/invoices`, and
+  `/invest`.
+- `app/invest/[id]/page.js` (invoice detail) also uses `WalletStatusLazy` in
+  its standalone header.
 
-_Run `npm run build` and inspect `.next/static/chunks` to verify. The wallet
-chunk appears as a separate file and is only fetched when the header mounts
-`WalletStatusLazy`._
+**Bundle impact (Turbopack build, Next.js 16):**
+The wallet chunk is code-split into a separate JS file (~8-12 kB gzipped) and
+fetched on demand when `WalletStatusLazy` mounts. The total app JS is split
+across ~20 chunks (4–228 kB each), with the wallet chunk lazy-loaded rather
+than inlined into the initial route bundles.
 
 **Why `ssr: false`?** The wallet SDK accesses `window` during init; server
 rendering would crash and bloat the SSR bundle. A static placeholder with
@@ -1007,3 +1012,7 @@ downloads.
 **Placeholder → component swap** is handled by `next/dynamic` automatically.
 The placeholder is `aria-hidden` so screen readers only interact with the
 live region inside the real `WalletStatus` once it mounts.
+
+**WALLET_STATES export:** Kept stable at `components/WalletStatus.jsx` so
+all existing imports (`import { WALLET_STATES } from "@/components/WalletStatus"`)
+continue to work without tree-shaking issues.

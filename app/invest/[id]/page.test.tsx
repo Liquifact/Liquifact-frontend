@@ -45,8 +45,8 @@ jest.mock("@/components/WalletContext", () => ({
   useWallet: () => ({ state: "disconnected", connect: jest.fn() }),
 }));
 
-jest.mock("@/components/WalletStatus", () => {
-  return function WalletStatusMock() {
+jest.mock("@/components/WalletStatusLazy", () => {
+  return function WalletStatusLazyMock() {
     return <div>WalletStatus</div>;
   };
 });

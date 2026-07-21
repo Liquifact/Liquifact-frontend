@@ -6,7 +6,7 @@ import { notFound, useParams } from "next/navigation";
 import ErrorBanner from "@/components/ErrorBanner";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
 import StatusPill from "@/components/StatusPill";
-import WalletStatus from "@/components/WalletStatus";
+import WalletStatusLazy from "@/components/WalletStatusLazy";
 import { useToast } from "@/components/ToastProvider";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import { INVALID_VALUE_FALLBACK, formatAmount, formatCurrency } from "@/lib/format/currency";
@@ -178,7 +178,7 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
         >
           ← LiquiFact
         </Link>
-        <WalletStatus />
+        <WalletStatusLazy />
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-12">
