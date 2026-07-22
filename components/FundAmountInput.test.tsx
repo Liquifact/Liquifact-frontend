@@ -3,40 +3,10 @@ import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { axe, toHaveNoViolations } from "jest-axe";
+import { copy } from "@/app/copy/en";
 import FundAmountInput, { validateFundAmount, deriveExpectedYield } from "./FundAmountInput";
 
 expect.extend(toHaveNoViolations);
-
-// ---------------------------------------------------------------------------
-// Mocks
-// ---------------------------------------------------------------------------
-
-jest.mock("@/app/copy/en", () => ({
-  copy: {
-    invest: {
-      fundAmount: {
-        label: "Funding amount",
-        placeholder: "e.g. 1000",
-        helper: "Enter an amount between 1 and {max} {currency}.",
-        expectedYieldLabel: "Expected yield:",
-        errorRequired: "Please enter an amount.",
-        errorPositive: "Amount must be greater than zero.",
-        errorExceedsBalance: "Amount cannot exceed the remaining balance of {max} {currency}.",
-        errorPrecision: "Amount must not exceed {decimals} decimal places for {currency}.",
-        submitLabel: "Fund this invoice",
-        submittingLabel: "Submitting\u2026",
-      },
-    },
-  },
-}));
-
-jest.mock("@/lib/format/currency", () => ({
-  formatCurrency: (value, { currency } = {}) => `${currency} ${value}`,
-}));
-
-jest.mock("@/lib/format/invoice", () => ({
-  formatYield: (value) => `${value}%`,
-}));
 
 // Button uses Spinner which is already imported; mock the whole Button to
 // keep tests free from complex style assertions.
@@ -75,30 +45,31 @@ describe("validateFundAmount()", () => {
   const currency = "USD";
 
   it("returns errorRequired for empty string", () => {
-    expect(validateFundAmount("", max, currency)).toMatch(/please enter/i);
+    expect(validateFundAmount("", max, currency)).toBe(copy.invest.fundAmount.errorRequired);
   });
 
   it("returns errorRequired for whitespace-only string", () => {
-    expect(validateFundAmount("   ", max, currency)).toMatch(/please enter/i);
+    expect(validateFundAmount("   ", max, currency)).toBe(copy.invest.fundAmount.errorRequired);
   });
 
   it("returns errorRequired for non-numeric input", () => {
-    expect(validateFundAmount("abc", max, currency)).toMatch(/please enter/i);
+    expect(validateFundAmount("abc", max, currency)).toBe(copy.invest.fundAmount.errorRequired);
   });
 
   it("returns errorPositive for zero", () => {
-    expect(validateFundAmount("0", max, currency)).toMatch(/greater than zero/i);
+    expect(validateFundAmount("0", max, currency)).toBe(copy.invest.fundAmount.errorPositive);
   });
 
   it("returns errorPositive for negative value", () => {
-    expect(validateFundAmount("-5", max, currency)).toMatch(/greater than zero/i);
+    expect(validateFundAmount("-5", max, currency)).toBe(copy.invest.fundAmount.errorPositive);
   });
 
   it("returns errorExceedsBalance when amount exceeds max", () => {
-    const error = validateFundAmount("10001", max, currency);
-    expect(error).toMatch(/cannot exceed/i);
-    expect(error).toContain("10000");
-    expect(error).toContain("USD");
+    const expectedError = copy.invest.fundAmount.errorExceedsBalance
+      .replace("{max}", max.toString())
+      .replace("{currency}", currency);
+
+    expect(validateFundAmount("10000.01", max, currency)).toBe(expectedError);
   });
 
   it("returns null for exact max amount", () => {
@@ -114,10 +85,11 @@ describe("validateFundAmount()", () => {
   });
 
   it("returns errorPrecision when decimal places exceed allowed (USD → 3 dp)", () => {
-    const error = validateFundAmount("100.999", max, currency);
-    expect(error).toMatch(/decimal places/i);
-    expect(error).toContain("2");
-    expect(error).toContain("USD");
+    const expectedError = copy.invest.fundAmount.errorPrecision
+      .replace("{decimals}", "2")
+      .replace("{currency}", currency);
+
+    expect(validateFundAmount("100.999", max, currency)).toBe(expectedError);
   });
 
   it("allows 0 decimal places for JPY", () => {
@@ -125,9 +97,11 @@ describe("validateFundAmount()", () => {
   });
 
   it("returns errorPrecision for JPY with any decimal places", () => {
-    const error = validateFundAmount("500.5", max, "JPY");
-    expect(error).toMatch(/decimal places/i);
-    expect(error).toContain("0");
+    const expectedError = copy.invest.fundAmount.errorPrecision
+      .replace("{decimals}", "0")
+      .replace("{currency}", "JPY");
+
+    expect(validateFundAmount("500.5", max, "JPY")).toBe(expectedError);
   });
 
   it("handles very small valid amounts (0.01)", () => {
@@ -206,47 +180,60 @@ describe("FundAmountInput — rendering", () => {
 // ---------------------------------------------------------------------------
 
 describe("FundAmountInput — validation error display", () => {
-  it("shows errorRequired after blur with empty value", async () => {
-    renderComponent();
+  it.each([
+    {
+      name: "an empty required amount",
+      value: "",
+      expectedError: copy.invest.fundAmount.errorRequired,
+    },
+    {
+      name: "zero",
+      value: "0",
+      expectedError: copy.invest.fundAmount.errorPositive,
+    },
+    {
+      name: "a negative amount",
+      value: "-5",
+      expectedError: copy.invest.fundAmount.errorPositive,
+    },
+    {
+      name: "one cent above the remaining balance",
+      value: "12500.01",
+      expectedError: copy.invest.fundAmount.errorExceedsBalance
+        .replace("{max}", DEFAULT_PROPS.maxAmount.toString())
+        .replace("{currency}", DEFAULT_PROPS.currency),
+    },
+    {
+      name: "a USD amount with more than two decimals",
+      value: "100.999",
+      expectedError: copy.invest.fundAmount.errorPrecision
+        .replace("{decimals}", "2")
+        .replace("{currency}", DEFAULT_PROPS.currency),
+    },
+    {
+      name: "a JPY amount with decimals",
+      value: "100.1",
+      currency: "JPY",
+      expectedError: copy.invest.fundAmount.errorPrecision
+        .replace("{decimals}", "0")
+        .replace("{currency}", "JPY"),
+    },
+  ])("shows the dictionary error and blocks submit for $name", async (testCase) => {
+    const onSubmit = jest.fn();
+    renderComponent({ onSubmit, currency: testCase.currency ?? DEFAULT_PROPS.currency });
     const input = screen.getByRole("spinbutton");
+
+    fireEvent.change(input, { target: { value: testCase.value } });
     fireEvent.blur(input);
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/please enter/i);
+      expect(screen.getByRole("alert")).toHaveTextContent(testCase.expectedError);
     });
-  });
 
-  it("shows errorPositive for zero after blur", async () => {
-    renderComponent();
-    const input = screen.getByRole("spinbutton");
-    await userEvent.type(input, "0");
-    fireEvent.blur(input);
-
-    await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/greater than zero/i);
-    });
-  });
-
-  it("shows errorExceedsBalance when amount is too large after blur", async () => {
-    renderComponent();
-    const input = screen.getByRole("spinbutton");
-    await userEvent.type(input, "99999");
-    fireEvent.blur(input);
-
-    await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/cannot exceed/i);
-    });
-  });
-
-  it("shows errorPrecision for too many decimal places after blur", async () => {
-    renderComponent();
-    const input = screen.getByRole("spinbutton");
-    await userEvent.type(input, "100.999");
-    fireEvent.blur(input);
-
-    await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/decimal places/i);
-    });
+    const button = screen.getByRole("button", { name: copy.invest.fundAmount.submitLabel });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("clears error when value becomes valid", async () => {
@@ -265,18 +252,18 @@ describe("FundAmountInput — validation error display", () => {
     });
   });
 
-  it("shows error immediately on submit attempt without prior blur", async () => {
-    renderComponent();
-    const button = screen.getByRole("button", { name: /fund this invoice/i });
-    // Force submit by setting a value that bypasses the disabled check
+  it("shows the required dictionary error and blocks a direct invalid form submit", async () => {
+    const onSubmit = jest.fn();
+    renderComponent({ onSubmit });
     const input = screen.getByRole("spinbutton");
-    // Type invalid value first so button isn't disabled due to empty field
-    await userEvent.type(input, "-5");
-    fireEvent.blur(input);
+    const form = input.closest("form");
+
+    fireEvent.submit(form!);
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent(copy.invest.fundAmount.errorRequired);
     });
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });
 
@@ -340,13 +327,15 @@ describe("FundAmountInput — accessibility attributes", () => {
 // ---------------------------------------------------------------------------
 
 describe("FundAmountInput — expected yield preview", () => {
-  it("shows yield preview when a valid amount is entered", async () => {
+  it("shows the derived expected yield for a valid partial amount", async () => {
     renderComponent();
     const input = screen.getByRole("spinbutton");
     await userEvent.type(input, "5000");
 
     await waitFor(() => {
-      expect(screen.getByText(/expected yield/i)).toBeInTheDocument();
+      expect(screen.getByText(copy.invest.fundAmount.expectedYieldLabel)).toHaveTextContent(
+        `${copy.invest.fundAmount.expectedYieldLabel} 8.2% (≈ $410.00)`
+      );
     });
   });
 
@@ -453,8 +442,11 @@ describe("FundAmountInput — submit behaviour", () => {
 
 describe("FundAmountInput — edge cases", () => {
   it("handles maxAmount of 0 by rejecting any positive value", () => {
-    const error = validateFundAmount("1", 0, "USD");
-    expect(error).toMatch(/cannot exceed/i);
+    const expectedError = copy.invest.fundAmount.errorExceedsBalance
+      .replace("{max}", "0")
+      .replace("{currency}", "USD");
+
+    expect(validateFundAmount("1", 0, "USD")).toBe(expectedError);
   });
 
   it("renders without crash when yieldValue is 0", () => {
