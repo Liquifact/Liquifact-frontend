@@ -163,7 +163,10 @@ describe("Rust and contract artefacts are absent from the frontend root", () => 
     // We scan only the immediate root level to avoid false positives from
     // node_modules or .next if they exist.
     const rootEntries = listRoot().filter(
-      (name) => name !== "node_modules" && name !== ".next" && name !== ".git"
+      (name) =>
+        name !== "node_modules" &&
+        name !== ".next" &&
+        name !== ".git"
     );
 
     const rsFiles: string[] = [];
@@ -407,7 +410,10 @@ describe("Useful notes are archived in docs/", () => {
   });
 
   it("docs/issue-334-flow-diagram.md has meaningful content", () => {
-    const content = fs.readFileSync(path.join(ROOT, "docs/issue-334-flow-diagram.md"), "utf-8");
+    const content = fs.readFileSync(
+      path.join(ROOT, "docs/issue-334-flow-diagram.md"),
+      "utf-8"
+    );
     expect(content.length).toBeGreaterThan(100);
     expect(content).toMatch(/334/);
   });
@@ -467,7 +473,8 @@ describe("Helper predicates", () => {
     it("matches PR_DESCRIPTION_v2.md", () =>
       expect(isPrBodyFile("PR_DESCRIPTION_v2.md")).toBe(true));
     it("does not match README.md", () => expect(isPrBodyFile("README.md")).toBe(false));
-    it("does not match CONTRIBUTING.md", () => expect(isPrBodyFile("CONTRIBUTING.md")).toBe(false));
+    it("does not match CONTRIBUTING.md", () =>
+      expect(isPrBodyFile("CONTRIBUTING.md")).toBe(false));
     it("does not match PR_BODY_253.txt (wrong extension)", () =>
       expect(isPrBodyFile("PR_BODY_253.txt")).toBe(false));
   });
@@ -495,7 +502,8 @@ describe("Helper predicates", () => {
       expect(isTransientNote("LEDGER_GAP_TESTS.md")).toBe(true));
     it("matches IMPLEMENTATION_COMPLETE.md", () =>
       expect(isTransientNote("IMPLEMENTATION_COMPLETE.md")).toBe(true));
-    it("does not match README.md", () => expect(isTransientNote("README.md")).toBe(false));
+    it("does not match README.md", () =>
+      expect(isTransientNote("README.md")).toBe(false));
     it("does not match CONTRIBUTING.md", () =>
       expect(isTransientNote("CONTRIBUTING.md")).toBe(false));
     it("does not match docs/architecture.md (path includes dir)", () =>
