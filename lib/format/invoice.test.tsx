@@ -1,15 +1,29 @@
 import { formatAmount, formatYield } from "@/lib/format/invoice";
 
-describe("Invoice format helpers", () => {
-  test("formatAmount produces locale‑aware string", () => {
-    const value = 12500;
-    const expected = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
-    expect(formatAmount(value)).toBe(expected);
+describe("Invoice format helpers - Table Driven Tests", () => {
+  describe("formatYield test table", () => {
+    it.each([
+      { value: 8.2, expected: "8.2%" },
+      { value: 7, expected: "7%" },
+      { value: 0, expected: "0%" },
+      { value: 3.14, expected: "3.14%" },
+      { value: -2.5, expected: "-2.5%" },
+    ])("formats yield %p into %p", ({ value, expected }) => {
+      expect(formatYield(value)).toBe(expected);
+    });
   });
 
-  test("formatYield adds percent sign", () => {
-    expect(formatYield(8.2)).toBe("8.2%");
-    expect(formatYield(7)).toBe("7%");
+  describe("formatAmount test table", () => {
+    it.each([
+      { value: 12500, currency: undefined, expected: "12,500" },
+      { value: 12500, currency: "", expected: "12,500" },
+      { value: 12500, currency: "USD", expected: "12,500" },
+      { value: 0, currency: undefined, expected: "0" },
+      { value: 1_000_000, currency: "", expected: "1,000,000" },
+      { value: -500, currency: "", expected: "-500" },
+    ])("formats amount %p with currency %p into %p", ({ value, currency, expected }) => {
+      expect(formatAmount(value, currency)).toBe(expected);
+    });
   });
 
   test("numeric sorting works for invoice fixtures", () => {
@@ -20,38 +34,5 @@ describe("Invoice format helpers", () => {
     ];
     const sorted = [...invoices].sort((x, y) => x.amountValue - y.amountValue);
     expect(sorted.map((i) => i.id)).toEqual(["c", "b", "a"]);
-  });
-
-  describe("formatAmount boundary cases", () => {
-    test("formats zero correctly", () => {
-      const expected = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(0);
-      expect(formatAmount(0)).toBe(expected);
-    });
-
-    test("formats large values with thousands separators", () => {
-      const value = 1_000_000;
-      const formatted = formatAmount(value);
-      expect(formatted).toContain("1");
-      expect(formatted.length).toBeGreaterThan(6);
-    });
-
-    test("formats negative values", () => {
-      const formatted = formatAmount(-500);
-      expect(formatted).toContain("500");
-    });
-  });
-
-  describe("formatYield boundary cases", () => {
-    test("handles zero yield", () => {
-      expect(formatYield(0)).toBe("0%");
-    });
-
-    test("handles fractional yield", () => {
-      expect(formatYield(3.14)).toBe("3.14%");
-    });
-
-    test("handles negative yield", () => {
-      expect(formatYield(-2.5)).toBe("-2.5%");
-    });
   });
 });
