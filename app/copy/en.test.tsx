@@ -99,6 +99,7 @@ describe("copy dictionary — key presence", () => {
       expect(copy.wallet.retryButton).toBeDefined();
       expect(copy.wallet.switchNetworkButton).toBeDefined();
       expect(copy.wallet.installWalletButton).toBeDefined();
+      expect(copy.wallet.copyAddressButton).toBeDefined();
       expect(copy.wallet.helperDisconnected).toBeDefined();
       expect(copy.wallet.helperConnecting).toBeDefined();
       expect(copy.wallet.helperConnected).toBeDefined();
@@ -106,6 +107,10 @@ describe("copy dictionary — key presence", () => {
       expect(copy.wallet.helperWrongNetwork).toBeDefined();
       expect(copy.wallet.helperNoWallet).toBeDefined();
       expect(copy.wallet.installWalletUrl).toBeDefined();
+      expect(copy.wallet.toastCopySuccessTitle).toBeDefined();
+      expect(copy.wallet.toastCopySuccessMsg).toBeDefined();
+      expect(copy.wallet.toastCopyErrorTitle).toBeDefined();
+      expect(copy.wallet.toastCopyErrorMsg).toBeDefined();
       expect(copy.wallet.announceConnected).toBeDefined();
       expect(copy.wallet.announceDisconnected).toBeDefined();
       expect(copy.wallet.announceError).toBeDefined();

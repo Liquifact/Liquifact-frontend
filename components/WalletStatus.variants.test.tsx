@@ -19,6 +19,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { ToastProvider } from "./ToastProvider";
 import { WalletContext, WALLET_STATES } from "./WalletProvider";
 import WalletStatus from "./WalletStatus";
 import { copy } from "../app/copy/en";
@@ -48,9 +49,11 @@ function renderWithState(
   };
 
   return render(
-    <WalletContext.Provider value={contextValue}>
-      <WalletStatus />
-    </WalletContext.Provider>
+    <ToastProvider>
+      <WalletContext.Provider value={contextValue}>
+        <WalletStatus />
+      </WalletContext.Provider>
+    </ToastProvider>
   );
 }
 

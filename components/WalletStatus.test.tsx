@@ -113,7 +113,9 @@ describe("WalletStatus Button variant + loading — per WALLET_STATE", () => {
    * WalletStatus renders exactly one <button>.
    */
   function getWalletButton() {
-    return screen.getByRole("button");
+    const buttons = screen.getAllByRole("button");
+    const actionButton = buttons.find((btn) => btn.getAttribute("aria-label") !== "Copy wallet address");
+    return actionButton || buttons[0];
   }
 
   describe("DISCONNECTED", () => {

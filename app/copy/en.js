@@ -129,6 +129,7 @@
  * @property {string} wallet.retryButton
  * @property {string} wallet.switchNetworkButton
  * @property {string} wallet.installWalletButton
+ * @property {string} wallet.copyAddressButton
  * @property {string} wallet.helperDisconnected
  * @property {string} wallet.helperConnecting
  * @property {string} wallet.helperConnected
@@ -142,6 +143,10 @@
  * @property {string} wallet.toastErrorMsg
  * @property {string} wallet.toastWrongNetworkTitle
  * @property {string} wallet.toastWrongNetworkMsg
+ * @property {string} wallet.toastCopySuccessTitle
+ * @property {string} wallet.toastCopySuccessMsg
+ * @property {string} wallet.toastCopyErrorTitle
+ * @property {string} wallet.toastCopyErrorMsg
  * @property {string} wallet.errorConnect
  * @property {string} wallet.errorWrongNetwork
  * @property {string} wallet.announceConnected
@@ -317,6 +322,7 @@ export const copy = {
     retryButton: "Retry Connection",
     switchNetworkButton: "Switch Network",
     installWalletButton: "Install Wallet",
+    copyAddressButton: "Copy wallet address",
     helperDisconnected: "Connect your Stellar wallet to access the platform",
     helperConnecting: "Please approve the connection in your wallet",
     helperConnected: "Connected to Stellar {network}",
@@ -330,6 +336,10 @@ export const copy = {
     toastErrorMsg: "Failed to connect to wallet. Please try again.",
     toastWrongNetworkTitle: "Wrong network",
     toastWrongNetworkMsg: "Wallet is connected to testnet. Please switch to public network.",
+    toastCopySuccessTitle: "Address copied",
+    toastCopySuccessMsg: "Wallet address copied to clipboard.",
+    toastCopyErrorTitle: "Copy failed",
+    toastCopyErrorMsg: "Failed to copy wallet address to clipboard.",
     errorConnect: "Failed to connect to wallet. Please try again.",
     errorWrongNetwork: "Wallet is connected to testnet. Please switch to public network.",
     announceConnected: "Wallet connected.",
