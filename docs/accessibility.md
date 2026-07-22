@@ -35,6 +35,51 @@ a consistent, high‑contrast focus indicator.
   - WCAG AA contrast verification in `app/globals.contrast-ratio.test.tsx`
   - Keyboard traversal test (Tab order) using `@testing-library/user-event`
 
+### Roving Tabindex for Filter Chips (issue #466)
+
+The marketplace currency filter chips (`components/InvoiceFilters.jsx`) implement a **roving tabindex** pattern conforming to the [ARIA Authoring Practices Guide (APG) toolbar pattern](https://www.w3.org/WAI/ARIA/apg/patterns/toolbar/).
+
+**Pattern overview:**
+
+- The currency chip group is wrapped in a `role="toolbar"` container with an `aria-label="Currency filter"` accessible name.
+- Only **one chip** has `tabindex="0"` at any time (the currently focusable chip); all others have `tabindex="-1"`.
+- The toolbar becomes a single keyboard tab stop, reducing the number of Tab key presses needed to navigate the page.
+
+**Keyboard shortcuts:**
+
+| Key          | Action                                                           |
+| ------------ | ---------------------------------------------------------------- |
+| **Tab**      | Moves focus into (or out of) the toolbar as a single tab stop    |
+| **ArrowRight** | Moves focus to the next chip; wraps from last to first         |
+| **ArrowLeft**  | Moves focus to the previous chip; wraps from first to last     |
+| **Home**     | Moves focus to the first chip (USD)                              |
+| **End**      | Moves focus to the last chip (CHF)                               |
+| **Enter** or **Space** | Toggles the currency filter on/off (native button behavior) |
+
+**Behavior:**
+
+- Focus is set programmatically via `.focus()` on keyboard navigation.
+- Mouse clicks update the roving tabindex so the clicked chip becomes the `tabindex="0"` element.
+- Each chip retains `aria-pressed` to communicate its on/off state to assistive technologies.
+- The `.focus-ring` utility class provides a consistent, high-contrast focus indicator.
+
+**Accessibility rationale:**
+
+- Reduces the number of tab stops on the page, improving keyboard navigation efficiency.
+- Provides clear focus feedback via the `.focus-ring` class.
+- Arrow-key navigation aligns with user expectations for horizontal toolbars.
+- Wrap-around navigation ensures no dead-ends at either end of the chip list.
+
+**Test coverage:**
+
+- `components/InvoiceFilters.roving.test.tsx` — comprehensive roving tabindex tests covering:
+  - toolbar role and accessible name
+  - initial `tabindex="0"` assignment
+  - all four arrow/Home/End key bindings
+  - wrap-around behavior at both ends
+  - `aria-pressed` correctness across keyboard and mouse interactions
+  - focus-ring class presence (compatible with `focus-ring.a11y.test.tsx`)
+
 ### Pagination Announcements (issue #276)
 
 `components/Pagination.jsx` announces page position to screen readers when the caller

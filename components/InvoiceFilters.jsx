@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 import { INVOICE_STATUSES, STATUS_PILL_MAP } from "@/lib/types/invoice";
 
 export const DEFAULT_FILTERS = {
@@ -441,6 +441,10 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
   const active = hasActiveFilters(filters);
   const { column: activeColumn } = parseSortState(filters);
 
+  // Roving tabindex state for currency filter chips
+  const [focusedCurrencyIndex, setFocusedCurrencyIndex] = useState(0);
+  const currencyRefs = useRef([]);
+
   return (
     <div className="flex flex-wrap gap-4 items-center">
       <fieldset className="flex items-center gap-2 border-none p-0 m-0">
@@ -468,14 +472,46 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
         />
       </fieldset>
 
-      <fieldset className="flex items-center gap-1 border-none p-0 m-0">
-        <legend className="sr-only">Currency</legend>
-        {CURRENCIES.map((cur) => (
+      <div
+        role="toolbar"
+        aria-label="Currency filter"
+        className="flex items-center gap-1"
+        onKeyDown={(e) => {
+          const count = CURRENCIES.length;
+          let next = focusedCurrencyIndex;
+          if (e.key === "ArrowRight") {
+            e.preventDefault();
+            next = (focusedCurrencyIndex + 1) % count;
+          } else if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            next = (focusedCurrencyIndex - 1 + count) % count;
+          } else if (e.key === "Home") {
+            e.preventDefault();
+            next = 0;
+          } else if (e.key === "End") {
+            e.preventDefault();
+            next = count - 1;
+          } else {
+            return;
+          }
+          setFocusedCurrencyIndex(next);
+          currencyRefs.current[next]?.focus();
+        }}
+      >
+        {CURRENCIES.map((cur, index) => (
           <button
             key={cur}
             type="button"
-            onClick={() => handleChange("currency", filters.currency === cur ? "" : cur)}
-            className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+            ref={(el) => {
+              currencyRefs.current[index] = el;
+            }}
+            tabIndex={index === focusedCurrencyIndex ? 0 : -1}
+            onClick={() => {
+              setFocusedCurrencyIndex(index);
+              handleChange("currency", filters.currency === cur ? "" : cur);
+            }}
+            onFocus={() => setFocusedCurrencyIndex(index)}
+            className={`focus-ring rounded-lg border px-3 py-2 text-sm transition-colors ${
               filters.currency === cur
                 ? "border-cyan-500 bg-cyan-900/30 text-cyan-300"
                 : "border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
@@ -486,7 +522,7 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
             {cur}
           </button>
         ))}
-      </fieldset>
+      </div>
 
       <fieldset className="flex items-center gap-2 border-none p-0 m-0">
         <legend className="sr-only">Maturity Date Range</legend>
