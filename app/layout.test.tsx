@@ -33,6 +33,13 @@ jest.mock("../components/ToastProvider", () => {
   };
 });
 
+jest.mock("../components/ShortcutHelpDialog", () => ({
+  __esModule: true,
+  default: function MockShortcutHelpDialog() {
+    return null;
+  },
+}));
+
 jest.mock("../components/WalletProvider", () => ({
   WalletProvider({ children }) {
     const React = require("react");

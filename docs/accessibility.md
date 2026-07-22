@@ -66,6 +66,99 @@ is not rendered and the two live regions never compete or produce duplicate outp
 Callers that adopt page-based mode should ensure they do not additionally wrap
 `Pagination` in another live region for the same paging event.
 
+### Keyboard Shortcut Help (issue #464)
+
+`components/ShortcutHelpDialog.jsx` is a discoverable, accessible modal dialog that
+lists every keyboard shortcut the LiquiFact frontend advertises. It is mounted near
+the root of the application (`app/layout.js`) so the dialog is reachable from any
+page.
+
+#### Opening the dialog
+
+Press **`?`** (`Shift+/"`) from anywhere on a page to open the dialog. The shortcut
+is intentionally ignored when focus is inside an `input`, a `textarea`, or any
+`contenteditable` element so typing in those controls is never intercepted.
+Modifer combinations such as `Ctrl+/`, `Meta+/`, or `Alt+/` are also ignored to
+preserve browser-default behaviour.
+
+#### Currently registered shortcuts
+
+| Shortcut key | Action                                     | Scope    | Wired in                              |
+| ------------ | ------------------------------------------ | -------- | ------------------------------------- |
+| `/`          | Focus the marketplace search input         | Global   | `components/InvoiceSearch.jsx`        |
+| `?`          | Open the keyboard shortcut help dialog     | Global   | `components/ShortcutHelpDialog.jsx`   |
+
+The dialog renders directly from the `KEYBOARD_SHORTCUTS` array exported by
+`lib/shortcuts.js`, so adding a new shortcut to the registry automatically
+surfaces it in the dialog — no changes to `ShortcutHelpDialog.jsx` are required.
+
+#### Shared registry
+
+`lib/shortcuts.js` is the single source of truth for keyboard shortcuts and the
+matcher logic that decides whether a `keydown` event should fire a shortcut. It
+exports:
+
+- `KEYBOARD_SHORTCUTS` — the list of advertised shortcuts consumed by the dialog.
+- `SEARCH_SHORTCUT_KEY`, `HELP_SHORTCUT_KEY` — the canonical key strings.
+- `isEditableElement(el)` / `isFocusInsideEditableElement()` — utilities to skip
+  shortcuts when the user is typing in an editable control.
+- `createShortcutMatcher(key, handler)` — factory that builds a `keydown` handler
+  matching the given key while honouring the modifier and editable-element rules.
+  Components register their listeners using this helper so the suppression rules
+  stay consistent across the app.
+
+#### Accessibility behavior
+
+The dialog exposes the accessibility contract required by WAI‑ARIA Authoring
+Practices for modal dialogs:
+
+- `role="dialog"`, `aria-modal="true"`, and `aria-labelledby` linking the dialog
+  to its visible heading.
+- Focus moves into the dialog on open (the Close button receives focus first so
+  screen-reader users land in an actionable element).
+- Focus is **trapped** while the dialog is open: `Tab` and `Shift+Tab` cycle
+  through the focusable elements inside the dialog and wrap at the boundaries.
+- `Escape` closes the dialog from anywhere inside it (and from the backdrop
+  region as a safety net).
+- Clicks on the **backdrop** close the dialog; clicks bubbling up from inside
+  the dialog card do not, because the handler tests `event.target ===
+  event.currentTarget`.
+- The element that held focus before the dialog opened is restored on close,
+  scheduled with a microtask so focus does not visibly drop to `<body>`. If that
+  element has been removed from the DOM in the meantime, the restore step is
+  silently skipped.
+
+#### Adding a new shortcut
+
+1. Append a new entry to `KEYBOARD_SHORTCUTS` in `lib/shortcuts.js`:
+
+   ```js
+   {
+     id: "my-shortcut",
+     key: "g",
+     description: "Jump to the invoice listing",
+     scope: "page",
+   }
+   ```
+
+2. Wire the behaviour in the owning component, importing the key constant and
+   `createShortcutMatcher` from `lib/shortcuts.js`:
+
+   ```js
+   useEffect(() => {
+     const handler = createShortcutMatcher(MY_SHORTCUT_KEY, (e) => {
+       e.preventDefault();
+       document.getElementById("invoice-listing")?.focus();
+     });
+     document.addEventListener("keydown", handler);
+     return () => document.removeEventListener("keydown", handler);
+   }, []);
+   ```
+
+3. Run `npm test` — `components/ShortcutHelpDialog.test.tsx` will exercise the
+   registry wiring and `components/InvoiceSearch.shortcut.test.tsx` will continue
+   to assert the existing `/` shortcut is preserved.
+
 ## Automated Accessibility Tests (CI)
 
 - **jest‑axe** is configured in `jest.setup.js` and executed via `npm run test`.

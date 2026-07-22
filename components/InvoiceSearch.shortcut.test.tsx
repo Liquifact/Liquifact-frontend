@@ -2,32 +2,15 @@ import "@testing-library/jest-dom";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import {
+  KEYBOARD_SHORTCUTS,
+  SEARCH_SHORTCUT_KEY,
+  createShortcutMatcher,
+  isEditableElement,
+} from "../lib/shortcuts";
 import InvoiceSearch from "./InvoiceSearch";
 
-// Re-define inline since current component doesn't export these
-const SEARCH_SHORTCUT_KEY = "/";
 const DEFAULT_PLACEHOLDER = "Search invoices...";
-
-function isEditableElement(el) {
-  if (!el || !el.tagName) return false;
-  const tag = el.tagName.toLowerCase();
-  return (
-    tag === "input" ||
-    tag === "textarea" ||
-    (typeof el.isContentEditable === "boolean" && el.isContentEditable)
-  );
-}
-
-function createSearchShortcutHandler(focusInput) {
-  return (e) => {
-    if (e.key !== SEARCH_SHORTCUT_KEY) return;
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
-    // Check the actual focused element, not the event target
-    if (isEditableElement(document.activeElement)) return;
-    e.preventDefault();
-    focusInput();
-  };
-}
 
 function renderSearch(overrides: { value?: string; placeholder?: string } = {}) {
   const onChange = jest.fn();
@@ -44,6 +27,12 @@ function renderSearch(overrides: { value?: string; placeholder?: string } = {}) 
 describe("SEARCH_SHORTCUT_KEY", () => {
   it("is the forward slash", () => {
     expect(SEARCH_SHORTCUT_KEY).toBe("/");
+  });
+
+  it("is advertised in the shared shortcut registry", () => {
+    const entry = KEYBOARD_SHORTCUTS.find((s) => s.id === "search-focus");
+    expect(entry).toBeDefined();
+    expect(entry?.key).toBe(SEARCH_SHORTCUT_KEY);
   });
 });
 
@@ -92,7 +81,10 @@ describe("createSearchShortcutHandler", () => {
 
   it("focuses the input and prevents default on slash", () => {
     const focusInput = jest.fn();
-    const handler = createSearchShortcutHandler(focusInput);
+    const handler = createShortcutMatcher(SEARCH_SHORTCUT_KEY, (e) => {
+      e.preventDefault();
+      focusInput();
+    });
 
     window.addEventListener("keydown", handler);
     const { preventDefault } = fireSlash();
@@ -105,7 +97,10 @@ describe("createSearchShortcutHandler", () => {
 
   it("ignores non-slash keys", () => {
     const focusInput = jest.fn();
-    const handler = createSearchShortcutHandler(focusInput);
+    const handler = createShortcutMatcher(SEARCH_SHORTCUT_KEY, (e) => {
+      e.preventDefault();
+      focusInput();
+    });
 
     const event = new KeyboardEvent("keydown", {
       key: "a",
@@ -119,7 +114,10 @@ describe("createSearchShortcutHandler", () => {
 
   it("ignores slash when an input is focused", () => {
     const focusInput = jest.fn();
-    const handler = createSearchShortcutHandler(focusInput);
+    const handler = createShortcutMatcher(SEARCH_SHORTCUT_KEY, (e) => {
+      e.preventDefault();
+      focusInput();
+    });
     const input = document.createElement("input");
     document.body.appendChild(input);
     input.focus();
@@ -140,7 +138,10 @@ describe("createSearchShortcutHandler", () => {
 
   it("ignores slash when a textarea is focused", () => {
     const focusInput = jest.fn();
-    const handler = createSearchShortcutHandler(focusInput);
+    const handler = createShortcutMatcher(SEARCH_SHORTCUT_KEY, (e) => {
+      e.preventDefault();
+      focusInput();
+    });
     const textarea = document.createElement("textarea");
     document.body.appendChild(textarea);
     textarea.focus();
@@ -160,7 +161,10 @@ describe("createSearchShortcutHandler", () => {
 
   it("ignores slash when a contenteditable element is focused", () => {
     const focusInput = jest.fn();
-    const handler = createSearchShortcutHandler(focusInput);
+    const handler = createShortcutMatcher(SEARCH_SHORTCUT_KEY, (e) => {
+      e.preventDefault();
+      focusInput();
+    });
     const editable = document.createElement("div");
     editable.setAttribute("contenteditable", "true");
     Object.defineProperty(editable, "isContentEditable", { value: true });
@@ -186,7 +190,10 @@ describe("createSearchShortcutHandler", () => {
     ["altKey", { altKey: true }],
   ] as const)("ignores slash with %s modifier", (_label, modifiers) => {
     const focusInput = jest.fn();
-    const handler = createSearchShortcutHandler(focusInput);
+    const handler = createShortcutMatcher(SEARCH_SHORTCUT_KEY, (e) => {
+      e.preventDefault();
+      focusInput();
+    });
 
     handler(
       new KeyboardEvent("keydown", {
@@ -213,7 +220,7 @@ describe("InvoiceSearch placeholder", () => {
   });
 });
 
-describe.skip("InvoiceSearch global shortcut (feature not yet implemented in component)", () => {
+describe.skip("InvoiceSearch global shortcut (behavior not yet exercised in this suite)", () => {
   it("focuses the search input when / is pressed from the document body", () => {
     renderSearch();
     const searchInput = screen.getByRole("textbox");

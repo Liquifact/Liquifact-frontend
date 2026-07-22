@@ -4,6 +4,7 @@ import Footer from "../components/Footer";
 import { ToastProvider } from "../components/ToastProvider";
 import { WalletProvider } from "../components/WalletProvider";
 import ThemeToggle, { THEME_STORAGE_KEY, THEMES } from "../components/ThemeToggle";
+import ShortcutHelpDialog from "../components/ShortcutHelpDialog";
 import { copy } from "./copy/en";
 
 const geistSans = Geist({
@@ -89,6 +90,10 @@ export default function RootLayout({ children }) {
         <div className="fixed top-3 right-16 z-50 md:right-20">
           <ThemeToggle />
         </div>
+        {/* Shortcut help dialog — listens for `?` keystrokes to surface every
+            registered keyboard shortcut. Mounted here so the gesture works
+            on every page. The dialog markup only renders while open. */}
+        <ShortcutHelpDialog />
         <Footer />
       </body>
     </html>
