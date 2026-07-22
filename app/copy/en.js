@@ -38,6 +38,17 @@
  * @property {string} invest.announceFilteredCount
  * @property {string} invest.announceInvoicesLoaded
  * @property {string} invest.announceShowing
+ * @property {Object} invest.fundAmount - Partial funding input copy
+ * @property {string} invest.fundAmount.label
+ * @property {string} invest.fundAmount.placeholder
+ * @property {string} invest.fundAmount.helper
+ * @property {string} invest.fundAmount.expectedYieldLabel
+ * @property {string} invest.fundAmount.errorRequired
+ * @property {string} invest.fundAmount.errorPositive
+ * @property {string} invest.fundAmount.errorExceedsBalance
+ * @property {string} invest.fundAmount.errorPrecision
+ * @property {string} invest.fundAmount.submitLabel
+ * @property {string} invest.fundAmount.submittingLabel
  * @property {Object} invoices - Invoices page copy
  * @property {string} invoices.title
  * @property {string} invoices.subtext
@@ -181,6 +192,18 @@ export const copy = {
     announceFilteredCount: "{matched} of {total} invoices match",
     announceInvoicesLoaded: "{count} investable invoices loaded",
     announceShowing: "Showing {shown} of {total} investable invoices",
+    fundAmount: {
+      label: "Funding amount",
+      placeholder: "e.g. 1000",
+      helper: "Enter an amount between 1 and {max} {currency}.",
+      expectedYieldLabel: "Expected yield:",
+      errorRequired: "Please enter an amount.",
+      errorPositive: "Amount must be greater than zero.",
+      errorExceedsBalance: "Amount cannot exceed the remaining balance of {max} {currency}.",
+      errorPrecision: "Amount must not exceed {decimals} decimal places for {currency}.",
+      submitLabel: "Fund this invoice",
+      submittingLabel: "Submitting\u2026",
+    },
   },
   invoices: {
     title: "Invoices",

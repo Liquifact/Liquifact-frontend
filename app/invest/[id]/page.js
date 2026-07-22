@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import ErrorBanner from "@/components/ErrorBanner";
+import FundAmountInput from "@/components/FundAmountInput";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
 import StatusPill from "@/components/StatusPill";
 import WalletStatus from "@/components/WalletStatus";
@@ -155,10 +156,16 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
     return notFound();
   }
 
-  const handleFund = () => {
+  const handleFund = async (amount) => {
     if (walletState === WALLET_STATES.DISCONNECTED) {
       connect();
+      return;
     }
+    // Placeholder: replace with real on-chain funding call once Stellar integration is ready
+    toast.success(
+      `Funding request for ${amount} submitted. Awaiting wallet approval.`,
+      "Funding submitted"
+    );
   };
 
   const isFundingDisabled =
@@ -247,16 +254,20 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
               </dl>
             </section>
 
-            <div className="no-print flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={handleFund}
-                disabled={isFundingDisabled}
-                className="rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Fund this invoice"
-              >
-                Fund this invoice
-              </button>
+            {/* Partial funding input — only shown for Open invoices */}
+            {invoice.status === "Open" && (
+              <div className="no-print">
+                <FundAmountInput
+                  maxAmount={invoice.amountValue ?? 0}
+                  currency={invoice.currency ?? "USD"}
+                  yieldValue={invoice.yieldValue ?? 0}
+                  onSubmit={handleFund}
+                  disabled={isFundingDisabled}
+                />
+              </div>
+            )}
+
+            <div className="no-print mt-6 flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={handleCopyLink}

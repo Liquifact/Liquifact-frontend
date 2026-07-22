@@ -9,6 +9,7 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 - [EmptyState](#emptystate)
 - [ErrorBanner](#errorbanner)
 - [Footer](#footer)
+- [FundAmountInput](#fundamountinput)
 - [Hooks](#hooks)
 - [InvoiceList](#invoicelist)
 - [InvoiceListSkeleton](#invoicelistskeleton)
@@ -735,6 +736,113 @@ import ThemeToggle from '@/components/ThemeToggle';
 
 // With extra positioning class
 <ThemeToggle className="ml-4" />
+```
+
+---
+
+## FundAmountInput
+
+A partial-funding amount input with live validation, expected-yield preview, and accessible inline error messages. Replaces the all-or-nothing fund button on the invoice detail page.
+
+**File:** `components/FundAmountInput.jsx`
+
+### Named exports
+
+| Export                | Description                                                                 |
+| --------------------- | --------------------------------------------------------------------------- |
+| `default`             | The controlled input form component                                         |
+| `validateFundAmount`  | Pure validation function — use in tests or server-side validation           |
+| `deriveExpectedYield` | Pure calculation — derives the expected yield amount for a partial funding  |
+
+### Props
+
+| Prop        | Type       | Default     | Description                                                                             |
+| ----------- | ---------- | ----------- | --------------------------------------------------------------------------------------- |
+| `maxAmount` | `number`   | —           | **Required.** Maximum fundable balance (the invoice's `amountValue`).                   |
+| `currency`  | `string`   | —           | **Required.** Invoice currency code (e.g. `"USD"`, `"EUR"`). Controls decimal precision. |
+| `yieldValue`| `number`   | —           | **Required.** Invoice yield rate as a percentage number (e.g. `8.2` for 8.2%).         |
+| `onSubmit`  | `function` | `undefined` | Called with the validated numeric amount on submit. May be async.                       |
+| `disabled`  | `boolean`  | `false`     | Disables the input and submit button externally (e.g. wallet is connecting).            |
+
+### Validation rules
+
+All validation is performed by the exported `validateFundAmount(rawValue, maxAmount, currency)` function:
+
+| Rule                  | Error copy key                         | Detail                                                                 |
+| --------------------- | -------------------------------------- | ---------------------------------------------------------------------- |
+| Non-empty             | `invest.fundAmount.errorRequired`      | Empty or whitespace-only input                                         |
+| Numeric               | `invest.fundAmount.errorRequired`      | Non-numeric input                                                      |
+| Positive              | `invest.fundAmount.errorPositive`      | Zero or negative values                                                |
+| ≤ max balance         | `invest.fundAmount.errorExceedsBalance`| Amount exceeds the invoice `amountValue`                               |
+| Decimal precision     | `invest.fundAmount.errorPrecision`     | Exceeds allowed decimal places for the currency (2 for USD, 0 for JPY) |
+
+### Copy keys used
+
+All strings are sourced from `app/copy/en.js` under the `invest.fundAmount` namespace:
+
+| Key                    | Purpose                                         |
+| ---------------------- | ----------------------------------------------- |
+| `label`                | Input label                                     |
+| `placeholder`          | Input placeholder                               |
+| `helper`               | Helper text with `{max}` and `{currency}` tokens|
+| `expectedYieldLabel`   | Label prefix for the yield preview              |
+| `errorRequired`        | Validation error for empty / non-numeric input  |
+| `errorPositive`        | Validation error for zero or negative values    |
+| `errorExceedsBalance`  | Validation error with `{max}` and `{currency}`  |
+| `errorPrecision`       | Validation error with `{decimals}` and `{currency}` |
+| `submitLabel`          | Submit button label                             |
+| `submittingLabel`      | Submit button label while in flight             |
+
+### Accessibility
+
+- The `<input>` is linked to its helper text and error message via `aria-describedby`. The IDs are generated with `useId()` so they are unique even if the component appears more than once on a page.
+- `aria-invalid="true"` is set on the input when a validation error is visible (after the user has blurred the field or attempted to submit).
+- The error message is rendered with `role="alert"` and `aria-live="polite"` so screen readers announce it without requiring focus to move to the error.
+- The expected-yield preview region carries `aria-live="polite"` so screen readers announce live yield updates as the user types.
+- The submit `<Button>` is disabled (and `aria-busy` is set via the `Button` component's `loading` prop) while submission is in flight.
+
+### Example
+
+```jsx
+import FundAmountInput from "@/components/FundAmountInput";
+
+// On the invoice detail page for an Open invoice
+<FundAmountInput
+  maxAmount={invoice.amountValue}
+  currency={invoice.currency}
+  yieldValue={invoice.yieldValue}
+  onSubmit={async (amount) => {
+    await fundInvoiceOnChain(invoice.id, amount);
+  }}
+  disabled={walletState !== "connected"}
+/>
+```
+
+### Exported utility functions
+
+#### `validateFundAmount(rawValue, maxAmount, currency)`
+
+Returns a localized error string on failure, or `null` when the value is valid.
+
+```js
+import { validateFundAmount } from "@/components/FundAmountInput";
+
+validateFundAmount("", 10000, "USD");       // "Please enter an amount."
+validateFundAmount("0", 10000, "USD");      // "Amount must be greater than zero."
+validateFundAmount("99999", 10000, "USD"); // "Amount cannot exceed …"
+validateFundAmount("100.999", 10000, "USD"); // "Amount must not exceed 2 decimal places …"
+validateFundAmount("500", 10000, "USD");   // null (valid)
+```
+
+#### `deriveExpectedYield(enteredAmount, totalAmount, yieldValue)`
+
+Returns the expected yield as a numeric amount.
+
+```js
+import { deriveExpectedYield } from "@/components/FundAmountInput";
+
+deriveExpectedYield(5000, 10000, 8.2); // 410  (5000 × 8.2% = $410 yield)
+deriveExpectedYield(10000, 10000, 8.2); // 820 (full amount)
 ```
 
 ---
