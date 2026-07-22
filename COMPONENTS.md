@@ -14,6 +14,7 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 - [InvoiceList](#invoicelist)
 - [InvoiceListSkeleton](#invoicelistskeleton)
 - [InvoiceSearch](#invoicesearch)
+- [InvoiceTimeline](#invoicetimeline)
 - [NavMenu](#navmenu)
 - [StatusPill](#statuspill)
 - [ThemeToggle](#themetoggle)
@@ -303,6 +304,104 @@ function MarketplaceFilters() {
     <InvoiceSearch value={searchQuery} onChange={setSearchQuery} />
   );
 }
+```
+
+---
+
+## InvoiceTimeline
+
+Renders an accessible vertical lifecycle timeline for an invoice detail page. Visualises the five canonical stages every invoice passes through and marks the current stage based on the invoice's `status` field.
+
+**File:** `components/InvoiceTimeline.jsx`
+
+### Lifecycle stages
+
+Stages are rendered in this fixed order:
+
+| Order | Stage key  | Display label | Copy key                              |
+| ----- | ---------- | ------------- | ------------------------------------- |
+| 1     | `uploaded` | Uploaded      | `copy.invoiceTimeline.stageUploaded`  |
+| 2     | `verified` | Verified      | `copy.invoiceTimeline.stageVerified`  |
+| 3     | `listed`   | Listed        | `copy.invoiceTimeline.stageListed`    |
+| 4     | `funded`   | Funded        | `copy.invoiceTimeline.stageFunded`    |
+| 5     | `settled`  | Settled       | `copy.invoiceTimeline.stageSettled`   |
+
+### Status → current stage mapping
+
+The `status` prop (one of `INVOICE_STATUSES`) is mapped to the active stage key via `resolveCurrentStage`:
+
+| Invoice status | Current stage | Rationale                                      |
+| -------------- | ------------- | ---------------------------------------------- |
+| `"Open"`       | `listed`      | Invoice is listed and awaiting funding         |
+| `"Funded"`     | `funded`      | Invoice has been funded                        |
+| `"Settled"`    | `settled`     | Invoice has fully settled                      |
+| `"Overdue"`    | `listed`      | Listed but past maturity without being funded  |
+| _(unknown)_    | _(none)_      | All stages render as pending; no stage is current |
+
+### Visual state of each stage
+
+| Stage state | Dot colour     | Label colour     | Copy key                              |
+| ----------- | -------------- | ---------------- | ------------------------------------- |
+| Completed   | `bg-emerald-400` (mirrors `STATUS_PILL_MAP.Settled`) | `text-emerald-300` | `copy.invoiceTimeline.statusCompleted` |
+| Current     | `bg-cyan-400`  (mirrors `STATUS_PILL_MAP.Open`)      | `text-cyan-300 font-semibold` | `copy.invoiceTimeline.statusCurrent` |
+| Pending     | `bg-slate-700`                                       | `text-slate-500` | `copy.invoiceTimeline.statusPending`  |
+
+Tone classes are derived from `STATUS_PILL_MAP` in `lib/types/invoice.js` so timeline and pill colours are always in lock-step.
+
+### Props
+
+| Prop         | Type     | Default | Description                                                                                              |
+| ------------ | -------- | ------- | -------------------------------------------------------------------------------------------------------- |
+| `status`     | `string` | —       | Invoice status value (`"Open"`, `"Funded"`, `"Settled"`, `"Overdue"`). Unknown/missing → all pending.   |
+| `timestamps` | `object` | `{}`    | Optional map of stage keys to display strings (e.g. `{ uploaded: "2025-01-10" }`). Missing keys are silently skipped — no placeholder, no error. |
+| `className`  | `string` | `""`    | Additional Tailwind classes forwarded to the root `<section>`.                                           |
+
+### Named exports
+
+| Export                | Type       | Description                                                                               |
+| --------------------- | ---------- | ----------------------------------------------------------------------------------------- |
+| `default`             | Component  | The timeline component                                                                    |
+| `TIMELINE_STAGES`     | `object`   | Frozen enum of stage keys: `UPLOADED`, `VERIFIED`, `LISTED`, `FUNDED`, `SETTLED`         |
+| `STAGE_ORDER`         | `string[]` | Ordered array of stage keys used to render the timeline                                   |
+| `resolveCurrentStage` | `function` | `(status) => stageKey | null` — maps an invoice status to the active stage key           |
+
+### Accessibility
+
+- The component root is a `<section>` with `aria-labelledby` pointing to the `<h2>` heading inside it. Screen readers announce the section as _"Invoice lifecycle"_ (or the copy-equivalent).
+- Stages are rendered as an `<ol>` (ordered list) so the sequence is conveyed semantically. The list carries `aria-label` matching the heading text.
+- **`aria-current="step"`** is set on the currently active stage `<li>`. Only one stage bears this attribute at a time.
+- Each `<li>` carries an `aria-label` of the form `"<Stage name> — <Completed | Current | Pending>"` so state is conveyed in text, not by colour alone (WCAG 2.1 §1.4.1).
+- Decorative dot, connector, and SVG checkmark elements are `aria-hidden="true"` / `focusable="false"`.
+- Passes `jest-axe` checks for every lifecycle state (no status, Open, Funded, Settled, Overdue).
+
+### Graceful handling of missing timestamps
+
+- If `timestamps` is omitted or an empty object, no timestamp text is rendered — stages still display correctly.
+- If a specific stage key is absent from `timestamps`, that stage's timestamp is simply omitted; chronological order and status state are preserved.
+- `null`, `undefined`, and empty string values for a timestamp key are silently skipped; no placeholder text or error is shown.
+- Extra / unknown keys in `timestamps` are ignored without error.
+
+### Example
+
+```jsx
+import InvoiceTimeline from "@/components/InvoiceTimeline";
+
+// Basic usage — status only, no timestamps
+<InvoiceTimeline status={invoice.status} />
+
+// With optional timestamps
+<InvoiceTimeline
+  status="Funded"
+  timestamps={{
+    uploaded: "2025-01-10",
+    verified: "2025-01-12",
+    listed:   "2025-01-15",
+    funded:   "2025-02-04",
+  }}
+/>
+
+// On the invoice detail page (with spacing class)
+<InvoiceTimeline status={invoice.status} timestamps={invoice.timestamps} className="mb-6" />
 ```
 
 ---

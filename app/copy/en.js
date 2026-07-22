@@ -164,6 +164,16 @@
  * @property {string} globalError.description
  * @property {string} globalError.reloadLabel
  * @property {string} globalError.homeLabel
+ * @property {Object} invoiceTimeline - Invoice lifecycle timeline copy
+ * @property {string} invoiceTimeline.heading
+ * @property {string} invoiceTimeline.stageUploaded
+ * @property {string} invoiceTimeline.stageVerified
+ * @property {string} invoiceTimeline.stageListed
+ * @property {string} invoiceTimeline.stageFunded
+ * @property {string} invoiceTimeline.stageSettled
+ * @property {string} invoiceTimeline.statusCompleted
+ * @property {string} invoiceTimeline.statusCurrent
+ * @property {string} invoiceTimeline.statusPending
  */
 
 /** @type {CopyDictionary} */
@@ -355,5 +365,16 @@ export const copy = {
     description: "A layout-level error occurred. Please reload the page or return home.",
     reloadLabel: "Reload page",
     homeLabel: "\u2190 Back to LiquiFact",
+  },
+  invoiceTimeline: {
+    heading: "Invoice lifecycle",
+    stageUploaded: "Uploaded",
+    stageVerified: "Verified",
+    stageListed: "Listed",
+    stageFunded: "Funded",
+    stageSettled: "Settled",
+    statusCompleted: "Completed",
+    statusCurrent: "Current",
+    statusPending: "Pending",
   },
 };

@@ -27,6 +27,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import NavMenu from "@/components/NavMenu";
 import StatusPill from "@/components/StatusPill";
+import InvoiceTimeline from "@/components/InvoiceTimeline";
 import { copy } from "@/app/copy/en";
 import { INVALID_VALUE_FALLBACK, formatCurrency, formatAmount } from "@/lib/format/currency";
 import { getInvoiceById } from "../lib";
@@ -199,6 +200,13 @@ export default async function InvoiceDetailPage({ params }) {
             </div>
           </dl>
         </section>
+
+        {/* ── Lifecycle timeline (server-rendered, status-driven) ───────── */}
+        <InvoiceTimeline
+          status={invoice.status}
+          timestamps={invoice.timestamps}
+          className="mb-6"
+        />
 
         {/* ── Interactive controls (client boundary) ────────────────── */}
         <FundActions

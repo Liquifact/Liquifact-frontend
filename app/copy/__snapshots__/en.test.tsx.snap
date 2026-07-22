@@ -107,6 +107,17 @@ exports[`copy dictionary — snapshot of full dictionary matches the full copy d
     "title": "Invest",
     "yieldDisclaimer": "Note: Yield references are educational only and reflect on-chain basis-point assumptions. Invoice contracts settle at maturity.",
   },
+  "invoiceTimeline": {
+    "heading": "Invoice lifecycle",
+    "stageFunded": "Funded",
+    "stageListed": "Listed",
+    "stageSettled": "Settled",
+    "stageUploaded": "Uploaded",
+    "stageVerified": "Verified",
+    "statusCompleted": "Completed",
+    "statusCurrent": "Current",
+    "statusPending": "Pending",
+  },
   "invoices": {
     "backToHome": "← LiquiFact",
     "connectWallet": "Connect Wallet",
