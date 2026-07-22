@@ -7,15 +7,17 @@ and numeric values used for calculations.
 
 ## Source of truth
 
-`app/invest/lib.js` is the only source of mock invoice fixtures. It exports:
+`app/invest/lib.js` is the source of mock invoice fixtures for the `/invest`
+marketplace and detail routes. It exports:
 
 - `MOCK_INVOICES`, the canonical fixture array;
 - `loadMockInvoices()`, the asynchronous list loader used by default on
   `/invest`; and
 - `getInvoiceById(id)`, the synchronous lookup used by `/invest/[id]`.
 
-Do not copy the fixture array into a component or test. Import these exports so
-that list, detail, and test behavior cannot drift apart.
+New code for those routes should import these exports rather than copying the
+fixture array into another component or test. That keeps the marketplace and
+detail behavior aligned.
 
 In a browser, `loadMockInvoices()` first checks
 `window.__TEST_MOCK_INVOICES__`. Jest and Playwright can set that value before
@@ -62,12 +64,18 @@ mock fixtures and therefore is not one of the nine required mock fields.
 | --- | --- | --- |
 | Marketplace list | `app/invest/page.js` | `InvestMarketplace({ loadInvoices = loadMockInvoices })` |
 | Invoice detail | `app/invest/[id]/page.js` | `getInvoiceById(id)` |
-| Reusable invoice list | `components/InvoiceList.jsx` | Injectable `loadInvoices` prop, defaulting to `loadMockInvoices` |
+| Legacy reusable invoice list | `components/InvoiceList.jsx` | A separate local fixture and injectable `loadInvoices` prop |
 | Tests | Jest and Playwright suites | Direct imports or `window.__TEST_MOCK_INVOICES__` |
 
 Loaders must resolve to an array of invoice objects. The marketplace passes an
 `AbortSignal` in an options object, so a live loader should accept and honor
 that signal even though the mock loader currently ignores the argument.
+
+`components/InvoiceList.jsx` predates the `/invest` data module and still owns a
+different local fixture with a different lifecycle-status contract. It is not a
+consumer of `app/invest/lib.js`, and changing the marketplace loader does not
+change that component. Treat consolidating or migrating this legacy component
+as separate work rather than assuming that the `/invest` API seam covers it.
 
 ## Swap the marketplace list to the API
 
@@ -103,9 +111,11 @@ mock removal requires a live `fetchInvoiceById(id)` client for the planned
 `app/invest/[id]/page.js`. The returned object must follow the same normalized
 field contract as the list client so list and detail views cannot disagree.
 
-Once both routes use the API and no tests import the fixtures directly,
+Once both `/invest` routes use the API and no related tests import the fixtures
+directly,
 `MOCK_INVOICES`, `loadMockInvoices`, and `getInvoiceById` can be retired
-together.
+together from `app/invest/lib.js`. The separate fixture in
+`components/InvoiceList.jsx` must be migrated or retired independently.
 
 ## Verification checklist
 
