@@ -37,4 +37,22 @@ The lint step in CI runs `npm run lint`, which includes the `react/no-danger` ru
 
 ---
 
+## Untrusted External Data Sanitization & Clamping
+
+To prevent DOM bloat, UI layout corruption, and spoofing attacks from untrusted external or backend data sources, string fields rendered on the frontend are sanitized and clamped at the API boundary in `lib/api/invoices.js` via `clampAndSanitizeText`:
+
+1. **Control Character Stripping:** Non-printable ASCII control characters (`0x00`-`0x1F`, `0x7F`-`0x9F`) are stripped out.
+2. **Bidirectional (Bidi) Control Stripping:** Unicode directional formatting and override characters (`U+202A`–`U+202E`, `U+2066`–`U+2069`, `U+200E`, `U+200F`, `U+061C`) are removed to prevent text/number order spoofing.
+3. **Length Clamping:** String fields are bounded to safe maximum lengths (`issuer` and `reference` capped at 256 characters, `description` capped at 1024 characters).
+
+### Impacted Fields
+
+* `issuer`: Clamped to 256 characters.
+* `description`: Clamped to 1024 characters.
+* `reference`: Clamped to 256 characters.
+
+---
+
+_Last updated: 2026-07-23_
+
 _Last updated: 2026-06-27_

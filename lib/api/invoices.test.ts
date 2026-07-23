@@ -1,9 +1,35 @@
 // lib/api/invoices.test.ts
 /**
- * Tests for fetchInvestableInvoices API client.
+ * Tests for fetchInvestableInvoices API client and text clamping/sanitization.
  */
 
-import { fetchInvestableInvoices, InvoiceTimeoutError } from "./invoices";
+import { fetchInvestableInvoices, clampAndSanitizeText, InvoiceTimeoutError } from "./invoices";
+
+describe("clampAndSanitizeText", () => {
+  it("returns non-string values as-is or null", () => {
+    expect(clampAndSanitizeText(null)).toBeNull();
+    expect(clampAndSanitizeText(undefined)).toBeNull();
+    expect(clampAndSanitizeText(123 as any)).toBe(123);
+  });
+
+  it("clamps oversized strings to specified maxLength", () => {
+    const multiMegabyteString = "A".repeat(2 * 1024 * 1024);
+    const result = clampAndSanitizeText(multiMegabyteString, 256);
+    expect(result?.length).toBe(256);
+    expect(result).toBe("A".repeat(256));
+  });
+
+  it("strips ASCII control characters and C1 controls", () => {
+    const inputWithControls = "Hello\x00\x07World\x1F\x7F!";
+    expect(clampAndSanitizeText(inputWithControls)).toBe("HelloWorld!");
+  });
+
+  it("strips bidi overrides and direction control codepoints", () => {
+    // \u202E is RIGHT-TO-LEFT OVERRIDE, \u202D is LEFT-TO-RIGHT OVERRIDE, \u200E is LRM
+    const bidiSpoof = "Issuer\u202E\u202D\u200E Corp";
+    expect(clampAndSanitizeText(bidiSpoof)).toBe("Issuer Corp");
+  });
+});
 
 describe("fetchInvestableInvoices", () => {
   afterEach(() => {
@@ -11,11 +37,13 @@ describe("fetchInvestableInvoices", () => {
     delete process.env.NEXT_PUBLIC_API_URL;
   });
 
-  it("fetches invoices and returns normalized data", async () => {
+  it("fetches invoices and returns normalized, sanitized data", async () => {
     const mockData = [
       {
         id: "1",
         issuer: "Test Corp",
+        description: "Valid invoice description",
+        reference: "REF-101",
         amount: "1000",
         currency: "USD",
         dueDate: "2026-12-31",
@@ -35,6 +63,35 @@ describe("fetchInvestableInvoices", () => {
       expect.objectContaining({ method: "GET" })
     );
     expect(result).toEqual(mockData);
+  });
+
+  it("clamps and sanitizes oversized, control-char, and RTL-override invoice fields", async () => {
+    const oversizedIssuer = "B".repeat(500);
+    const bidiSpoofedDescription = "Desc\u202E\u2066\u202Aription";
+    const controlCharReference = "REF\x00\x1F123";
+
+    const hostilePayload = [
+      {
+        id: "inv-hostile",
+        issuer: oversizedIssuer,
+        description: bidiSpoofedDescription,
+        reference: controlCharReference,
+        amount: "5000",
+      },
+    ];
+
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => hostilePayload,
+    });
+    (global as any).fetch = fetchMock;
+
+    const [sanitized] = await fetchInvestableInvoices();
+
+    expect(sanitized.issuer).toBe("B".repeat(256));
+    expect(sanitized.issuer.length).toBe(256);
+    expect(sanitized.description).toBe("Description");
+    expect(sanitized.reference).toBe("REF123");
   });
 
   it("uses NEXT_PUBLIC_API_URL when set", async () => {
@@ -154,6 +211,8 @@ describe("fetchInvestableInvoices", () => {
       {
         id: null,
         issuer: null,
+        description: null,
+        reference: null,
         amount: null,
         currency: null,
         dueDate: null,
@@ -171,8 +230,6 @@ describe("fetchInvestableInvoices", () => {
     await fetchInvestableInvoices({ signal: controller.signal });
 
     const usedSignal = fetchMock.mock.calls[0][1].signal as AbortSignal;
-    // The function wraps the caller signal in its own controller, so the signal
-    // passed to fetch is a different AbortSignal instance.
     expect(usedSignal).toBeInstanceOf(AbortSignal);
     expect(usedSignal).not.toBe(controller.signal);
   });
