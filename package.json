@@ -10,6 +10,8 @@
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "test": "jest",
+    "test:unit": "jest --selectProjects unit",
+    "test:a11y": "jest --selectProjects a11y",
     "size-limit": "size-limit"
   },
   "dependencies": {
