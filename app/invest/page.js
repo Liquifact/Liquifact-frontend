@@ -13,6 +13,7 @@ import InvoiceFilters, {
   parseSortState,
 } from "@/components/InvoiceFilters";
 import NavMenu from "@/components/NavMenu";
+import useDebouncedValue from "@/lib/hooks/useDebouncedValue";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
@@ -178,11 +179,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   }, []);
 
   // Debounced search term
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchQuery), SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [searchQuery]);
+  const debouncedSearch = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
 
   // Reset the visible page count to PAGE_SIZE whenever the filters or debounced
   // search term change, using the React-sanctioned "adjust state during render"
