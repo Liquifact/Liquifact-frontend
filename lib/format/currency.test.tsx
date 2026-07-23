@@ -12,6 +12,9 @@ import {
 describe("formatCurrency - Table Driven Tests", () => {
   it.each([
     { input: 12500, options: undefined, expected: "$12,500" },
+    { input: 0, options: undefined, expected: "$0" },
+    { input: -42.5, options: undefined, expected: "-$42.50" },
+    { input: 987654321.99, options: undefined, expected: "$987,654,321.99" },
     { input: "12,500.75", options: undefined, expected: "$12,500.75" },
     { input: 7800, options: { currency: "EUR" }, expected: "€7,800" },
     { input: 12500, options: { currency: "USD", locale: "en-IN" }, expected: "$12,500" },
@@ -20,6 +23,7 @@ describe("formatCurrency - Table Driven Tests", () => {
     { input: 50, options: { currency: "USD", locale: "bad-locale" }, expected: "$50" },
     { input: 50.25, options: { currency: "not-a-code" }, expected: "$50.25" },
     { input: 50, options: { currency: "", locale: "" }, expected: "$50" },
+    { input: 50, options: { currency: undefined as unknown as string }, expected: "$50" },
     { input: 50, options: { currency: 123 as unknown as string }, expected: "$50" },
     { input: null, options: undefined, expected: INVALID_VALUE_FALLBACK },
     { input: undefined, options: undefined, expected: INVALID_VALUE_FALLBACK },
