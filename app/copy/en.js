@@ -179,6 +179,18 @@
  * @property {string} invoiceTimeline.statusCompleted
  * @property {string} invoiceTimeline.statusCurrent
  * @property {string} invoiceTimeline.statusPending
+ * @property {Object} settings - Settings page copy
+ * @property {string} settings.title
+ * @property {string} settings.description
+ * @property {string} settings.themeLabel
+ * @property {string} settings.themeLight
+ * @property {string} settings.themeDark
+ * @property {string} settings.themeSystem
+ * @property {string} settings.themeDesc
+ * @property {string} settings.displayLabel
+ * @property {string} settings.compactRows
+ * @property {string} settings.compactRowsDesc
+ * @property {string} settings.announceThemeChanged
  */
 
 /** @type {CopyDictionary} */
@@ -386,5 +398,18 @@ export const copy = {
     statusCompleted: "Completed",
     statusCurrent: "Current",
     statusPending: "Pending",
+  },
+  settings: {
+    title: "Settings",
+    description: "Customise your experience on LiquiFact.",
+    themeLabel: "Theme",
+    themeLight: "Light",
+    themeDark: "Dark",
+    themeSystem: "System",
+    themeDesc: "Choose between light, dark, or system-following theme.",
+    displayLabel: "Display",
+    compactRows: "Compact rows",
+    compactRowsDesc: "Reduce vertical spacing in invoice lists for a denser view.",
+    announceThemeChanged: "Theme changed to {theme}.",
   },
 };
