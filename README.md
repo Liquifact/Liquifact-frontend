@@ -333,7 +333,7 @@ We welcome UI improvements, new pages (e.g., invoice upload, marketplace), and S
 
 ## UI Components
 
-See COMPONENTS.md for the full component library reference — props, accessibility notes, and usage examples for every shared component (`ErrorBanner`, `Footer`, `InvoiceListSkeleton`, `ToastProvider`, `UploadZone`, `WalletProvider`, `WalletStatus`).
+See [COMPONENTS.md](COMPONENTS.md) for the full component library reference — props, form states, accessibility notes, and usage examples for every shared component (`ErrorBanner`, `Footer`, `FundAmountInput`, `InvoiceFilters`, `InvoiceListSkeleton`, `ToastProvider`, `UploadZone`, `WalletProvider`, `WalletStatus`).
 
 - **WalletStatus Button variants**: `WalletStatus` delegates all button rendering to the shared `Button` component. `getStateConfig` returns a `buttonVariant` key that maps directly to `<Button variant={config.buttonVariant}>`. The `loading` prop is derived independently (`state === WALLET_STATES.CONNECTING`) so `Button` can render its own `Spinner` and set `aria-busy`. The mapping is:
 
@@ -827,7 +827,7 @@ We welcome UI improvements, new pages (e.g. invoice upload, marketplace), and St
 
 ## UI Components
 
-See [COMPONENTS.md](COMPONENTS.md) for the full component library reference — props, accessibility notes, and usage examples for every shared component (`ErrorBanner`, `Footer`, `InvoiceListSkeleton`, `ToastProvider`, `UploadZone`, `WalletProvider`, `WalletStatus`).
+See [COMPONENTS.md](COMPONENTS.md) for the full component library reference — props, form states, accessibility notes, and usage examples for every shared component (`ErrorBanner`, `Footer`, `FundAmountInput`, `InvoiceFilters`, `InvoiceListSkeleton`, `ToastProvider`, `UploadZone`, `WalletProvider`, `WalletStatus`).
 
 - **UploadZone Progress Indicator**: During the upload phase, if a `progress` prop (number between `0` and `100`) is supplied to `UploadZone`, a determinate progress bar (`role="progressbar"`) is displayed. If no `progress` is supplied, it falls back to an indeterminate spinner. Smooth transitions are disabled when `prefers-reduced-motion` is active.
 - **UploadZone Reset Flow**: After a successful upload (status = `"success"`), an **"Upload another invoice"** button appears below the success message. Clicking it:

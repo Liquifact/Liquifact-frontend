@@ -10,8 +10,10 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 - [ErrorBanner](#errorbanner)
 - [Footer](#footer)
 - [FundAmountInput](#fundamountinput)
+- [Form controls](#form-controls)
 - [Hooks](#hooks)
 - [InvoiceList](#invoicelist)
+- [InvoiceFilters](#invoicefilters)
 - [InvoiceListSkeleton](#invoicelistskeleton)
 - [InvoiceSearch](#invoicesearch)
 - [InvoiceTimeline](#invoicetimeline)
@@ -22,6 +24,68 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 - [UploadZone](#uploadzone)
 - [WalletStatus](#walletstatus)
 - [Formatting Utilities](#formatting-utilities)
+
+---
+
+## Form controls
+
+`InvoiceFilters` keeps filter state in the consuming page and receives the
+current values through controlled props. It does not own invoice data, so a
+page can persist, reset, or submit the same filter state without reaching into
+the component's internals. The submit-oriented controls documented below are
+different: `FundAmountInput` and `UploadZone` own their transient input/file
+and submission state while exposing callbacks for the completed action.
+
+### InvoiceFilters
+
+**File:** `components/InvoiceFilters.jsx`
+
+`InvoiceFilters` renders the marketplace's yield, currency, maturity-date, and
+sort controls. It is controlled by the parent and accepts:
+
+| Prop | Type | Description |
+| --- | --- | --- |
+| `filters` | `DEFAULT_FILTERS`-shaped object | Current values for `yieldMin`, `yieldMax`, `currency`, `maturityFrom`, `maturityTo`, `sort`, `sortDir`, and `statuses`. |
+| `onFilterChange` | `(nextFilters) => void` | Receives a complete next filter object after any control changes. |
+| `onClearFilters` | `() => void` | Clears the active structured filters. The button is disabled when no structured filter is active. |
+
+Use `DEFAULT_FILTERS` for the initial state. Empty yield/date bounds are
+unbounded; currency buttons toggle `USD`, `EUR`, `GBP`, `JPY`, or `CHF`; and
+sort direction toggles between ascending and descending for amount and yield.
+The currency toolbar uses a roving tab stop. The related `StatusLegendFilter`
+uses `aria-pressed` for each status button, keeping keyboard interaction and
+selection state visible to assistive technology.
+
+```jsx
+import InvoiceFilters, { DEFAULT_FILTERS } from "@/components/InvoiceFilters";
+
+const [filters, setFilters] = useState(DEFAULT_FILTERS);
+
+<InvoiceFilters
+  filters={filters}
+  onFilterChange={setFilters}
+  onClearFilters={() => setFilters(DEFAULT_FILTERS)}
+/>;
+```
+
+The module also exports pure helpers (`matchesFilters`, `matchesYieldRange`,
+`matchesMaturityRange`, `parseSortState`, and `hasAnyActiveFilters`) for
+filtering before pagination. Keep those predicates aligned with the fields
+above instead of duplicating validation in a route or list component.
+
+### Form state checklist
+
+- `idle` / empty: render `DEFAULT_FILTERS` and no active-filter summary.
+- Active: update the complete filter object through `onFilterChange` and show
+  removable chips with `ActiveFilterSummary` when filters are set.
+- Loading or submitting: disable the relevant submit control in the owning
+  form and preserve controlled values until the request resolves.
+- Error: keep validation and server errors in the owning page so the same field
+  values remain available after a retry.
+
+`FundAmountInput` and `UploadZone` are the submit-oriented controls in this
+reference. Their complete props, validation rules, states, accessibility
+notes, and minimal examples are documented in the sections below.
 
 ---
 
