@@ -382,72 +382,81 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           </div>
         </fieldset>
 
-        {/* Error state – retryable */}
-        {loadError ? (
-          <ErrorBanner
-            title={copy.invest.errorTitle}
-            description={loadError}
-            actionLabel={copy.invest.retryAction}
-            onAction={reload}
-          />
-        ) : invoices === null ? (
-          <InvoiceListSkeleton rows={3} />
-        ) : invoices.length === 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
-            {copy.invest.emptyState}
-          </div>
-        ) : filteredInvoices.length === 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
-            {copy.invest.noMatchFilter}
-          </div>
-        ) : (
-          <>
-            <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
-              {filteredInvoices.slice(0, visibleCount).map((inv) => (
-                <li key={inv.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <Link
-                      href={`/invest/${inv.id}`}
-                      className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
-                    >
-                      {inv.issuer}
-                    </Link>
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
-                      {inv.status}
-                    </span>
-                  </div>
-                  <div className="flex gap-6 text-sm text-slate-400">
-                    <span>
-                      {inv.currency}&nbsp;{inv.amount}
-                    </span>
-                    <span>
-                      {copy.invest.labelYield}
-                      {inv.yield}
-                    </span>
-                    <span>
-                      {copy.invest.labelMaturity}
-                      {inv.dueDate}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            {visibleCount < filteredInvoices.length && (
-              <button
-                ref={loadMoreRef}
-                type="button"
-                onClick={handleLoadMore}
-                aria-label={copy.invest.loadMoreAriaLabel}
-                className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50"
-              >
-                {copy.invest.loadMore}
-              </button>
-            )}
-            <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
-              {copy.invest.yieldDisclaimer}
+        <div
+          role="region"
+          aria-label={copy.invest.listAriaLabel}
+          aria-busy={invoices === null && !loadError}
+        >
+          {/* Error state – retryable */}
+          {loadError ? (
+            <ErrorBanner
+              title={copy.invest.errorTitle}
+              description={loadError}
+              actionLabel={copy.invest.retryAction}
+              onAction={reload}
+            />
+          ) : invoices === null ? (
+            <InvoiceListSkeleton rows={3} />
+          ) : invoices.length === 0 ? (
+            <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+              {copy.invest.emptyState}
             </div>
-          </>
-        )}
+          ) : filteredInvoices.length === 0 ? (
+            <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+              {copy.invest.noMatchFilter}
+            </div>
+          ) : (
+            <>
+              <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
+                {filteredInvoices.slice(0, visibleCount).map((inv) => (
+                  <li
+                    key={inv.id}
+                    className="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <Link
+                        href={`/invest/${inv.id}`}
+                        className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                      >
+                        {inv.issuer}
+                      </Link>
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
+                        {inv.status}
+                      </span>
+                    </div>
+                    <div className="flex gap-6 text-sm text-slate-400">
+                      <span>
+                        {inv.currency}&nbsp;{inv.amount}
+                      </span>
+                      <span>
+                        {copy.invest.labelYield}
+                        {inv.yield}
+                      </span>
+                      <span>
+                        {copy.invest.labelMaturity}
+                        {inv.dueDate}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {visibleCount < filteredInvoices.length && (
+                <button
+                  ref={loadMoreRef}
+                  type="button"
+                  onClick={handleLoadMore}
+                  aria-label={copy.invest.loadMoreAriaLabel}
+                  className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50"
+                >
+                  {copy.invest.loadMore}
+                </button>
+              )}
+              <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
+                {copy.invest.yieldDisclaimer}
+              </div>
+            </>
+          )}
+        </div>
       </main>
     </div>
   );
