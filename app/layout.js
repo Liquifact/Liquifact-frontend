@@ -7,14 +7,41 @@ import ThemeToggle, { THEME_STORAGE_KEY, THEMES } from "../components/ThemeToggl
 import ShortcutHelpDialog from "../components/ShortcutHelpDialog";
 import { copy } from "./copy/en";
 
+// Geist Sans — loaded with the subset, display, preload, and
+// adjustFontFallback options that minimise first-paint layout shift.
+// Only the weights actually used in the app are requested so we don't
+// ship unused font bytes:
+//   400 = body default / font-normal
+//   500 = font-medium  (badges, buttons, labels)
+//   600 = font-semibold (headings, chips, skip-link)
+//   700 = font-bold    (h1 / h2, hero copy, brand mark)
+//   800 = font-extrabold (the muted large "404" numeral in not-found.js)
+// `display: "swap"` keeps text visible during the network round-trip
+// instead of producing a flash of invisible text (FOIT). Combined with
+// `adjustFontFallback: true` Next.js emits a fallback `@font-face` whose
+// metrics closely track Geist's own, so the swap is visually invisible.
+// `preload: true` adds a <link rel="preload"> so the font starts
+// downloading in parallel with the critical HTML/CSS rather than after
+// the first paint.
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
+  adjustFontFallback: true,
+  weight: ["400", "500", "600", "700", "800"],
 });
 
+// Geist Mono is used for addresses, invoice hashes, balances and other
+// monospaced labels. None of those call sites override the weight, so a
+// single 400 weight is sufficient and keeps the Mono payload minimal.
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
+  adjustFontFallback: true,
+  weight: ["400"],
 });
 
 export const metadata = {

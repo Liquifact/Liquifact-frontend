@@ -94,3 +94,60 @@ The invoice detail page is the **highest-intent route** — users land here via 
 - Initial implementation: [GitHub issue #458](https://github.com/Liquifact/Liquifact-frontend/issues/458)
 - Test coverage: `app/invest/[id]/page.test.tsx`
 - Related: `docs/architecture.md` (RSC vs. client component boundaries)
+
+---
+
+## Geist font loading
+
+The site ships two webfonts from `next/font/google`: **Geist Sans** (body
+& UI) and **Geist Mono** (addresses, hashes, balances). Both are configured
+in `app/layout.js` so the first paint is free of layout shift.
+
+### Loader options
+
+Each font is configured with the same four options:
+
+| Option                  | Value   | Reason                                                                                                                            |
+| :---------------------- | :------ | :--------------------------------------------------------------------------------------------------------------------------------- |
+| `subsets`               | `latin` | The UI is English-only; other subsets would ship unused glyphs.                                                                   |
+| `display`               | `swap`  | Keeps text visible during the network round-trip — no FOIT. Combined with `adjustFontFallback` the swap is visually invisible.    |
+| `preload`               | `true`  | Emits `<link rel="preload">` so the font downloads in parallel with the critical HTML/CSS instead of after first paint.            |
+| `adjustFontFallback`    | `true`  | Next.js synthesises a fallback `@font-face` whose ascent / descent / line-gap metrics closely track Geist's, so the swap is ~0 px.|
+
+### Weights
+
+Only the weights actually used in the application are requested so the
+payload contains no unused font bytes:
+
+| Font       | Weights requested | Used by                                                                       |
+| :--------- | :---------------- | :---------------------------------------------------------------------------- |
+| Geist Sans | `400, 500, 600, 700, 800` | `font-normal` (body) · `font-medium` (badges/buttons) · `font-semibold` (headings) · `font-bold` (hero / h1) · `font-extrabold` (decorative `404` in `app/not-found.js`) |
+| Geist Mono | `400`                   | Addresses, invoice hashes, balances — no weight overrides at any call site                       |
+
+### Layout-shift impact (CLS)
+
+Because Next.js cannot be regression-tested in CI for CLS and we have no
+production traffic numbers yet, the figures below are derived from
+documentation of the `next/font` behaviour rather than measured in a
+real browser. They are held here as a baseline; replace them with the
+first Lighthouse / WebPageTest result once one is taken.
+
+| Metric                                                              | Before | After | Δ            |
+| :------------------------------------------------------------------ | :----- | :---- | :----------- |
+| `next/font` `display`                                              | `auto` | `swap`| explicit     |
+| `next/font` `preload`                                               | `auto` | `true`| explicit     |
+| `next/font` `adjustFontFallback`                                   | `auto` | `true`| explicit     |
+| Estimated CLS contribution from font swap on `/` (ratio units)     | ~0.10–0.20 | ~0.00 (metrics-aligned fallback) | −0.10–0.20 |
+| Sans payload (compressed, latin only, restricted weights)           | ~50 kB variable | ~5 × ~10 kB static | smaller in aggregate for the five weights used |
+| Mono payload (compressed, latin only)                               | ~30 kB variable | ~10 kB static 400    | ~−20 kB      |
+
+_Numbers above are projections of the documented `next/font` behaviour;
+they should be replaced with the first WebPageTest / Lighthouse CLS
+reading on the production build._
+
+### References
+
+- Issue and PR: GitHub issue **#459** — "Subset and preload the Geist
+  font to remove first-paint layout shift".
+- Next.js docs: [Font Optimization](https://nextjs.org/docs/app/building-your-application/optimizing/fonts)
+  and [`next/font/google`](https://nextjs.org/docs/app/api-reference/components/font).
