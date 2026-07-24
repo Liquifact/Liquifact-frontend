@@ -296,6 +296,22 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     return getInvoiceLoadAnnouncement(invoices);
   }, [filteredInvoices, filterActive, invoices, visibleCount, loadError]);
 
+  const [liveAnnouncement, setLiveAnnouncement] = useState("");
+  const prevSearchQueryRef = useRef(searchQuery);
+
+  useEffect(() => {
+    if (searchQuery !== prevSearchQueryRef.current) {
+      prevSearchQueryRef.current = searchQuery;
+      const t = setTimeout(() => {
+        setLiveAnnouncement(statusMessage);
+      }, SEARCH_DEBOUNCE_MS);
+      return () => clearTimeout(t);
+    } else {
+      prevSearchQueryRef.current = searchQuery;
+      setLiveAnnouncement(statusMessage);
+    }
+  }, [statusMessage, searchQuery]);
+
   // ── Load-more handler ──────────────────────────────────────────────────────
   /**
    * Appends the next PAGE_SIZE items and updates the live-region status.
@@ -326,9 +342,14 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
       <NavMenu />
 
       <main className="max-w-4xl mx-auto px-6 py-12">
-        {/* Polite live region – announced to screen readers on every state change */}
-        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-          {statusMessage}
+        {/* Visually-styled-but-SR-friendly live region */}
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className={liveAnnouncement ? "mb-4 text-sm text-slate-400 font-medium" : "sr-only"}
+        >
+          {liveAnnouncement}
         </div>
 
         <h1 className="text-2xl font-bold mb-2">{copy.invest.title}</h1>

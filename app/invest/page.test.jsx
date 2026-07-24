@@ -1278,6 +1278,62 @@ describe("InvestMarketplace renders from shared lib.js fixture", () => {
   it("getInvoiceById returns undefined for an id that does not exist in the shared fixture", () => {
     expect(getInvoiceById("inv-not-in-fixture")).toBeUndefined();
   });
+
+  describe("visually-styled live region count announcements", () => {
+    it("announces zero results when no invoices match filters", async () => {
+      const invoices = makeInvoices(3);
+      render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+      await flushTimers(0);
+
+      fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+        target: { value: "nonexistent" },
+      });
+      await flushTimers(SEARCH_DEBOUNCE_MS);
+
+      expect(screen.getByRole("status")).toHaveTextContent("No invoices match");
+    });
+
+    it("announces single result correctly", async () => {
+      const invoices = [
+        {
+          id: "inv-001",
+          issuer: "Unique Corp",
+          amount: "1,000",
+          currency: "USD",
+          dueDate: "2026-12-31",
+          yield: "5.0%",
+          status: "Open",
+        },
+      ];
+      render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+      await flushTimers(0);
+
+      expect(screen.getByRole("status")).toHaveTextContent("1 investable invoices loaded");
+    });
+
+    it("debounces rapid successive changes in search input", async () => {
+      const invoices = makeInvoices(5);
+      render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+      await flushTimers(0);
+
+      const searchInput = screen.getByLabelText("Search by issuer name");
+
+      // Rapidly type "i", then "is", then "iss"
+      fireEvent.change(searchInput, { target: { value: "i" } });
+      jest.advanceTimersByTime(100);
+      expect(screen.getByRole("status")).toHaveTextContent("5 investable invoices loaded");
+
+      fireEvent.change(searchInput, { target: { value: "is" } });
+      jest.advanceTimersByTime(100);
+      expect(screen.getByRole("status")).toHaveTextContent("5 investable invoices loaded");
+
+      fireEvent.change(searchInput, { target: { value: "iss" } });
+
+      await flushTimers(SEARCH_DEBOUNCE_MS);
+
+      expect(screen.getByRole("status")).toHaveTextContent("5 of 5 invoices match");
+    });
+  });
 });
 
 describe("lib helpers", () => {
