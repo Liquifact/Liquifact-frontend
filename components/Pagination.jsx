@@ -22,9 +22,8 @@ export function normalizePaginationParams({
   defaultPageSize = 10,
 } = {}) {
   const safeTotalItems = Number.isFinite(totalItems) ? Math.max(0, Math.trunc(totalItems)) : 0;
-  const safeDefaultPageSize = Number.isInteger(defaultPageSize) && defaultPageSize > 0
-    ? defaultPageSize
-    : 10;
+  const safeDefaultPageSize =
+    Number.isInteger(defaultPageSize) && defaultPageSize > 0 ? defaultPageSize : 10;
   const maxPageSize = Math.max(1, safeTotalItems > 0 ? safeTotalItems : safeDefaultPageSize);
 
   const parsedPage = Number.parseInt(String(page), 10);

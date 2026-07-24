@@ -38,6 +38,18 @@ Part of the LiquiFact stack: **frontend** (this repo) | **backend** (Express API
 
 ---
 
+## Architecture
+
+New to the codebase? Start with the
+[Frontend Architecture & Data Flow guide](docs/architecture.md) — it maps the
+App Router routes (and their loading/error files), the mock-vs-live data layers,
+and where wallet/toast/theme state lives.
+
+For the exact invoice fixture shape, formatted-versus-raw value rules, and the
+API migration seam, see the [Invoice data contract](docs/invoice-data.md).
+
+---
+
 ## API Integration
 
 For frontend/backend contract details see:
@@ -59,20 +71,33 @@ docs/api-integration.md
 
 ### Environment variables
 
-| Variable                      | Required | Default                 | Used by                                                          |
-| ----------------------------- | -------- | ----------------------- | ---------------------------------------------------------------- |
-| `NEXT_PUBLIC_API_URL`         | No       | `http://localhost:3001` | [app/page.js](app/page.js)                                       |
-| `NEXT_PUBLIC_STELLAR_NETWORK` | No       | Unset                   | [WALLET_INTEGRATION_CONTRACT.md](WALLET_INTEGRATION_CONTRACT.md) |
+For the full reference — purpose, defaults, required-vs-optional, and consuming module for every variable — see **[docs/configuration.md](docs/configuration.md)**.
+
+Quick summary:
+
+| Variable | Required | Default | Used by |
+|---|---|---|---|
+| `NEXT_PUBLIC_API_URL` | No | `http://localhost:3001` | `lib/api/invoices.js`, `app/page.js` |
+| `NEXT_PUBLIC_SITE_URL` | No | `http://localhost:3000` | `app/layout.js`, `app/sitemap.js`, `app/robots.js` |
+| `NEXT_PUBLIC_STELLAR_NETWORK` | No | *(unset)* | `lib/wallet/freighter.js` |
 
 `NEXT_PUBLIC_*` values are inlined by Next.js at **build time** and shipped to the browser. **Never store secrets here.**
 
 #### Build-time validation
 
-All `NEXT_PUBLIC_*` variables are validated by [`lib/config/env.js`](lib/config/env.js) when the module is first imported. If any variable is set to an invalid value (e.g. a malformed URL or an unsupported `STELLAR_NETWORK` value), the build fails immediately with a message listing every problem:
+All `NEXT_PUBLIC_*` variables are validated by [`lib/config/env.js`](lib/config/env.js) when the module is first imported, and the resulting config object is **frozen** so it cannot be mutated at runtime. Consumers (`app/page.js`, `lib/api/invoices.js`, `components/UploadZone.jsx`, `components/WalletProvider.jsx`) read the validated value instead of `process.env` directly.
+
+Validation rules:
+
+- **`NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_SITE_URL`** — must parse via `new URL(...)` **and** use an `http:` or `https:` scheme. Disallowed schemes (`javascript:`, `data:`, `file:`, `ftp:`, …) are rejected so a hostile value can never flow into a `fetch()` URL or CSP origin.
+- **`NEXT_PUBLIC_STELLAR_NETWORK`** — optional; when set it must be one of `testnet` or `public`. An empty string is treated as unset.
+
+If any variable is invalid, the build fails immediately with a message listing every problem:
 
 ```
 [env] Environment misconfiguration — fix before deploying:
   • NEXT_PUBLIC_API_URL: "not-a-url" is not a valid URL
+  • NEXT_PUBLIC_API_URL: "javascript:alert(1)" uses a disallowed scheme "javascript:" — only http/https are permitted
   • NEXT_PUBLIC_STELLAR_NETWORK: "mainnet" must be one of [testnet, public]
 ```
 
@@ -82,11 +107,117 @@ The invoices page header also uses the shared `NavMenu` component, replacing the
 
 ### Marketplace search
 
-The Invest page (`app/invest/page.js`) includes an issuer search field above the invoice list. Typing in the field filters invoices by case-insensitive substring match on `issuer`. Input is debounced at **200ms** so the text field stays responsive while filtering waits for settled input. When a filter is active, the `aria-live` status region announces the match count (e.g. "2 of 3 invoices match"). A distinct "no matches" state is shown when the filter yields zero results, separate from the empty-marketplace state.
+The Invest page (`app/invest/page.js`) includes an issuer search field (`components/InvoiceSearch.jsx`) above the invoice list.
+
+| Behaviour | Detail |
+| --------- | ------ |
+| **Component** | `InvoiceSearch` — controlled text input rendered above the filter panel |
+| **Match strategy** | Case-insensitive substring match on the `issuer` field |
+| **Debounce** | `SEARCH_DEBOUNCE_MS` (300 ms) — `debouncedSearch` state lags `searchQuery` so the DOM stays responsive while filtering waits for settled input |
+| **Filter wiring** | `filteredInvoices` (useMemo) applies `debouncedSearch` first, then the panel filters (currency, yield range, maturity range), then sort |
+| **Screen-reader announcement** | A polite `aria-live` region calls `getInvoiceLoadAnnouncement(invoices, { filterActive, filteredCount })` — when a filter is active it announces _"N of M invoices match"_; when the full list is shown it announces _"N investable invoices loaded"_ |
+| **No-match state** | Zero filtered results shows _"No invoices match your filters."_ — a distinct empty state separate from the zero-invoices marketplace state |
+| **Cleared query** | Clearing the search field (or removing all panel filters) restores the full unfiltered list and re-announces the total count |
+
+#### `getInvoiceLoadAnnouncement` signature
+
+```js
+// app/invest/page.js
+/**
+ * Returns the screen-reader announcement text for the current list state.
+ *
+ * @param {Array}   invoices              - The full (unfiltered) invoice array.
+ * @param {object}  [options]
+ * @param {boolean} [options.filterActive]  - True when any search/panel filter is applied.
+ * @param {number}  [options.filteredCount] - Number of invoices matching the active filter(s).
+ * @returns {string}
+ */
+export function getInvoiceLoadAnnouncement(invoices, { filterActive, filteredCount } = {})
+```
+
+Both `filterActive` and `filteredCount` are computed inside `InvestMarketplace` from live state (`hasAnyActiveFilters(filters, debouncedSearch)` and `filteredInvoices.length`) and are passed in explicitly — the function itself has no implicit dependencies on component state.
 
 ### Error recovery
 
 If the marketplace fails to load invoices, an `ErrorBanner` is rendered with a **"Try again"** action. Clicking it resets the component to the loading skeleton, cancels any stale in-flight request via `AbortController`, and re-invokes `loadInvoices`. The polite `aria-live` status region is cleared on retry and re-announced once the new load settles.
+
+### Error and Not-Found Boundaries
+
+LiquiFact ships three App Router boundary files that replace Next.js's default plain-white error and 404 pages with branded, accessible versions consistent with the dark slate/cyan theme.
+
+| File | When activated | Key behaviour |
+|---|---|---|
+| `app/error.js` | Any segment throws during render or data-fetching | Wraps `ErrorBanner`; logs via `reportError`; exposes a **Try again** reset button |
+| `app/not-found.js` | `notFound()` is called, or no route matches the URL | Branded 404 with decorative status code and a home link |
+| `app/global-error.js` | `app/layout.js` itself throws (rare, layout-level) | Must render `<html>`/`<body>` itself; uses inline styles as a defensive fallback |
+
+#### `app/error.js`
+
+- **Client component** (`"use client"`) — required by Next.js for the `reset` prop.
+- Calls `reportError(error, { digest: error.digest })` inside a `useEffect` so errors are forwarded to the pluggable observability sink (swap `console.error` for Sentry/Datadog via `lib/observability/reportError.js`).
+- `error.digest` is the server-side opaque identifier that correlates browser errors with server logs — it is never exposed in the UI.
+- The **Try again** button calls the `reset()` function provided by Next.js, which unmounts and re-mounts the failed subtree without a full navigation.
+- All copy strings are sourced from `copy.error.*` in `app/copy/en.js`.
+
+#### `app/not-found.js`
+
+- **Server component** — no `"use client"` directive needed.
+- The decorative "404" badge is `aria-hidden="true"` so screen readers hear only the meaningful `<h1>`.
+- The **"← Back to LiquiFact"** link uses the `.focus-ring` utility for a consistent, theme-aware keyboard outline.
+- All copy strings are sourced from `copy.notFound.*` in `app/copy/en.js`.
+
+#### `app/global-error.js`
+
+- **Client component** — required by Next.js for `reset`.
+- Renders its own `<html>` and `<body>` tags (Next.js requirement at the layout boundary).
+- Uses **inline styles** rather than Tailwind classes as a defensive measure — at this error level the global CSS bundle may not have loaded.
+- The error container uses `role="alert"` / `aria-live="assertive"` so screen readers immediately announce the critical failure.
+- All copy strings are sourced from `copy.globalError.*` in `app/copy/en.js`.
+
+#### Adding new copy
+
+All user-visible strings live in `app/copy/en.js`. To change wording, update the relevant key under `copy.error`, `copy.notFound`, or `copy.globalError` — never inline strings directly in the boundary files.
+
+### i18n / Copy Convention
+
+All user-facing strings are externalised into a single typed dictionary at `app/copy/en.js`. This ensures:
+
+- **Single source of truth** — every visible string has a canonical key, making copy edits and future localisation straightforward.
+- **Typed shape** — the dictionary is documented with a `@typedef` JSDoc comment describing every top-level namespace and its string keys, so missing keys are caught during code review.
+- **No inline strings** — components and pages must import `copy` from `app/copy/en` and reference keys rather than hard-coding user-visible text.
+
+**Convention checklist when adding new UI:**
+
+1. Add every user-visible string to `app/copy/en.js` under the appropriate namespace (`invest`, `wallet`, `uploadZone`, `error`, etc.).
+2. Update the `@typedef` JSDoc block at the top of `app/copy/en.js` to document new keys.
+3. Import `copy` in your component and reference the key directly (e.g., `copy.invest.title`).
+4. For strings with dynamic values, use `{placeholder}` tokens and call `.replace("{placeholder}", value)` at the call site.
+5. Add a key-presence assertion in `app/copy/en.test.tsx` for new keys.
+
+**Template placeholder conventions:**
+
+- Use `{placeholderName}` tokens in dictionary strings that need dynamic interpolation.
+- Call `.replace("{placeholderName}", value)` at the render site — never concatenate or interpolate inline.
+- All placeholders in `app/copy/en.js` are documented in `app/copy/en.test.tsx` via the "template placeholder consistency" describe block.
+
+### File Upload Security
+
+The invoice upload system (`components/UploadZone.jsx`) implements comprehensive security validation for PDF files:
+
+- **Magic byte validation**: Verifies files start with `%PDF-` magic bytes to prevent MIME type spoofing
+- **Zero-byte rejection**: Blocks empty files (0 bytes) to prevent processing invalid files
+- **Extension validation**: Ensures file extension matches `.pdf` (case-insensitive)
+- **Content-extension mismatch detection**: Rejects files where the extension doesn't match the actual content
+- **Filename sanitization**: Escapes HTML special characters in filenames to prevent XSS attacks
+- **Filename length capping**: Truncates displayed filenames to 50 characters to prevent layout abuse
+
+All validation is performed client-side using the `lib/validation/pdf.js` helper functions:
+
+- `isPdfMagicValid(file)` - Checks PDF magic bytes
+- `validatePdfFile(file)` - Comprehensive validation including size, extension, and content
+- `sanitizeFilename(filename, maxLength)` - Sanitizes and truncates filenames for safe display
+
+The validation never executes or trusts file content - it only inspects the file's bytes and metadata.
 
 ---
 
@@ -97,6 +228,9 @@ liquifact-frontend/
 ├── app/
 │   ├── layout.js           # Root layout, LiquiFact metadata
 │   ├── page.js             # Home (wallet CTA, API health check)
+│   ├── error.js            # Route-level error boundary (uses ErrorBanner)
+│   ├── not-found.js        # Global 404 boundary (branded, home link)
+│   ├── global-error.js     # Layout-level error boundary (renders html/body)
 │   ├── copy/en.js          # Centralised UI copy
 │   ├── invoices/           # SME invoice upload page
 │   └── invest/             # Investor marketplace
@@ -109,7 +243,11 @@ liquifact-frontend/
 │           └── not-found.js # Unknown invoice fallback
 ├── components/
 │   ├── WalletStatus.jsx    # Wallet connection UI
-│   └── WalletProvider.jsx  # Single source of truth for shared wallet state
+│   ├── WalletProvider.jsx  # Single source of truth for shared wallet state
+│   └── UploadZone.jsx      # Invoice upload with security validation
+├── lib/
+│   └── validation/
+│       └── pdf.js          # PDF validation helpers (magic bytes, sanitization)
 ├── public/
 ├── .env.local.example
 ├── eslint.config.mjs
@@ -130,6 +268,10 @@ All interactive elements (nav links, card links, buttons) use a consistent `focu
 
 - `.skip-link` — positions and reveals the skip link on focus
 - `.focus-ring` — reusable `focus-visible` outline for custom interactive elements
+
+### Home page heading structure
+
+The home page uses a single `<h1>` for the hero title and `<h2>` headings for the two CTA cards only. The "API status" panel label is a `<p>`, not a heading, so it does not appear in the heading outline.
 
 ---
 
@@ -193,7 +335,29 @@ We welcome UI improvements, new pages (e.g., invoice upload, marketplace), and S
 
 See COMPONENTS.md for the full component library reference — props, accessibility notes, and usage examples for every shared component (`ErrorBanner`, `Footer`, `InvoiceListSkeleton`, `ToastProvider`, `UploadZone`, `WalletProvider`, `WalletStatus`).
 
+- **WalletStatus Button variants**: `WalletStatus` delegates all button rendering to the shared `Button` component. `getStateConfig` returns a `buttonVariant` key that maps directly to `<Button variant={config.buttonVariant}>`. The `loading` prop is derived independently (`state === WALLET_STATES.CONNECTING`) so `Button` can render its own `Spinner` and set `aria-busy`. The mapping is:
+
+  | Wallet state   | `buttonVariant` | Visual signal                          |
+  | -------------- | --------------- | -------------------------------------- |
+  | DISCONNECTED   | `primary`       | Cyan CTA — invites connection          |
+  | CONNECTING     | `primary`       | Cyan + spinner via `loading=true`      |
+  | CONNECTED      | `secondary`     | Muted — signals destructive disconnect |
+  | ERROR          | `primary`       | Cyan — re-invites retry                |
+  | WRONG_NETWORK  | `warning`       | Amber — user must switch network       |
+  | NO_WALLET      | `external`      | Violet — opens install URL             |
+
 - **UploadZone Progress Indicator**: During the upload phase, if a `progress` prop (number between `0` and `100`) is supplied to `UploadZone`, a determinate progress bar (`role="progressbar"`) is displayed. If no `progress` is supplied, it falls back to an indeterminate spinner. Smooth transitions are disabled when `prefers-reduced-motion` is active.
+- **UploadZone Reset Flow**: After a successful upload (status = `"success"`), an **"Upload another invoice"** button appears below the success message. Clicking it:
+  - Clears the file, error, and status back to their initial (idle) values.
+  - Clears the hidden file `<input>` so the same file can be re-selected.
+  - Moves focus to the dropzone, enabling keyboard users to immediately start a fresh upload without re-navigating.
+  The reset flow is tested for: button visibility in success state, state clearing (file, error, status), re-upload after reset, stale error clearing, and focus management. The success message's `role="status"` / `aria-live="polite"` region is preserved and cleared on reset.
+- **WalletStatus button variant alignment** (fix: `refactor/wallet-02-fix-button-config`): `WalletStatus` now passes `variant={config.buttonVariant}` and `loading={state === WALLET_STATES.CONNECTING}` correctly to `Button`. The previous `getStateConfig` returned `buttonVariant: "loading"` for the connecting state — but `"loading"` is not a valid `Button` variant (`primary | secondary | warning | external | danger`), which caused `variantStyles["loading"]` to be `undefined` and silently broke the button's className. The fix:
+  - CONNECTING state now uses `buttonVariant: "primary"` (the loading spinner is rendered by `Button` via `loading={true}` and `aria-busy="true"`).
+  - `getStateConfig` is extracted to module scope with `walletData` and `error` as explicit parameters.
+  - `aria-describedby` on the wallet button is omitted when the connected address row is displayed (the `#wallet-helper-text` span is absent in that state, so the attribute would be a dangling IDREF reference).
+  - No inline spinner SVG is needed in `WalletStatus` — `Button`'s built-in `Spinner` handles it.
+
 
 ## Invoice List
 
@@ -489,6 +653,35 @@ The Invest page (`app/invest/page.js`) includes an issuer-name search field and 
 | **No-match state**              | A distinct empty state is shown when filters produce zero results, separate from the empty-marketplace state      |
 | **Pagination**                  | `components/Pagination.jsx` — page controls appear when filtered results exceed `PAGE_SIZE` (default 10)          |
 
+#### Pagination
+
+The Invest marketplace (`app/invest/page.js`) renders at most `PAGE_SIZE` (10) invoices at a time. When the filtered result set exceeds `PAGE_SIZE`, a **"Load more"** button is displayed below the list.
+
+| Behaviour | Detail |
+| --------- | ------ |
+| **Initial page** | First `PAGE_SIZE` items are rendered; remaining items are hidden. |
+| **Load more** | Clicking "Load more" appends the next `PAGE_SIZE` batch. The button disappears when all items are visible. |
+| **Paging reset on data change** | `visibleCount` resets to `PAGE_SIZE` when the raw invoice data changes (new fetch, retry). |
+| **Paging reset on filter/search** | `visibleCount` resets to `PAGE_SIZE` when filters or the debounced search term change, so the user always starts at the top of a newly filtered list. |
+| **Focus management** | After each "Load more" click, focus is returned to the button via `setTimeout(0)` so keyboard users do not lose their place. |
+| **Screen-reader announcement** | The polite `aria-live` status region announces _"Showing N of M investable invoices"_ when paging is active (N < M) and the full count when all items are visible. |
+| **Edge cases** | Fewer items than `PAGE_SIZE` → no Load more button, all items shown. Exact `PAGE_SIZE` boundary → no Load more button. Last page remainder → only remaining items appended. |
+| **Empty / error states** | When invoices are loading, errored, empty, or all filtered out, the Load more button is not rendered. |
+
+**Exports from `app/invest/page.js`:**
+
+| Export | Type | Description |
+| ------ | ---- | ----------- |
+| `PAGE_SIZE` | `number` (10) | Maximum items shown per page / load-more batch |
+| `SEARCH_DEBOUNCE_MS` | `number` (300) | Debounce delay for issuer search input |
+| `getPaginationAnnouncement(shown, total)` | `function` | Returns the _"Showing N of M investable invoices"_ screen-reader announcement string |
+| `getInvoiceLoadAnnouncement(invoices, opts)` | `function` | Returns the initial-load or filtered-count announcement string |
+
+**Test coverage:**
+
+- `app/invest/page.test.jsx` covers initial page size, load-more appends, exact boundary, last page remainder, filter-reset, search-reset, and empty/error/no-match states.
+- `components/Pagination.jsx` has dedicated tests for page-change announcements (`Pagination.announce.test.tsx`) and parameter clamping (`Pagination.clamp.test.tsx`).
+
 ---
 
 ## Project structure
@@ -546,6 +739,10 @@ All interactive elements (nav links, card links, buttons) use a consistent `focu
 
 - `.skip-link` — positions and reveals the skip link on focus
 - `.focus-ring` — reusable `focus-visible` outline for custom interactive elements
+
+### Home page heading structure
+
+The home page uses a single `<h1>` for the hero title and `<h2>` headings for the two CTA cards only. The "API status" panel label is a `<p>`, not a heading, so it does not appear in the heading outline.
 
 ### Reduced-motion support
 
@@ -633,6 +830,17 @@ We welcome UI improvements, new pages (e.g. invoice upload, marketplace), and St
 See [COMPONENTS.md](COMPONENTS.md) for the full component library reference — props, accessibility notes, and usage examples for every shared component (`ErrorBanner`, `Footer`, `InvoiceListSkeleton`, `ToastProvider`, `UploadZone`, `WalletProvider`, `WalletStatus`).
 
 - **UploadZone Progress Indicator**: During the upload phase, if a `progress` prop (number between `0` and `100`) is supplied to `UploadZone`, a determinate progress bar (`role="progressbar"`) is displayed. If no `progress` is supplied, it falls back to an indeterminate spinner. Smooth transitions are disabled when `prefers-reduced-motion` is active.
+- **UploadZone Reset Flow**: After a successful upload (status = `"success"`), an **"Upload another invoice"** button appears below the success message. Clicking it:
+  - Clears the file, error, and status back to their initial (idle) values.
+  - Clears the hidden file `<input>` so the same file can be re-selected.
+  - Moves focus to the dropzone, enabling keyboard users to immediately start a fresh upload without re-navigating.
+  The reset flow is tested for: button visibility in success state, state clearing (file, error, status), re-upload after reset, stale error clearing, and focus management. The success message's `role="status"` / `aria-live="polite"` region is preserved and cleared on reset.
+- **WalletStatus button variant alignment** (fix: `refactor/wallet-02-fix-button-config`): `WalletStatus` now passes `variant={config.buttonVariant}` and `loading={state === WALLET_STATES.CONNECTING}` correctly to `Button`. The previous `getStateConfig` returned `buttonVariant: "loading"` for the connecting state — but `"loading"` is not a valid `Button` variant (`primary | secondary | warning | external | danger`), which caused `variantStyles["loading"]` to be `undefined` and silently broke the button's className. The fix:
+  - CONNECTING state now uses `buttonVariant: "primary"` (the loading spinner is rendered by `Button` via `loading={true}` and `aria-busy="true"`).
+  - `getStateConfig` is extracted to module scope with `walletData` and `error` as explicit parameters.
+  - `aria-describedby` on the wallet button is omitted when the connected address row is displayed (the `#wallet-helper-text` span is absent in that state, so the attribute would be a dangling IDREF reference).
+  - No inline spinner SVG is needed in `WalletStatus` — `Button`'s built-in `Spinner` handles it.
+
 
 ## Invoice List
 

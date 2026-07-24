@@ -1,9 +1,20 @@
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import UploadZone, { MAX_UPLOAD_BYTES } from "./UploadZone";
+import UploadZone, { FILE_CONSTRAINTS } from "./UploadZone";
 
 // Mock the fetch API
 globalThis.fetch = jest.fn();
+
+// Mock magic-byte validation: jsdom's File.arrayBuffer() is unreliable.
+jest.mock("../lib/validation/pdf", () => ({
+  ...jest.requireActual("../lib/validation/pdf"),
+  isPdfMagicValid: jest.fn(),
+  validatePdfFile: jest.fn().mockResolvedValue({ valid: true }),
+  sanitizeFilename: jest.fn((name) => name),
+}));
+
+// Import the mocked isPdfMagicValid for test setup
+const { isPdfMagicValid } = jest.requireMock("../lib/validation/pdf");
 
 // Mock the copy to avoid dependency on the actual copy file in this test
 jest.mock("../app/copy/en", () => ({
@@ -25,6 +36,17 @@ jest.mock("../app/copy/en", () => ({
       submitUploading: "Uploading...",
       submitTokenizing: "Tokenizing...",
       submitIdle: "Submit",
+      spinnerLabel: "Loading",
+      resetAction: "Upload another invoice",
+      resetAriaLabel: "Upload another invoice",
+      errorNoFile: "No file selected.",
+      errorEmpty: "The selected file is empty.",
+      errorInvalidType: "Only PDF files are allowed.",
+      errorInvalidPdf: "The file is not a valid PDF.",
+      errorOversize: "File is {sizeMb} MB — exceeds the {maxSizeMb} MB limit.",
+      errorReadFailed: "Could not read the file. Please try again.",
+      errorUploadFailed: "Upload failed. Please try again.",
+      errorUploadStatus: "Upload failed with status {status}.",
     },
   },
 }));
@@ -32,20 +54,24 @@ jest.mock("../app/copy/en", () => ({
 describe("UploadZone Size Validation", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (isPdfMagicValid as jest.Mock).mockResolvedValue(true);
+    (globalThis.fetch as jest.Mock).mockClear();
   });
 
-  it("allows file upload if size is within MAX_UPLOAD_BYTES", async () => {
+  it("allows file upload if size is within FILE_CONSTRAINTS.maxSizeBytes", async () => {
     const user = userEvent.setup();
     render(<UploadZone onUploadSuccess={jest.fn()} />);
 
-    const validFile = new File(["dummy content"], "invoice.pdf", { type: "application/pdf" });
+    const validFile = new File(["%PDF-1.4\n dummy content"], "invoice.pdf", {
+      type: "application/pdf",
+    });
 
     // Simulate valid file selection using the input element directly
     const input = document.getElementById("invoice-file-input") as HTMLInputElement;
     await user.upload(input, validFile);
 
     const submitBtn = screen.getByRole("button", { name: "Submit" });
-    expect(submitBtn).not.toBeDisabled();
+    await waitFor(() => expect(submitBtn).not.toBeDisabled());
 
     // Submit
     (globalThis.fetch as jest.Mock).mockResolvedValueOnce({
@@ -60,13 +86,13 @@ describe("UploadZone Size Validation", () => {
     });
   });
 
-  it("rejects file selection if size exceeds MAX_UPLOAD_BYTES (handleFile guard)", async () => {
+  it("rejects file selection if size exceeds FILE_CONSTRAINTS.maxSizeBytes (handleFile guard)", async () => {
     const user = userEvent.setup();
     render(<UploadZone onUploadSuccess={jest.fn()} />);
 
     // Create an oversized file
     const oversizedFile = new File([""], "oversized.pdf", { type: "application/pdf" });
-    Object.defineProperty(oversizedFile, "size", { value: MAX_UPLOAD_BYTES + 1 });
+    Object.defineProperty(oversizedFile, "size", { value: FILE_CONSTRAINTS.maxSizeBytes + 1 });
 
     const input = document.getElementById("invoice-file-input") as HTMLInputElement;
     await user.upload(input, oversizedFile);

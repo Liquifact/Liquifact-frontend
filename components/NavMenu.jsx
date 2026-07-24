@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 // in the initial JS bundle. The placeholder prevents CLS while the chunk
 // downloads. ssr: false avoids "window is not defined" during server render.
 import WalletStatusLazy from "./WalletStatusLazy";
+import NetworkBadge from "./NetworkBadge";
 
 /**
  * @typedef {Object} NavLink
@@ -121,13 +122,13 @@ export default function NavMenu() {
         {/* Brand */}
         {/* <Link
           href="/"
-          className="md:text-2xl text-xl font-semibold tracking-tight text-slate-100 hover:text-cyan-400 active:text-cyan-300 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+          className="md:text-2xl text-xl font-semibold tracking-tight text-slate-100 hover:text-cyan-400 active:text-cyan-300 transition-colors focus-ring rounded"
         >
           LiquiFact
         </Link> */}
-          <Link
+        <Link
           href="/"
-          className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline"
+          className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline focus-ring rounded"
         >
           {isHomePage ? "LiquiFact" : "← LiquiFact"}
         </Link>
@@ -139,7 +140,7 @@ export default function NavMenu() {
               key={href}
               href={href}
               aria-current={pathname === href ? "page" : undefined}
-              className={`text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded ${
+              className={`text-sm font-medium transition-colors focus-ring rounded ${
                 pathname === href
                   ? "text-cyan-400"
                   : "text-slate-300 hover:text-cyan-400 active:text-cyan-300"
@@ -148,11 +149,15 @@ export default function NavMenu() {
               {label}
             </Link>
           ))}
+          {/* Stellar network badge — tells users which ledger is configured */}
+          <NetworkBadge />
           {/* Lazy-loaded wallet UI — chunk fetched on demand, not in initial bundle */}
           <WalletStatusLazy />
         </nav>
 
         <div className="flex items-center gap-3">
+          {/* Network badge — visible on mobile too, alongside the wallet button */}
+          <NetworkBadge className="md:hidden" />
           {/* Wallet button — lazy-loaded on mobile too */}
           <div className="md:hidden">
             <WalletStatusLazy />
@@ -166,7 +171,7 @@ export default function NavMenu() {
             aria-controls="mobile-menu"
             aria-label={open ? "Close navigation menu" : "Open navigation menu"}
             onClick={toggle}
-            className="md:hidden rounded-lg p-2 text-slate-300 hover:text-cyan-400 hover:bg-slate-800 active:text-cyan-300 active:bg-slate-700 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+            className="md:hidden rounded-lg p-2 text-slate-300 hover:text-cyan-400 hover:bg-slate-800 active:text-cyan-300 active:bg-slate-700 transition-colors focus-ring"
           >
             {/* Animated hamburger → X morphing in place */}
             <svg
@@ -236,7 +241,7 @@ export default function NavMenu() {
               key={href}
               href={href}
               aria-current={pathname === href ? "page" : undefined}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 ${
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-ring ${
                 pathname === href
                   ? "text-cyan-400 bg-slate-800/60"
                   : "text-slate-300 hover:text-cyan-400 hover:bg-slate-800/40 active:text-cyan-300 active:bg-slate-800/50"

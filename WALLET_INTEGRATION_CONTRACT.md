@@ -10,11 +10,31 @@ This document outlines the contract for implementing actual Stellar wallet integ
 
 - ✅ UI state machine with 6 connection states
 - ✅ Accessibility features (ARIA labels, screen reader support)
+- ✅ Polite live region for wallet state-transition announcements (see below)
 - ✅ Responsive design
 - ✅ Helper text and error messaging
 - ✅ Visual status indicators
 - ✅ Persistent inline error banner for ERROR/WRONG_NETWORK states
 - ✅ Actual wallet connection logic (Freighter)
+- ✅ Header network badge reflecting the configured environment
+
+## Network Badge
+
+A small badge in the app header (`components/NetworkBadge.jsx`, rendered by
+`components/NavMenu.jsx` alongside the wallet status) tells investors which
+Stellar ledger the app is configured against. It reads the configured network
+from `lib/config/env.js` (`env.stellarNetwork`, sourced from
+`NEXT_PUBLIC_STELLAR_NETWORK`) and maps it to a labelled badge:
+
+| `NEXT_PUBLIC_STELLAR_NETWORK` | Badge label       | Treatment                              |
+| ----------------------------- | ----------------- | -------------------------------------- |
+| `public`                      | `Mainnet`         | neutral/green, no warning marker       |
+| `testnet`                     | `Testnet`         | amber + dotted ring + `!` marker       |
+| unset / unknown               | `Unknown network` | slate + dotted ring + `!` marker       |
+
+Accessibility: the network is conveyed by a **text label** (never colour
+alone), mirrored in `aria-label`, and non-mainnet networks carry an extra
+non-colour `!` marker so testnet is unmistakable.
 
 ## Wallet States
 
@@ -66,9 +86,33 @@ const walletData = {
 
 ### 4. Network Verification
 
-- Check if connected wallet is on correct network (public mainnet)
-- Update `WRONG_NETWORK` state if on testnet
-- Provide network switching guidance
+The configured expected network is read from `NEXT_PUBLIC_STELLAR_NETWORK` (default: `testnet`). Three helpers in `lib/wallet/freighter.js` encapsulate all network comparison logic:
+
+| Export | Returns | Use case |
+|---|---|---|
+| `getFreighterNetwork()` | `Promise<string \| null>` | Read active network; `null` when unreadable |
+| `isExpectedNetwork()` | `Promise<boolean>` | Non-throwing check (e.g. conditional rendering) |
+| `assertExpectedNetwork()` | `Promise<void>` | Hard gate before funding/transaction flows |
+
+**Important:** `getFreighterNetwork()` returns `null` on any error rather than defaulting to `'public'`. This ensures an unreadable network is always treated as a mismatch and never silently clears a WRONG_NETWORK condition.
+
+`assertExpectedNetwork()` throws a typed `WrongNetworkError` (exported from the same module) that carries `.actual` and `.expected` fields, making it easy to surface a human-readable message:
+
+```javascript
+import { assertExpectedNetwork, WrongNetworkError } from "@/lib/wallet/freighter";
+
+try {
+  await assertExpectedNetwork();
+  // safe to submit transaction
+} catch (err) {
+  if (err instanceof WrongNetworkError) {
+    // err.message: 'Wallet is on "public" but the app requires "testnet"'
+    // Show WRONG_NETWORK banner — never proceed to a funding call.
+  }
+}
+```
+
+`WalletProvider` calls `assertExpectedNetwork()` during the connect flow and transitions to `WRONG_NETWORK` when it throws, propagating the error message to `WalletStatus` for display.
 
 ### 5. Error Handling
 
@@ -95,6 +139,29 @@ Target wallets for integration:
 - `walletData` - Connected wallet information (balance is runtime-only, not persisted)
 - `connect()` - Initiate connection (returns `{ outcome, message? }`)
 - `disconnect()` - Terminate connection and clear persisted snapshot
+
+### Polite Live Region
+
+`WalletStatus` renders a visually-hidden `role="status" aria-live="polite"` element
+(`data-testid="wallet-live-region"`) that announces wallet state transitions once to
+screen readers without interrupting ongoing speech.
+
+**Announcement strings (by state):**
+
+| State | Announcement |
+|---|---|
+| `connected` | "Wallet connected." |
+| `disconnected` | "Wallet disconnected." |
+| `error` | "Wallet connection failed." |
+| `wrong_network` | "Wallet connected to wrong network." |
+| `no_wallet` | "No wallet detected." |
+| `connecting` | *(no announcement — spinner is visible)* |
+
+**Design decisions:**
+- Announcements fire only when `rawState` changes; re-renders with the same state are silent.
+- The `connecting` state is omitted because the button already renders a visible loading indicator.
+- No public key or error detail is ever included in the announcement to avoid leaking sensitive data.
+- The previous text is cleared before setting the new one so the same message re-announces if the user connects/disconnects repeatedly.
 
 ### Error Banner Lifecycle
 
@@ -147,8 +214,8 @@ Use global state for:
 ## Security Considerations
 
 - Validate Stellar addresses
-- Verify network before transactions
-- Secure storage of connection state
+- **Always call `assertExpectedNetwork()` before submitting any transaction or funding request.** The function throws `WrongNetworkError` when Freighter is on an unexpected ledger, including when the network cannot be read at all (treated as a mismatch, not a pass).
+- Secure storage of connection state (truncated address + network only — never balances or keys)
 - Handle wallet disconnection gracefully
 
 ## Testing Requirements

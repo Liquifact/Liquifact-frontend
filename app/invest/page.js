@@ -1,18 +1,22 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { hasAnyActiveFilters, parseSortState } from "@/components/InvoiceFilters";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import ErrorBanner from "@/components/ErrorBanner";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
 import InvoiceSearch from "@/components/InvoiceSearch";
-import InvoiceFilters, { DEFAULT_FILTERS } from "@/components/InvoiceFilters";
-import Pagination from "@/components/Pagination";
-import { copy } from "../copy/en";
-import { fetchInvestableInvoices } from "../../lib/api/invoices";
+import InvoiceFilters, {
+  DEFAULT_FILTERS,
+  StatusLegendFilter,
+  hasAnyActiveFilters,
+  parseSortState,
+} from "@/components/InvoiceFilters";
 import NavMenu from "@/components/NavMenu";
 import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
+import { copy } from "../copy/en";
+// Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
+import { loadMockInvoices } from "./lib";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
@@ -28,22 +32,24 @@ export const SEARCH_DEBOUNCE_MS = 300;
  */
 export function getInvoiceLoadAnnouncement(invoices, { filterActive, filteredCount } = {}) {
   if (!Array.isArray(invoices) || invoices.length === 0) {
-    return "No invoices available";
+    return copy.invest.announceNoInvoices;
   }
 
   if (filterActive) {
     if (filteredCount === 0) {
-      return "No invoices match";
+      return copy.invest.announceNoMatch;
     }
-    return `${filteredCount} of ${invoices.length} invoices match`;
+    return copy.invest.announceFilteredCount
+      .replace("{matched}", filteredCount)
+      .replace("{total}", invoices.length);
   }
 
-  return `${invoices.length} investable invoices loaded`;
+  return copy.invest.announceInvoicesLoaded.replace("{count}", invoices.length);
 }
 
 export function getPaginationAnnouncement(shown, total) {
-  if (total === 0) return "No invoices available";
-  return `Showing ${shown} of ${total} investable invoices`;
+  if (total === 0) return copy.invest.announceNoInvoices;
+  return copy.invest.announceShowing.replace("{shown}", shown).replace("{total}", total);
 }
 
 /**
@@ -113,14 +119,13 @@ export function applySortToList(list, filters) {
  *   invoice array.  Defaults to the mock loader; injectable for testing.
  * @returns {JSX.Element}
  */
-export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
+export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   const searchParams = useSearchParams();
   const searchParamsValue = searchParams ?? new URLSearchParams();
 
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusMessage, setStatusMessage] = useState("");
   const [loadError, setLoadError] = useState("");
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
 
@@ -131,9 +136,9 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
    */
   const [retryKey, setRetryKey] = useState(0);
 
-  // Tracks the invoices reference paging was last reset for. Compared during
-  // render (rather than in an effect) per the React-recommended pattern for
-  // resetting state when a prop/value changes: https://react.dev/learn/you-might-not-need-an-effect
+  // Reset paging whenever the raw invoice data changes (new fetch, retry, etc.).
+  // Compared during render per the React-recommended pattern:
+  // https://react.dev/learn/you-might-not-need-an-effect
   const [pagingResetFor, setPagingResetFor] = useState(invoices);
   if (invoices !== pagingResetFor) {
     setPagingResetFor(invoices);
@@ -154,13 +159,39 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
   const reload = useCallback(() => {
     setInvoices(null);
     setLoadError("");
-    setStatusMessage("");
     setRetryKey((k) => k + 1);
+  }, []);
+
+  /** Toggle a status chip: add if absent, remove if present. */
+  const handleStatusToggle = useCallback((status) => {
+    setFilters((prev) => {
+      const current = Array.isArray(prev.statuses) ? prev.statuses : [];
+      const next = current.includes(status)
+        ? current.filter((s) => s !== status)
+        : [...current, status];
+      return { ...prev, statuses: next };
+    });
+  }, []);
+
+  /** Clear all status chips. */
+  const handleClearStatuses = useCallback(() => {
+    setFilters((prev) => ({ ...prev, statuses: [] }));
   }, []);
 
   // Debounced search term
   const debouncedSearch = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
 
+
+  // Reset the visible page count to PAGE_SIZE whenever the filters or debounced
+  // search term change, using the React-sanctioned "adjust state during render"
+  // pattern so the user always starts at the top of the newly filtered list
+  // (avoids a setState-in-effect cascading render).
+  const filterSignature = JSON.stringify([debouncedSearch, filters]);
+  const [prevFilterSignature, setPrevFilterSignature] = useState(filterSignature);
+  if (filterSignature !== prevFilterSignature) {
+    setPrevFilterSignature(filterSignature);
+    setVisibleCount(PAGE_SIZE);
+  }
 
   // Filtered + sorted invoice list
   const filteredInvoices = useMemo(() => {
@@ -187,6 +218,9 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
     }
     if (filters.maturityTo) {
       list = list.filter((inv) => inv.dueDate <= filters.maturityTo);
+    }
+    if (Array.isArray(filters.statuses) && filters.statuses.length > 0) {
+      list = list.filter((inv) => filters.statuses.includes(inv.status));
     }
     return applySortToList(list, filters);
   }, [invoices, debouncedSearch, filters]);
@@ -223,7 +257,6 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
 
         setInvoices(null);
         setLoadError(copy.invest.errorDescription);
-        setStatusMessage(copy.invest.errorStatus);
       }
     };
 
@@ -236,25 +269,30 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
     // retryKey triggers a fresh load on retry without changing loadInvoices.
   }, [loadInvoices, retryKey]);
 
-  // Update the live-region status whenever the filtered list or visible count changes.
-  useEffect(() => {
-    if (!Array.isArray(invoices)) return;
-    if (filterActive) {
-      setStatusMessage(
-        getInvoiceLoadAnnouncement(invoices, {
-          filterActive: true,
-          filteredCount: filteredInvoices.length,
-        })
-      );
-    } else if (visibleCount < filteredInvoices.length) {
-      setStatusMessage(getPaginationAnnouncement(visibleCount, filteredInvoices.length));
-    } else if (visibleCount > PAGE_SIZE) {
-      // After Load more brings us to the last page, announce pagination format
-      setStatusMessage(getPaginationAnnouncement(filteredInvoices.length, filteredInvoices.length));
-    } else {
-      setStatusMessage(getInvoiceLoadAnnouncement(invoices));
+  // Derive the polite live-region announcement directly from reactive state.
+  // Using useMemo (rather than a useEffect + setState) avoids a cascading
+  // re-render and satisfies the react-hooks/set-state-in-effect lint rule.
+  const statusMessage = useMemo(() => {
+    // Loading or error states — error copy is announced by the ErrorBanner role="alert";
+    // the status region is cleared so screen readers only hear one announcement.
+    if (!Array.isArray(invoices)) {
+      return loadError ? copy.invest.errorStatus : "";
     }
-  }, [filteredInvoices, filterActive, invoices, visibleCount]);
+    if (filterActive) {
+      return getInvoiceLoadAnnouncement(invoices, {
+        filterActive: true,
+        filteredCount: filteredInvoices.length,
+      });
+    }
+    if (visibleCount < filteredInvoices.length) {
+      return getPaginationAnnouncement(visibleCount, filteredInvoices.length);
+    }
+    if (visibleCount > PAGE_SIZE) {
+      // After Load more reaches the last page, keep pagination format.
+      return getPaginationAnnouncement(filteredInvoices.length, filteredInvoices.length);
+    }
+    return getInvoiceLoadAnnouncement(invoices);
+  }, [filteredInvoices, filterActive, invoices, visibleCount, loadError]);
 
   // ── Load-more handler ──────────────────────────────────────────────────────
   /**
@@ -284,7 +322,6 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
         </Link>
       </header> */}
       <NavMenu />
-      
 
       <main className="max-w-4xl mx-auto px-6 py-12">
         {/* Polite live region – announced to screen readers on every state change */}
@@ -292,11 +329,8 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
           {statusMessage}
         </div>
 
-        <h1 className="text-2xl font-bold mb-2">Invest</h1>
-        <p className="text-slate-400 mb-8">
-          Browse tokenized invoices and fund them. Estimated yield is shown for educational
-          purposes; actual payment is received at invoice maturity.
-        </p>
+        <h1 className="text-2xl font-bold mb-2">{copy.invest.title}</h1>
+        <p className="text-slate-400 mb-8">{copy.invest.subtext}</p>
 
         {/*
           ACCESSIBILITY DESIGN (Issue #91):
@@ -313,21 +347,28 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
           <InvoiceSearch
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Search by issuer name"
+            aria-label={copy.invest.searchPlaceholder}
           />
         </div>
+
+        {/* Status legend filter chip row */}
+        <StatusLegendFilter
+          selectedStatuses={Array.isArray(filters.statuses) ? filters.statuses : []}
+          onStatusToggle={handleStatusToggle}
+          onClearStatuses={handleClearStatuses}
+        />
 
         <fieldset
           className="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
           aria-disabled="true"
           aria-describedby="filters-coming-soon"
         >
-          <legend className="sr-only">Marketplace Filters</legend>
+          <legend className="sr-only">{copy.invest.filterLegend}</legend>
           <div
             id="filters-coming-soon"
             className="mb-4 inline-block rounded bg-slate-800 px-2 py-1 text-xs font-semibold tracking-wide text-slate-300"
           >
-            Soon: These filter controls are currently unavailable.
+            {copy.invest.filterSoonLabel}
           </div>
           <div className="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none">
             {/* InvoiceFilters only — search moved above */}
@@ -344,22 +385,22 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
           <ErrorBanner
             title={copy.invest.errorTitle}
             description={loadError}
-            actionLabel="Try again"
+            actionLabel={copy.invest.retryAction}
             onAction={reload}
           />
         ) : invoices === null ? (
           <InvoiceListSkeleton rows={3} />
         ) : invoices.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
-            No investable invoices. Connect wallet to see the marketplace.
+            {copy.invest.emptyState}
           </div>
         ) : filteredInvoices.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
-            No invoices match your filters.
+            {copy.invest.noMatchFilter}
           </div>
         ) : (
           <>
-            <ul aria-label="Investable invoices" className="space-y-4">
+            <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
               {filteredInvoices.slice(0, visibleCount).map((inv) => (
                 <li key={inv.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
                   <div className="flex items-center justify-between mb-3">
@@ -377,8 +418,14 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
                     <span>
                       {inv.currency}&nbsp;{inv.amount}
                     </span>
-                    <span>Est. yield&nbsp;{inv.yield}</span>
-                    <span>Maturity&nbsp;{inv.dueDate}</span>
+                    <span>
+                      {copy.invest.labelYield}
+                      {inv.yield}
+                    </span>
+                    <span>
+                      {copy.invest.labelMaturity}
+                      {inv.dueDate}
+                    </span>
                   </div>
                 </li>
               ))}
@@ -388,15 +435,14 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
                 ref={loadMoreRef}
                 type="button"
                 onClick={handleLoadMore}
-                aria-label="Load more invoices"
+                aria-label={copy.invest.loadMoreAriaLabel}
                 className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50"
               >
-                Load more
+                {copy.invest.loadMore}
               </button>
             )}
             <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
-              Note: Yield references are educational only and reflect on-chain basis-point
-              assumptions. Invoice contracts settle at maturity.
+              {copy.invest.yieldDisclaimer}
             </div>
           </>
         )}

@@ -127,7 +127,26 @@ npx playwright test tests/toast.spec.jsx
 | `tests/invest-detail.spec.jsx`        | Invoice detail funding flow — connect wallet prompt, disabled while connecting, not-found.       |
 | `tests/e2e/marketplace-url.spec.ts`   | Marketplace URL sharing — search/filter state hydrate across a fresh navigation.                 |
 | `tests/e2e/theme-persistence.spec.ts` | Theme toggle — preference persists across reload with no FOIT and no console errors (#265).      |
+| `tests/wallet-connect.spec.tsx`       | Freighter connect flow with a **mocked** provider — connect, user rejection, already-connected.  |
 | `tests/fixtures/`                     | Static fixture files used in tests (e.g. `dummy.pdf`).                                           |
+
+### Mocking the Freighter wallet (e2e)
+
+The connect flow is driven without a real wallet by injecting a mock provider
+on `window.__MOCK_FREIGHTER__` before the app loads. `lib/wallet/freighter.js`
+prefers this mock when present, so no extension and **no real keys** are used:
+
+```js
+await page.addInitScript(() => {
+  window.__MOCK_FREIGHTER__ = {
+    isConnected: async () => true,
+    requestAccess: async () => "GTEST...E2E001", // fake public key only
+    getNetworkDetails: async () => ({ network: "testnet" }),
+  };
+});
+```
+
+See `tests/wallet-connect.spec.tsx` for the full success/rejection coverage.
 
 ### Writing a new Playwright test
 

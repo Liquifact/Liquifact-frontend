@@ -10,7 +10,12 @@ import {
   useState,
 } from "react";
 import { ToastContext } from "./ToastProvider";
-import { isFreighterConnected, connectFreighter, getFreighterNetwork } from "../lib/wallet/freighter";
+import {
+  isFreighterConnected,
+  connectFreighter,
+  getFreighterNetwork,
+  assertExpectedNetwork,
+} from "../lib/wallet/freighter";
 
 /**
  * Read the toast API when available. Returns null when WalletProvider is
@@ -225,30 +230,30 @@ export function WalletProvider({ children }) {
       }
 
       const address = await connectFreighter();
-      const network = await getFreighterNetwork();
-      const expectedNetwork = process.env.NEXT_PUBLIC_STELLAR_NETWORK || 'testnet';
 
-      if (network !== expectedNetwork.toLowerCase()) {
+      // Hard gate: block if Freighter is on an unexpected network.
+      // assertExpectedNetwork treats an unreadable network as a mismatch so we
+      // never silently fall through to a connected state on the wrong ledger.
+      try {
+        await assertExpectedNetwork();
+      } catch (networkErr) {
         setState(WALLET_STATES.WRONG_NETWORK);
         setWalletData(null);
-        const errMsg = `Wallet is connected to ${network}. Please switch to ${expectedNetwork} network.`;
-        setError(errMsg);
-        toast?.error(
-          `Wallet is connected to ${network}. Please switch to ${expectedNetwork} network.`,
-          "Wrong network"
-        );
+        setError(networkErr.message);
+        toast?.error(networkErr.message, "Wrong network");
         return {
           outcome: "wrong_network",
-          message: errMsg,
+          message: networkErr.message,
         };
       }
 
+      const network = await getFreighterNetwork();
       setState(WALLET_STATES.CONNECTED);
       const data = {
         address,
         network,
         balance: "1,234.56 XLM",
-        walletType: "freighter"
+        walletType: "freighter",
       };
       setWalletData(data);
       toast?.success("Wallet connected successfully.", "Wallet connected");

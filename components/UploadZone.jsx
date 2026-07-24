@@ -1,17 +1,20 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { env } from "../lib/config/env";
 import { copy } from "../app/copy/en";
-import { isPdfMagicValid } from "../lib/validation/pdf";
+import { validatePdfFile, sanitizeFilename } from "../lib/validation/pdf";
 
-// Base URL for backend API; sourced from env (defaults to empty string for tests)
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+// Base URL for backend API; validated and centralized in lib/config/env.
+const API_URL = env.apiUrl;
+
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 const FILE_CONSTRAINTS = {
   accept: ".pdf",
   mimeType: "application/pdf",
   maxSizeMb: 10,
-  maxSizeBytes: 10 * 1024 * 1024,
+  maxSizeBytes: MAX_UPLOAD_BYTES,
 };
 
 function ConstraintBadge({ icon, label }) {
@@ -70,7 +73,8 @@ function Spinner({ className = "" }) {
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
-      aria-hidden="true"
+      role="img"
+      aria-label={copy.uploadZone.spinnerLabel}
     >
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path
@@ -94,19 +98,43 @@ function Spinner({ className = "" }) {
  */
 function UploadZone({ onUploadSuccess, progress }) {
   const inputRef = useRef(null);
+  const dropzoneRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
   const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
   const [status, setStatus] = useState("idle");
 
+  /**
+   * Resets the component back to its idle state, clearing the selected file,
+   * any error message, and the current status. Focus is moved to the dropzone
+   * so keyboard users can immediately start a fresh upload without having to
+   * tab back to it manually.
+   */
+  function resetUpload() {
+    setFile(null);
+    setError(null);
+    setStatus("idle");
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+    // Move focus to the dropzone after reset so keyboard-assisted users can
+    // immediately start a new upload without re-navigating.
+    dropzoneRef.current?.focus();
+  }
+
   function validate(f) {
-    if (!f) return "No file selected.";
+    if (!f) return copy.uploadZone.errorNoFile;
     if (f.type !== FILE_CONSTRAINTS.mimeType) {
-      return `Invalid file type "${f.type || "unknown"}". Only PDF files are accepted.`;
+      return copy.uploadZone.errorInvalidType.replace("{type}", f.type || "unknown");
     }
     if (f.size > FILE_CONSTRAINTS.maxSizeBytes) {
       const sizeMb = (f.size / 1024 / 1024).toFixed(1);
-      return `File is ${sizeMb} MB — exceeds the ${FILE_CONSTRAINTS.maxSizeMb} MB limit.`;
+      return copy.uploadZone.errorOversize
+        .replace("{sizeMb}", sizeMb)
+        .replace("{maxSizeMb}", FILE_CONSTRAINTS.maxSizeMb);
+    }
+    if (f.size === 0) {
+      return copy.uploadZone.errorEmpty;
     }
     return null;
   }
@@ -122,15 +150,15 @@ function UploadZone({ onUploadSuccess, progress }) {
     // Optimistically set the file and clear any previous error.
     setFile(f);
     setError(null);
-    // Magic byte validation (async). If it fails, clear the file and show error.
+    // Comprehensive PDF validation (async). If it fails, clear the file and show error.
     try {
-      const isValid = await isPdfMagicValid(f);
-      if (isValid === false) {
-        setError("The selected file does not appear to be a valid PDF.");
+      const validation = await validatePdfFile(f);
+      if (!validation.valid) {
+        setError(validation.reason || copy.uploadZone.errorInvalidPdf);
         setFile(null);
       }
     } catch (e) {
-      setError("Unable to read file. Please try again.");
+      setError(copy.uploadZone.errorReadFailed);
       setFile(null);
     }
   }
@@ -158,13 +186,14 @@ function UploadZone({ onUploadSuccess, progress }) {
       const body = new FormData();
       body.append("invoice", file);
 
-      const baseUrl = typeof API_URL !== 'undefined' && API_URL ? API_URL : '';
-      const res = await fetch(`${baseUrl}/invoices`, { method: 'POST', body });
-
+      const baseUrl = typeof API_URL !== "undefined" && API_URL ? API_URL : "";
+      const res = await fetch(`${baseUrl}/invoices`, { method: "POST", body });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || `Upload failed (${res.status})`);
+        throw new Error(
+          data.message || copy.uploadZone.errorUploadStatus.replace("{status}", res.status)
+        );
       }
 
       setStatus("tokenizing");
@@ -175,8 +204,8 @@ function UploadZone({ onUploadSuccess, progress }) {
       setStatus("success");
       if (typeof onUploadSuccess === "function") {
         onUploadSuccess({
-          id: `upload-${Date.now()}-${file.name}`,
-          issuer: file.name,
+          id: `upload-${Date.now()}-${sanitizeFilename(file.name)}`,
+          issuer: sanitizeFilename(file.name),
           amount: "Pending",
           currency: "USD",
           dueDate: "Pending",
@@ -185,7 +214,7 @@ function UploadZone({ onUploadSuccess, progress }) {
         });
       }
     } catch (err) {
-      setError(err.message || "Upload failed. Please try again.");
+      setError(err.message || copy.uploadZone.errorUploadFailed);
       setStatus("idle");
     }
   }
@@ -224,6 +253,7 @@ function UploadZone({ onUploadSuccess, progress }) {
         onChange={handleChange}
       />
       <div
+        ref={dropzoneRef}
         role="button"
         tabIndex={0}
         aria-label={copy.uploadZone.dropZoneLabel}
@@ -242,7 +272,10 @@ function UploadZone({ onUploadSuccess, progress }) {
             <span className="text-3xl" aria-hidden="true">
               {"\u2705"}
             </span>
-            <p className="font-medium text-emerald-400">{file.name}</p>
+            <p
+              className="font-medium text-emerald-400"
+              dangerouslySetInnerHTML={{ __html: sanitizeFilename(file.name) }}
+            />
             <p className="text-xs text-slate-500">
               {(file.size / 1024 / 1024).toFixed(2)} MB {"\u00B7"} PDF
             </p>
@@ -321,14 +354,24 @@ function UploadZone({ onUploadSuccess, progress }) {
       )}
 
       {status === "success" && (
-        <p
-          role="status"
-          aria-live="polite"
-          className="mt-3 flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400"
-        >
-          <span aria-hidden="true">{"\u{1F680}"}</span>
-          {copy.uploadZone.statusSuccess}
-        </p>
+        <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+          <p
+            role="status"
+            aria-live="polite"
+            className="flex items-start gap-2 text-sm text-emerald-400"
+          >
+            <span aria-hidden="true">{"\u{1F680}"}</span>
+            {copy.uploadZone.statusSuccess}
+          </p>
+          <button
+            type="button"
+            onClick={resetUpload}
+            className="mt-3 w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-emerald-500 focus-ring"
+            aria-label={copy.uploadZone.resetAriaLabel}
+          >
+            {copy.uploadZone.resetAction}
+          </button>
+        </div>
       )}
 
       <button
@@ -337,7 +380,7 @@ function UploadZone({ onUploadSuccess, progress }) {
         disabled={!file || isProcessing}
         aria-disabled={!file || isProcessing}
         className="mt-4 w-full rounded-xl bg-cyan-500 py-3 text-sm font-semibold text-slate-950 transition-all duration-200
-          hover:bg-cyan-400 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-cyan-400
+          hover:bg-cyan-400 focus-ring
           disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {status === "uploading" && (
@@ -359,4 +402,4 @@ function UploadZone({ onUploadSuccess, progress }) {
 }
 
 export default UploadZone;
-export { FILE_CONSTRAINTS, MAX_UPLOAD_BYTES, Spinner };
+export { FILE_CONSTRAINTS, Spinner };

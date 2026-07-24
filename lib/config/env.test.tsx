@@ -95,6 +95,66 @@ describe("loadEnv", () => {
     expect(() => loadEnv()).toThrow(/not-a-url/);
   });
 
+  // ── Disallowed schemes (security) ─────────────────────────────────────────
+
+  it("rejects a javascript: scheme for NEXT_PUBLIC_API_URL", () => {
+    process.env.NEXT_PUBLIC_API_URL = "javascript:alert(1)";
+    expect(() => loadEnv()).toThrow(/NEXT_PUBLIC_API_URL/);
+  });
+
+  it("rejects a data: scheme for NEXT_PUBLIC_API_URL", () => {
+    process.env.NEXT_PUBLIC_API_URL = "data:text/html,<script>1</script>";
+    expect(() => loadEnv()).toThrow(/disallowed scheme/);
+  });
+
+  it("rejects a file: scheme for NEXT_PUBLIC_API_URL", () => {
+    process.env.NEXT_PUBLIC_API_URL = "file:///etc/passwd";
+    expect(() => loadEnv()).toThrow(/disallowed scheme/);
+  });
+
+  it("rejects an ftp: scheme for NEXT_PUBLIC_SITE_URL", () => {
+    process.env.NEXT_PUBLIC_SITE_URL = "ftp://example.com";
+    expect(() => loadEnv()).toThrow(/NEXT_PUBLIC_SITE_URL/);
+  });
+
+  it("names the offending scheme in the disallowed-scheme error", () => {
+    process.env.NEXT_PUBLIC_API_URL = "javascript:alert(1)";
+    expect(() => loadEnv()).toThrow(/javascript:/);
+  });
+
+  it("accepts an https URL", () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.com";
+    expect(() => loadEnv()).not.toThrow();
+  });
+
+  it("treats a trailing-slash URL as valid", () => {
+    process.env.NEXT_PUBLIC_API_URL = "https://api.example.com/";
+    expect(() => loadEnv()).not.toThrow();
+    expect(loadEnv().apiUrl).toBe("https://api.example.com/");
+  });
+
+  it("treats an empty-string NEXT_PUBLIC_API_URL as unset (uses default)", () => {
+    process.env.NEXT_PUBLIC_API_URL = "";
+    expect(loadEnv().apiUrl).toBe("http://localhost:3001");
+  });
+
+  // ── Frozen config object ──────────────────────────────────────────────────
+
+  it("returns a frozen config object", () => {
+    const cfg = loadEnv();
+    expect(Object.isFrozen(cfg)).toBe(true);
+  });
+
+  it("ignores attempts to mutate the returned config", () => {
+    const cfg = loadEnv();
+    expect(() => {
+      "use strict";
+      // @ts-expect-error — intentionally testing immutability
+      cfg.apiUrl = "https://evil.example.com";
+    }).toThrow();
+    expect(cfg.apiUrl).not.toBe("https://evil.example.com");
+  });
+
   // ── Invalid NEXT_PUBLIC_SITE_URL ──────────────────────────────────────────
 
   it("throws when NEXT_PUBLIC_SITE_URL is not a valid URL", () => {

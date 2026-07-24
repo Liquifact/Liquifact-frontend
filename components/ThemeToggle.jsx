@@ -68,12 +68,17 @@ export function applyTheme(pref) {
  * @param {string}  [props.className]  – Extra classes on the root button
  */
 export default function ThemeToggle({ className = "" }) {
-  // Initialise from localStorage only on the client (avoids SSR mismatch)
-  const [preference, setPreference] = useState("system");
-
-  useEffect(() => {
-    setPreference(readStoredTheme());
-  }, []);
+  // Initialise from localStorage only on the client (avoids SSR mismatch).
+  // Using a lazy initializer avoids calling setState synchronously inside an
+  // effect, which would trigger a cascading render warning.
+  const [preference, setPreference] = useState(() => {
+    if (typeof window === "undefined") return "system";
+    try {
+      return readStoredTheme();
+    } catch {
+      return "system";
+    }
+  });
 
   // Keep data-theme in sync whenever the preference state changes
   useEffect(() => {
@@ -190,7 +195,7 @@ export default function ThemeToggle({ className = "" }) {
         "rounded-lg p-2 transition-colors",
         "text-slate-300 hover:text-cyan-400 hover:bg-slate-800",
         "dark:text-slate-300 dark:hover:text-cyan-400",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400",
+        "focus-ring",
         className,
       ]
         .filter(Boolean)
