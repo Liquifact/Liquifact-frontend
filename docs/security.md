@@ -1,5 +1,7 @@
 # Security Notes
 
+This repository’s vulnerability disclosure policy is maintained in [SECURITY.md](../SECURITY.md). Please review that document for private reporting guidance, supported versions, and disclosure expectations.
+
 ## XSS Prevention
 
 ### ESLint Rule: `react/no-danger`
@@ -29,6 +31,8 @@ All other content is rendered via:
 ### CI Enforcement
 
 The lint step in CI runs `npm run lint`, which includes the `react/no-danger` rule. Any new introduction of `dangerouslySetInnerHTML` will be caught and block the pipeline.
+
+The repository also runs automated security checks in CI, including Gitleaks secret scanning and `npm audit --audit-level=high`, as documented in [SECURITY.md](../SECURITY.md).
 
 ### Dependencies
 
