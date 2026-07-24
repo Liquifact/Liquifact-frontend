@@ -12,6 +12,7 @@ import Pagination from "@/components/Pagination";
 import { copy } from "../copy/en";
 import { fetchInvestableInvoices } from "../../lib/api/invoices";
 import NavMenu from "@/components/NavMenu";
+import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
@@ -158,11 +159,8 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
   }, []);
 
   // Debounced search term
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchQuery), SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [searchQuery]);
+  const debouncedSearch = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
+
 
   // Filtered + sorted invoice list
   const filteredInvoices = useMemo(() => {
