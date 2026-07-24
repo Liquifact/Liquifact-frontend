@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import ErrorBanner from "@/components/ErrorBanner";
@@ -100,6 +100,70 @@ export function applySortToList(list, filters) {
   });
 }
 
+export function deriveFilteredInvoices(invoices, debouncedSearch, filters) {
+  if (!Array.isArray(invoices)) return [];
+  let list = invoices;
+
+  if (debouncedSearch.trim()) {
+    const q = debouncedSearch.toLowerCase();
+    list = list.filter((inv) => inv.issuer?.toLowerCase().includes(q));
+  }
+  if (filters.currency) {
+    list = list.filter((inv) => inv.currency === filters.currency);
+  }
+  if (filters.yieldMin !== "") {
+    const min = parseFloat(filters.yieldMin);
+    list = list.filter((inv) => parseYield(inv.yield) >= min);
+  }
+  if (filters.yieldMax !== "") {
+    const max = parseFloat(filters.yieldMax);
+    list = list.filter((inv) => parseYield(inv.yield) <= max);
+  }
+  if (filters.maturityFrom) {
+    list = list.filter((inv) => inv.dueDate >= filters.maturityFrom);
+  }
+  if (filters.maturityTo) {
+    list = list.filter((inv) => inv.dueDate <= filters.maturityTo);
+  }
+  if (Array.isArray(filters.statuses) && filters.statuses.length > 0) {
+    list = list.filter((inv) => filters.statuses.includes(inv.status));
+  }
+  return applySortToList(list, filters);
+}
+
+export const InvoiceRow = memo(function InvoiceRow({ invoice: inv, onRender }) {
+  onRender?.(inv.id);
+
+  return (
+    <li className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <Link
+          href={`/invest/${inv.id}`}
+          className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+        >
+          {inv.issuer}
+        </Link>
+        <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
+          {inv.status}
+        </span>
+      </div>
+      <div className="flex gap-6 text-sm text-slate-400">
+        <span>
+          {inv.currency}&nbsp;{inv.amount}
+        </span>
+        <span>
+          {copy.invest.labelYield}
+          {inv.yield}
+        </span>
+        <span>
+          {copy.invest.labelMaturity}
+          {inv.dueDate}
+        </span>
+      </div>
+    </li>
+  );
+});
+
 /**
  * InvestMarketplace – main component for the invest page.
  *
@@ -116,9 +180,10 @@ export function applySortToList(list, filters) {
  * @param {object}   props
  * @param {Function} [props.loadInvoices] - Async function that resolves to an
  *   invoice array.  Defaults to the mock loader; injectable for testing.
+ * @param {Function} [props.onInvoiceRowRender] - Test-only render instrumentation.
  * @returns {JSX.Element}
  */
-export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
+export function InvestMarketplace({ loadInvoices = loadMockInvoices, onInvoiceRowRender }) {
   const searchParams = useSearchParams();
   const searchParamsValue = searchParams ?? new URLSearchParams();
 
@@ -197,35 +262,12 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
 
   // Filtered + sorted invoice list
   const filteredInvoices = useMemo(() => {
-    if (!Array.isArray(invoices)) return [];
-    let list = invoices;
-
-    if (debouncedSearch.trim()) {
-      const q = debouncedSearch.toLowerCase();
-      list = list.filter((inv) => inv.issuer?.toLowerCase().includes(q));
-    }
-    if (filters.currency) {
-      list = list.filter((inv) => inv.currency === filters.currency);
-    }
-    if (filters.yieldMin !== "") {
-      const min = parseFloat(filters.yieldMin);
-      list = list.filter((inv) => parseYield(inv.yield) >= min);
-    }
-    if (filters.yieldMax !== "") {
-      const max = parseFloat(filters.yieldMax);
-      list = list.filter((inv) => parseYield(inv.yield) <= max);
-    }
-    if (filters.maturityFrom) {
-      list = list.filter((inv) => inv.dueDate >= filters.maturityFrom);
-    }
-    if (filters.maturityTo) {
-      list = list.filter((inv) => inv.dueDate <= filters.maturityTo);
-    }
-    if (Array.isArray(filters.statuses) && filters.statuses.length > 0) {
-      list = list.filter((inv) => filters.statuses.includes(inv.status));
-    }
-    return applySortToList(list, filters);
+    return deriveFilteredInvoices(invoices, debouncedSearch, filters);
   }, [invoices, debouncedSearch, filters]);
+
+  const visibleInvoices = useMemo(() => {
+    return filteredInvoices.slice(0, visibleCount);
+  }, [filteredInvoices, visibleCount]);
 
   const filterActive = hasAnyActiveFilters(filters, debouncedSearch);
 
@@ -310,8 +352,6 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
       loadMoreRef.current?.focus();
     }, 0);
   }, [filteredInvoices.length]);
-
-  // const visibleInvoices = filteredInvoices.slice(0, visibleCount);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -403,33 +443,8 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
         ) : (
           <>
             <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
-              {filteredInvoices.slice(0, visibleCount).map((inv) => (
-                <li key={inv.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <Link
-                      href={`/invest/${inv.id}`}
-                      className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
-                    >
-                      {inv.issuer}
-                    </Link>
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
-                      {inv.status}
-                    </span>
-                  </div>
-                  <div className="flex gap-6 text-sm text-slate-400">
-                    <span>
-                      {inv.currency}&nbsp;{inv.amount}
-                    </span>
-                    <span>
-                      {copy.invest.labelYield}
-                      {inv.yield}
-                    </span>
-                    <span>
-                      {copy.invest.labelMaturity}
-                      {inv.dueDate}
-                    </span>
-                  </div>
-                </li>
+              {visibleInvoices.map((inv) => (
+                <InvoiceRow key={inv.id} invoice={inv} onRender={onInvoiceRowRender} />
               ))}
             </ul>
             {visibleCount < filteredInvoices.length && (

@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom";
 import { act, render, screen, fireEvent, within } from "@testing-library/react";
 import InvestPage, {
+  deriveFilteredInvoices,
   getInvoiceLoadAnnouncement,
   getPaginationAnnouncement,
   InvestMarketplace,
@@ -990,6 +991,43 @@ describe("InvestMarketplace", () => {
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
   });
 
+  it("does not re-render invoice rows for unrelated search state before debounce", async () => {
+    const invoices = Array.from({ length: PAGE_SIZE + 5 }, (_, i) => ({
+      id: `inv-${String(i + 1).padStart(3, "0")}`,
+      issuer: i < 5 ? `Target Issuer ${i + 1}` : `Other Issuer ${i + 1}`,
+      amount: "1,000",
+      currency: "USD",
+      dueDate: "2026-12-31",
+      yield: "5.0%",
+      status: "Open",
+    }));
+    const onInvoiceRowRender = jest.fn();
+
+    render(
+      <InvestMarketplace
+        loadInvoices={createDeferredLoader(invoices, 0)}
+        onInvoiceRowRender={onInvoiceRowRender}
+      />
+    );
+    await flushTimers(0);
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+    expect(onInvoiceRowRender).toHaveBeenCalledTimes(PAGE_SIZE);
+
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "Target" },
+    });
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+    expect(onInvoiceRowRender).toHaveBeenCalledTimes(PAGE_SIZE);
+
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    expect(getInvoiceListItems()).toHaveLength(5);
+    expect(screen.getByText("Target Issuer 1")).toBeInTheDocument();
+    expect(screen.queryByText("Other Issuer 6")).not.toBeInTheDocument();
+  });
+
   it("announces filtered results in the live region when search is applied", async () => {
     const invoices = [
       {
@@ -1289,6 +1327,48 @@ describe("lib helpers", () => {
   it("loads all mock invoices", async () => {
     const invoices = await loadMockInvoices();
     expect(invoices).toHaveLength(3);
+  });
+});
+
+describe("deriveFilteredInvoices", () => {
+  const filters = {
+    yieldMin: "",
+    yieldMax: "",
+    currency: "",
+    maturityFrom: "",
+    maturityTo: "",
+    sort: "",
+    sortDir: "desc",
+    statuses: [],
+  };
+
+  it("handles a large dataset and updates when filters change", () => {
+    const invoices = Array.from({ length: 500 }, (_, i) => ({
+      id: `large-${i + 1}`,
+      issuer: i % 25 === 0 ? `Needle Corp ${i}` : `Issuer ${i}`,
+      amount: `${1_000 + i}`,
+      currency: i % 2 === 0 ? "USD" : "EUR",
+      dueDate: `2026-12-${String((i % 28) + 1).padStart(2, "0")}`,
+      yield: `${4 + (i % 8)}.0%`,
+      status: i % 3 === 0 ? "Funded" : "Open",
+    }));
+
+    expect(deriveFilteredInvoices(invoices, "", filters)).toHaveLength(500);
+
+    const filtered = deriveFilteredInvoices(invoices, "needle", {
+      ...filters,
+      currency: "USD",
+      yieldMin: "8",
+      statuses: ["Open"],
+    });
+
+    expect(filtered).toHaveLength(2);
+    expect(filtered.every((invoice) => invoice.issuer.toLowerCase().includes("needle"))).toBe(
+      true
+    );
+    expect(filtered.every((invoice) => invoice.currency === "USD")).toBe(true);
+    expect(filtered.every((invoice) => invoice.status === "Open")).toBe(true);
+    expect(filtered.every((invoice) => parseFloat(invoice.yield) >= 8)).toBe(true);
   });
 });
 
