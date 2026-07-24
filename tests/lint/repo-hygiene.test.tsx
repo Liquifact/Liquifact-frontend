@@ -397,6 +397,10 @@ describe("Useful notes are archived in docs/", () => {
     expect(exists("docs/architecture.md")).toBe(true);
   });
 
+  it("docs/invoice-detail.md exists", () => {
+    expect(exists("docs/invoice-detail.md")).toBe(true);
+  });
+
   it("docs/issue-334-cpu-budget-median-throttling.md has meaningful content", () => {
     const content = fs.readFileSync(
       path.join(ROOT, "docs/issue-334-cpu-budget-median-throttling.md"),
