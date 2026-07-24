@@ -9,6 +9,7 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 - [EmptyState](#emptystate)
 - [ErrorBanner](#errorbanner)
 - [Footer](#footer)
+- [Form](#form)
 - [FundAmountInput](#fundamountinput)
 - [Hooks](#hooks)
 - [InvoiceList](#invoicelist)
@@ -164,6 +165,32 @@ Site footer with navigation links (Docs, System Status, Contact Support). Links 
 <Footer
   links={[{ label: 'Home', href: '/', external: false }]}
 />
+```
+
+---
+
+## Form
+
+A generic form wrapper component that applies consistent styling across the application.
+
+**File:** `components/Form.jsx`
+
+### Props
+
+| Prop         | Type              | Default | Description                                                   |
+| ------------ | ----------------- | ------- | ------------------------------------------------------------- |
+| `onSubmit`   | `Function`        | —       | **Required.** Submission handler function.                    |
+| `children`   | `ReactNode`       | —       | The form contents.                                            |
+| `className`  | `string`          | `''`    | Optional additional Tailwind classes to apply to the `<form>`.|
+| `noValidate` | `boolean`         | `true`  | Disables native HTML form validation to allow custom logic.   |
+
+### Example
+
+```jsx
+<Form onSubmit={handleSubmit} className="mt-4">
+  <input type="text" />
+  <Button type="submit">Save</Button>
+</Form>
 ```
 
 ---
