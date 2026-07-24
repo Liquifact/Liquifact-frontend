@@ -95,3 +95,353 @@ describe("format constants and config re-exports", () => {
     expect(FORMAT_CONFIG.defaultCurrency).toBe("USD");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Edge-case hardening
+// ---------------------------------------------------------------------------
+
+describe("formatCurrency – edge cases", () => {
+  // --- zero and negative ---
+  it("formats zero as $0", () => {
+    expect(formatCurrency(0)).toBe("$0");
+  });
+
+  it("formats negative integer", () => {
+    expect(formatCurrency(-500)).toBe("-$500");
+  });
+
+  it("formats negative decimal", () => {
+    expect(formatCurrency(-1234.56)).toBe("-$1,234.56");
+  });
+
+  // NOTE: Intl.NumberFormat preserves the sign of -0, so formatCurrency(-0)
+  // returns "-$0" rather than "$0". This is standard JavaScript/ICU behaviour,
+  // not a defect. The test documents the actual output so regressions are caught.
+  it("renders -0 with a negative sign (Intl.NumberFormat -0 behaviour)", () => {
+    expect(formatCurrency(-0)).toBe("-$0");
+  });
+
+  // --- Infinity / -Infinity ---
+  it("returns fallback for Infinity", () => {
+    expect(formatCurrency(Infinity)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("returns fallback for -Infinity", () => {
+    expect(formatCurrency(-Infinity)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  // --- string numeric inputs ---
+  it("parses a plain numeric string", () => {
+    expect(formatCurrency("1234.56")).toBe("$1,234.56");
+  });
+
+  it("parses a numeric string with leading/trailing whitespace", () => {
+    expect(formatCurrency("  750  ")).toBe("$750");
+  });
+
+  it("returns fallback for a whitespace-only string", () => {
+    expect(formatCurrency("   ")).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("parses a comma-separated numeric string", () => {
+    expect(formatCurrency("1,000,000")).toBe("$1,000,000");
+  });
+
+  // --- large values ---
+  it("formats a billion-scale integer", () => {
+    expect(formatCurrency(1_000_000_000)).toBe("$1,000,000,000");
+  });
+
+  it("formats a million-scale integer", () => {
+    expect(formatCurrency(1_000_000)).toBe("$1,000,000");
+  });
+
+  // --- boolean / object / array inputs ---
+  it("returns fallback for boolean true", () => {
+    expect(formatCurrency(true as unknown as number)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("returns fallback for boolean false", () => {
+    expect(formatCurrency(false as unknown as number)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("returns fallback for an array input", () => {
+    expect(formatCurrency([] as unknown as number)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("returns fallback for an object input", () => {
+    expect(formatCurrency({} as unknown as number)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  // --- currency option edge cases ---
+  it("trims whitespace from currency code option", () => {
+    // "  USD  ".trim() → "USD" → should not fall back
+    expect(formatCurrency(100, { currency: "  USD  " })).toBe("$100");
+  });
+
+  it("returns fallback for currency option that is null", () => {
+    // null is not a string; falls back to USD default, should still format
+    expect(formatCurrency(100, { currency: null as unknown as string })).toBe("$100");
+  });
+
+  it("formats EUR correctly for a negative value", () => {
+    expect(formatCurrency(-250, { currency: "EUR" })).toBe("-€250");
+  });
+
+  // --- fraction-digit boundary ---
+  it("shows up to 2 decimal places for non-integer values", () => {
+    expect(formatCurrency(9.9)).toBe("$9.90");
+  });
+
+  it("shows no decimal places for an integer value", () => {
+    expect(formatCurrency(9)).toBe("$9");
+  });
+});
+
+describe("formatAmount – edge cases", () => {
+  // --- zero and negative ---
+  it("formats zero", () => {
+    expect(formatAmount(0)).toBe("0");
+  });
+
+  it("formats negative integer", () => {
+    expect(formatAmount(-500)).toBe("-500");
+  });
+
+  it("formats negative decimal", () => {
+    expect(formatAmount(-1234.56)).toBe("-1,234.56");
+  });
+
+  // NOTE: Intl.NumberFormat preserves the sign of -0 → produces "-0".
+  // This is standard JavaScript behaviour; the test documents the actual output.
+  it("renders -0 with a negative sign (Intl.NumberFormat -0 behaviour)", () => {
+    expect(formatAmount(-0)).toBe("-0");
+  });
+
+  // --- Infinity / -Infinity ---
+  it("returns fallback for -Infinity", () => {
+    expect(formatAmount(-Infinity)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  // --- string numeric inputs ---
+  it("parses a plain numeric string without percent suffix", () => {
+    expect(formatAmount("1234")).toBe("1,234");
+  });
+
+  it("parses a numeric string with leading/trailing whitespace", () => {
+    expect(formatAmount("  500  ")).toBe("500");
+  });
+
+  it("returns fallback for a whitespace-only string", () => {
+    expect(formatAmount("   ")).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("parses a comma-separated numeric string", () => {
+    expect(formatAmount("1,000")).toBe("1,000");
+  });
+
+  // --- boolean / object / array inputs ---
+  it("returns fallback for boolean true", () => {
+    expect(formatAmount(true as unknown as number)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("returns fallback for boolean false", () => {
+    expect(formatAmount(false as unknown as number)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("returns fallback for an array input", () => {
+    expect(formatAmount([] as unknown as number)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("returns fallback for an object input", () => {
+    expect(formatAmount({} as unknown as number)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  // --- large values ---
+  it("formats a billion-scale integer", () => {
+    expect(formatAmount(1_000_000_000)).toBe("1,000,000,000");
+  });
+
+  // --- fraction digits ---
+  it("respects maximumFractionDigits of 0", () => {
+    expect(formatAmount(9.99, { maximumFractionDigits: 0 })).toBe("10");
+  });
+
+  it("respects minimumFractionDigits of 3", () => {
+    expect(formatAmount(5, { minimumFractionDigits: 3, maximumFractionDigits: 3 })).toBe("5.000");
+  });
+});
+
+describe("formatCurrencyCompact – edge cases", () => {
+  // --- zero ---
+  it("formats zero (below K threshold)", () => {
+    expect(formatCurrencyCompact(0)).toBe("$0");
+  });
+
+  // NOTE: -0 falls to the formatCurrency path (abs is 0, below all thresholds),
+  // which in turn uses Intl.NumberFormat → produces "-$0". Documenting actual output.
+  it("renders -0 with a negative sign via formatCurrency fallback (Intl.NumberFormat -0 behaviour)", () => {
+    expect(formatCurrencyCompact(-0)).toBe("-$0");
+  });
+
+  // --- negative below-threshold ---
+  it("formats a negative value below 1K via formatCurrency fallback", () => {
+    expect(formatCurrencyCompact(-999)).toBe("-$999");
+  });
+
+  // --- K boundary ---
+  it("formats exactly 1,000 as compact K", () => {
+    expect(formatCurrencyCompact(1_000)).toBe("1K USD");
+  });
+
+  it("formats 999.99 as standard currency (just below K threshold)", () => {
+    expect(formatCurrencyCompact(999.99)).toBe("$999.99");
+  });
+
+  it("formats negative thousands compactly", () => {
+    expect(formatCurrencyCompact(-45_000)).toBe("-45K USD");
+  });
+
+  // --- M boundary ---
+  it("formats exactly 1,000,000 as compact M", () => {
+    expect(formatCurrencyCompact(1_000_000)).toBe("1M USD");
+  });
+
+  it("formats 999,999 as K notation (just below M threshold)", () => {
+    // 999,999 / 1,000 = 999.999 → formatted with up to 2 decimal places → "1,000K USD"
+    // (rounds at display level)
+    const result = formatCurrencyCompact(999_999);
+    expect(result).toMatch(/K USD$/);
+  });
+
+  it("formats negative millions compactly", () => {
+    expect(formatCurrencyCompact(-12_500_000)).toBe("-12.5M USD");
+  });
+
+  // --- B boundary ---
+  it("formats exactly 1,000,000,000 as compact B", () => {
+    expect(formatCurrencyCompact(1_000_000_000)).toBe("1B USD");
+  });
+
+  it("formats 999,999,999 as M notation (just below B threshold)", () => {
+    const result = formatCurrencyCompact(999_999_999);
+    expect(result).toMatch(/M USD$/);
+  });
+
+  // --- Infinity / -Infinity ---
+  it("returns fallback for Infinity", () => {
+    expect(formatCurrencyCompact(Infinity)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("returns fallback for -Infinity", () => {
+    expect(formatCurrencyCompact(-Infinity)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  // --- string numeric inputs ---
+  it("parses a numeric string into compact notation", () => {
+    expect(formatCurrencyCompact("50000")).toBe("50K USD");
+  });
+
+  it("returns fallback for a whitespace-only string", () => {
+    expect(formatCurrencyCompact("   ")).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  // --- boolean / object / array ---
+  it("returns fallback for boolean true", () => {
+    expect(formatCurrencyCompact(true as unknown as number)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("returns fallback for an object input", () => {
+    expect(formatCurrencyCompact({} as unknown as number)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  // --- custom currency label ---
+  it("uses the custom currency label in compact output", () => {
+    expect(formatCurrencyCompact(5_000, { currency: "GBP" })).toBe("5K GBP");
+  });
+
+  it("uses the custom currency label for M notation", () => {
+    expect(formatCurrencyCompact(3_500_000, { currency: "EUR" })).toBe("3.5M EUR");
+  });
+
+  it("uses the custom currency label for B notation", () => {
+    expect(formatCurrencyCompact(2_000_000_000, { currency: "JPY" })).toBe("2B JPY");
+  });
+});
+
+describe("formatPercent – edge cases", () => {
+  // --- negative values ---
+  it("formats a negative percentage", () => {
+    expect(formatPercent(-5)).toBe("-5%");
+  });
+
+  it("formats a negative decimal percentage", () => {
+    expect(formatPercent(-3.14)).toBe("-3.14%");
+  });
+
+  // NOTE: Intl.NumberFormat preserves the sign of -0 → produces "-0%".
+  // This is standard JavaScript behaviour; the test documents the actual output.
+  it("renders -0 with a negative sign (Intl.NumberFormat -0 behaviour)", () => {
+    expect(formatPercent(-0)).toBe("-0%");
+  });
+
+  // --- large values ---
+  it("formats a large percentage", () => {
+    expect(formatPercent(1000)).toBe("1,000%");
+  });
+
+  // --- Infinity / -Infinity ---
+  it("returns fallback for Infinity", () => {
+    expect(formatPercent(Infinity)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("returns fallback for -Infinity", () => {
+    expect(formatPercent(-Infinity)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  // --- string numeric inputs ---
+  it("parses a plain numeric string", () => {
+    expect(formatPercent("3.5")).toBe("3.5%");
+  });
+
+  it("parses a numeric string with leading/trailing whitespace", () => {
+    expect(formatPercent("  7  ")).toBe("7%");
+  });
+
+  it("returns fallback for a whitespace-only string", () => {
+    expect(formatPercent("   ")).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("parses a comma-separated numeric string", () => {
+    expect(formatPercent("1,000")).toBe("1,000%");
+  });
+
+  // --- boolean / object / array ---
+  it("returns fallback for boolean true", () => {
+    expect(formatPercent(true as unknown as number)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("returns fallback for boolean false", () => {
+    expect(formatPercent(false as unknown as number)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("returns fallback for an array input", () => {
+    expect(formatPercent([] as unknown as number)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  it("returns fallback for an object input", () => {
+    expect(formatPercent({} as unknown as number)).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  // --- NaN string ---
+  it("returns fallback for string 'NaN'", () => {
+    expect(formatPercent("NaN")).toBe(INVALID_VALUE_FALLBACK);
+  });
+
+  // --- fraction digits ---
+  it("formats 100% with minimumFractionDigits=2", () => {
+    expect(formatPercent(100, { minimumFractionDigits: 2, maximumFractionDigits: 2 })).toBe(
+      "100.00%"
+    );
+  });
+});
