@@ -511,6 +511,17 @@ describe("FundActions", () => {
       printSpy.mockRestore();
     });
 
+    it("calls window.print() when activated with Enter", () => {
+      const printSpy = jest.spyOn(window, "print").mockImplementation(() => {});
+      render(<FundActions {...defaultProps} />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+
+      fireEvent.keyDown(btn, { key: "Enter" });
+
+      expect(printSpy).toHaveBeenCalledTimes(1);
+      printSpy.mockRestore();
+    });
+
     it("is keyboard-focusable and not disabled", () => {
       render(<FundActions {...defaultProps} />);
       const btn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });

@@ -111,6 +111,13 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
     window.print();
   };
 
+  const handlePrintKeyDown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handlePrint();
+    }
+  };
+
   // Partial-funding submit: prompt wallet connection when disconnected,
   // otherwise acknowledge the funding request. A real sign+submit flow
   // replaces the toast once the Stellar integration lands.
@@ -166,6 +173,7 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
         <button
           type="button"
           onClick={handlePrint}
+          onKeyDown={handlePrintKeyDown}
           className="rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-cyan-500"
           aria-label={detail.printButtonLabel}
         >
