@@ -257,6 +257,7 @@ function UploadZone({ onUploadSuccess, progress }) {
         role="button"
         tabIndex={0}
         aria-label={copy.uploadZone.dropZoneLabel}
+        aria-dropeffect={dragOver ? "copy" : "none"}
         onDragOver={(e) => {
           e.preventDefault();
           setDragOver(true);
@@ -267,6 +268,9 @@ function UploadZone({ onUploadSuccess, progress }) {
         onKeyDown={handleKeyDown}
         className={`cursor-pointer rounded-xl border-2 border-dashed transition-colors duration-200 p-10 text-center ${dropZoneBorder}`}
       >
+        <span aria-live="polite" className="sr-only">
+          {dragOver ? copy.uploadZone.dragActiveAnnounce : ""}
+        </span>
         {file ? (
           <div className="space-y-2">
             <span className="text-3xl" aria-hidden="true">

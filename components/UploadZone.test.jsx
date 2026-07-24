@@ -478,6 +478,99 @@ describe("UploadZone", () => {
 
       expect(dropZone).not.toHaveClass("border-cyan-400", "bg-cyan-500/10");
     });
+
+    it("announces drag-active to screen readers on dragOver", () => {
+      render(<UploadZone />);
+
+      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
+      const liveRegion = dropZone.querySelector('[aria-live="polite"]');
+
+      expect(liveRegion).toBeInTheDocument();
+      expect(liveRegion).toHaveTextContent("");
+
+      fireEvent.dragOver(dropZone);
+
+      expect(liveRegion).toHaveTextContent(copy.uploadZone.dragActiveAnnounce);
+    });
+
+    it("clears drag-active announcement on dragLeave", () => {
+      render(<UploadZone />);
+
+      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
+      const liveRegion = dropZone.querySelector('[aria-live="polite"]');
+
+      fireEvent.dragOver(dropZone);
+      expect(liveRegion).toHaveTextContent(copy.uploadZone.dragActiveAnnounce);
+
+      fireEvent.dragLeave(dropZone);
+
+      expect(liveRegion).toHaveTextContent("");
+    });
+
+    it("sets aria-dropeffect to copy during dragOver and none when idle", () => {
+      render(<UploadZone />);
+
+      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
+
+      expect(dropZone).toHaveAttribute("aria-dropeffect", "none");
+
+      fireEvent.dragOver(dropZone);
+
+      expect(dropZone).toHaveAttribute("aria-dropeffect", "copy");
+
+      fireEvent.dragLeave(dropZone);
+
+      expect(dropZone).toHaveAttribute("aria-dropeffect", "none");
+    });
+
+    it("clears drag-over state on drop even without prior dragOver", () => {
+      render(<UploadZone />);
+
+      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
+      const file = createMockFile();
+      const dataTransfer = createDataTransfer([file]);
+
+      fireEvent.drop(dropZone, { dataTransfer });
+
+      expect(dropZone).not.toHaveClass("border-cyan-400", "bg-cyan-500/10");
+      expect(dropZone).toHaveAttribute("aria-dropeffect", "none");
+    });
+
+    it("handles multiple rapid dragenter events without breaking state", () => {
+      render(<UploadZone />);
+
+      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
+      const liveRegion = dropZone.querySelector('[aria-live="polite"]');
+
+      fireEvent.dragOver(dropZone);
+      fireEvent.dragOver(dropZone);
+      fireEvent.dragOver(dropZone);
+
+      expect(dropZone).toHaveClass("border-cyan-400", "bg-cyan-500/10");
+      expect(dropZone).toHaveAttribute("aria-dropeffect", "copy");
+      expect(liveRegion).toHaveTextContent(copy.uploadZone.dragActiveAnnounce);
+
+      fireEvent.dragLeave(dropZone);
+
+      expect(dropZone).toHaveClass("border-slate-700", "bg-slate-900/40");
+      expect(dropZone).toHaveAttribute("aria-dropeffect", "none");
+      expect(liveRegion).toHaveTextContent("");
+    });
+
+    it("handles dragleave after rapid drags without stale state", () => {
+      render(<UploadZone />);
+
+      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
+
+      fireEvent.dragOver(dropZone);
+      fireEvent.dragOver(dropZone);
+      fireEvent.dragLeave(dropZone);
+      fireEvent.dragOver(dropZone);
+      fireEvent.dragLeave(dropZone);
+
+      expect(dropZone).toHaveClass("border-slate-700", "bg-slate-900/40");
+      expect(dropZone).toHaveAttribute("aria-dropeffect", "none");
+    });
   });
 
   describe("GROUP 2: Keyboard activation (existing tests validated)", () => {

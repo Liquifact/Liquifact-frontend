@@ -143,6 +143,7 @@ exports[`copy dictionary — snapshot of full dictionary matches the full copy d
     "badgePdfOnly": "PDF only",
     "browsePrompt": "or click to browse",
     "changeFile": "Click to choose a different file",
+    "dragActiveAnnounce": "File detected. Release to drop your PDF.",
     "dragDropPrompt": "Drag & drop your invoice PDF here",
     "dropZoneLabel": "Drop PDF invoice here or press Enter to browse files",
     "errorEmpty": "File is empty (0 bytes). Please select a valid PDF file.",

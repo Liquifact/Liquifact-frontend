@@ -122,6 +122,7 @@
  * @property {string} uploadZone.errorUploadStatus
  * @property {string} uploadZone.resetAction
  * @property {string} uploadZone.resetAriaLabel
+ * @property {string} uploadZone.dragActiveAnnounce
  * @property {Object} wallet - Wallet copy
  * @property {string} wallet.connectButton
  * @property {string} wallet.connectingButton
@@ -324,6 +325,7 @@ export const copy = {
     errorUploadStatus: "Upload failed ({status})",
     resetAction: "Upload another invoice",
     resetAriaLabel: "Upload another invoice \u2014 clears current upload and starts fresh",
+    dragActiveAnnounce: "File detected. Release to drop your PDF.",
   },
   wallet: {
     connectButton: "Connect Wallet",

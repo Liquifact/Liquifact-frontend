@@ -88,6 +88,7 @@ describe("copy dictionary — key presence", () => {
       expect(copy.uploadZone.errorReadFailed).toBeDefined();
       expect(copy.uploadZone.errorUploadFailed).toBeDefined();
       expect(copy.uploadZone.errorUploadStatus).toBeDefined();
+      expect(copy.uploadZone.dragActiveAnnounce).toBeDefined();
     });
   });
 
