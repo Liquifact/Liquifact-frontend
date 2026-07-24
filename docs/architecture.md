@@ -143,6 +143,7 @@ All permanent reference material for this frontend belongs in `docs/`:
 | File | Purpose |
 | ---- | ------- |
 | `docs/architecture.md` | This file — routes, data flow, state, conventions |
+| `docs/marketplace.md` | `InvestMarketplace` component contract — props, states, helpers, accessibility |
 | `docs/api-integration.md` | HTTP payload / endpoint contract with the Express backend |
 | `docs/configuration.md` | Every `NEXT_PUBLIC_*` env variable, validation rules, defaults |
 | `docs/design-tokens.md` | CSS custom properties, Tailwind token mapping |
