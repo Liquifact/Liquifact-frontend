@@ -57,6 +57,29 @@ describe("NavMenu", () => {
     });
   });
 
+  describe("brand link", () => {
+    it("shows a back-arrow prefix when not on the home page", () => {
+      mockPathname.mockReturnValue("/invoices");
+      render(<NavMenu />);
+      expect(screen.getAllByText("← LiquiFact").length).toBeGreaterThan(0);
+      expect(screen.queryByText(/^LiquiFact$/)).not.toBeInTheDocument();
+    });
+
+    it('omits the back-arrow on "/"', () => {
+      mockPathname.mockReturnValue("/");
+      render(<NavMenu />);
+      expect(screen.getAllByText(/^LiquiFact$/).length).toBeGreaterThan(0);
+      expect(screen.queryByText("← LiquiFact")).not.toBeInTheDocument();
+    });
+
+    it('omits the back-arrow on "/home"', () => {
+      mockPathname.mockReturnValue("/home");
+      render(<NavMenu />);
+      expect(screen.getAllByText(/^LiquiFact$/).length).toBeGreaterThan(0);
+      expect(screen.queryByText("← LiquiFact")).not.toBeInTheDocument();
+    });
+  });
+
   describe("hamburger toggle", () => {
     it("toggle button has aria-expanded=false initially", () => {
       render(<NavMenu />);
@@ -125,9 +148,53 @@ describe("NavMenu", () => {
         expect(within(mobileNav).getByRole("link", { name: /^home$/i })).toHaveFocus();
       });
     });
+
+    it("opens the mobile menu via the Space key on the toggle button", async () => {
+      const user = userEvent.setup();
+      render(<NavMenu />);
+      const toggle = screen.getByRole("button", { name: /open navigation menu/i });
+
+      toggle.focus();
+      await user.keyboard(" ");
+
+      expect(screen.getByRole("navigation", { name: /mobile navigation/i })).toBeInTheDocument();
+      expect(toggle).toHaveAttribute("aria-expanded", "true");
+    });
+
+    it("focuses the menu container itself when it has no focusable child", async () => {
+      const user = userEvent.setup();
+      const originalQuerySelector = Element.prototype.querySelector;
+      jest.spyOn(Element.prototype, "querySelector").mockImplementation(function (selector) {
+        if (selector === "a[href], button:not([disabled])") {
+          return null;
+        }
+        return originalQuerySelector.call(this, selector);
+      });
+
+      render(<NavMenu />);
+      await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+
+      const mobileNav = screen.getByRole("navigation", { name: /mobile navigation/i });
+      await waitFor(() => {
+        expect(mobileNav).toHaveFocus();
+      });
+
+      jest.restoreAllMocks();
+    });
   });
 
   describe("Escape key", () => {
+    it("ignores non-Escape keys and leaves the menu open", async () => {
+      const user = userEvent.setup();
+      render(<NavMenu />);
+      await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+      expect(screen.getByRole("navigation", { name: /mobile navigation/i })).toBeInTheDocument();
+
+      fireEvent.keyDown(document, { key: "a" });
+
+      expect(screen.getByRole("navigation", { name: /mobile navigation/i })).toBeInTheDocument();
+    });
+
     it("closes the menu when Escape is pressed", async () => {
       const user = userEvent.setup();
       render(<NavMenu />);
