@@ -195,3 +195,73 @@ rules on every CI run. It checks:
    are still present after cleanup.
 6. Helper predicate functions (`isPrBodyFile`, `isTransientNote`, `isRustSource`,
    `isBinary`) behave correctly.
+
+---
+
+## TypeScript migration: `lib/format` (Issue #455)
+
+The `lib/format/` directory was migrated from plain JavaScript (with JSDoc) to
+TypeScript as part of Issue #455. This was intentionally scoped to the
+**smallest, purest layer** first — pure utility functions with no browser/React
+dependencies — to deliver real type safety at the formatting boundary without a
+repo-wide rewrite.
+
+### Migrated modules
+
+| File | Key exports | Exported types |
+| ---- | ----------- | -------------- |
+| `lib/format/config.ts` | `FORMAT_CONFIG`, `DEFAULT_LOCALE`, `DEFAULT_CURRENCY`, `INVALID_VALUE_FALLBACK` | `FormatConfig`, `CurrencyFormatConfig`, `AmountFormatConfig`, `PercentageFormatConfig` |
+| `lib/format/currency.ts` | `formatCurrency`, `formatAmount`, `formatCurrencyCompact`, `formatPercent` | `NumericInput`, `CurrencyOptions`, `AmountOptions`, `PercentOptions` |
+| `lib/format/date.ts` | `formatInvoiceDate`, `INVALID_DATE_FALLBACK` | `DateInput`, `InvoiceDateOptions` |
+| `lib/format/invoice.ts` | `formatAmount`, `formatYield` | *(inline type annotations)* |
+| `lib/format/safeJson.ts` | `safeJsonStringify`, `truncateString`, `limitDepth`, `extractKnownFields` | `SafeJsonOptions` |
+| `lib/format/truncateAddress.ts` | `truncateAddress` | *(inline type annotations)* |
+
+### Design decisions
+
+1. **Both `.js` and `.ts` co-exist.** The `.js` files are kept in place because
+   existing consumers (`components/InvoiceCard.jsx`, `app/invest/[id]/page.js`,
+   etc.) import without a file extension. Next.js and Jest both resolve `.ts`
+   before `.js` when `allowJs: true` is set in `tsconfig.json`, so the TypeScript
+   modules take precedence automatically — no import-path changes required.
+
+2. **Exported types, not just annotated internals.** Every module exports its
+   primary input/options types. Consumer components can import them directly:
+   ```ts
+   import type { NumericInput, CurrencyOptions } from "@/lib/format/currency";
+   ```
+
+3. **Runtime behaviour preserved exactly.** Each `.ts` module is a direct
+   translation of the corresponding `.js` module. No logic was changed; only
+   types were added and JSDoc was replaced with TypeDoc-style inline annotations.
+
+4. **`tsconfig.json` compatibility.** The project's existing `tsconfig.json`
+   (`"allowJs": true`, `"moduleResolution": "bundler"`, `"strict": false`) and
+   the babel-jest transform (`"^.+\\.(js|jsx|ts|tsx|mjs)$"`) already handle
+   `.ts` files. No configuration changes were needed.
+
+5. **Coverage target met.** Running `jest --testPathPatterns="lib/format"`
+   reports ≥ 98% statement, branch, function, and line coverage — above the
+   required 95% minimum.
+
+### Test coverage additions
+
+New test files added alongside this migration:
+
+- `lib/format/truncateAddress.test.tsx` — 141 assertions covering normal
+  truncation, boundary conditions, invalid inputs (null/undefined/number/object),
+  Unicode ellipsis validation, and custom head/tail lengths.
+- `lib/format/date.test.tsx` — covers ISO strings, `Date` objects, Unix
+  timestamps, null/undefined/empty/invalid inputs, custom `Intl` format options,
+  and the `INVALID_DATE_FALLBACK` export value.
+
+### Next steps
+
+The remaining `lib/` JavaScript modules (`lib/api/`, `lib/hooks/`,
+`lib/wallet/`, `lib/config/`) are candidates for TypeScript migration in future
+issues. The `lib/format` migration demonstrates the pattern to follow:
+
+1. Create a `.ts` file alongside the `.js` file.
+2. Export all input/options types from the new `.ts` file.
+3. Run `npm run lint && npm test` to confirm no regressions.
+4. Leave the `.js` file in place — consumers resolve the `.ts` version first.
