@@ -414,14 +414,11 @@ Responsive site-wide header navigation used on every page.
 
 ### Props
 
-| Prop            | Type       | Default            | Description                                      |
-| --------------- | ---------- | ------------------ | ------------------------------------------------ |
-| `walletLabel`   | `string`   | `'Connect Wallet'` | Label text rendered inside the wallet button     |
-| `onWalletClick` | `function` | —                  | Callback fired when the wallet button is clicked |
+The component currently accepts no props.
 
 ### Behaviour
 
-- **Desktop (≥ `md` breakpoint):** Home, Invoices, and Invest links render inline in the header row alongside the wallet button.
+- **Desktop (≥ `md` breakpoint):** Home, Invoices, and Invest links render inline in the header row alongside the network badge and lazy-loaded wallet UI.
 - **Mobile (< `md` breakpoint):** Nav links are hidden behind a hamburger toggle (☰). Clicking the toggle reveals a dropdown menu below the header bar.
 - The active route is detected automatically via `usePathname` and marked with `aria-current="page"` on the matching link.
 - The menu closes on **Escape** (focus returns to the toggle button), on any navigation event (pathname change), or when the toggle is clicked again.
@@ -429,6 +426,7 @@ Responsive site-wide header navigation used on every page.
 ### Accessibility
 
 - Toggle button exposes `aria-expanded` and `aria-controls` so assistive technologies announce the disclosure state.
+- The mobile menu uses a navigation landmark and moves focus into the menu when opened.
 - All links carry `aria-current="page"` on the active route.
 - Passes `jest-axe` checks in both open and closed states.
 - All interactive elements have visible `focus-visible` outlines using the cyan-400 design token.
@@ -438,7 +436,6 @@ Responsive site-wide header navigation used on every page.
 ```jsx
 import NavMenu from "@/components/NavMenu";
 
-// Drop-in replacement for the static <header> on any page
 export default function MyPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -447,9 +444,6 @@ export default function MyPage() {
     </div>
   );
 }
-
-// With Stellar wallet integration
-<NavMenu walletLabel="Freighter" onWalletClick={handleConnectWallet} />;
 ```
 
 ---

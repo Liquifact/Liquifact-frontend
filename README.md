@@ -893,14 +893,11 @@ The provider rehydrates from storage **after mount** (SSR-safe). `disconnect()` 
 
 **Props**
 
-| Prop            | Type       | Default            | Description                                      |
-| --------------- | ---------- | ------------------ | ------------------------------------------------ |
-| `walletLabel`   | `string`   | `'Connect Wallet'` | Label text rendered inside the wallet button     |
-| `onWalletClick` | `function` | `undefined`        | Callback fired when the wallet button is clicked |
+The component currently accepts no props.
 
 **Behaviour**
 
-- **Desktop (≥ `md` breakpoint):** Home, Invoices, and Invest links render inline in the header row alongside the wallet button.
+- **Desktop (≥ `md` breakpoint):** Home, Invoices, and Invest links render inline in the header row alongside the network badge and lazy-loaded wallet UI.
 - **Mobile (< `md` breakpoint):** Nav links are hidden behind a hamburger toggle (☰). Clicking the toggle reveals a dropdown menu below the header bar.
 - The active route is detected automatically via `usePathname` and marked with `aria-current="page"` on the matching link.
 - The menu closes on **Escape** (with focus returned to the toggle button), on any navigation event (pathname change), or when the toggle is clicked again.
@@ -911,7 +908,6 @@ The provider rehydrates from storage **after mount** (SSR-safe). `disconnect()` 
 ```jsx
 import NavMenu from "@/components/NavMenu";
 
-// Drop-in replacement for the static <header> on any page
 export default function MyPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -920,10 +916,9 @@ export default function MyPage() {
     </div>
   );
 }
-
-// With Stellar wallet integration
-<NavMenu walletLabel="Freighter" onWalletClick={handleConnectWallet} />;
 ```
+
+For the full current contract and accessibility notes, see the [Navigation component contract](docs/navigation.md).
 
 ## Design Tokens
 
