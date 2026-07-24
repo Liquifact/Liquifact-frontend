@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ErrorBanner from "./ErrorBanner";
 import EmptyState, { InvoiceEmptyIllustration } from "./EmptyState";
 import InvoiceListSkeleton from "./InvoiceListSkeleton";
@@ -201,6 +201,9 @@ export function getMaturityBadgeProps(days) {
 export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisticInvoices = [] }) {
   const [invoices, setInvoices] = useState(null);
   const [loadError, setLoadError] = useState("");
+  const [announcement, setAnnouncement] = useState("");
+  const announcementTimerRef = useRef(null);
+  const previousStatusMessageRef = useRef(null);
 
   const mergedInvoices = useMemo(
     () => mergeInvoices(optimisticInvoices, invoices ?? []),
@@ -240,6 +243,44 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
     };
   }, [loadInvoices]);
 
+  useEffect(() => {
+    const nextMessage = statusMessage;
+
+    if (previousStatusMessageRef.current === null) {
+      previousStatusMessageRef.current = nextMessage;
+      return;
+    }
+
+    if (!nextMessage || nextMessage === "Loading invoices..." || nextMessage === previousStatusMessageRef.current) {
+      previousStatusMessageRef.current = nextMessage;
+      return;
+    }
+
+    previousStatusMessageRef.current = nextMessage;
+
+    if (announcementTimerRef.current) {
+      clearTimeout(announcementTimerRef.current);
+    }
+
+    announcementTimerRef.current = setTimeout(() => {
+      setAnnouncement(nextMessage);
+    }, 150);
+
+    return () => {
+      if (announcementTimerRef.current) {
+        clearTimeout(announcementTimerRef.current);
+      }
+    };
+  }, [statusMessage]);
+
+  useEffect(() => {
+    return () => {
+      if (announcementTimerRef.current) {
+        clearTimeout(announcementTimerRef.current);
+      }
+    };
+  }, []);
+
   // Compute status message inline in render
 
   if (loadError) {
@@ -250,8 +291,14 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
           description={loadError}
           previewLabel="Invoice list status"
         />
-        <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-          {statusMessage}
+        <p
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="sr-only"
+          data-testid="invoice-list-live-region"
+        >
+          {announcement}
         </p>
       </div>
     );
@@ -268,8 +315,14 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
             Track tokenization progress for uploaded documents.
           </p>
         </div>
-        <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-          {statusMessage}
+        <p
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="sr-only"
+          data-testid="invoice-list-live-region"
+        >
+          {announcement}
         </p>
       </div>
 

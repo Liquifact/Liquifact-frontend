@@ -95,4 +95,94 @@ describe("InvoiceList", () => {
     await waitFor(() => expect(screen.getByText("New Upload.pdf")).toBeInTheDocument());
     expect(screen.getByText("Pending tokenization")).toBeInTheDocument();
   });
+
+  describe("live-region announcements", () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.runOnlyPendingTimers();
+      jest.useRealTimers();
+    });
+
+    it("does not announce on initial mount and announces the first meaningful status after a debounce", async () => {
+      const loader = jest.fn().mockResolvedValue([]);
+
+      render(<InvoiceList loadInvoices={loader} />);
+
+      const announcer = screen.getByTestId("invoice-list-live-region");
+      expect(announcer).toHaveTextContent("");
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      act(() => {
+        jest.advanceTimersByTime(150);
+      });
+
+      expect(announcer).toHaveTextContent("No invoices are currently available.");
+    });
+
+    it("debounces rapid successive updates to the latest invoice count", async () => {
+      const loader = jest.fn().mockResolvedValue([]);
+      const { rerender } = render(<InvoiceList loadInvoices={loader} optimisticInvoices={[]} />);
+
+      const announcer = screen.getByTestId("invoice-list-live-region");
+
+      rerender(
+        <InvoiceList
+          loadInvoices={loader}
+          optimisticInvoices={[
+            {
+              id: "upload-123",
+              issuer: "Upload A.pdf",
+              amount: "Pending",
+              currency: "USD",
+              dueDate: "Pending",
+              yield: "Pending",
+              status: "Pending tokenization",
+            },
+          ]}
+        />
+      );
+
+      rerender(
+        <InvoiceList
+          loadInvoices={loader}
+          optimisticInvoices={[
+            {
+              id: "upload-123",
+              issuer: "Upload A.pdf",
+              amount: "Pending",
+              currency: "USD",
+              dueDate: "Pending",
+              yield: "Pending",
+              status: "Pending tokenization",
+            },
+            {
+              id: "upload-456",
+              issuer: "Upload B.pdf",
+              amount: "Pending",
+              currency: "USD",
+              dueDate: "Pending",
+              yield: "Pending",
+              status: "Pending tokenization",
+            },
+          ]}
+        />
+      );
+
+      act(() => {
+        jest.advanceTimersByTime(149);
+      });
+      expect(announcer).toHaveTextContent("");
+
+      act(() => {
+        jest.advanceTimersByTime(1);
+      });
+      expect(announcer).toHaveTextContent("2 invoices available.");
+    });
+  });
 });
