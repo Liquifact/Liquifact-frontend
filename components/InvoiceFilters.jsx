@@ -19,7 +19,7 @@ export const DEFAULT_FILTERS = {
  * Sort-column values that support direction toggling.
  * These are the base column keys (without _asc/_desc suffix).
  */
-export const SORTABLE_COLUMNS = ["amount", "yield"];
+export const SORTABLE_COLUMNS = ["amount", "yield", "maturity"];
 
 export const SORT_OPTIONS = [
   { value: "", label: "Sort By" },

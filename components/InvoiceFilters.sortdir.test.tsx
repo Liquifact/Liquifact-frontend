@@ -184,6 +184,26 @@ describe("applySortToList", () => {
     });
   });
 
+  it("handles ties on the sort key stably", () => {
+    const listWithTies = [
+      ...INVOICES,
+      {
+        id: "d",
+        issuer: "Delta",
+        amount: "5,000",
+        currency: "USD",
+        dueDate: "2026-09-01",
+        yield: "6.0%",
+        status: "Open",
+      },
+    ];
+    // id 'a' and 'd' have amount 5,000, yield 6.0%, maturity 2026-09-01
+    // 'a' appears before 'd' originally.
+    const result = applySortToList(listWithTies, filtersWith({ sort: "amount", sortDir: "asc" }));
+    // ascending amount: 800 (c), 5000 (a), 5000 (d), 12500 (b)
+    expect(result.map((i) => i.id)).toEqual(["c", "a", "d", "b"]);
+  });
+
   it("does not mutate the original list", () => {
     const original = [...INVOICES];
     applySortToList(INVOICES, filtersWith({ sort: "amount", sortDir: "asc" }));
@@ -194,9 +214,10 @@ describe("applySortToList", () => {
 // ─── 4. DirectionToggle (via InvoiceFilters) ─────────────────────────────────
 
 describe("DirectionToggle in InvoiceFilters", () => {
-  it('SORTABLE_COLUMNS exports contain "amount" and "yield"', () => {
+  it('SORTABLE_COLUMNS exports contain "amount", "yield", and "maturity"', () => {
     expect(SORTABLE_COLUMNS).toContain("amount");
     expect(SORTABLE_COLUMNS).toContain("yield");
+    expect(SORTABLE_COLUMNS).toContain("maturity");
   });
 
   describe("direction toggle aria-labels", () => {
@@ -239,6 +260,20 @@ describe("DirectionToggle in InvoiceFilters", () => {
       expect(screen.getByLabelText("Sort yield ascending")).toHaveAttribute(
         "aria-label",
         "Sort yield ascending"
+      );
+    });
+
+    it('shows \"Sort maturity ascending\" when maturity column active and dir=desc', () => {
+      render(
+        <InvoiceFilters
+          filters={filtersWith({ sort: "maturity", sortDir: "desc" })}
+          onFilterChange={() => {}}
+          onClearFilters={() => {}}
+        />
+      );
+      expect(screen.getByLabelText("Sort maturity ascending")).toHaveAttribute(
+        "aria-label",
+        "Sort maturity ascending"
       );
     });
 
@@ -295,6 +330,21 @@ describe("DirectionToggle in InvoiceFilters", () => {
       fireEvent.click(screen.getByLabelText(/Sort yield descending/i));
       expect(handleChange).toHaveBeenCalledWith(
         expect.objectContaining({ sort: "yield", sortDir: "desc" })
+      );
+    });
+
+    it("flips asc → desc when the active maturity toggle is clicked", () => {
+      const handleChange = jest.fn();
+      render(
+        <InvoiceFilters
+          filters={filtersWith({ sort: "maturity", sortDir: "asc" })}
+          onFilterChange={handleChange}
+          onClearFilters={() => {}}
+        />
+      );
+      fireEvent.click(screen.getByLabelText(/Sort maturity descending/i));
+      expect(handleChange).toHaveBeenCalledWith(
+        expect.objectContaining({ sort: "maturity", sortDir: "desc" })
       );
     });
 
