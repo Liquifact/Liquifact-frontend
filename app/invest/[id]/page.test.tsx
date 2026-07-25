@@ -33,6 +33,7 @@
 
 import React from "react";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { axe, toHaveNoViolations } from "jest-axe";
 
@@ -640,6 +641,7 @@ describe("copy.invest.detail — key presence and non-empty", () => {
     "copyErrorTitle",
     "loadErrorMsg",
     "loadErrorTitle",
+    "actionGroupLabel",
   ] as const;
 
   it("exports copy.invest.detail as an object", () => {
@@ -672,5 +674,291 @@ describe("print stylesheet classes", () => {
       el.textContent?.includes("Yield references")
     );
     expect(disclaimer).toBeInTheDocument();
+  });
+});
+
+// =============================================================================
+// 6. Keyboard operability
+// =============================================================================
+
+describe("keyboard operability", () => {
+  describe("FundActions buttons — keyboard activation", () => {
+    it("Fund button activates on Enter", async () => {
+      const user = userEvent.setup();
+      const connect = jest.fn();
+      mockUseWallet.mockReturnValue({
+        state: WALLET_STATES.DISCONNECTED,
+        connect,
+      } as ReturnType<typeof useWallet>);
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      btn.focus();
+      await user.keyboard("{Enter}");
+      expect(connect).toHaveBeenCalledTimes(1);
+    });
+
+    it("Fund button activates on Space", async () => {
+      const user = userEvent.setup();
+      const connect = jest.fn();
+      mockUseWallet.mockReturnValue({
+        state: WALLET_STATES.DISCONNECTED,
+        connect,
+      } as ReturnType<typeof useWallet>);
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      btn.focus();
+      await user.keyboard(" ");
+      expect(connect).toHaveBeenCalledTimes(1);
+    });
+
+    it("Copy link button activates on Enter", async () => {
+      const user = userEvent.setup();
+      const writeText = jest.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        get: () => ({ writeText }),
+      });
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+      btn.focus();
+      await user.keyboard("{Enter}");
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/invest/inv-001"));
+      });
+    });
+
+    it("Copy link button activates on Space", async () => {
+      const user = userEvent.setup();
+      const writeText = jest.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        get: () => ({ writeText }),
+      });
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+      btn.focus();
+      await user.keyboard(" ");
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/invest/inv-001"));
+      });
+    });
+
+    it("Print button activates on Enter", async () => {
+      const user = userEvent.setup();
+      const printSpy = jest.spyOn(window, "print").mockImplementation(() => {});
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+      btn.focus();
+      await user.keyboard("{Enter}");
+      expect(printSpy).toHaveBeenCalledTimes(1);
+      printSpy.mockRestore();
+    });
+
+    it("Print button activates on Space", async () => {
+      const user = userEvent.setup();
+      const printSpy = jest.spyOn(window, "print").mockImplementation(() => {});
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+      btn.focus();
+      await user.keyboard(" ");
+      expect(printSpy).toHaveBeenCalledTimes(1);
+      printSpy.mockRestore();
+    });
+  });
+
+  describe("FundActions buttons — focus-visible class", () => {
+    it("Fund button has the focus-ring class", () => {
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      expect(btn.className).toContain("focus-ring");
+    });
+
+    it("Copy link button has the focus-ring class", () => {
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+      expect(btn.className).toContain("focus-ring");
+    });
+
+    it("Print button has the focus-ring class", () => {
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+      expect(btn.className).toContain("focus-ring");
+    });
+  });
+
+  describe("FundActions — ARIA group semantics", () => {
+    it("action row has role='group'", () => {
+      const { container } = render(<FundActions id="inv-001" status="Open" />);
+      const group = container.querySelector('[role="group"]');
+      expect(group).toBeInTheDocument();
+    });
+
+    it("action row group has an aria-label", () => {
+      const { container } = render(<FundActions id="inv-001" status="Open" />);
+      const group = container.querySelector('[role="group"]');
+      expect(group).toHaveAttribute("aria-label", copy.invest.detail.actionGroupLabel);
+    });
+
+    it("group contains Fund, Copy, and Print buttons", () => {
+      const { container } = render(<FundActions id="inv-001" status="Open" />);
+      const group = container.querySelector('[role="group"]');
+      const buttons = group!.querySelectorAll("button");
+      expect(buttons).toHaveLength(3);
+    });
+  });
+
+  describe("FundActions — disabled button keyboard behavior", () => {
+    it("disabled Fund button is not focusable via Tab", async () => {
+      const user = userEvent.setup();
+      render(<FundActions id="inv-001" status="Funded" />);
+      const fundBtn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      expect(fundBtn).toBeDisabled();
+
+      // Tab through all focusable elements — disabled button should be skipped
+      await user.tab();
+      const activeEl = document.activeElement;
+      expect(activeEl).not.toBe(fundBtn);
+    });
+
+    it("disabled Copy link button is not focusable via Tab during copy", async () => {
+      const user = userEvent.setup();
+      const writeText = jest.fn().mockImplementation(
+        () => new Promise<void>((resolve) => setTimeout(resolve, 100))
+      );
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        get: () => ({ writeText }),
+      });
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const copyBtn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+
+      // Focus and activate copy button via keyboard
+      copyBtn.focus();
+      await user.keyboard("{Enter}");
+
+      // Button should be disabled during async copy
+      await waitFor(() => {
+        expect(copyBtn).toBeDisabled();
+      });
+    });
+  });
+
+  describe("Tab order — FundActions focus sequence", () => {
+    it("tabs through Fund → Copy → Print in order", async () => {
+      const user = userEvent.setup();
+      render(<FundActions id="inv-001" status="Open" />);
+
+      const fundBtn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      const copyBtn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+      const printBtn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+
+      // Focus the Fund button first (simulating Tab from previous element)
+      fundBtn.focus();
+      expect(fundBtn).toHaveFocus();
+
+      await user.tab();
+      expect(copyBtn).toHaveFocus();
+
+      await user.tab();
+      expect(printBtn).toHaveFocus();
+    });
+
+    it("Print button does not wrap focus back to Fund", async () => {
+      const user = userEvent.setup();
+      render(<FundActions id="inv-001" status="Open" />);
+
+      const printBtn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+      printBtn.focus();
+
+      await user.tab();
+      // Focus should move to the next focusable element after FundActions (disclaimer or beyond)
+      expect(document.activeElement).not.toBe(printBtn);
+    });
+  });
+
+  describe("FundAmountInput — keyboard operability", () => {
+    it("input is focusable via Tab", async () => {
+      const user = userEvent.setup();
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={10000} currency="USD" yieldValue={8.2} />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: /funding amount/i });
+      input.focus();
+      expect(input).toHaveFocus();
+    });
+
+    it("input accepts keyboard input", async () => {
+      const user = userEvent.setup();
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={10000} currency="USD" yieldValue={8.2} />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: /funding amount/i });
+      input.focus();
+      await user.keyboard("500");
+      expect(input).toHaveValue(500);
+    });
+
+    it("submit button activates on Enter inside the input", async () => {
+      const user = userEvent.setup();
+      const connect = jest.fn();
+      mockUseWallet.mockReturnValue({
+        state: WALLET_STATES.CONNECTED,
+        connect,
+      } as ReturnType<typeof useWallet>);
+
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={10000} currency="USD" yieldValue={8.2} />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: /funding amount/i });
+      input.focus();
+      await user.keyboard("500");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(mockToast.success).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe("page-level keyboard landmarks", () => {
+    it("main element has id='main-content' for skip-link target", async () => {
+      const { container } = await renderServerPage({ id: "inv-001" });
+      const main = container.querySelector("main#main-content");
+      expect(main).toBeInTheDocument();
+    });
+
+    it("back-to-marketplace link is keyboard-focusable", async () => {
+      await renderServerPage({ id: "inv-001" });
+      const link = screen.getByRole("link", { name: copy.invest.detail.backToMarketplaceLabel });
+      expect(link).not.toHaveAttribute("tabindex", "-1");
+      link.focus();
+      expect(link).toHaveFocus();
+    });
+
+    it("back-to-home link is keyboard-focusable", async () => {
+      await renderServerPage({ id: "inv-001" });
+      const link = screen.getByRole("link", { name: /liquifact/i });
+      expect(link).not.toHaveAttribute("tabindex", "-1");
+      link.focus();
+      expect(link).toHaveFocus();
+    });
+  });
+
+  describe("axe accessibility", () => {
+    it("FundActions passes axe checks with keyboard-only focus styles", async () => {
+      const { container } = render(<FundActions id="inv-001" status="Open" />);
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
   });
 });

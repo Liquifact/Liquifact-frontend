@@ -74,6 +74,7 @@
  * @property {string} invest.detail.copyErrorTitle
  * @property {string} invest.detail.loadErrorMsg
  * @property {string} invest.detail.loadErrorTitle
+ * @property {string} invest.detail.actionGroupLabel
  * @property {Object} invoices - Invoices page copy
  * @property {string} invoices.title
  * @property {string} invoices.subtext
@@ -270,6 +271,7 @@ export const copy = {
       copyErrorTitle: "Copy failed",
       loadErrorMsg: "Unable to load invoice details right now.",
       loadErrorTitle: "Unable to load invoice details",
+      actionGroupLabel: "Invoice actions",
     },
   },
   invoices: {
