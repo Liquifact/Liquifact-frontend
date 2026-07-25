@@ -357,9 +357,7 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
           aria-label="Bulk actions"
           className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-700/50 bg-slate-800/50 px-4 py-3"
         >
-          <span className="text-sm font-medium text-slate-300">
-            {selectionCount} selected
-          </span>
+          <span className="text-sm font-medium text-slate-300">{selectionCount} selected</span>
           <div className="ml-auto flex flex-wrap gap-2">
             <Button variant="danger" onClick={handleRequestDelete}>
               Delete selected
@@ -415,7 +413,9 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
                         <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-500">
                           Invoice
                         </p>
-                        <p className="mt-2 text-lg font-semibold text-slate-100">{invoice.issuer}</p>
+                        <p className="mt-2 text-lg font-semibold text-slate-100">
+                          {invoice.issuer}
+                        </p>
                       </div>
                       <span
                         className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
@@ -428,7 +428,9 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
 
                     <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                       <div>
-                        <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Amount</dt>
+                        <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">
+                          Amount
+                        </dt>
                         <dd className="mt-2 text-sm text-slate-200">
                           {invoice.currency} {invoice.amount}
                         </dd>
@@ -440,7 +442,9 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
                         <dd className="mt-2 text-sm text-slate-200">{invoice.yield}</dd>
                       </div>
                       <div>
-                        <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Due date</dt>
+                        <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">
+                          Due date
+                        </dt>
                         <dd className="mt-2 text-sm text-slate-200">{invoice.dueDate}</dd>
                       </div>
                       <div>

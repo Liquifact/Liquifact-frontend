@@ -117,19 +117,10 @@ export default function ConfirmDialog({
         </h2>
         {message && <p className="mt-2 text-sm text-slate-400">{message}</p>}
         <div className="mt-6 flex justify-end gap-3">
-          <Button
-            ref={cancelButtonRef}
-            variant="secondary"
-            onClick={onCancel}
-            disabled={isLoading}
-          >
+          <Button ref={cancelButtonRef} variant="secondary" onClick={onCancel} disabled={isLoading}>
             Cancel
           </Button>
-          <Button
-            variant={confirmVariant}
-            onClick={onConfirm}
-            loading={isLoading}
-          >
+          <Button variant={confirmVariant} onClick={onConfirm} loading={isLoading}>
             {confirmLabel}
           </Button>
         </div>

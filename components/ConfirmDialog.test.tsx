@@ -21,9 +21,7 @@ describe("ConfirmDialog", () => {
   });
 
   it("renders nothing when closed", () => {
-    const { container } = render(
-      <ConfirmDialog {...defaultProps} open={false} />
-    );
+    const { container } = render(<ConfirmDialog {...defaultProps} open={false} />);
     expect(container.firstChild).toBeNull();
   });
 

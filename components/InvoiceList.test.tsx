@@ -40,9 +40,9 @@ describe("InvoiceList - Bulk selection", () => {
       render(<InvoiceList loadInvoices={jest.fn().mockResolvedValue(invoices)} />);
       await waitForLoad();
 
-      const rowCheckboxes = screen.getAllByRole("checkbox").filter(
-        (cb) => cb.getAttribute("aria-label")?.startsWith("Select invoice")
-      );
+      const rowCheckboxes = screen
+        .getAllByRole("checkbox")
+        .filter((cb) => cb.getAttribute("aria-label")?.startsWith("Select invoice"));
       expect(rowCheckboxes).toHaveLength(2);
     });
 
@@ -84,9 +84,9 @@ describe("InvoiceList - Bulk selection", () => {
       const selectAll = screen.getByLabelText("Select all invoices");
       fireEvent.click(selectAll);
 
-      const rowCheckboxes = screen.getAllByRole("checkbox").filter(
-        (cb) => cb.getAttribute("aria-label")?.startsWith("Select invoice")
-      );
+      const rowCheckboxes = screen
+        .getAllByRole("checkbox")
+        .filter((cb) => cb.getAttribute("aria-label")?.startsWith("Select invoice"));
       rowCheckboxes.forEach((cb) => expect(cb).toBeChecked());
 
       expect(screen.getByText("3 selected")).toBeInTheDocument();
@@ -102,9 +102,9 @@ describe("InvoiceList - Bulk selection", () => {
 
       fireEvent.click(selectAll);
 
-      const rowCheckboxes = screen.getAllByRole("checkbox").filter(
-        (cb) => cb.getAttribute("aria-label")?.startsWith("Select invoice")
-      );
+      const rowCheckboxes = screen
+        .getAllByRole("checkbox")
+        .filter((cb) => cb.getAttribute("aria-label")?.startsWith("Select invoice"));
       rowCheckboxes.forEach((cb) => expect(cb).not.toBeChecked());
 
       expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
@@ -427,9 +427,7 @@ describe("InvoiceList - Bulk selection", () => {
     });
 
     it("no checkboxes in error state", async () => {
-      render(
-        <InvoiceList loadInvoices={jest.fn().mockRejectedValue(new Error("fail"))} />
-      );
+      render(<InvoiceList loadInvoices={jest.fn().mockRejectedValue(new Error("fail"))} />);
       await waitFor(() => {
         expect(screen.getByRole("alert")).toBeInTheDocument();
       });
@@ -440,9 +438,7 @@ describe("InvoiceList - Bulk selection", () => {
     it("selection is preserved when optimisticInvoices changes", async () => {
       const invoices = createMockInvoices(2);
       const loader = jest.fn().mockResolvedValue(invoices);
-      const { rerender } = render(
-        <InvoiceList loadInvoices={loader} optimisticInvoices={[]} />
-      );
+      const { rerender } = render(<InvoiceList loadInvoices={loader} optimisticInvoices={[]} />);
       await waitForLoad();
 
       const checkbox1 = screen.getByLabelText("Select invoice inv-1001 from Company 1");
