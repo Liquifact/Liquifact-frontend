@@ -154,6 +154,7 @@
  * @property {string} wallet.announceError
  * @property {string} wallet.announceWrongNetwork
  * @property {string} wallet.announceNoWallet
+ * @property {string} wallet.skeletonLabel
  * @property {Object} error - Error page copy
  * @property {string} error.title
  * @property {string} error.description
@@ -357,6 +358,7 @@ export const copy = {
     announceError: "Wallet connection failed.",
     announceWrongNetwork: "Wallet connected to wrong network.",
     announceNoWallet: "No wallet detected.",
+    skeletonLabel: "Loading wallet status…",
   },
   error: {
     title: "Something went wrong",
