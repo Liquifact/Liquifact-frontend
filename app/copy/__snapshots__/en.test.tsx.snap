@@ -131,6 +131,11 @@ exports[`copy dictionary — snapshot of full dictionary matches the full copy d
     "backToHome": "← LiquiFact",
     "connectWallet": "Connect Wallet",
   },
+  "nav": {
+    "errorActionLabel": "Retry",
+    "errorDescription": "The site navigation ran into an unexpected error. You can retry, or reload the page.",
+    "errorTitle": "Navigation unavailable",
+  },
   "notFound": {
     "description": "The page you’re looking for doesn’t exist or has been moved.",
     "heading": "Page not found",
