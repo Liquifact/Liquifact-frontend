@@ -31,9 +31,7 @@ function renderPageMode(props: {
 
 // Helper: render in load-more mode (no page props)
 function renderLoadMoreMode(shown = 3, total = 10) {
-  return render(
-    <Pagination shown={shown} total={total} onLoadMore={() => {}} />
-  );
+  return render(<Pagination shown={shown} total={total} onLoadMore={() => {}} />);
 }
 
 describe("Pagination – page-change announcement (issue #276)", () => {
@@ -125,7 +123,14 @@ describe("Pagination – page-change announcement (issue #276)", () => {
       // page 1 → 2
       act(() => {
         rerender(
-          <Pagination shown={10} total={20} onLoadMore={() => {}} page={2} totalPages={4} pageSize={5} />
+          <Pagination
+            shown={10}
+            total={20}
+            onLoadMore={() => {}}
+            page={2}
+            totalPages={4}
+            pageSize={5}
+          />
         );
       });
       expect(screen.getByTestId("pagination-announce")).toHaveTextContent(
@@ -135,7 +140,14 @@ describe("Pagination – page-change announcement (issue #276)", () => {
       // page 2 → 3
       act(() => {
         rerender(
-          <Pagination shown={15} total={20} onLoadMore={() => {}} page={3} totalPages={4} pageSize={5} />
+          <Pagination
+            shown={15}
+            total={20}
+            onLoadMore={() => {}}
+            page={3}
+            totalPages={4}
+            pageSize={5}
+          />
         );
       });
       expect(screen.getByTestId("pagination-announce")).toHaveTextContent(
@@ -161,7 +173,14 @@ describe("Pagination – page-change announcement (issue #276)", () => {
       act(() => {
         // Re-render with same page — only shown/total change, not page
         rerender(
-          <Pagination shown={10} total={15} onLoadMore={() => {}} page={2} totalPages={3} pageSize={5} />
+          <Pagination
+            shown={10}
+            total={15}
+            onLoadMore={() => {}}
+            page={2}
+            totalPages={3}
+            pageSize={5}
+          />
         );
       });
 

@@ -36,12 +36,11 @@ const Button = forwardRef(function Button(
 ) {
   const isDisabled = disabled || loading;
 
-  // Base styles shared by every variant
+  // Base styles shared by every variant (focus-ring class centralized in globals.css)
   const baseStyles =
     "inline-flex items-center justify-center gap-2 rounded-full px-4 py-3 " +
     "text-sm font-medium transition-all duration-200 " +
-    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 " +
-    "disabled:opacity-50 disabled:cursor-not-allowed";
+    "focus-ring disabled:opacity-50 disabled:cursor-not-allowed";
   const disabledClasses = isDisabled ? "opacity-50 cursor-not-allowed" : "";
 
   // Variant-specific styles

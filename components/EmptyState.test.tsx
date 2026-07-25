@@ -207,7 +207,7 @@ describe("EmptyState – InvoiceList integration scenario", () => {
         title="No invoices yet"
         description="Upload your first invoice to get started. It will appear here once tokenized."
         action={
-          <a href="#invoice-upload-btn" className="focus-visible:outline">
+          <a href="#invoice-upload-btn" className="focus-ring">
             Upload your first invoice
           </a>
         }
@@ -235,17 +235,14 @@ describe("EmptyState – InvoiceList integration scenario", () => {
       <EmptyState
         title="No invoices yet"
         action={
-          <a
-            href="#invoice-upload-btn"
-            className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
-          >
+          <a href="#invoice-upload-btn" className="focus-ring">
             Upload your first invoice
           </a>
         }
       />
     );
     const cta = screen.getByRole("link", { name: "Upload your first invoice" });
-    expect(cta.className).toMatch(/focus-visible:outline/);
+    expect(cta.className).toMatch(/focus-ring/);
   });
 
   it("illustration SVG is not interactive (no role=button or role=link)", () => {

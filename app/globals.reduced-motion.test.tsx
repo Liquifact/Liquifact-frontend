@@ -26,8 +26,9 @@ import InvestLoading from "./invest/loading";
 import InvoicesLoading from "./invoices/loading";
 
 // ---------------------------------------------------------------------------
-// Inline Spinner — matches the implementation in UploadZone exactly but has
-// no dependency on en.js, so it parses cleanly under the broken repo state.
+// Inline Spinner — mirrors the implementation in UploadZone exactly.
+// Uses role="img" + aria-label so screen readers announce
+// the loading state directly from the SVG.
 // ---------------------------------------------------------------------------
 function Spinner({ className = "" }: { className?: string }) {
   return (
@@ -36,7 +37,8 @@ function Spinner({ className = "" }: { className?: string }) {
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
-      aria-hidden="true"
+      role="img"
+      aria-label="Loading"
     >
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path
@@ -94,9 +96,11 @@ describe("Spinner – reduced-motion", () => {
     expect(cls).toContain("animate-spin");
   });
 
-  it("SVG is aria-hidden so screen readers skip the decorative icon", () => {
+  it("has role=img and aria-label so screen readers announce the loading state", () => {
     const { container } = render(<Spinner />);
-    expect(container.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    const svg = container.querySelector("svg");
+    expect(svg).toHaveAttribute("role", "img");
+    expect(svg).toHaveAttribute("aria-label", "Loading");
   });
 
   it("passes axe accessibility check", async () => {

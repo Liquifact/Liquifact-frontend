@@ -12,12 +12,18 @@ import {
   useWallet,
   writeStoredSnapshot,
 } from "./WalletProvider";
-import { isFreighterConnected, connectFreighter, getFreighterNetwork } from "../lib/wallet/freighter";
+import {
+  isFreighterConnected,
+  connectFreighter,
+  getFreighterNetwork,
+  assertExpectedNetwork,
+} from "../lib/wallet/freighter";
 
 jest.mock("../lib/wallet/freighter", () => ({
   isFreighterConnected: jest.fn(),
   connectFreighter: jest.fn(),
   getFreighterNetwork: jest.fn(),
+  assertExpectedNetwork: jest.fn(),
 }));
 
 const STORAGE_KEY = "liquifact-wallet-snapshot";
@@ -47,7 +53,7 @@ function renderWithProvider(ui = <WalletProbe />) {
 beforeEach(() => {
   jest.useFakeTimers();
   localStorage.clear();
-  process.env.NEXT_PUBLIC_STELLAR_NETWORK = 'testnet';
+  process.env.NEXT_PUBLIC_STELLAR_NETWORK = "testnet";
 });
 
 afterEach(() => {
@@ -219,6 +225,7 @@ describe("WalletProvider", () => {
   it("persists a connected snapshot after a successful connect", async () => {
     (isFreighterConnected as jest.Mock).mockResolvedValue(true);
     (connectFreighter as jest.Mock).mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
+    (assertExpectedNetwork as jest.Mock).mockResolvedValue(undefined);
     (getFreighterNetwork as jest.Mock).mockResolvedValue("testnet");
 
     renderWithProvider();
@@ -293,7 +300,9 @@ describe("WalletProvider", () => {
   it("clears storage when connect resolves to wrong network", async () => {
     (isFreighterConnected as jest.Mock).mockResolvedValue(true);
     (connectFreighter as jest.Mock).mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
-    (getFreighterNetwork as jest.Mock).mockResolvedValue("public");
+    (assertExpectedNetwork as jest.Mock).mockRejectedValue(
+      new Error('Wallet is on "public" but the app requires "testnet"')
+    );
 
     renderWithProvider();
 
@@ -334,6 +343,7 @@ describe("WalletProvider", () => {
 
     (isFreighterConnected as jest.Mock).mockResolvedValue(true);
     (connectFreighter as jest.Mock).mockReturnValue(connectPromise);
+    (assertExpectedNetwork as jest.Mock).mockResolvedValue(undefined);
     (getFreighterNetwork as jest.Mock).mockResolvedValue("testnet");
 
     renderWithProvider();

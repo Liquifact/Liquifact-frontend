@@ -1,12 +1,14 @@
-﻿"use client";
+"use client";
 
-import Link from 'next/link';
-import { copy } from './copy/en';
-import { getHealth } from '../lib/api/health';
-import NavMenu from '../components/NavMenu';
+import Link from "next/link";
 import { useRef, useState, useEffect } from "react";
+import NavMenu from "../components/NavMenu";
+import { copy } from "./copy/en";
+import { getHealth } from "../lib/api/health";
+import { env } from "../lib/config/env";
+import { extractKnownFields, safeJsonStringify } from "../lib/format/safeJson";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = env.apiUrl;
 
 // Status mapping to visual states
 // Maps getHealth return values to badge styles and labels
@@ -38,9 +40,6 @@ const getStatusConfig = (status) => {
       };
   }
 };
-
-/** Known fields to surface in the structured summary (from raw server payload). */
-const KNOWN_FIELDS = ["status", "message", "version"];
 
 export default function Home() {
   const [health, setHealth] = useState(null);
@@ -84,6 +83,7 @@ export default function Home() {
         <div className="grid gap-6 sm:grid-cols-2 mb-12">
           <Link
             href="/invoices"
+            aria-label={copy.home.boxBusinessAriaLabel}
             className="block rounded-xl border border-slate-700 bg-slate-900/50 p-6 hover:border-cyan-500/50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
           >
             <h2 className="text-lg font-semibold text-cyan-400 mb-2">
@@ -93,6 +93,7 @@ export default function Home() {
           </Link>
           <Link
             href="/invest"
+            aria-label={copy.home.boxInvestAriaLabel}
             className="block rounded-xl border border-slate-700 bg-slate-900/50 p-6 hover:border-cyan-500/50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
           >
             <h2 className="text-lg font-semibold text-cyan-400 mb-2">{copy.home.boxInvestTitle}</h2>
@@ -101,7 +102,7 @@ export default function Home() {
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-6">
-          <h2 className="text-sm font-medium text-slate-400 mb-2">{copy.home.apiStatus}</h2>
+          <p className="text-sm font-medium text-slate-400 mb-2">{copy.home.apiStatus}</p>
           <button
             type="button"
             onClick={checkApi}
@@ -145,34 +146,10 @@ export default function Home() {
 
                 <p className="text-sm text-slate-300">{health.message}</p>
 
-                {/* Details disclosure - keeps raw payload behind expandable section */}
-                {health.details && (
-                  <details className="mt-3">
-                    <summary className="cursor-pointer text-sm text-slate-400 hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400">
-                      {copy.home.healthStatus.rawResponse}
-                    </summary>
-                    <pre className="mt-2 text-xs text-slate-400 bg-slate-900/50 p-3 rounded overflow-x-auto">
-                      {safeJsonStringify(health.details)}
-                    </pre>
-                  </details>
-                )}
-
-                {/* Structured key/value summary — reads from the raw server payload */}
-                {health.details && typeof health.details === "object" && (
-                  <dl className="space-y-1 text-sm text-slate-300 mb-3">
-                    {KNOWN_FIELDS.filter((key) => key in health.details).map((key) => (
-                      <div key={key} className="flex gap-2">
-                        <dt className="font-medium text-slate-400">{key}:</dt>
-                        <dd>{String(health.details[key])}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                )}
-
                 {/* Raw response — always shown behind an expandable section */}
                 <details className="mt-3">
                   <summary className="cursor-pointer text-sm text-slate-400 hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400">
-                    Raw response
+                    {copy.home.healthStatus.rawResponse}
                   </summary>
                   <pre className="mt-2 text-xs text-slate-400 bg-slate-900/50 p-3 rounded overflow-x-auto">
                     {safeJsonStringify(health.details ?? health)}

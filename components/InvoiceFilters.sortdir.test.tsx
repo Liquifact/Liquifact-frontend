@@ -199,8 +199,8 @@ describe("DirectionToggle in InvoiceFilters", () => {
     expect(SORTABLE_COLUMNS).toContain("yield");
   });
 
-  describe("aria-sort attribute", () => {
-    it('toggle for amount has aria-sort="descending" when amount column is active and dir=desc', () => {
+  describe("direction toggle aria-labels", () => {
+    it('shows \"Sort amount ascending\" when amount column active and dir=desc', () => {
       render(
         <InvoiceFilters
           filters={filtersWith({ sort: "amount", sortDir: "desc" })}
@@ -208,13 +208,13 @@ describe("DirectionToggle in InvoiceFilters", () => {
           onClearFilters={() => {}}
         />
       );
-      expect(screen.getByLabelText(/Sort amount descending/i)).toHaveAttribute(
-        "aria-sort",
-        "descending"
+      expect(screen.getByLabelText("Sort amount ascending")).toHaveAttribute(
+        "aria-label",
+        "Sort amount ascending"
       );
     });
 
-    it('toggle for amount has aria-sort="ascending" when amount column is active and dir=asc', () => {
+    it('shows \"Sort amount descending\" when amount column active and dir=asc', () => {
       render(
         <InvoiceFilters
           filters={filtersWith({ sort: "amount", sortDir: "asc" })}
@@ -222,13 +222,13 @@ describe("DirectionToggle in InvoiceFilters", () => {
           onClearFilters={() => {}}
         />
       );
-      expect(screen.getByLabelText(/Sort amount ascending/i)).toHaveAttribute(
-        "aria-sort",
-        "ascending"
+      expect(screen.getByLabelText("Sort amount descending")).toHaveAttribute(
+        "aria-label",
+        "Sort amount descending"
       );
     });
 
-    it('toggle for yield has aria-sort="descending" when yield column is active and dir=desc', () => {
+    it('shows \"Sort yield ascending\" when yield column active and dir=desc', () => {
       render(
         <InvoiceFilters
           filters={filtersWith({ sort: "yield", sortDir: "desc" })}
@@ -236,13 +236,13 @@ describe("DirectionToggle in InvoiceFilters", () => {
           onClearFilters={() => {}}
         />
       );
-      expect(screen.getByLabelText(/Sort yield descending/i)).toHaveAttribute(
-        "aria-sort",
-        "descending"
+      expect(screen.getByLabelText("Sort yield ascending")).toHaveAttribute(
+        "aria-label",
+        "Sort yield ascending"
       );
     });
 
-    it('inactive column toggle has aria-sort="none"', () => {
+    it("shows direction label on inactive column toggle", () => {
       render(
         <InvoiceFilters
           filters={filtersWith({ sort: "amount", sortDir: "desc" })}
@@ -250,16 +250,18 @@ describe("DirectionToggle in InvoiceFilters", () => {
           onClearFilters={() => {}}
         />
       );
-      // yield toggle is rendered but not the active column
-      expect(screen.getByLabelText(/Sort yield direction/i)).toHaveAttribute("aria-sort", "none");
+      expect(screen.getByLabelText("Sort yield direction")).toHaveAttribute(
+        "aria-label",
+        "Sort yield direction"
+      );
     });
 
-    it('all direction toggles have aria-sort="none" when no column is selected', () => {
+    it("shows direction labels on all toggles when no column selected", () => {
       render(<InvoiceFilters filters={BASE} onFilterChange={() => {}} onClearFilters={() => {}} />);
       SORTABLE_COLUMNS.forEach((col) => {
-        expect(screen.getByLabelText(new RegExp(`Sort ${col} direction`, "i"))).toHaveAttribute(
-          "aria-sort",
-          "none"
+        expect(screen.getByLabelText(`Sort ${col} direction`)).toHaveAttribute(
+          "aria-label",
+          `Sort ${col} direction`
         );
       });
     });

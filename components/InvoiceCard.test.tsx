@@ -61,9 +61,14 @@ describe("InvoiceCard — basic rendering", () => {
     expect(screen.getByText("INV-001")).toBeInTheDocument();
   });
 
-  it("renders the formatted amount and currency", () => {
+  it("renders the amount via the shared currency formatter", () => {
+    renderCard({ amount: 50000, currency: "USD" });
+    expect(screen.getByText("$50,000")).toBeInTheDocument();
+  });
+
+  it("falls back to the shared default currency when the currency code is unsupported", () => {
     renderCard();
-    expect(screen.getByText("50,000.00 USDC")).toBeInTheDocument();
+    expect(screen.getByText("$50,000")).toBeInTheDocument();
   });
 
   it("renders the yield percentage", () => {
@@ -148,9 +153,14 @@ describe("InvoiceCard — missing optional fields", () => {
     expect(screen.getByText("—")).toBeInTheDocument();
   });
 
-  it("renders the raw string when amount is a non-numeric string", () => {
-    renderCard({ amount: "12,500" });
-    expect(screen.getByText(/12,500/)).toBeInTheDocument();
+  it("renders parsed numeric strings through the shared currency formatter", () => {
+    renderCard({ amount: "12,500", currency: "USD" });
+    expect(screen.getByText("$12,500")).toBeInTheDocument();
+  });
+
+  it("renders em-dash when amount is NaN", () => {
+    renderCard({ amount: Number.NaN });
+    expect(screen.getByText("—")).toBeInTheDocument();
   });
 
   it("renders em-dash when dueDate is missing", () => {
@@ -161,6 +171,12 @@ describe("InvoiceCard — missing optional fields", () => {
 
   it("renders em-dash when yield is missing", () => {
     renderCard({ yield: undefined });
+    const dashes = screen.getAllByText("—");
+    expect(dashes.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders em-dash when yield is NaN", () => {
+    renderCard({ yield: Number.NaN });
     const dashes = screen.getAllByText("—");
     expect(dashes.length).toBeGreaterThanOrEqual(1);
   });

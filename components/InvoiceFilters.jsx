@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
+import { INVOICE_STATUSES, STATUS_PILL_MAP } from "@/lib/types/invoice";
 
 export const DEFAULT_FILTERS = {
   yieldMin: "",
@@ -10,6 +11,8 @@ export const DEFAULT_FILTERS = {
   maturityTo: "",
   sort: "",
   sortDir: "desc",
+  /** @type {string[]} Active status filter values (empty = show all). */
+  statuses: [],
 };
 
 /**
@@ -49,6 +52,124 @@ export function parseSortState(filters) {
  * @param {typeof DEFAULT_FILTERS} filters
  * @returns {boolean}
  */
+/**
+ * Parse a yield-percentage string to a number.
+ * Accepts "8.5", "8.5%", and numeric values. Returns NaN for unparseable input.
+ * @param {unknown} value
+ * @returns {number}
+ */
+function parseYield(value) {
+  if (typeof value === "number") return value;
+  if (typeof value !== "string") return NaN;
+  const cleaned = value.replace(/%$/, "").trim();
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+/**
+ * Check whether an invoice's yield falls within an inclusive [min, max] range.
+ * Empty bounds are treated as "unbounded" on that side.
+ * @param {unknown} value - The invoice's yield value (e.g. "8.2%").
+ * @param {string} yieldMin - Lower bound (empty = no constraint).
+ * @param {string} yieldMax - Upper bound (empty = no constraint).
+ * @returns {boolean}
+ */
+export function matchesYieldRange(value, yieldMin, yieldMax) {
+  if (value == null || value === "") return false;
+  const y = parseYield(value);
+  if (Number.isNaN(y)) return false;
+
+  if (yieldMin != null && yieldMin !== "") {
+    const min = parseYield(yieldMin);
+    if (Number.isNaN(min)) return false;
+    if (y < min) return false;
+  }
+
+  if (yieldMax != null && yieldMax !== "") {
+    const max = parseYield(yieldMax);
+    if (Number.isNaN(max)) return false;
+    if (y > max) return false;
+  }
+
+  return true;
+}
+
+/**
+ * Check whether an invoice's currency matches the filter value.
+ * When the filter is empty / null / undefined, every currency passes.
+ * Comparison is case-sensitive.
+ * @param {unknown} invoiceCurrency
+ * @param {string} filterCurrency
+ * @returns {boolean}
+ */
+export function matchesCurrency(invoiceCurrency, filterCurrency) {
+  if (filterCurrency == null || filterCurrency === "") return true;
+  if (typeof invoiceCurrency !== "string" || invoiceCurrency === "") return false;
+  return invoiceCurrency === filterCurrency;
+}
+
+/**
+ * Check whether an ISO date string falls within an inclusive [from, to] range.
+ * Empty bounds are treated as unbounded. Uses lexicographic (string) comparison,
+ * which is correct for ISO 8601 YYYY-MM-DD dates.
+ * @param {string} dueDate - ISO date string (e.g. "2026-08-15").
+ * @param {string} from - Lower bound (empty = no constraint).
+ * @param {string} to - Upper bound (empty = no constraint).
+ * @returns {boolean}
+ */
+function isValidISODate(str) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
+  const d = new Date(str + "T00:00:00Z");
+  if (Number.isNaN(d.getTime())) return false;
+  // new Date("2026-09-99") rolls over to 2026-10-09 in some engines,
+  // so verify round-trip via ISO string.
+  try {
+    return d.toISOString().slice(0, 10) === str;
+  } catch {
+    return false;
+  }
+}
+
+export function matchesMaturityRange(dueDate, from, to) {
+  if (typeof dueDate !== "string" || !dueDate) return false;
+  if (!isValidISODate(dueDate)) return false;
+
+  if (from != null && from !== "") {
+    if (!isValidISODate(from)) return false;
+    if (dueDate < from) return false;
+  }
+
+  if (to != null && to !== "") {
+    if (!isValidISODate(to)) return false;
+    if (dueDate > to) return false;
+  }
+
+  return true;
+}
+
+/**
+ * Combined predicate that checks all filter dimensions (currency, yield range,
+ * maturity range). Acts as an AND intersection.
+ * @param {object} invoice - An invoice record.
+ * @param {object} filters - A filters object with currency, yieldMin, yieldMax,
+ *                           maturityFrom, maturityTo keys.
+ * @returns {boolean}
+ */
+export function matchesFilters(invoice, filters) {
+  if (!filters) return true;
+  if (!invoice) return false;
+
+  const { currency, yieldMin, yieldMax, maturityFrom, maturityTo } = filters;
+
+  if (!matchesCurrency(invoice.currency, currency)) return false;
+
+  if (!matchesYieldRange(invoice.yield, yieldMin, yieldMax)) return false;
+
+  if (!matchesMaturityRange(invoice.dueDate, maturityFrom, maturityTo)) return false;
+
+  return true;
+}
+
 export function hasActiveFilters(filters) {
   return (
     filters.yieldMin !== "" ||
@@ -56,7 +177,8 @@ export function hasActiveFilters(filters) {
     filters.currency !== "" ||
     filters.maturityFrom !== "" ||
     filters.maturityTo !== "" ||
-    filters.sort !== ""
+    filters.sort !== "" ||
+    (Array.isArray(filters.statuses) && filters.statuses.length > 0)
   );
 }
 
@@ -230,7 +352,6 @@ function DirectionToggle({ column, filters, onFilterChange }) {
       onClick={handleToggle}
       disabled={!isActive}
       aria-label={ariaLabel}
-      aria-sort={isActive ? (dir === "asc" ? "ascending" : "descending") : "none"}
       className={`rounded px-2 py-1 text-xs font-mono transition-colors select-none ${
         isActive
           ? "bg-cyan-900/40 text-cyan-300 hover:bg-cyan-800/60 border border-cyan-700"
@@ -239,6 +360,66 @@ function DirectionToggle({ column, filters, onFilterChange }) {
     >
       {isActive && dir === "asc" ? "↑" : "↓"}
     </button>
+  );
+}
+
+/**
+ * A compact, toggleable chip row that lets investors filter the invoice list
+ * by one or more statuses.  The chip set is derived from `INVOICE_STATUSES`
+ * so it always stays in sync with the canonical status vocabulary.
+ *
+ * Each chip is a real `<button>` with `aria-pressed` for keyboard and
+ * screen-reader accessibility. Multiple selections are combined with a union
+ * (OR) — when the active set is empty, all invoices are shown.
+ *
+ * @param {object}   props
+ * @param {string[]} props.selectedStatuses - Currently active status filters.
+ * @param {Function} props.onStatusToggle   - Called with the toggled status string.
+ * @param {Function} [props.onClearStatuses] - Called when "Clear" is clicked.
+ */
+export function StatusLegendFilter({ selectedStatuses = [], onStatusToggle, onClearStatuses }) {
+  const statusValues = Object.values(INVOICE_STATUSES);
+  const hasSelection = selectedStatuses.length > 0;
+
+  return (
+    <div className="mb-4">
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by status">
+        <span className="text-xs font-medium text-slate-400 mr-1">Status:</span>
+        {statusValues.map((status) => {
+          const isPressed = selectedStatuses.includes(status);
+          const pillMeta = STATUS_PILL_MAP[status] ?? STATUS_PILL_MAP.Unknown;
+          return (
+            <button
+              key={status}
+              type="button"
+              aria-pressed={isPressed}
+              onClick={() => onStatusToggle(status)}
+              className={[
+                "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all",
+                "border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950",
+                isPressed
+                  ? `${pillMeta.tone} border-transparent opacity-100`
+                  : "border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              {status}
+            </button>
+          );
+        })}
+        {hasSelection && (
+          <button
+            type="button"
+            onClick={onClearStatuses}
+            className="rounded-lg border border-slate-700 bg-slate-800/50 px-2 py-1 text-xs text-cyan-400 transition-colors hover:bg-slate-700/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+            aria-label="Clear status filters"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -259,6 +440,10 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
 
   const active = hasActiveFilters(filters);
   const { column: activeColumn } = parseSortState(filters);
+
+  // Roving tabindex state for currency filter chips
+  const [focusedCurrencyIndex, setFocusedCurrencyIndex] = useState(0);
+  const currencyRefs = useRef([]);
 
   return (
     <div className="flex flex-wrap gap-4 items-center">
@@ -287,14 +472,46 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
         />
       </fieldset>
 
-      <fieldset className="flex items-center gap-1 border-none p-0 m-0">
-        <legend className="sr-only">Currency</legend>
-        {CURRENCIES.map((cur) => (
+      <div
+        role="toolbar"
+        aria-label="Currency filter"
+        className="flex items-center gap-1"
+        onKeyDown={(e) => {
+          const count = CURRENCIES.length;
+          let next = focusedCurrencyIndex;
+          if (e.key === "ArrowRight") {
+            e.preventDefault();
+            next = (focusedCurrencyIndex + 1) % count;
+          } else if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            next = (focusedCurrencyIndex - 1 + count) % count;
+          } else if (e.key === "Home") {
+            e.preventDefault();
+            next = 0;
+          } else if (e.key === "End") {
+            e.preventDefault();
+            next = count - 1;
+          } else {
+            return;
+          }
+          setFocusedCurrencyIndex(next);
+          currencyRefs.current[next]?.focus();
+        }}
+      >
+        {CURRENCIES.map((cur, index) => (
           <button
             key={cur}
             type="button"
-            onClick={() => handleChange("currency", filters.currency === cur ? "" : cur)}
-            className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+            ref={(el) => {
+              currencyRefs.current[index] = el;
+            }}
+            tabIndex={index === focusedCurrencyIndex ? 0 : -1}
+            onClick={() => {
+              setFocusedCurrencyIndex(index);
+              handleChange("currency", filters.currency === cur ? "" : cur);
+            }}
+            onFocus={() => setFocusedCurrencyIndex(index)}
+            className={`focus-ring rounded-lg border px-3 py-2 text-sm transition-colors ${
               filters.currency === cur
                 ? "border-cyan-500 bg-cyan-900/30 text-cyan-300"
                 : "border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
@@ -305,7 +522,7 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
             {cur}
           </button>
         ))}
-      </fieldset>
+      </div>
 
       <fieldset className="flex items-center gap-2 border-none p-0 m-0">
         <legend className="sr-only">Maturity Date Range</legend>

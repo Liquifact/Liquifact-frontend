@@ -8,12 +8,13 @@
   Supported values: data-theme="dark" | data-theme="light"
 
   Token mapping:
-  - --color-bg       : page background
-  - --color-fg       : primary text
-  - --color-muted    : secondary / muted text
-  - --color-surface  : card / panel background
-  - --color-border   : subtle border colour
-  - --color-primary  : cyan brand accent (#22d3ee / cyan-400)
+  - --color-bg         : page background
+  - --color-fg         : primary text
+  - --color-muted      : secondary / muted text
+  - --color-surface    : card / panel background
+  - --color-border     : subtle border colour
+  - --color-primary    : cyan brand accent (#22d3ee / cyan-400)
+  - --color-focus-ring : focus-visible outline colour (high-contrast in both themes)
 */
 
 /* ── Dark theme (default — matches existing slate-950 palette) ─────────────── */
@@ -25,6 +26,7 @@
   --color-surface: #0f172a; /* slate-900 */
   --color-border: #1e293b; /* slate-800 */
   --color-primary: #22d3ee; /* cyan-400  */
+  --color-focus-ring: #22d3ee; /* cyan-400 — 10:1 against slate-950 */
 }
 
 /* ── Light theme ───────────────────────────────────────────────────────────── */
@@ -35,6 +37,7 @@
   --color-surface: #ffffff; /* white     */
   --color-border: #e2e8f0; /* slate-200 */
   --color-primary: #0891b2; /* cyan-600  — stays legible on white */
+  --color-focus-ring: #0891b2; /* cyan-600 — 3.5:1 against slate-50 */
 }
 
 @theme inline {
@@ -42,6 +45,7 @@
   --color-foreground: var(--color-fg);
   --color-muted: var(--color-muted);
   --color-primary: var(--color-primary);
+  --color-focus-ring: var(--color-focus-ring);
 
   /* Geist fonts (provided by app/layout.js via next/font) */
   --font-sans: var(--font-geist-sans);
@@ -87,10 +91,64 @@ body {
   outline-offset: 2px;
 }
 
-/* Reusable focus ring — cyan-400 outline matching the existing pattern in NavMenu.
-   Apply .focus-ring to any interactive element that needs consistent focus styling. */
+/*
+  Reusable focus ring — high-contrast outline driven by --color-focus-ring.
+  Apply the .focus-ring class to any interactive element (button, link, input, toggle)
+  that needs a consistent, theme-aware focus-visible indicator.
+
+  The colour token --color-focus-ring is set in both dark and light theme blocks
+  above and is verified by the WCAG contrast harness in
+  app/globals.contrast-ratio.test.tsx.
+*/
 .focus-ring:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
+  outline-style: solid;
   border-radius: 0.25rem;
+}
+
+/* ── Print stylesheet ──────────────────────────────────────────────────────── */
+/*
+   Renders the invoice detail page as a clean, ink-friendly document.
+   - Hides interactive chrome: nav header, wallet button, back link, fund button,
+     disclaimer note, and the on-screen print button.
+   - Forces a white background and dark text to save ink.
+   - Marks elements with .no-print to opt out of the printed output.
+*/
+@media print {
+  /* Switch to a light, ink-friendly palette */
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  /* Hide interactive/navigation chrome */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Ensure invoice summary section prints with visible borders */
+  .print-invoice-section {
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+  }
+
+  /* Definition list terms and values */
+  .print-invoice-section dt {
+    color: #64748b !important;
+  }
+
+  .print-invoice-section dd {
+    color: #0f172a !important;
+  }
+
+  /* Remove decorative backgrounds from the page wrapper */
+  .print-page-wrapper {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
 }
