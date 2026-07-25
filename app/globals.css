@@ -107,6 +107,113 @@ body {
   border-radius: 0.25rem;
 }
 
+/* ── Windows High Contrast / forced-colors ────────────────────────────────── */
+/*
+   When the OS or browser enables forced-colors (Windows High Contrast,
+   Contrast Themes in Windows 11, or an equivalent platform feature) the UA
+   replaces most author-defined colours with a small palette of system color
+   keywords.  Authors cannot override that replacement for most properties, but
+   they can:
+
+     1. Map surfaces and borders to the *correct* system keyword so the
+        hierarchy the designer intended is preserved (e.g. a card should read
+        from Canvas, not ButtonFace).
+     2. Opt specific elements out of forced-color replacement by declaring
+        forced-color-adjust: none — used here only for focus rings and status
+        pill borders where shape/outline is the primary non-color cue.
+     3. Ensure explicit outline/border values survive so interactive elements
+        keep visible focus indicators even after colors are overridden.
+
+   System color keyword reference (CSS Color 4 §6.2):
+     Canvas          — page / document background
+     CanvasText      — body text on Canvas
+     ButtonFace      — interactive-control surface
+     ButtonText      — text on interactive controls
+     Highlight       — selected / active background
+     HighlightText   — text on Highlight background
+     LinkText        — unvisited links
+     GrayText        — disabled / muted text
+     Mark            — highlighted text background
+     MarkText        — text in highlighted region
+*/
+@media (forced-colors: active) {
+  /* ── Root token overrides ── */
+  /*
+     Re-map design tokens to system equivalents.  Tokens that can't be
+     meaningfully expressed as a single keyword are left to the UA.
+  */
+  :root,
+  [data-theme="dark"],
+  [data-theme="light"] {
+    --color-bg: Canvas;
+    --color-fg: CanvasText;
+    --color-muted: GrayText;
+    --color-surface: Canvas;
+    --color-border: CanvasText;
+    --color-primary: LinkText;
+    --color-focus-ring: Highlight;
+  }
+
+  /* ── Base page ── */
+  html,
+  body {
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  /* ── Skip-to-content link ── */
+  /*
+     In forced-colors the background fill is replaced by the UA; ensure the
+     skip link border creates the visual box so the link is still findable.
+  */
+  .skip-link {
+    background: ButtonFace;
+    color: ButtonText;
+    border: 2px solid ButtonText;
+    forced-color-adjust: none;
+  }
+
+  .skip-link:focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+
+  /* ── Focus ring ── */
+  /*
+     forced-color-adjust: none opts this element out of automatic color
+     replacement so our explicit Highlight outline is not discarded.
+     Without this, outline: 2px solid var(--color-focus-ring) would be
+     silently overridden to match ForcedColors outline policy which can
+     produce invisible rings on some themes.
+  */
+  .focus-ring:focus-visible {
+    forced-color-adjust: none;
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+
+  /* ── StatusPill — preserve shape as a non-color cue ── */
+  /*
+     The pill's background and text colors are forced to system values by the
+     UA, which means all five tone variants look identical.  Status is already
+     conveyed by the visible text label (Open / Funded / Settled / Overdue by
+     maturity / Unknown) and the aria-label, so WCAG 1.4.1 (Use of Color) is
+     satisfied.
+
+     We additionally reinforce the shape with a 2-pixel solid border so every
+     pill has a distinct visible boundary against the page background even
+     when backgrounds are flattened to Canvas.  forced-color-adjust: none lets
+     us keep the border color intentional (ButtonText) rather than leaving it
+     to the UA.
+  */
+  [data-status] {
+    forced-color-adjust: none;
+    background: ButtonFace !important;
+    color: ButtonText !important;
+    border: 2px solid ButtonText !important;
+  }
+}
+
 /* ── Print stylesheet ──────────────────────────────────────────────────────── */
 /*
    Renders the invoice detail page as a clean, ink-friendly document.
