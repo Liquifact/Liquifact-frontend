@@ -296,7 +296,7 @@ export function ToastProvider({ children }) {
                     dismissAndReturnFocus(toast.id);
                   }
                 }}
-                className={`pointer-events-auto overflow-hidden rounded-3xl border p-4 shadow-2xl shadow-slate-950/30 transition duration-200 ${variant.base}`}
+                className={`focus-ring pointer-events-auto overflow-hidden rounded-3xl border p-4 shadow-2xl shadow-slate-950/30 transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 outline-none ${variant.base}`}
               >
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 text-xl" aria-hidden="true">
