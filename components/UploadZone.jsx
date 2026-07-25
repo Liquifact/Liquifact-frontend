@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { env } from "../lib/config/env";
 import { copy } from "../app/copy/en";
 import { validatePdfFile, sanitizeFilename } from "../lib/validation/pdf";
+import ProgressBar from "./ProgressBar";
 
 // Base URL for backend API; validated and centralized in lib/config/env.
 const API_URL = env.apiUrl;
@@ -325,19 +326,12 @@ function UploadZone({ onUploadSuccess, progress }) {
             )}
           </div>
           {typeof progress === "number" && (
-            <div
-              role="progressbar"
-              aria-valuemin="0"
-              aria-valuemax="100"
-              aria-valuenow={Math.round(progress)}
-              aria-labelledby="upload-status-text"
-              className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-cyan-950/50"
-            >
-              <div
-                className="h-full bg-cyan-400 transition-all duration-300 motion-reduce:transition-none"
-                style={{ width: `${Math.round(progress)}%` }}
-              />
-            </div>
+            <ProgressBar
+              value={progress}
+              max={100}
+              label={copy.uploadZone.statusUploading}
+              className="mt-1"
+            />
           )}
         </div>
       )}

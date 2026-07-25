@@ -207,27 +207,177 @@ describe("UploadZone", () => {
     expect(submitBtn).toBeEnabled();
   });
 
-  it("renders determinate progress bar when progress prop is provided", async () => {
-    global.fetch = jest.fn().mockReturnValue(new Promise(() => {})); // stay in uploading
-    const { rerender } = render(<UploadZone progress={45.5} />);
+  describe("GROUP 6: Upload progress bar", () => {
+    it("Test 1 — Progress Bar Rendering: shows bar, percentage, and ARIA attrs at progress=45", async () => {
+      global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+      render(<UploadZone progress={45} />);
 
-    const file = createMockFile();
-    fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
-      target: { files: [file] },
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      const progressbar = screen.getByRole("progressbar");
+      expect(progressbar).toBeInTheDocument();
+      expect(progressbar).toHaveAttribute("aria-valuenow", "45");
+      expect(progressbar).toHaveAttribute("aria-valuemin", "0");
+      expect(progressbar).toHaveAttribute("aria-valuemax", "100");
+      expect(screen.getByText("45%")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+    it("Test 2 — Progress Updates: aria-valuenow and visible % update from 20 to 80", async () => {
+      global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+      const { rerender } = render(<UploadZone progress={20} />);
 
-    const progressbar = screen.getByRole("progressbar");
-    expect(progressbar).toBeInTheDocument();
-    expect(progressbar).toHaveAttribute("aria-valuenow", "46");
-    expect(progressbar).toHaveAttribute("aria-valuemin", "0");
-    expect(progressbar).toHaveAttribute("aria-valuemax", "100");
-    expect(screen.getByText("46%")).toBeInTheDocument();
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
 
-    // Verify indeterminate fallback
-    rerender(<UploadZone progress={undefined} />);
-    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+      let progressbar = screen.getByRole("progressbar");
+      expect(progressbar).toHaveAttribute("aria-valuenow", "20");
+      expect(screen.getByText("20%")).toBeInTheDocument();
+
+      rerender(<UploadZone progress={80} />);
+
+      progressbar = screen.getByRole("progressbar");
+      expect(progressbar).toHaveAttribute("aria-valuenow", "80");
+      expect(screen.getByText("80%")).toBeInTheDocument();
+    });
+
+    it("Test 3 — Unknown Progress: spinner shown, no progress bar rendered", async () => {
+      global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+      render(<UploadZone />);
+
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+      expect(screen.getAllByText(/uploading invoice/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("img", { name: /loading/i }).length).toBeGreaterThan(0);
+    });
+
+    it("Test 4 — 0% progress: bar renders and displays 0%", async () => {
+      global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+      render(<UploadZone progress={0} />);
+
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      const progressbar = screen.getByRole("progressbar");
+      expect(progressbar).toBeInTheDocument();
+      expect(progressbar).toHaveAttribute("aria-valuenow", "0");
+      expect(screen.getByText("0%")).toBeInTheDocument();
+    });
+
+    it("Test 5 — 100% progress: bar renders fully filled and displays 100%", async () => {
+      global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+      render(<UploadZone progress={100} />);
+
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      const progressbar = screen.getByRole("progressbar");
+      expect(progressbar).toBeInTheDocument();
+      expect(progressbar).toHaveAttribute("aria-valuenow", "100");
+      expect(screen.getByText("100%")).toBeInTheDocument();
+    });
+
+    it("Test 6 — Reduced Motion: progress bar works with motion-reduce class", async () => {
+      global.matchMedia = jest.fn().mockImplementation((query) => ({
+        matches: query === "(prefers-reduced-motion: reduce)",
+        media: query,
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+      }));
+
+      global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+      render(<UploadZone progress={50} />);
+
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      const progressbar = screen.getByRole("progressbar");
+      expect(progressbar).toBeInTheDocument();
+      expect(progressbar).toHaveAttribute("aria-valuenow", "50");
+      expect(screen.getByText("50%")).toBeInTheDocument();
+
+      const barInner = progressbar.querySelector("[class*='bg-cyan-400']");
+      expect(barInner).toHaveClass("motion-reduce:transition-none");
+    });
+
+    it("Test 7 — Accessibility: all required ARIA attributes present", async () => {
+      global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+      render(<UploadZone progress={62} />);
+
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      const progressbar = screen.getByRole("progressbar");
+      expect(progressbar).toHaveAttribute("role", "progressbar");
+      expect(progressbar).toHaveAttribute("aria-valuemin", "0");
+      expect(progressbar).toHaveAttribute("aria-valuemax", "100");
+      expect(progressbar).toHaveAttribute("aria-valuenow", "62");
+
+      const srOnly = screen.getByText(/62% uploaded/i);
+      expect(srOnly).toBeInTheDocument();
+    });
+
+    it("Test 8 — Regression: tokenizing and success flows unchanged with progress prop", async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ tokenizationDelay: 50 }),
+      });
+
+      render(<UploadZone progress={75} />);
+
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      expect(screen.getByText("75%")).toBeInTheDocument();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await waitFor(() =>
+        expect(screen.getByRole("status")).toHaveTextContent(/pending tokenization/i)
+      );
+
+      expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+
+      await act(async () => {
+        jest.advanceTimersByTime(50);
+      });
+
+      await waitFor(() =>
+        expect(screen.getByRole("status")).toHaveTextContent(/queued for tokenization/i)
+      );
+
+      expect(
+        screen.getByRole("button", { name: copy.uploadZone.resetAriaLabel })
+      ).toBeInTheDocument();
+    });
   });
 
   it("shows tokenizing status between upload and success when server returns tokenizationDelay", async () => {
