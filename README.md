@@ -790,25 +790,6 @@ As the application handles financial flows and wallet integration, our CI pipeli
 
 ---
 
-## Dependency updates
-
-Dependabot opens weekly PRs on Monday to keep npm packages and GitHub Actions current.
-
-PRs are grouped to limit noise:
-
-- **nextjs-react** — `next`, `react`, `react-dom`, and their `@types` packages together (coordinated bumps).
-- **dev-tooling** — all remaining `devDependencies` in one PR.
-- **github-actions** — action version bumps in a separate PR.
-
-**Reviewing a Dependabot PR**
-
-1. Check the CI run passes (lockfile check + lint + build).
-2. Scan the changelog/release notes linked in the PR description for breaking changes.
-3. For `nextjs-react` bumps, do a quick smoke test (`npm run dev`) locally.
-4. Approve and merge — **do not enable auto-merge**; every dependency bump requires a human reviewer.
-
----
-
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow, branch naming convention, local checks, and accessibility expectations. Also see our [Accessibility Statement](docs/accessibility.md).
