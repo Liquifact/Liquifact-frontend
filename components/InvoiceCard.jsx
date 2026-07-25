@@ -10,6 +10,7 @@
 
 import Link from "next/link";
 import StatusPill from "@/components/StatusPill";
+import { formatAmount, formatCurrency, INVALID_VALUE_FALLBACK } from "@/lib/format/currency";
 import { resolveStatusPill } from "@/lib/types/invoice";
 
 /** @typedef {import("@/lib/types/invoice").Invoice} Invoice */
@@ -32,41 +33,6 @@ function formatDate(dateStr) {
 }
 
 /**
- * Formats an amount with its currency code.
- * @param {number|string|undefined} amount
- * @param {string|undefined} currency
- * @returns {string}
- */
-function formatAmount(amount, currency) {
-  if (amount == null) return "—";
-  const formatted = Number(amount).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  return currency ? `${formatted} ${currency}` : formatted;
-}
-
-/**
- * Formats a yield percentage consistently.  Yields may arrive as either a
- * bare number (`8.5`) or a percent string (`"8.5%"`); always emits a single
- * trailing `%` so the markup never ends up with `"8.5%%"`.
- * @param {number|string|undefined} value
- * @returns {string}
- */
-function formatYield(value) {
-  if (value == null || value === "") return "—";
-  // Numeric input: format as `<n>%`, but `NaN` / `±Infinity` fall back.
-  // The `Number.isFinite` guard is scoped to the numeric branch so numeric
-  // strings (`"8.5"`, `"8.5%"`) still reach the string handler below —
-  // `Number.isFinite` is strict and returns `false` for non-numbers.
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? `${value}%` : "—";
-  }
-  const str = String(value);
-  return str.includes("%") ? str : `${str}%`;
-}
-
-/**
  * @param {object}  props
  * @param {Invoice} props.invoice
  */
@@ -74,6 +40,9 @@ export default function InvoiceCard({ invoice }) {
   const { id, issuer, amount, currency, dueDate, yield: yieldPct, status } = invoice ?? {}; // Resolve the canonical pill label once so the link aria-label and the
   // pill aria-label stay in lock-step (both read from the same source).
   const { label: statusLabel } = resolveStatusPill(status);
+  const formattedYield = formatAmount(yieldPct);
+  const yieldText =
+    formattedYield === INVALID_VALUE_FALLBACK ? INVALID_VALUE_FALLBACK : `${formattedYield}%`;
 
   // Compose the link aria-label.  When the canonical status resolves to
   // "Unknown" (nullish / unrecognised input), drop the trailing " \u2014
@@ -100,13 +69,13 @@ export default function InvoiceCard({ invoice }) {
 
         {/* Amount — w-1/5 */}
         <div className="basis-1/5 text-right">
-          <p className="font-mono text-slate-200">{formatAmount(amount, currency)}</p>
+          <p className="font-mono text-slate-200">{formatCurrency(amount, { currency })}</p>
           <p className="text-xs text-slate-500 mt-0.5">Amount</p>
         </div>
 
         {/* Yield — w-1/6 */}
         <div className="basis-1/6 text-right">
-          <p className="font-mono text-cyan-400">{yieldPct != null ? `${yieldPct}%` : "—"}</p>
+          <p className="font-mono text-cyan-400">{yieldText}</p>
           <p className="text-xs text-slate-500 mt-0.5">Yield</p>
         </div>
 

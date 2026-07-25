@@ -4,6 +4,7 @@ import Footer from "../components/Footer";
 import { ToastProvider } from "../components/ToastProvider";
 import { WalletProvider } from "../components/WalletProvider";
 import ThemeToggle, { THEME_STORAGE_KEY, THEMES } from "../components/ThemeToggle";
+import ShortcutHelpDialog from "../components/ShortcutHelpDialog";
 import { copy } from "./copy/en";
 
 const geistSans = Geist({
@@ -17,30 +18,30 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   title: `LiquiFact — ${copy.home.heroTitle}`,
   description: copy.home.heroSub,
   openGraph: {
     title: `LiquiFact — ${copy.home.heroTitle}`,
     description: copy.home.heroSub,
-    url: '/',
-    siteName: 'LiquiFact',
+    url: "/",
+    siteName: "LiquiFact",
     images: [
       {
-        url: '/opengraph-image', // Next.js App Router dynamic route
+        url: "/opengraph-image", // Next.js App Router dynamic route
         width: 1200,
         height: 630,
-        alt: 'LiquiFact Social Preview',
-      }
+        alt: "LiquiFact Social Preview",
+      },
     ],
-    locale: 'en_US',
-    type: 'website',
+    locale: "en_US",
+    type: "website",
   },
   twitter: {
-    card: 'summary_large_image',
+    card: "summary_large_image",
     title: `LiquiFact — ${copy.home.heroTitle}`,
     description: copy.home.heroSub,
-    images: ['/opengraph-image'],
+    images: ["/opengraph-image"],
   },
 };
 
@@ -75,7 +76,6 @@ export default function RootLayout({ children }) {
         eliminating the flash of incorrect theme (FOIT-equivalent for themes).
       */}
       <head>
-        {/* eslint-disable-next-line react/no-danger -- Static constant; not user-supplied data. Required for pre-hydration theme paint. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
@@ -90,6 +90,10 @@ export default function RootLayout({ children }) {
         <div className="fixed top-3 right-16 z-50 md:right-20">
           <ThemeToggle />
         </div>
+        {/* Shortcut help dialog — listens for `?` keystrokes to surface every
+            registered keyboard shortcut. Mounted here so the gesture works
+            on every page. The dialog markup only renders while open. */}
+        <ShortcutHelpDialog />
         <Footer />
       </body>
     </html>

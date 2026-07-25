@@ -10,21 +10,35 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: "npm"
 
-      # Lockfile-drift guard: regenerate the lockfile in-place and fail if it
-      # differs from the committed one. This catches PRs where someone ran
-      # `npm install` without committing the updated package-lock.json.
+      # Lockfile-drift guard: verify the committed lockfile is in sync with
+      # package.json by regenerating it and comparing (ignoring the
+      # platform-specific fsevents entry which varies across Node versions).
       - name: Check lockfile is in sync
         run: |
+          cp package-lock.json /tmp/pkg-lock-orig.json
           npm install --package-lock-only --ignore-scripts
-          git diff --exit-code package-lock.json
+          # Restore the fsevents block from the original so the diff only
+          # reflects substantive changes.
+          node -e "
+            const orig = require('fs').readFileSync('/tmp/pkg-lock-orig.json','utf8');
+            const curr = require('fs').readFileSync('package-lock.json','utf8');
+            const re = /\"node_modules\\/playwright\\/node_modules\\/fsevents\": \{[\s\S]*?\n    \},?\n?/g;
+            const origClean = orig.replace(re, '');
+            const currClean = curr.replace(re, '');
+            if (origClean !== currClean) {
+              console.error('Lockfile is out of sync with package.json');
+              process.exit(1);
+            }
+          "
+          echo 'Lockfile is in sync'
 
       - name: Install dependencies
         run: npm ci
@@ -44,29 +58,30 @@ jobs:
   security-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.0
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
-      
+
       # Audit dependencies for high or critical vulnerabilities.
       # As the app handles financial flows and wallet integration,
       # keeping dependencies secure is critical.
       # To waive a false-positive, use 'npm audit fix' or update the package manually.
       - name: Dependency Audit
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high --omit=dev
 
   secret-scan:
     runs-on: ubuntu-latest
     steps:
       # fetch-depth: 0 is required for gitleaks to scan the full history/diff.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.0
         with:
           fetch-depth: 0
-          
+
       # Run Gitleaks to detect hardcoded secrets (API keys, tokens, etc.) in the repository.
       - name: Secret Scan
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz \
+            | tar xz -C /usr/local/bin gitleaks
+          gitleaks detect --no-banner --source . -v

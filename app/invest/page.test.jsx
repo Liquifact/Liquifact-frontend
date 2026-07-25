@@ -9,40 +9,6 @@ import InvestPage, {
 } from "./page";
 import { getInvoiceById, loadMockInvoices, MOCK_INVOICES } from "./lib";
 
-jest.mock("../../lib/api/invoices", () => ({
-  fetchInvestableInvoices: jest.fn(() =>
-    Promise.resolve([
-      {
-        id: "inv-001",
-        issuer: "Acme Supplies Ltd",
-        amount: "12,500",
-        currency: "USD",
-        dueDate: "2026-06-15",
-        yield: "8.2%",
-        status: "Open",
-      },
-      {
-        id: "inv-002",
-        issuer: "Bright Logistics GmbH",
-        amount: "7,800",
-        currency: "EUR",
-        dueDate: "2026-07-01",
-        yield: "7.5%",
-        status: "Open",
-      },
-      {
-        id: "inv-003",
-        issuer: "Sunrise Exports Pte",
-        amount: "22,000",
-        currency: "USD",
-        dueDate: "2026-05-30",
-        yield: "9.1%",
-        status: "Open",
-      },
-    ])
-  ),
-}));
-
 jest.mock("next/link", () => {
   function MockLink({ href, children, ...props }) {
     return (
@@ -436,6 +402,88 @@ describe("InvestMarketplace", () => {
     );
   });
 
+  // ── Pagination + filter/search reset tests ────────────────────────────────
+
+  it("resets visible items to PAGE_SIZE when a currency filter is applied", async () => {
+    // Build 25 invoices: 15 USD, 10 EUR.
+    const invoices = [
+      ...Array.from({ length: 15 }, (_, i) => ({
+        id: `usd-${i + 1}`,
+        issuer: `USD Issuer ${i + 1}`,
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-12-31",
+        yield: "5.0%",
+        status: "Open",
+      })),
+      ...Array.from({ length: 10 }, (_, i) => ({
+        id: `eur-${i + 1}`,
+        issuer: `EUR Issuer ${i + 1}`,
+        amount: "1,000",
+        currency: "EUR",
+        dueDate: "2026-12-31",
+        yield: "5.0%",
+        status: "Open",
+      })),
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 50)} />);
+    await flushTimers(50);
+
+    // Initially PAGE_SIZE items visible (10 USD entries)
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+
+    // Load more once to see 20 items
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+    expect(getInvoiceListItems()).toHaveLength(20);
+
+    // Apply EUR filter — should reset to PAGE_SIZE (only 10 EUR exist, so 10 visible)
+    fireEvent.click(screen.getByLabelText("Filter by EUR"));
+
+    expect(getInvoiceListItems()).toHaveLength(10);
+    expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
+  });
+
+  it("resets visible items to PAGE_SIZE when search is applied after debounce", async () => {
+    const total = PAGE_SIZE * 3; // 30 invoices
+    const invoices = Array.from({ length: total }, (_, i) => ({
+      id: `inv-${String(i + 1).padStart(3, "0")}`,
+      issuer: i < 5 ? `SearchTarget Corp` : `Other Issuer ${i + 1}`,
+      amount: "1,000",
+      currency: "USD",
+      dueDate: "2026-12-31",
+      yield: "5.0%",
+      status: "Open",
+    }));
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 50)} />);
+    await flushTimers(50);
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+
+    // Load more to get 20 items visible
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+    expect(getInvoiceListItems()).toHaveLength(20);
+
+    // Type a search query and let debounce resolve
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "SearchTarget" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    // Paging should reset: only 5 matching items, all visible (< PAGE_SIZE)
+    expect(getInvoiceListItems()).toHaveLength(5);
+    expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
+  });
+
   // ── Filter tests ──────────────────────────────────────────────────────────
 
   it("filters invoices by currency", async () => {
@@ -691,7 +739,7 @@ describe("InvestMarketplace", () => {
     expect(screen.getByRole("status")).toHaveTextContent("1 of 2 invoices match");
   });
 
-  it.skip("filters invoices by issuer search query after debounce (search disabled in current UI — pointer-events-none fieldset)", async () => {
+  it("filters invoices by issuer search query after debounce", async () => {
     const invoices = [
       {
         id: "inv-001",
@@ -730,6 +778,216 @@ describe("InvestMarketplace", () => {
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
     expect(screen.getByText("Acme Supplies Ltd")).toBeInTheDocument();
     expect(screen.queryByText("Bright Logistics GmbH")).not.toBeInTheDocument();
+  });
+
+  it("search is case-insensitive — lowercase query matches mixed-case issuer", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "Bright Logistics GmbH",
+        amount: "200",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "6%",
+        status: "Open",
+      },
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "BRIGHT" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.getByText("Bright Logistics GmbH")).toBeInTheDocument();
+    expect(screen.queryByText("Acme Supplies Ltd")).not.toBeInTheDocument();
+  });
+
+  it("shows no-match state when search query matches no invoices", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "nonexistent" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    expect(screen.queryByRole("list", { name: /investable invoices/i })).not.toBeInTheDocument();
+    expect(screen.getByText("No invoices match your filters.")).toBeInTheDocument();
+  });
+
+  it("restores full list when search query is cleared", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "Bright Logistics GmbH",
+        amount: "200",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "6%",
+        status: "Open",
+      },
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    // Apply a search filter
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "acme" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+
+    // Clear the search filter
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    expect(screen.getByText("Acme Supplies Ltd")).toBeInTheDocument();
+    expect(screen.getByText("Bright Logistics GmbH")).toBeInTheDocument();
+  });
+
+  it("announces search-filtered count in the live region", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "Bright Logistics GmbH",
+        amount: "200",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "6%",
+        status: "Open",
+      },
+      {
+        id: "inv-003",
+        issuer: "Acme Trading Co",
+        amount: "300",
+        currency: "USD",
+        dueDate: "2026-08-01",
+        yield: "7%",
+        status: "Open",
+      },
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    expect(screen.getByRole("status")).toHaveTextContent("3 investable invoices loaded");
+
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "acme" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    // 2 of 3 invoices match "acme" (Acme Supplies Ltd and Acme Trading Co)
+    expect(screen.getByRole("status")).toHaveTextContent("2 of 3 invoices match");
+  });
+
+  it("announces no-match when search produces zero results", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "zzznomatch" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    expect(screen.getByRole("status")).toHaveTextContent("No invoices match");
+  });
+
+  it("search does not filter before debounce delay elapses", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "Bright Logistics GmbH",
+        amount: "200",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "6%",
+        status: "Open",
+      },
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "acme" },
+    });
+
+    // Advance less than debounce threshold — list should still be unfiltered
+    await flushTimers(SEARCH_DEBOUNCE_MS - 50);
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+
+    // Now cross the threshold — filtering should kick in
+    await flushTimers(50);
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
   });
 
   it("announces filtered results in the live region when search is applied", async () => {
@@ -933,11 +1191,92 @@ describe("InvestPage", () => {
   });
 
   it("renders the marketplace page via the default export", async () => {
+    // InvestPage renders InvestMarketplace whose default loadInvoices is
+    // loadMockInvoices from lib.js — no prop injection needed here.
     render(<InvestPage />);
     await flushTimers(0);
 
     expect(screen.getByRole("heading", { name: /invest/i })).toBeInTheDocument();
-    expect(getInvoiceListItems()).toHaveLength(3);
+    expect(getInvoiceListItems()).toHaveLength(MOCK_INVOICES.length);
+  });
+});
+
+// ── Shared fixture tests (Issue #422) ─────────────────────────────────────────
+// These tests assert that the marketplace renders directly from the MOCK_INVOICES
+// array exported by lib.js, confirming that lib.js is the single source of truth.
+
+describe("InvestMarketplace renders from shared lib.js fixture", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  });
+
+  it("renders one list item per entry in MOCK_INVOICES when using loadMockInvoices", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    const items = getInvoiceListItems();
+    expect(items).toHaveLength(MOCK_INVOICES.length);
+  });
+
+  it("renders each issuer name from the shared MOCK_INVOICES fixture", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    for (const invoice of MOCK_INVOICES) {
+      expect(screen.getByText(invoice.issuer)).toBeInTheDocument();
+    }
+  });
+
+  it("announces the correct invoice count based on MOCK_INVOICES length", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      `${MOCK_INVOICES.length} investable invoices loaded`
+    );
+  });
+
+  it("window.__TEST_MOCK_INVOICES__ override is honoured by loadMockInvoices", async () => {
+    const overrideInvoices = [
+      {
+        id: "test-inv-001",
+        issuer: "Override Corp",
+        amount: "999",
+        currency: "USD",
+        dueDate: "2027-01-01",
+        yield: "1.0%",
+        status: "Open",
+      },
+    ];
+
+    // Set the test hook that loadMockInvoices checks before falling back to MOCK_INVOICES.
+    window.__TEST_MOCK_INVOICES__ = overrideInvoices;
+
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    expect(getInvoiceListItems()).toHaveLength(1);
+    expect(screen.getByText("Override Corp")).toBeInTheDocument();
+
+    delete window.__TEST_MOCK_INVOICES__;
+  });
+
+  it("getInvoiceById resolves against the same MOCK_INVOICES fixture used by the marketplace", async () => {
+    // Confirm the detail-route helper and the marketplace list share the same array.
+    for (const invoice of MOCK_INVOICES) {
+      expect(getInvoiceById(invoice.id)).toStrictEqual(invoice);
+    }
+  });
+
+  it("getInvoiceById returns undefined for an id that does not exist in the shared fixture", () => {
+    expect(getInvoiceById("inv-not-in-fixture")).toBeUndefined();
   });
 });
 

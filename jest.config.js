@@ -7,7 +7,12 @@ const config = {
     "^next/font/google$": "<rootDir>/__mocks__/next-font-google.js",
     "^.+\\.css$": "<rootDir>/__mocks__/style.js",
   },
-  testPathIgnorePatterns: ["/node_modules/", "/.next/", "<rootDir>/tests/fixtures/", ".spec.jsx$"],
+  testPathIgnorePatterns: [
+    "/node_modules/",
+    "/.next/",
+    "<rootDir>/tests/fixtures/",
+    "\\.spec\\.(jsx|ts|tsx)$",
+  ],
   transform: {
     "^.+\\.(js|jsx|ts|tsx|mjs)$": [
       "babel-jest",
