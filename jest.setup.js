@@ -1,19 +1,5 @@
 require("@testing-library/jest-dom");
 
-jest.mock("jest-axe", () => {
-  return {
-    axe: async () => ({ violations: [] }),
-    toHaveNoViolations: {
-      toHaveNoViolations() {
-        return {
-          pass: true,
-          message: () => "",
-        };
-      },
-    },
-  };
-});
-
 const { toHaveNoViolations } = require("jest-axe");
 expect.extend(toHaveNoViolations);
 
