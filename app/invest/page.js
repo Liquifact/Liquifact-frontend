@@ -341,20 +341,24 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
 
         {/* Error state – retryable */}
         {loadError ? (
-          <ErrorBanner
-            title={copy.invest.errorTitle}
-            description={loadError}
-            actionLabel="Try again"
-            onAction={reload}
-          />
+          <div role="alert" aria-live="assertive">
+            <ErrorBanner
+              title={copy.invest.errorTitle}
+              description={loadError}
+              actionLabel="Try again"
+              onAction={reload}
+            />
+          </div>
         ) : invoices === null ? (
-          <InvoiceListSkeleton rows={3} />
+          <div role="status" aria-live="polite" aria-label="Loading marketplace invoices">
+            <InvoiceListSkeleton rows={3} />
+          </div>
         ) : invoices.length === 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
             No investable invoices. Connect wallet to see the marketplace.
           </div>
         ) : filteredInvoices.length === 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
             No invoices match your filters.
           </div>
         ) : (
