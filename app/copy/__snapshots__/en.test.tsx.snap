@@ -137,6 +137,12 @@ exports[`copy dictionary — snapshot of full dictionary matches the full copy d
     "homeLabel": "← Back to LiquiFact",
     "statusLabel": "404",
   },
+  "toastError": {
+    "actionLabel": "Retry",
+    "description": "An unexpected error occurred while showing notifications. You can retry, and the rest of the app is unaffected.",
+    "previewLabel": "Error boundary",
+    "title": "Notifications failed to load",
+  },
   "uploadZone": {
     "badgeMaxSize": "Max {maxSizeMb} MB",
     "badgeOneFile": "One file per invoice",

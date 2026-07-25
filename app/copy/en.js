@@ -364,6 +364,13 @@ export const copy = {
     actionLabel: "Try again",
     previewLabel: "Error boundary",
   },
+  toastError: {
+    title: "Notifications failed to load",
+    description:
+      "An unexpected error occurred while showing notifications. You can retry, and the rest of the app is unaffected.",
+    actionLabel: "Retry",
+    previewLabel: "Error boundary",
+  },
   notFound: {
     heading: "Page not found",
     description: "The page you\u2019re looking for doesn\u2019t exist or has been moved.",
