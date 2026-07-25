@@ -12,6 +12,7 @@ import InvoiceFilters, {
   hasAnyActiveFilters,
   parseSortState,
 } from "@/components/InvoiceFilters";
+import { useSettingsAnnouncer } from "@/components/useSettingsAnnouncer";
 import NavMenu from "@/components/NavMenu";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
@@ -274,6 +275,9 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   // Derive the polite live-region announcement directly from reactive state.
   // Using useMemo (rather than a useEffect + setState) avoids a cascading
   // re-render and satisfies the react-hooks/set-state-in-effect lint rule.
+  // The debounced version is then passed to the live region via
+  // useSettingsAnnouncer, which skips the mount announcement and coalesces
+  // rapid filter changes before they reach the screen-reader queue.
   const statusMessage = useMemo(() => {
     // Loading or error states — error copy is announced by the ErrorBanner role="alert";
     // the status region is cleared so screen readers only hear one announcement.
@@ -295,6 +299,11 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     }
     return getInvoiceLoadAnnouncement(invoices);
   }, [filteredInvoices, filterActive, invoices, visibleCount, loadError]);
+
+  // Debounce the live-region text so rapid filter changes (e.g. typing in the
+  // search box) do not flood the screen-reader announcement queue, and the
+  // region stays silent on the initial page render (no mount announcement).
+  const debouncedAnnouncement = useSettingsAnnouncer(statusMessage);
 
   // ── Load-more handler ──────────────────────────────────────────────────────
   /**
@@ -328,7 +337,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
       <main className="max-w-4xl mx-auto px-6 py-12">
         {/* Polite live region – announced to screen readers on every state change */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-          {statusMessage}
+          {debouncedAnnouncement}
         </div>
 
         <h1 className="text-2xl font-bold mb-2">{copy.invest.title}</h1>
