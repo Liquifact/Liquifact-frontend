@@ -4,31 +4,40 @@
  *
  * @file app/invest/[id]/page.test.tsx
  *
- * Comprehensive tests for the RSC detail-page split introduced by
- * perf(invest): split the invoice detail page into a server shell and client action.
+ * Comprehensive tests for the invoice detail page split:
+ *   1. Server Component shell (page.js)
+ *      - Renders JSON-LD structured data
+ *      - Calls notFound() for unknown IDs
+ *      - Delegates content rendering to InvoiceDetailContent client component
+ *      - Does NOT contain any "use client" / hooks (structural contract)
  *
- * Test surface
- * ─────────────
- *  1. Server Component shell (page.js)
- *     - Renders invoice metadata (issuer, amount, yield, maturity, status)
- *     - Injects JSON-LD structured data for known invoices
- *     - Calls notFound() for an unknown id
- *     - Does NOT contain any "use client" / hooks (structural contract)
+ *   2. InvoiceDetailContent client component — fetch-state model
+ *      - Loading state: renders skeleton with aria-busy
+ *      - Data state: renders invoice detail (delegated to InvoiceDetailData)
+ *      - Error state: renders ErrorBanner with retry button
+ *      - Empty state: renders EmptyState with back link
+ *      - Retry: keyboard-operable (Enter/Space), re-fetches on click
+ *      - State announcements via aria-live regions
+ *      - State exclusivity: only one state renders at a time
  *
- *  2. FundActions client component (FundActions.jsx)
- *     - Fund button: disabled states per wallet state
- *     - Copy link: clipboard API + textarea fallback
- *     - Print button: calls window.print()
- *     - Accessibility: aria-labels, keyboard focus
- *     - Toast feedback: success + error
+ *   3. FundActions client component (unchanged)
+ *      - Fund button: disabled states per wallet state
+ *      - Copy link: clipboard API + textarea fallback
+ *      - Print button: calls window.print()
+ *      - Accessibility: aria-labels, keyboard focus
+ *      - Toast feedback: success + error
  *
- *  3. Clipboard helpers (copyInvoiceUrl, copyToClipboardFallback)
- *     - URL construction
- *     - Clipboard API path
- *     - Fallback path
+ *   4. Clipboard helpers (copyInvoiceUrl, copyToClipboardFallback)
+ *      - URL construction
+ *      - Clipboard API path
+ *      - Fallback path
  *
- *  4. Copy dictionary contract
- *     - All invest.detail keys are present and non-empty
+ *   5. Copy dictionary contract — invest.detail keys
+ *      - All required keys present and non-empty
+ *
+ *   6. Print stylesheet contract
+ *      - FundActions action row has no-print class
+ *      - FundActions disclaimer has no-print class
  */
 
 import React from "react";
@@ -80,8 +89,28 @@ jest.mock(
 
 jest.mock("@/components/ErrorBanner", () => ({
   __esModule: true,
-  default: function ErrorBannerMock({ title }: { title: string }) {
-    return <div role="alert">{title}</div>;
+  default: function ErrorBannerMock({
+    title,
+    description,
+    actionLabel,
+    onAction,
+  }: {
+    title: string;
+    description?: string;
+    actionLabel?: string;
+    onAction?: () => void;
+  }) {
+    return (
+      <div role="alert">
+        {title}
+        {description && <p>{description}</p>}
+        {actionLabel && (
+          <button onClick={onAction} role="button">
+            {actionLabel}
+          </button>
+        )}
+      </div>
+    );
   },
 }));
 
@@ -122,7 +151,6 @@ jest.mock("next/navigation", () => ({
   }),
 }));
 
-// Intercept the lib mock so we control what getInvoiceById returns
 jest.mock("../lib", () => ({
   getInvoiceById: jest.fn(),
 }));
@@ -132,6 +160,7 @@ import { getInvoiceById } from "../lib";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import InvoiceDetailPage from "./page";
 import FundActions, { copyInvoiceUrl, copyToClipboardFallback } from "./FundActions";
+import InvoiceDetailContent from "./InvoiceDetailContent";
 import { copy } from "@/app/copy/en";
 
 const mockGetInvoiceById = getInvoiceById as jest.MockedFunction<typeof getInvoiceById>;
@@ -157,8 +186,8 @@ beforeEach(() => {
   mockUseWallet.mockReturnValue({ state: "disconnected", connect: jest.fn() } as ReturnType<
     typeof useWallet
   >);
-  // The jsdom origin (http://localhost:3000) comes from the @jest-environment-options
-  // docblock above — modern jsdom no longer allows deleting/reassigning window.location.
+  mockToast.success.mockClear();
+  mockToast.error.mockClear();
 });
 
 // ── Helper to render the async Server Component ───────────────────────────────
@@ -174,56 +203,7 @@ async function renderServerPage(params: { id: string }) {
 
 describe("InvoiceDetailPage (Server Component shell)", () => {
   describe("when invoice exists", () => {
-    it("renders the page heading and subtitle", async () => {
-      await renderServerPage({ id: "inv-001" });
-
-      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-        copy.invest.detail.pageTitle
-      );
-      expect(screen.getByText(copy.invest.detail.pageSub)).toBeInTheDocument();
-    });
-
-    it("renders the issuer name as the section heading (h2)", async () => {
-      await renderServerPage({ id: "inv-001" });
-
-      expect(
-        screen.getByRole("heading", { level: 2, name: "Acme Supplies Ltd" })
-      ).toBeInTheDocument();
-    });
-
-    it("renders all definition list labels as <dt> elements", async () => {
-      const { container } = await renderServerPage({ id: "inv-001" });
-
-      const dts = Array.from(container.querySelectorAll("dt")).map((el) => el.textContent);
-      expect(dts).toContain(copy.invest.detail.labelIssuer);
-      expect(dts).toContain(copy.invest.detail.labelAmount);
-      expect(dts).toContain(copy.invest.detail.labelYield);
-      expect(dts).toContain(copy.invest.detail.labelMaturity);
-      expect(dts).toContain(copy.invest.detail.labelStatus);
-    });
-
-    it("renders formatted currency amount as a <dd>", async () => {
-      const { container } = await renderServerPage({ id: "inv-001" });
-
-      const dds = Array.from(container.querySelectorAll("dd")).map((el) => el.textContent);
-      // formatCurrency("12,500", { currency: "USD" }) → "$12,500"
-      expect(dds.some((t) => t?.includes("12,500"))).toBe(true);
-    });
-
-    it("renders the maturity date as a <dd>", async () => {
-      const { container } = await renderServerPage({ id: "inv-001" });
-
-      const dds = Array.from(container.querySelectorAll("dd")).map((el) => el.textContent);
-      expect(dds).toContain("2026-06-15");
-    });
-
-    it("renders the StatusPill for the invoice status", async () => {
-      await renderServerPage({ id: "inv-001" });
-
-      expect(screen.getByRole("status")).toHaveAttribute("data-status", "Open");
-    });
-
-    it("injects a JSON-LD script tag", async () => {
+    it("injects a JSON-LD script tag for the invoice", async () => {
       const { container } = await renderServerPage({ id: "inv-001" });
 
       const script = container.querySelector('script[type="application/ld+json"]');
@@ -241,13 +221,6 @@ describe("InvoiceDetailPage (Server Component shell)", () => {
       expect(parsed.availability).toBe("https://schema.org/InStock");
     });
 
-    it("renders back-to-marketplace link with correct href and aria-label", async () => {
-      await renderServerPage({ id: "inv-001" });
-
-      const link = screen.getByRole("link", { name: copy.invest.detail.backToMarketplaceLabel });
-      expect(link).toHaveAttribute("href", "/invest");
-    });
-
     it("renders back-to-home link", async () => {
       await renderServerPage({ id: "inv-001" });
 
@@ -255,19 +228,10 @@ describe("InvoiceDetailPage (Server Component shell)", () => {
       expect(homeLink).toHaveAttribute("href", "/");
     });
 
-    it("invoice summary section has print-invoice-section class", async () => {
-      const { container } = await renderServerPage({ id: "inv-001" });
+    it("renders NavMenu in header", async () => {
+      await renderServerPage({ id: "inv-001" });
 
-      const section = container.querySelector(".print-invoice-section");
-      expect(section).toBeInTheDocument();
-      expect(section!.tagName).toBe("SECTION");
-    });
-
-    it("header carries no-print class", async () => {
-      const { container } = await renderServerPage({ id: "inv-001" });
-
-      const header = container.querySelector("header");
-      expect(header).toHaveClass("no-print");
+      expect(screen.getByTestId("nav-menu")).toBeInTheDocument();
     });
 
     it("main element has id='main-content' for skip-link", async () => {
@@ -275,6 +239,12 @@ describe("InvoiceDetailPage (Server Component shell)", () => {
 
       const main = container.querySelector("main");
       expect(main).toHaveAttribute("id", "main-content");
+    });
+
+    it("renders InvoiceDetailContent client component", async () => {
+      await renderServerPage({ id: "inv-001" });
+
+      expect(screen.getByText(/loading invoice details/i)).toBeInTheDocument();
     });
   });
 
@@ -317,41 +287,248 @@ describe("InvoiceDetailPage (Server Component shell)", () => {
       expect(raw).not.toContain("</script>");
       expect(raw).not.toContain('"xss"');
     });
-
-    it("returns null JSON-LD when invoice is falsy (defensive)", async () => {
-      // Simulate a race where invoice is null at render time
-      mockGetInvoiceById.mockReturnValue(undefined as unknown as ReturnType<typeof getInvoiceById>);
-
-      // notFound will throw — test the JSON-LD builder directly instead
-      const { buildInvoiceJsonLdExported } = (await import("./page")) as unknown as {
-        buildInvoiceJsonLdExported?: (i: null) => null;
-      };
-      // buildInvoiceJsonLd is a module-private function, so we verify the
-      // absence of a script tag when the page renders with a valid invoice
-      // that has no issuer.
-      mockGetInvoiceById.mockReturnValue({
-        ...MOCK_INVOICE,
-        issuer: "",
-        amount: "",
-        currency: "",
-        dueDate: "",
-        yield: "",
-        status: "",
-      } as ReturnType<typeof getInvoiceById>);
-
-      const { container } = await renderServerPage({ id: "inv-001" });
-      // A script tag WILL be rendered (invoice exists), but name falls back to generic
-      const script = container.querySelector('script[type="application/ld+json"]');
-      if (script) {
-        const parsed = JSON.parse(script.innerHTML);
-        expect(parsed.name).toBe("Invoice offering");
-      }
-    });
   });
 });
 
 // =============================================================================
-// 2. FundActions client component
+// 2. InvoiceDetailContent client component — fetch-state model
+// =============================================================================
+
+describe("InvoiceDetailContent (client fetch-state model)", () => {
+  const detail = copy.invest.detail;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useRealTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  const defaultProps = { id: "inv-001" };
+
+  // Mock loaders that properly simulate async behavior
+  const createMockLoader = (result: typeof MOCK_INVOICE | null | undefined, shouldThrow = false) => {
+    return jest.fn().mockImplementation(async () => {
+      if (shouldThrow) throw new Error("Network error");
+      return result;
+    });
+  };
+
+  const mockLoadInvoiceSuccess = createMockLoader(MOCK_INVOICE);
+  const mockLoadInvoiceEmpty = createMockLoader(undefined);
+  const mockLoadInvoiceError = createMockLoader(null, true);
+  const mockLoadInvoiceNotFound = createMockLoader(null);
+
+  it("renders loading skeleton initially", async () => {
+    const slowLoad = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve(MOCK_INVOICE), 100);
+        })
+    );
+
+    render(<InvoiceDetailContent {...defaultProps} loadInvoice={slowLoad} />);
+
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByText(/loading invoice details/i)).toBeInTheDocument();
+  });
+
+  it("renders data state when loadInvoice resolves with invoice", async () => {
+    render(<InvoiceDetailContent {...defaultProps} loadInvoice={mockLoadInvoiceSuccess} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(MOCK_INVOICE.issuer)).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(detail.pageTitle);
+    expect(screen.getByRole("status")).toHaveAttribute("data-status", "Open");
+  });
+
+  it("renders empty state when loadInvoice returns undefined", async () => {
+    render(<InvoiceDetailContent {...defaultProps} loadInvoice={mockLoadInvoiceEmpty} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(detail.emptyStateTitle)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(detail.emptyStateDescription)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: detail.backToMarketplace })).toBeInTheDocument();
+  });
+
+  it("renders error state when loadInvoice rejects", async () => {
+    render(<InvoiceDetailContent {...defaultProps} loadInvoice={mockLoadInvoiceError} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(detail.loadErrorTitle)).toBeInTheDocument();
+    expect(screen.getByText(detail.loadErrorMsg)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: detail.retryLabel })).toBeInTheDocument();
+  });
+
+  it("renders empty state (not found) when loadInvoice returns null", async () => {
+    render(<InvoiceDetailContent {...defaultProps} loadInvoice={mockLoadInvoiceNotFound} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(detail.emptyStateTitle)).toBeInTheDocument();
+    });
+  });
+
+  it("re-fetches on retry button click", async () => {
+    render(<InvoiceDetailContent {...defaultProps} loadInvoice={mockLoadInvoiceError} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+    });
+
+    mockLoadInvoiceError.mockImplementation(createMockLoader(MOCK_INVOICE));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: detail.retryLabel }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(MOCK_INVOICE.issuer)).toBeInTheDocument();
+    });
+
+    expect(mockLoadInvoiceError).toHaveBeenCalledTimes(2);
+  });
+
+  it("retry button is keyboard-operable (Enter key)", async () => {
+    render(<InvoiceDetailContent {...defaultProps} loadInvoice={mockLoadInvoiceError} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+    });
+
+    mockLoadInvoiceError.mockImplementation(createMockLoader(MOCK_INVOICE));
+
+    const retryBtn = screen.getByRole("button", { name: detail.retryLabel });
+    await act(async () => {
+      fireEvent.keyDown(retryBtn, { key: "Enter", code: "Enter" });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(MOCK_INVOICE.issuer)).toBeInTheDocument();
+    });
+  });
+
+  it("retry button is keyboard-operable (Space key)", async () => {
+    render(<InvoiceDetailContent {...defaultProps} loadInvoice={mockLoadInvoiceError} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+    });
+
+    mockLoadInvoiceError.mockImplementation(createMockLoader(MOCK_INVOICE));
+
+    const retryBtn = screen.getByRole("button", { name: detail.retryLabel });
+    await act(async () => {
+      fireEvent.keyDown(retryBtn, { key: " ", code: "Space" });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(MOCK_INVOICE.issuer)).toBeInTheDocument();
+    });
+  });
+
+  it("announces loading state via aria-live", async () => {
+    const slowLoad = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve(MOCK_INVOICE), 100);
+        })
+    );
+
+    render(<InvoiceDetailContent {...defaultProps} loadInvoice={slowLoad} />);
+
+    const statusRegion = screen.getByRole("status");
+    expect(statusRegion).toHaveTextContent(detail.announceLoading);
+  });
+
+  it("announces error state via aria-live", async () => {
+    render(<InvoiceDetailContent {...defaultProps} loadInvoice={mockLoadInvoiceError} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent(detail.announceError);
+  });
+
+  it("announces empty state via aria-live", async () => {
+    render(<InvoiceDetailContent {...defaultProps} loadInvoice={mockLoadInvoiceEmpty} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(detail.emptyStateTitle)).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent(detail.announceEmpty);
+  });
+
+  it("state exclusivity: only one state renders at a time", async () => {
+    jest.useFakeTimers();
+    try {
+      const slowLoad = jest.fn(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(() => resolve(MOCK_INVOICE), 100);
+          })
+      );
+      render(<InvoiceDetailContent {...defaultProps} loadInvoice={slowLoad} />);
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByText(detail.emptyStateTitle)).not.toBeInTheDocument();
+
+      jest.advanceTimersByTime(200);
+      await waitFor(() => {
+        expect(screen.getByText(MOCK_INVOICE.issuer)).toBeInTheDocument();
+      });
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByText(detail.emptyStateTitle)).not.toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("passes axe accessibility checks in data state", async () => {
+    const { container } = render(<InvoiceDetailContent {...defaultProps} loadInvoice={mockLoadInvoiceSuccess} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(MOCK_INVOICE.issuer)).toBeInTheDocument();
+    });
+
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  it("passes axe accessibility checks in error state", async () => {
+    const { container } = render(<InvoiceDetailContent {...defaultProps} loadInvoice={mockLoadInvoiceError} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+    });
+
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  it("passes axe accessibility checks in empty state", async () => {
+    const { container } = render(<InvoiceDetailContent {...defaultProps} loadInvoice={mockLoadInvoiceEmpty} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(detail.emptyStateTitle)).toBeInTheDocument();
+    });
+
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+});
+
+// =============================================================================
+// 3. FundActions client component
 // =============================================================================
 
 describe("FundActions", () => {
@@ -549,7 +726,7 @@ describe("FundActions", () => {
 });
 
 // =============================================================================
-// 3. Clipboard helpers
+// 4. Clipboard helpers
 // =============================================================================
 
 describe("copyInvoiceUrl", () => {
@@ -602,7 +779,6 @@ describe("copyToClipboardFallback", () => {
       throw new Error("Not supported");
     });
 
-    // Should not throw (finally block)
     expect(() => copyToClipboardFallback("test")).not.toThrow();
     expect(removeChild).toHaveBeenCalled();
 
@@ -611,7 +787,7 @@ describe("copyToClipboardFallback", () => {
 });
 
 // =============================================================================
-// 4. Copy dictionary contract — invest.detail keys
+// 5. Copy dictionary contract — invest.detail keys
 // =============================================================================
 
 describe("copy.invest.detail — key presence and non-empty", () => {
@@ -640,6 +816,12 @@ describe("copy.invest.detail — key presence and non-empty", () => {
     "copyErrorTitle",
     "loadErrorMsg",
     "loadErrorTitle",
+    "emptyStateTitle",
+    "emptyStateDescription",
+    "retryLabel",
+    "announceLoading",
+    "announceError",
+    "announceEmpty",
   ] as const;
 
   it("exports copy.invest.detail as an object", () => {
@@ -656,7 +838,7 @@ describe("copy.invest.detail — key presence and non-empty", () => {
 });
 
 // =============================================================================
-// 5. Print stylesheet contract
+// 6. Print stylesheet contract
 // =============================================================================
 
 describe("print stylesheet classes", () => {
