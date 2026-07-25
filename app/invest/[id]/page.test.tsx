@@ -62,6 +62,18 @@ jest.mock("@/components/WalletContext", () => ({
   useWallet: jest.fn(() => ({ state: "disconnected", connect: jest.fn() })),
 }));
 
+// Mock useOptimisticFund so FundActions tests are unit-level.
+// Default return value is set in the outer beforeEach below.
+jest.mock("@/lib/hooks/useOptimisticFund", () => ({
+  FUNDING_STATES: {
+    IDLE: "idle",
+    PENDING: "pending",
+    CONFIRMED: "confirmed",
+    ROLLED_BACK: "rolled_back",
+  },
+  useOptimisticFund: jest.fn(),
+}));
+
 jest.mock(
   "@/components/WalletStatus",
   () =>
@@ -130,12 +142,25 @@ jest.mock("../lib", () => ({
 import { notFound } from "next/navigation";
 import { getInvoiceById } from "../lib";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
+import { useOptimisticFund, FUNDING_STATES } from "@/lib/hooks/useOptimisticFund";
 import InvoiceDetailPage from "./page";
 import FundActions, { copyInvoiceUrl, copyToClipboardFallback } from "./FundActions";
 import { copy } from "@/app/copy/en";
 
 const mockGetInvoiceById = getInvoiceById as jest.MockedFunction<typeof getInvoiceById>;
 const mockUseWallet = useWallet as jest.MockedFunction<typeof useWallet>;
+const mockUseOptimisticFund = useOptimisticFund as jest.MockedFunction<typeof useOptimisticFund>;
+
+// Default hook return for "idle, Open" scenario — used by most FundActions tests
+function makeOptimisticHook(overrides: Partial<ReturnType<typeof useOptimisticFund>> = {}) {
+  return {
+    optimisticStatus: "Open",
+    fundingState: FUNDING_STATES.IDLE,
+    isFunding: false,
+    submitFund: jest.fn(),
+    ...overrides,
+  };
+}
 
 // ── Fixture ───────────────────────────────────────────────────────────────────
 
@@ -157,6 +182,9 @@ beforeEach(() => {
   mockUseWallet.mockReturnValue({ state: "disconnected", connect: jest.fn() } as ReturnType<
     typeof useWallet
   >);
+  // Provide a sensible default for the optimistic hook so all existing
+  // FundActions tests get a working hook instance without extra setup.
+  mockUseOptimisticFund.mockReturnValue(makeOptimisticHook());
   // The jsdom origin (http://localhost:3000) comes from the @jest-environment-options
   // docblock above — modern jsdom no longer allows deleting/reassigning window.location.
 });
@@ -395,6 +423,9 @@ describe("FundActions", () => {
     });
 
     it("is disabled when invoice status is not Open", () => {
+      mockUseOptimisticFund.mockReturnValue(
+        makeOptimisticHook({ optimisticStatus: "Funded" })
+      );
       render(<FundActions id="inv-001" status="Funded" />);
       expect(
         screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel })
@@ -640,6 +671,14 @@ describe("copy.invest.detail — key presence and non-empty", () => {
     "copyErrorTitle",
     "loadErrorMsg",
     "loadErrorTitle",
+    "fundOptimisticTitle",
+    "fundOptimisticMsg",
+    "fundSuccessTitle",
+    "fundSuccessMsg",
+    "fundErrorTitle",
+    "fundErrorMsg",
+    "fundRolledBackTitle",
+    "fundRolledBackMsg",
   ] as const;
 
   it("exports copy.invest.detail as an object", () => {
@@ -672,5 +711,240 @@ describe("print stylesheet classes", () => {
       el.textContent?.includes("Yield references")
     );
     expect(disclaimer).toBeInTheDocument();
+  });
+});
+
+// =============================================================================
+// 6. Optimistic update behaviour — FundActions + useOptimisticFund integration
+// =============================================================================
+
+// We mock useOptimisticFund so FundActions tests stay unit-level and don't
+// depend on the real hook's internal AbortController / async logic.
+// (mock, import, and helpers are declared at the top of this file)
+
+describe("FundActions — optimistic update behaviour", () => {
+  beforeEach(() => {
+    mockUseOptimisticFund.mockReturnValue(makeOptimisticHook());
+  });
+
+  describe("optimistic status banner", () => {
+    it("is NOT shown when optimisticStatus equals server status (idle)", () => {
+      mockUseOptimisticFund.mockReturnValue(
+        makeOptimisticHook({ optimisticStatus: "Open" })
+      );
+      const { container } = render(<FundActions id="inv-001" status="Open" />);
+      expect(container.querySelector("[data-testid='optimistic-status-banner']")).toBeNull();
+    });
+
+    it("IS shown when optimisticStatus differs from server status (pending)", () => {
+      mockUseOptimisticFund.mockReturnValue(
+        makeOptimisticHook({
+          optimisticStatus: "Funded",
+          fundingState: FUNDING_STATES.PENDING,
+          isFunding: true,
+        })
+      );
+      render(<FundActions id="inv-001" status="Open" />);
+      expect(screen.getByTestId("optimistic-status-banner")).toBeInTheDocument();
+    });
+
+    it("optimistic banner has role=status and aria-live=polite", () => {
+      mockUseOptimisticFund.mockReturnValue(
+        makeOptimisticHook({ optimisticStatus: "Funded", fundingState: FUNDING_STATES.PENDING })
+      );
+      render(<FundActions id="inv-001" status="Open" />);
+      const banner = screen.getByTestId("optimistic-status-banner");
+      expect(banner).toHaveAttribute("role", "status");
+      expect(banner).toHaveAttribute("aria-live", "polite");
+    });
+  });
+
+  describe("rollback banner", () => {
+    it("is NOT shown when fundingState is idle", () => {
+      const { container } = render(<FundActions id="inv-001" status="Open" />);
+      expect(container.querySelector("[data-testid='rollback-banner']")).toBeNull();
+    });
+
+    it("IS shown when fundingState is rolled_back", () => {
+      mockUseOptimisticFund.mockReturnValue(
+        makeOptimisticHook({
+          optimisticStatus: "Open",
+          fundingState: FUNDING_STATES.ROLLED_BACK,
+        })
+      );
+      render(<FundActions id="inv-001" status="Open" />);
+      expect(screen.getByTestId("rollback-banner")).toBeInTheDocument();
+    });
+
+    it("rollback banner has role=alert and aria-live=assertive", () => {
+      mockUseOptimisticFund.mockReturnValue(
+        makeOptimisticHook({ fundingState: FUNDING_STATES.ROLLED_BACK })
+      );
+      render(<FundActions id="inv-001" status="Open" />);
+      const banner = screen.getByTestId("rollback-banner");
+      expect(banner).toHaveAttribute("role", "alert");
+      expect(banner).toHaveAttribute("aria-live", "assertive");
+    });
+
+    it("rollback banner shows copy.invest.detail.fundRolledBackMsg", () => {
+      mockUseOptimisticFund.mockReturnValue(
+        makeOptimisticHook({ fundingState: FUNDING_STATES.ROLLED_BACK })
+      );
+      render(<FundActions id="inv-001" status="Open" />);
+      expect(screen.getByText(copy.invest.detail.fundRolledBackMsg)).toBeInTheDocument();
+    });
+  });
+
+  describe("fund button state while pending", () => {
+    it("is disabled while isFunding is true", () => {
+      mockUseOptimisticFund.mockReturnValue(
+        makeOptimisticHook({
+          optimisticStatus: "Funded",
+          fundingState: FUNDING_STATES.PENDING,
+          isFunding: true,
+        })
+      );
+      render(<FundActions id="inv-001" status="Open" />);
+      expect(
+        screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel })
+      ).toBeDisabled();
+    });
+
+    it("has aria-busy=true while isFunding is true", () => {
+      mockUseOptimisticFund.mockReturnValue(
+        makeOptimisticHook({ isFunding: true, fundingState: FUNDING_STATES.PENDING })
+      );
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      expect(btn).toHaveAttribute("aria-busy", "true");
+    });
+
+    it("shows fundOptimisticTitle label on the fund button while pending", () => {
+      mockUseOptimisticFund.mockReturnValue(
+        makeOptimisticHook({ isFunding: true, fundingState: FUNDING_STATES.PENDING })
+      );
+      render(<FundActions id="inv-001" status="Open" />);
+      expect(screen.getByText(copy.invest.detail.fundOptimisticTitle)).toBeInTheDocument();
+    });
+  });
+
+  describe("FundAmountInput integration with optimistic hook", () => {
+    it("calls submitFund with the amount when wallet is connected and form is submitted", async () => {
+      const submitFund = jest.fn().mockResolvedValue(undefined);
+      mockUseOptimisticFund.mockReturnValue(makeOptimisticHook({ submitFund }));
+      mockUseWallet.mockReturnValue({
+        state: WALLET_STATES.CONNECTED,
+        connect: jest.fn(),
+      } as ReturnType<typeof useWallet>);
+
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={12500} currency="USD" yieldValue={8.2} />
+      );
+
+      const input = screen.getByRole("spinbutton");
+      await act(async () => {
+        fireEvent.change(input, { target: { value: "500" } });
+        fireEvent.blur(input);
+      });
+
+      const form = input.closest("form")!;
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+
+      expect(submitFund).toHaveBeenCalledWith(500);
+    });
+
+    it("calls connect() instead of submitFund when wallet is disconnected", async () => {
+      const connect = jest.fn();
+      const submitFund = jest.fn();
+      mockUseOptimisticFund.mockReturnValue(makeOptimisticHook({ submitFund }));
+      mockUseWallet.mockReturnValue({
+        state: WALLET_STATES.DISCONNECTED,
+        connect,
+      } as ReturnType<typeof useWallet>);
+
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={12500} currency="USD" yieldValue={8.2} />
+      );
+
+      const input = screen.getByRole("spinbutton");
+      await act(async () => {
+        fireEvent.change(input, { target: { value: "500" } });
+        fireEvent.blur(input);
+      });
+
+      const form = input.closest("form")!;
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+
+      expect(connect).toHaveBeenCalledTimes(1);
+      expect(submitFund).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("success toast after confirmation", () => {
+    it("shows a success toast via onSuccess callback", async () => {
+      // Capture the onSuccess callback that FundActions passes to useOptimisticFund
+      let capturedOnSuccess: ((r: unknown) => void) | undefined;
+      mockUseOptimisticFund.mockImplementation((opts) => {
+        capturedOnSuccess = opts?.onSuccess;
+        return makeOptimisticHook();
+      });
+
+      render(<FundActions id="inv-001" status="Open" currency="USD" />);
+
+      // Simulate the hook calling onSuccess
+      await act(async () => {
+        capturedOnSuccess?.({ success: true, txHash: "tx1", amount: 500, currency: "USD" });
+      });
+
+      expect(mockToast.success).toHaveBeenCalledWith(
+        expect.stringContaining("500"),
+        copy.invest.detail.fundSuccessTitle
+      );
+    });
+  });
+
+  describe("error toast on rollback", () => {
+    it("shows an error toast via onError callback", async () => {
+      let capturedOnError: ((e: Error) => void) | undefined;
+      mockUseOptimisticFund.mockImplementation((opts) => {
+        capturedOnError = opts?.onError;
+        return makeOptimisticHook();
+      });
+
+      render(<FundActions id="inv-001" status="Open" />);
+
+      await act(async () => {
+        capturedOnError?.(new Error("Network failure"));
+      });
+
+      expect(mockToast.error).toHaveBeenCalledWith(
+        copy.invest.detail.fundErrorMsg,
+        copy.invest.detail.fundErrorTitle
+      );
+    });
+  });
+
+  describe("accessibility", () => {
+    it("passes axe when rollback banner is visible", async () => {
+      mockUseOptimisticFund.mockReturnValue(
+        makeOptimisticHook({ fundingState: FUNDING_STATES.ROLLED_BACK })
+      );
+      const { container } = render(<FundActions id="inv-001" status="Open" />);
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+
+    it("passes axe when optimistic banner is visible", async () => {
+      mockUseOptimisticFund.mockReturnValue(
+        makeOptimisticHook({ optimisticStatus: "Funded", isFunding: true })
+      );
+      const { container } = render(<FundActions id="inv-001" status="Open" />);
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
   });
 });

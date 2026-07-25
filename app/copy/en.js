@@ -74,6 +74,14 @@
  * @property {string} invest.detail.copyErrorTitle
  * @property {string} invest.detail.loadErrorMsg
  * @property {string} invest.detail.loadErrorTitle
+ * @property {string} invest.detail.fundOptimisticTitle
+ * @property {string} invest.detail.fundOptimisticMsg
+ * @property {string} invest.detail.fundSuccessTitle
+ * @property {string} invest.detail.fundSuccessMsg
+ * @property {string} invest.detail.fundErrorTitle
+ * @property {string} invest.detail.fundErrorMsg
+ * @property {string} invest.detail.fundRolledBackTitle
+ * @property {string} invest.detail.fundRolledBackMsg
  * @property {Object} invoices - Invoices page copy
  * @property {string} invoices.title
  * @property {string} invoices.subtext
@@ -270,6 +278,14 @@ export const copy = {
       copyErrorTitle: "Copy failed",
       loadErrorMsg: "Unable to load invoice details right now.",
       loadErrorTitle: "Unable to load invoice details",
+      fundOptimisticTitle: "Funding submitted",
+      fundOptimisticMsg: "Funding request submitted \u2014 awaiting confirmation.",
+      fundSuccessTitle: "Funding confirmed",
+      fundSuccessMsg: "Your funding of {amount} {currency} has been confirmed.",
+      fundErrorTitle: "Funding failed",
+      fundErrorMsg: "Funding request failed. Your balance has not been charged.",
+      fundRolledBackTitle: "Funding cancelled",
+      fundRolledBackMsg: "The funding action was rolled back. Please try again.",
     },
   },
   invoices: {
