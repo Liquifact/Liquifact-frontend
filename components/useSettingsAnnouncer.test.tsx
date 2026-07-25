@@ -3,11 +3,11 @@
  *
  * Covers:
  * - Silent on mount in both immediate and debounced modes
- * - Immediate mode (delay=0): announces synchronously in the same effect cycle
- * - Debounced mode (delay>0): announces after the delay elapses
+ * - Immediate mode (delay=0): live region updates in the same render pass
+ * - Debounced mode (delay>0): announces only after the delay elapses
  * - Debounces rapid successive updates (only the last value lands)
- * - Announces zero-result / empty-string messages correctly
- * - Cleans up pending timers on unmount
+ * - Announces zero-result messages correctly in both modes
+ * - Cleans up pending timers on unmount (debounced mode)
  */
 
 import { act, renderHook } from "@testing-library/react";
@@ -27,42 +27,62 @@ describe("useSettingsAnnouncer", () => {
 
   // ── Mount behaviour ────────────────────────────────────────────────────────
 
-  it("returns an empty string on mount (no announcement on initial render) — debounced mode", () => {
+  it("returns an empty string on mount — debounced mode (no announcement on initial render)", () => {
     const { result } = renderHook(() => useSettingsAnnouncer("5 invoices loaded"));
     expect(result.current).toBe("");
   });
 
-  it("returns an empty string on mount (no announcement on initial render) — immediate mode", () => {
+  it("returns an empty string on mount — immediate mode (no announcement on initial render)", () => {
     const { result } = renderHook(() => useSettingsAnnouncer("5 invoices loaded", 0));
     expect(result.current).toBe("");
   });
 
   // ── Immediate mode (delay = 0) ─────────────────────────────────────────────
 
-  it("immediate mode: announces without a timer when message changes", () => {
+  it("immediate mode: reflects the new message in the same render pass", () => {
     const { result, rerender } = renderHook(
       ({ msg }: { msg: string }) => useSettingsAnnouncer(msg, 0),
       { initialProps: { msg: "initial" } }
     );
 
-    act(() => {
-      rerender({ msg: "5 invoices loaded" });
-    });
+    rerender({ msg: "5 invoices loaded" });
 
     expect(result.current).toBe("5 invoices loaded");
   });
 
-  it("immediate mode: announces zero-result messages right away", () => {
+  it("immediate mode: announces a zero-result message right away", () => {
     const { result, rerender } = renderHook(
       ({ msg }: { msg: string }) => useSettingsAnnouncer(msg, 0),
       { initialProps: { msg: "initial" } }
     );
 
-    act(() => {
-      rerender({ msg: "No invoices available" });
-    });
+    rerender({ msg: "No invoices available" });
 
     expect(result.current).toBe("No invoices available");
+  });
+
+  it("immediate mode: announces an error message right away", () => {
+    const { result, rerender } = renderHook(
+      ({ msg }: { msg: string }) => useSettingsAnnouncer(msg, 0),
+      { initialProps: { msg: "initial" } }
+    );
+
+    rerender({ msg: "Unable to load investable invoices." });
+
+    expect(result.current).toBe("Unable to load investable invoices.");
+  });
+
+  it("immediate mode: tracks multiple successive changes", () => {
+    const { result, rerender } = renderHook(
+      ({ msg }: { msg: string }) => useSettingsAnnouncer(msg, 0),
+      { initialProps: { msg: "initial" } }
+    );
+
+    rerender({ msg: "first" });
+    expect(result.current).toBe("first");
+
+    rerender({ msg: "second" });
+    expect(result.current).toBe("second");
   });
 
   // ── Debounced mode (delay > 0) ─────────────────────────────────────────────
@@ -103,7 +123,6 @@ describe("useSettingsAnnouncer", () => {
       { initialProps: { msg: "initial" } }
     );
 
-    // Fire three rapid updates without advancing timers between them
     rerender({ msg: "update 1" });
     rerender({ msg: "update 2" });
     rerender({ msg: "update 3" });
@@ -127,14 +146,14 @@ describe("useSettingsAnnouncer", () => {
       jest.advanceTimersByTime(SETTINGS_ANNOUNCE_DELAY_MS / 2);
     });
 
-    // Rapid second update resets the debounce
+    // Second update resets the debounce window
     rerender({ msg: "final" });
 
     act(() => {
       jest.advanceTimersByTime(SETTINGS_ANNOUNCE_DELAY_MS / 2);
     });
 
-    // Still within the debounce window of the second update
+    // Still inside the second debounce window
     expect(result.current).toBe("");
 
     act(() => {
@@ -144,7 +163,7 @@ describe("useSettingsAnnouncer", () => {
     expect(result.current).toBe("final");
   });
 
-  it("announces zero-result messages after debounce ('No invoices match')", () => {
+  it("debounced mode: announces zero-result messages after the delay", () => {
     const { result, rerender } = renderHook(
       ({ msg }: { msg: string }) => useSettingsAnnouncer(msg),
       { initialProps: { msg: "5 invoices loaded" } }
@@ -171,7 +190,7 @@ describe("useSettingsAnnouncer", () => {
     act(() => {
       jest.advanceTimersByTime(SETTINGS_ANNOUNCE_DELAY_MS);
     });
-    // Should still be empty — custom delay not yet elapsed
+    // Default 300 ms has elapsed but custom 500 ms has not
     expect(result.current).toBe("");
 
     act(() => {
@@ -188,15 +207,12 @@ describe("useSettingsAnnouncer", () => {
 
     rerender({ msg: "pending message" });
 
-    // Unmount before the timer fires
     unmount();
 
     act(() => {
       jest.advanceTimersByTime(SETTINGS_ANNOUNCE_DELAY_MS * 2);
     });
 
-    // The hook is unmounted; result stays at the last captured value ("").
     expect(result.current).toBe("");
   });
 });
-
