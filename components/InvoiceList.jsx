@@ -27,21 +27,21 @@ const STATUS_STYLES = {
 
 const MOCK_INVOICES = [
   {
-    id: 'inv-1001',
-    issuer: 'Test Supplier',
-    amount: '12,500',
-    currency: 'USD',
-    dueDate: '2026-06-15',
-    yield: '8.2%',
+    id: "inv-1001",
+    issuer: "Test Supplier",
+    amount: "12,500",
+    currency: "USD",
+    dueDate: "2026-06-15",
+    yield: "8.2%",
     status: INVOICE_STATUSES.TOKENIZED,
   },
   {
-    id: 'inv-1002',
-    issuer: 'Another LLC',
-    amount: '7,800',
-    currency: 'EUR',
-    dueDate: '2026-07-01',
-    yield: '7.5%',
+    id: "inv-1002",
+    issuer: "Another LLC",
+    amount: "7,800",
+    currency: "EUR",
+    dueDate: "2026-07-01",
+    yield: "7.5%",
     status: INVOICE_STATUSES.SETTLED,
   },
 ];
@@ -97,7 +97,7 @@ function AddressCopyButton({ address }) {
         onClick={handleCopy}
         aria-label={copied ? "Copied!" : `Copy issuer address ${display}`}
         title={copied ? "Copied!" : "Copy issuer address"}
-        className="inline-flex h-5 w-5 items-center justify-center rounded text-slate-500 hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-cyan-400 transition-colors"
+        className="inline-flex h-5 w-5 items-center justify-center rounded text-slate-500 hover:text-slate-300 focus-ring transition-colors"
       >
         {copied ? (
           <svg
@@ -172,12 +172,35 @@ function mergeInvoices(optimisticInvoices, loadedInvoices) {
   return Array.from(mergedById.values());
 }
 
-export default function InvoiceList({
-  loadInvoices = loadMockInvoices,
-  optimisticInvoices = [],
-}) {
+/**
+ * Given a number of days until (-) or since (+) maturity, return the
+ * appropriate badge label and styling class.
+ * @param {number} days - Days until maturity (negative = overdue, 0 = today, positive = future)
+ * @returns {{ label: string, className: string }}
+ */
+export function getMaturityBadgeProps(days) {
+  if (days < 0) {
+    const abs = Math.abs(days);
+    return {
+      label: `Overdue by ${abs} day${abs === 1 ? "" : "s"}`,
+      className: "bg-red-500/10 text-red-200 ring-1 ring-red-400/20",
+    };
+  }
+  if (days === 0) {
+    return {
+      label: "Matures today",
+      className: "bg-yellow-500/10 text-yellow-200 ring-1 ring-yellow-400/20",
+    };
+  }
+  return {
+    label: `Matures in ${days} day${days === 1 ? "" : "s"}`,
+    className: "bg-slate-500/10 text-slate-200 ring-1 ring-slate-400/20",
+  };
+}
+
+export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisticInvoices = [] }) {
   const [invoices, setInvoices] = useState(null);
-  const [loadError, setLoadError] = useState('');
+  const [loadError, setLoadError] = useState("");
 
   const mergedInvoices = useMemo(
     () => mergeInvoices(optimisticInvoices, invoices ?? []),
@@ -195,7 +218,7 @@ export default function InvoiceList({
 
     async function load() {
       setInvoices(null);
-      setLoadError('');
+      setLoadError("");
 
       try {
         const result = await loadInvoices();
@@ -260,7 +283,7 @@ export default function InvoiceList({
           action={
             <a
               href="#invoice-upload-btn"
-              className="inline-flex items-center gap-2 rounded-xl border border-cyan-700 bg-cyan-900/30 px-5 py-2.5 text-sm font-semibold text-cyan-300 transition-colors hover:bg-cyan-800/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-700 bg-cyan-900/30 px-5 py-2.5 text-sm font-semibold text-cyan-300 transition-colors hover:bg-cyan-800/40 focus-ring"
             >
               Upload your first invoice
             </a>

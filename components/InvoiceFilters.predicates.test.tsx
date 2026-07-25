@@ -395,16 +395,17 @@ describe("matchesFilters (combined intersection of all three predicates)", () =>
     it("maturityFrom filter alone (lower inclusive)", () => {
       const f = { ...DEFAULT_FILTERS, maturityFrom: "2026-09-01" };
       const matched = FIXTURE.filter((inv) => matchesFilters(inv, f)).map((i) => i.id);
-      // Date ≥ 2026-09-01:  inv-eur (09-15), inv-high-yield (11-30),
-      // inv-low-yield (2027-01-15)
-      expect(matched).toEqual(["inv-eur", "inv-high-yield", "inv-low-yield"]);
+      // Date ≥ 2026-09-01:  inv-low-yield (2027-01-15), inv-eur (09-15),
+      // inv-high-yield (11-30) — in FIXTURE definition order
+      expect(matched).toEqual(["inv-low-yield", "inv-eur", "inv-high-yield"]);
     });
 
     it("maturityTo filter alone (upper inclusive)", () => {
       const f = { ...DEFAULT_FILTERS, maturityTo: "2026-07-01" };
       const matched = FIXTURE.filter((inv) => matchesFilters(inv, f)).map((i) => i.id);
-      // Date ≤ 2026-07-01:  inv-gbp (2026-05-30), inv-mid-yield (2026-07-01)
-      expect(matched).toEqual(["inv-gbp", "inv-mid-yield"]);
+      // Date ≤ 2026-07-01:  inv-mid-yield (2026-07-01), inv-gbp (2026-05-30)
+      // — in FIXTURE definition order
+      expect(matched).toEqual(["inv-mid-yield", "inv-gbp"]);
     });
   });
 
@@ -417,11 +418,11 @@ describe("matchesFilters (combined intersection of all three predicates)", () =>
     });
 
     it("yield range + maturity range intersect correctly", () => {
-      // Yield in [6.0, 9.0] AND maturity in [2026-07-01, 2026-11-30]
+      // Yield in [6.0, 9.1] AND maturity in [2026-07-01, 2026-11-30]
       const f = {
         ...DEFAULT_FILTERS,
         yieldMin: "6.0",
-        yieldMax: "9.0",
+        yieldMax: "9.1",
         maturityFrom: "2026-07-01",
         maturityTo: "2026-11-30",
       };

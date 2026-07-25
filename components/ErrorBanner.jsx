@@ -1,5 +1,29 @@
 import Button from "./Button";
 
+/**
+ * Structured error banner with a variant label, title, description, optional
+ * details, and an optional action button.
+ *
+ * Rendered with `role="alert"` and `aria-live="assertive"` so assistive
+ * technologies announce the error immediately when it appears in the DOM.
+ *
+ * @param {object}   props
+ * @param {'server' | 'validation' | 'error'} [props.variant='server']
+ *   Controls the label displayed above the title.
+ *   - `"server"`     → "Server error"
+ *   - `"validation"` → "Validation error"
+ *   - `"error"`      → "Error"
+ * @param {string}   [props.title]        Bold heading for the error.
+ * @param {string}   [props.description]  Short explanatory paragraph.
+ * @param {string}   [props.details]      Optional secondary detail text
+ *   rendered below the description.
+ * @param {string}   [props.actionLabel]  Label for the action button.
+ *   Omit (or pass `undefined`) to hide the button entirely.
+ * @param {Function} [props.onAction]     Callback fired when the action
+ *   button is clicked.
+ * @param {string}   [props.previewLabel='Preview only']
+ *   Text shown in the small badge next to the variant label.
+ */
 export default function ErrorBanner({
   variant = "server",
   title,
@@ -9,7 +33,13 @@ export default function ErrorBanner({
   onAction,
   previewLabel = "Preview only",
 }) {
-  const variantLabel = variant === "validation" ? "Validation error" : "Server error";
+  const variantLabels = {
+    validation: "Validation error",
+    error: "Error",
+    server: "Server error",
+  };
+  const variantLabel = variantLabels[variant] ?? "Server error";
+
   return (
     <div
       role="alert"

@@ -3,3 +3,6 @@ node_modules
 dist
 coverage
 .git
+contracts/
+test_snapshots/
+*.md

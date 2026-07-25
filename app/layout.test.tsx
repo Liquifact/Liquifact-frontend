@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-html-link-for-pages */
 /**
  * Tests for the skip-to-content link and root layout shell (app/layout.js).
  *
@@ -12,7 +11,6 @@ import { render, screen } from "@testing-library/react";
 import { axe } from "jest-axe";
 import Link from "next/link";
 import React from "react";
-import Link from 'next/link';
 
 // ── Mock RootLayout's external dependencies ───────────────────────────────────
 
@@ -34,6 +32,13 @@ jest.mock("../components/ToastProvider", () => {
     ToastContext,
   };
 });
+
+jest.mock("../components/ShortcutHelpDialog", () => ({
+  __esModule: true,
+  default: function MockShortcutHelpDialog() {
+    return null;
+  },
+}));
 
 jest.mock("../components/WalletProvider", () => ({
   WalletProvider({ children }) {

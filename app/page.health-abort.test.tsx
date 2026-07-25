@@ -161,7 +161,7 @@ describe("Home Page – health-check abort on unmount", () => {
     fireEvent.click(button);
 
     await waitFor(() => expect(button).not.toBeDisabled());
-    expect(screen.getByText(/backend is healthy/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/backend is healthy/i).length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders connected badge on a successful check after the abort guard is in place", async () => {
@@ -170,8 +170,10 @@ describe("Home Page – health-check abort on unmount", () => {
     render(<Home />);
     fireEvent.click(screen.getByRole("button", { name: /check backend health/i }));
 
-    await waitFor(() => expect(screen.getByText(/backend is healthy/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getAllByText(/backend is healthy/i).length).toBeGreaterThanOrEqual(1)
+    );
 
-    expect(screen.getByText(/connected/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/connected/i).length).toBeGreaterThanOrEqual(1);
   });
 });

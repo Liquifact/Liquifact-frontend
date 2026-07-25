@@ -87,7 +87,7 @@ interface TokenPair {
 const TOKEN_PAIRS: TokenPair[] = [
   {
     name: "body text on page background",
-    fg: "--color-foreground",
+    fg: "--color-fg",
     bg: "--color-bg",
     threshold: NORMAL_TEXT,
     context: "Default html/body text (slate-100 on slate-950) across all routes",
@@ -133,6 +133,28 @@ const TOKEN_PAIRS: TokenPair[] = [
     bg: "--color-bg",
     threshold: UI_ELEMENT,
     context: "focus-visible outline (--color-primary) against the slate-950 page surface",
+  },
+  {
+    name: "focus-ring dedicated token against page background (UI element)",
+    fg: "--color-focus-ring",
+    bg: "--color-bg",
+    threshold: UI_ELEMENT,
+    context: ".focus-ring outline colour against page background — ensures >= 3:1 in both themes",
+  },
+  {
+    name: "surface background token (value guard)",
+    fg: "--color-surface",
+    bg: "--color-bg",
+    threshold: 1.0,
+    context:
+      "Card/panel surface against page background — intentionally subtle, just verifies token exists",
+  },
+  {
+    name: "border token against page background (value guard)",
+    fg: "--color-border",
+    bg: "--color-bg",
+    threshold: 1.0,
+    context: "Subtle border colour against page background — intentionally subdued",
   },
 ];
 
@@ -232,8 +254,8 @@ describe("extractToken (reads app/globals.css — no hardcoded hex constants)", 
     expect(extractToken("--color-bg")).toMatch(/^#[0-9a-f]{6}$/);
   });
 
-  it("returns a valid lowercase hex string for --color-foreground", () => {
-    expect(extractToken("--color-foreground")).toMatch(/^#[0-9a-f]{6}$/);
+  it("returns a valid lowercase hex string for --color-fg", () => {
+    expect(extractToken("--color-fg")).toMatch(/^#[0-9a-f]{6}$/);
   });
 
   it("returns a valid lowercase hex string for --color-muted", () => {
@@ -248,11 +270,11 @@ describe("extractToken (reads app/globals.css — no hardcoded hex constants)", 
     expect(() => extractToken("--color-does-not-exist")).toThrow(/not found in globals\.css/i);
   });
 
-  it("extractAllColorTokenNames returns at least the four documented tokens", () => {
+  it("extractAllColorTokenNames returns at least the core theme tokens", () => {
     const names = extractAllColorTokenNames();
     expect(names).toContain("--color-bg");
     expect(names).toContain("--color-primary");
-    expect(names).toContain("--color-foreground");
+    expect(names).toContain("--color-fg");
     expect(names).toContain("--color-muted");
   });
 });
@@ -297,8 +319,8 @@ describe("globals.css token coverage", () => {
     expect(cssSource).toContain("@theme inline");
   });
 
-  it("all four documented design tokens are present in the stylesheet", () => {
-    const required = ["--color-bg", "--color-primary", "--color-foreground", "--color-muted"];
+  it("all core design tokens are present in the stylesheet", () => {
+    const required = ["--color-bg", "--color-primary", "--color-fg", "--color-muted"];
     for (const token of required) {
       expect(cssSource).toContain(token);
     }

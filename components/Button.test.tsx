@@ -52,14 +52,14 @@ describe("Button", () => {
     });
   });
 
-  it("has consistent focus-visible outline across all variants", () => {
-    const { rerender } = render(<Button variant="primary">Primary</Button>);
-    let btn = screen.getByRole("button");
-    expect(btn.className).toContain("focus-visible:outline-cyan-400");
-
-    rerender(<Button variant="danger">Danger</Button>);
-    btn = screen.getByRole("button");
-    expect(btn.className).toContain("focus-visible:outline-cyan-400");
+  it("has consistent focus-ring class across all variants", () => {
+    const variants = ["primary", "secondary", "warning", "external", "danger"] as const;
+    for (const variant of variants) {
+      const { unmount } = render(<Button variant={variant}>{variant}</Button>);
+      const btn = screen.getByRole("button");
+      expect(btn.className).toContain("focus-ring");
+      unmount();
+    }
   });
 
   it("is disabled when disabled prop is true", () => {
