@@ -105,6 +105,39 @@ describe("UploadZone", () => {
     expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeDisabled();
   });
 
+  it("associates inline validation errors with the file input and blocks submit", () => {
+    render(<UploadZone />);
+
+    const file = createMockTextFile();
+    const input = screen.getByLabelText(/select pdf invoice file/i);
+    fireEvent.change(input, { target: { files: [file] } });
+
+    const error = screen.getByText(/invalid file type/i);
+    expect(error).toBeInTheDocument();
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input.getAttribute("aria-describedby")).toBe("invoice-file-error");
+    expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeDisabled();
+  });
+
+  it("clears inline validation after a valid file is selected", async () => {
+    render(<UploadZone />);
+
+    const invalidFile = createMockTextFile();
+    const validFile = createMockFile();
+    const input = screen.getByLabelText(/select pdf invoice file/i);
+
+    fireEvent.change(input, { target: { files: [invalidFile] } });
+    expect(screen.getByText(/invalid file type/i)).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { files: [validFile] } });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/invalid file type/i)).not.toBeInTheDocument();
+    });
+    expect(input).toHaveAttribute("aria-invalid", "false");
+    expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeEnabled();
+  });
+
   it("shows validation error for oversized file", () => {
     render(<UploadZone />);
 
