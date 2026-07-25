@@ -145,7 +145,7 @@ describe("WalletStatus", () => {
     const disconnectButton = await screen.findByRole("button", { name: /disconnect/i });
     
     // The disconnect button should be first in DOM order now
-    const copyButton = screen.getByRole("button", { name: /copy address/i });
+    const copyButton = screen.getByRole("button", { name: /copy wallet address/i });
     
     // Verify focus order: user can tab to disconnect button, then copy address button
     document.body.focus();
