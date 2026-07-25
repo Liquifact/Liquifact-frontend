@@ -35,7 +35,7 @@ function FileConstraintNotice() {
     <div
       role="note"
       aria-label="File upload requirements"
-      className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 mb-6"
+      className="upload-subtle-panel rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 mb-6"
     >
       <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400 mb-3">
         {copy.uploadZone.requirementsTitle}
@@ -48,7 +48,7 @@ function FileConstraintNotice() {
         />
         <ConstraintBadge icon="\u{1F512}" label={copy.uploadZone.badgeOneFile} />
       </div>
-      <p className="text-xs text-slate-400 leading-relaxed">
+      <p className="upload-muted-text text-xs text-slate-400 leading-relaxed">
         {copy.uploadZone.requirementsBody
           .replace(/\{maxSizeMb\}/g, maxSizeMb)
           .split(/(PDF documents|{maxSizeMb} MB)/)
@@ -69,7 +69,7 @@ function FileConstraintNotice() {
 function Spinner({ className = "" }) {
   return (
     <svg
-      className={`animate-spin -ml-1 mr-2 h-4 w-4 inline ${className}`}
+      className={`animate-spin motion-reduce:animate-none -ml-1 mr-2 h-4 w-4 inline ${className}`}
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
@@ -265,7 +265,7 @@ function UploadZone({ onUploadSuccess, progress }) {
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
         onKeyDown={handleKeyDown}
-        className={`cursor-pointer rounded-xl border-2 border-dashed transition-colors duration-200 p-10 text-center ${dropZoneBorder}`}
+        className={`upload-dropzone cursor-pointer rounded-xl border-2 border-dashed transition-colors duration-200 motion-reduce:transition-none p-10 text-center ${dropZoneBorder}`}
       >
         {file ? (
           <div className="space-y-2">
@@ -276,10 +276,10 @@ function UploadZone({ onUploadSuccess, progress }) {
               className="font-medium text-emerald-400"
               dangerouslySetInnerHTML={{ __html: sanitizeFilename(file.name) }}
             />
-            <p className="text-xs text-slate-500">
+            <p className="upload-muted-text text-xs text-slate-500">
               {(file.size / 1024 / 1024).toFixed(2)} MB {"\u00B7"} PDF
             </p>
-            <p className="text-xs text-slate-500">{copy.uploadZone.changeFile}</p>
+            <p className="upload-muted-text text-xs text-slate-500">{copy.uploadZone.changeFile}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -287,7 +287,7 @@ function UploadZone({ onUploadSuccess, progress }) {
               {"\u{1F4C2}"}
             </span>
             <p className="font-medium text-slate-300">{copy.uploadZone.dragDropPrompt}</p>
-            <p className="text-sm text-slate-500">{copy.uploadZone.browsePrompt}</p>
+            <p className="upload-muted-text text-sm text-slate-500">{copy.uploadZone.browsePrompt}</p>
             <div className="flex justify-center gap-2 flex-wrap pt-1">
               <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-400">
                 {copy.uploadZone.badgePdfOnly}
@@ -366,7 +366,7 @@ function UploadZone({ onUploadSuccess, progress }) {
           <button
             type="button"
             onClick={resetUpload}
-            className="mt-3 w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-emerald-500 focus-ring"
+            className="mt-3 w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white transition-all duration-200 motion-reduce:transition-none hover:bg-emerald-500 focus-ring"
             aria-label={copy.uploadZone.resetAriaLabel}
           >
             {copy.uploadZone.resetAction}
@@ -379,7 +379,7 @@ function UploadZone({ onUploadSuccess, progress }) {
         type="submit"
         disabled={!file || isProcessing}
         aria-disabled={!file || isProcessing}
-        className="mt-4 w-full rounded-xl bg-cyan-500 py-3 text-sm font-semibold text-slate-950 transition-all duration-200
+        className="mt-4 w-full rounded-xl bg-cyan-500 py-3 text-sm font-semibold text-slate-950 transition-all duration-200 motion-reduce:transition-none
           hover:bg-cyan-400 focus-ring
           disabled:opacity-40 disabled:cursor-not-allowed"
       >

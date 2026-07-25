@@ -107,6 +107,62 @@ body {
   border-radius: 0.25rem;
 }
 
+/* ── Accessibility: reduced motion ─────────────────────────────────────────── */
+/*
+  Disables non-essential animation/transition for users who have requested
+  reduced motion at the OS level. Tailwind's `motion-reduce:` variant covers
+  a few components explicitly (e.g. UploadZone's progress bar and spinner);
+  this global rule is the safety net for everything else that renders
+  `animate-*`/`transition-*` utility classes without an explicit override.
+*/
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Accessibility: high contrast ──────────────────────────────────────────── */
+/*
+  Strengthens low-opacity decorative fills/borders that are hard to read
+  under Windows High Contrast Mode (forced-colors) or a user's OS-level
+  "increase contrast" preference. Scoped via utility classes (.upload-*)
+  rather than every existing selector, since the offending pattern is
+  specifically low-opacity backgrounds/borders (e.g. bg-cyan-500/5,
+  border-slate-700) rather than the --color-* theme tokens, which already
+  pass WCAG AA per app/globals.contrast-ratio.test.tsx.
+*/
+@media (forced-colors: active) {
+  .upload-dropzone {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+  }
+
+  .upload-subtle-panel {
+    border-color: CanvasText;
+    background-color: Canvas;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .upload-dropzone {
+    border-color: #e2e8f0; /* slate-200 — far stronger than the default slate-700 */
+  }
+
+  .upload-subtle-panel {
+    border-color: #67e8f9; /* cyan-300 */
+    background-color: rgba(8, 145, 178, 0.18); /* cyan-600, opaque enough to read */
+  }
+
+  .upload-muted-text {
+    color: #cbd5e1; /* slate-300 — far stronger than slate-500 */
+  }
+}
+
 /* ── Print stylesheet ──────────────────────────────────────────────────────── */
 /*
    Renders the invoice detail page as a clean, ink-friendly document.
