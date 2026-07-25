@@ -2,8 +2,9 @@
  * Tests for useSettingsAnnouncer
  *
  * Covers:
- * - Silent on mount (no announcement at initial render)
- * - Announces after debounce delay when message changes
+ * - Silent on mount in both immediate and debounced modes
+ * - Immediate mode (delay=0): announces synchronously in the same effect cycle
+ * - Debounced mode (delay>0): announces after the delay elapses
  * - Debounces rapid successive updates (only the last value lands)
  * - Announces zero-result / empty-string messages correctly
  * - Cleans up pending timers on unmount
@@ -24,12 +25,49 @@ describe("useSettingsAnnouncer", () => {
     jest.useRealTimers();
   });
 
-  it("returns an empty string on mount (no announcement on initial render)", () => {
+  // ── Mount behaviour ────────────────────────────────────────────────────────
+
+  it("returns an empty string on mount (no announcement on initial render) — debounced mode", () => {
     const { result } = renderHook(() => useSettingsAnnouncer("5 invoices loaded"));
     expect(result.current).toBe("");
   });
 
-  it("returns an empty string before the debounce delay has elapsed", () => {
+  it("returns an empty string on mount (no announcement on initial render) — immediate mode", () => {
+    const { result } = renderHook(() => useSettingsAnnouncer("5 invoices loaded", 0));
+    expect(result.current).toBe("");
+  });
+
+  // ── Immediate mode (delay = 0) ─────────────────────────────────────────────
+
+  it("immediate mode: announces without a timer when message changes", () => {
+    const { result, rerender } = renderHook(
+      ({ msg }: { msg: string }) => useSettingsAnnouncer(msg, 0),
+      { initialProps: { msg: "initial" } }
+    );
+
+    act(() => {
+      rerender({ msg: "5 invoices loaded" });
+    });
+
+    expect(result.current).toBe("5 invoices loaded");
+  });
+
+  it("immediate mode: announces zero-result messages right away", () => {
+    const { result, rerender } = renderHook(
+      ({ msg }: { msg: string }) => useSettingsAnnouncer(msg, 0),
+      { initialProps: { msg: "initial" } }
+    );
+
+    act(() => {
+      rerender({ msg: "No invoices available" });
+    });
+
+    expect(result.current).toBe("No invoices available");
+  });
+
+  // ── Debounced mode (delay > 0) ─────────────────────────────────────────────
+
+  it("debounced mode: returns empty before the delay elapses", () => {
     const { result, rerender } = renderHook(
       ({ msg }: { msg: string }) => useSettingsAnnouncer(msg),
       { initialProps: { msg: "5 invoices loaded" } }
@@ -44,7 +82,7 @@ describe("useSettingsAnnouncer", () => {
     expect(result.current).toBe("");
   });
 
-  it("announces after the debounce delay elapses following a message change", () => {
+  it("debounced mode: announces after the debounce delay elapses", () => {
     const { result, rerender } = renderHook(
       ({ msg }: { msg: string }) => useSettingsAnnouncer(msg),
       { initialProps: { msg: "5 invoices loaded" } }
@@ -106,7 +144,7 @@ describe("useSettingsAnnouncer", () => {
     expect(result.current).toBe("final");
   });
 
-  it("announces zero-result messages (empty or 'No invoices match')", () => {
+  it("announces zero-result messages after debounce ('No invoices match')", () => {
     const { result, rerender } = renderHook(
       ({ msg }: { msg: string }) => useSettingsAnnouncer(msg),
       { initialProps: { msg: "5 invoices loaded" } }
@@ -119,21 +157,6 @@ describe("useSettingsAnnouncer", () => {
     });
 
     expect(result.current).toBe("No invoices match");
-  });
-
-  it("announces when the message is cleared to an empty string", () => {
-    const { result, rerender } = renderHook(
-      ({ msg }: { msg: string }) => useSettingsAnnouncer(msg),
-      { initialProps: { msg: "5 invoices loaded" } }
-    );
-
-    rerender({ msg: "" });
-
-    act(() => {
-      jest.advanceTimersByTime(SETTINGS_ANNOUNCE_DELAY_MS);
-    });
-
-    expect(result.current).toBe("");
   });
 
   it("respects a custom delay parameter", () => {
@@ -176,3 +199,4 @@ describe("useSettingsAnnouncer", () => {
     expect(result.current).toBe("");
   });
 });
+

@@ -300,10 +300,13 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     return getInvoiceLoadAnnouncement(invoices);
   }, [filteredInvoices, filterActive, invoices, visibleCount, loadError]);
 
-  // Debounce the live-region text so rapid filter changes (e.g. typing in the
-  // search box) do not flood the screen-reader announcement queue, and the
-  // region stays silent on the initial page render (no mount announcement).
-  const debouncedAnnouncement = useSettingsAnnouncer(statusMessage);
+  // Pass statusMessage through useSettingsAnnouncer with delay=0 so the
+  // live region updates immediately on each state change, while still
+  // honouring the hook's "silent on mount" contract (no spurious announcement
+  // when the page first renders).  Rapid search-input updates are already
+  // coalesced upstream by the SEARCH_DEBOUNCE_MS delay on debouncedSearch,
+  // so no additional debounce is needed at the announcement layer here.
+  const debouncedAnnouncement = useSettingsAnnouncer(statusMessage, 0);
 
   // ── Load-more handler ──────────────────────────────────────────────────────
   /**
