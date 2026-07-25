@@ -12,7 +12,10 @@ import InvoiceFilters, {
   hasAnyActiveFilters,
   parseSortState,
 } from "@/components/InvoiceFilters";
+import BulkActionsToolbar from "@/components/BulkActionsToolbar";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import NavMenu from "@/components/NavMenu";
+import useBulkSelection from "@/lib/hooks/useBulkSelection";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
@@ -52,33 +55,35 @@ export function getPaginationAnnouncement(shown, total) {
 }
 
 /**
- * Parse a numeric amount string like "12,500" → 12500.
- * @param {string} str
- * @returns {number}
- */
+ * Build the JSON-serializable subset of an invoice used for the bulk-export
+ * download. We strip any internal-only fields so the export is safe to
+ * share with counterparties.\n * @param {{id:string,issuer:string,amount:string,currency:string,dueDate:string,yield:string,status:string}} inv\n * @returns {string,amount:string,currency:string,dueDate:string,yield:string,status:string}}\n */
+export function toExportRecord(inv) {
+  return {
+    id: inv.id,
+    issuer: inv.issuer,
+    amount: inv.amount,
+    currency: inv.currency,
+    dueDate: inv.dueDate,
+    yield: inv.yield,
+    status: inv.status,
+  };
+}
+
+/**
+ * Parse a numeric amount string like "12,500" → 12500.\n * @param {string} str\n * @returns {number}\n */
 function parseAmount(str) {
   return parseFloat(String(str).replace(/,/g, "")) || 0;
 }
 
 /**
- * Parse a yield string like "8.2%" → 8.2.
- * @param {string} str
- * @returns {number}
- */
+ * Parse a yield string like "8.2%" → 8.2.\n * @param {string} str\n * @returns {number}\n */
 function parseYield(str) {
   return parseFloat(String(str).replace(/%/g, "")) || 0;
 }
 
 /**
- * Sort a copy of `list` according to the sort column + direction in `filters`.
- *
- * Supported columns: "amount", "yield", "maturity".
- * Direction: "asc" | "desc".
- *
- * @param {Array}  list
- * @param {object} filters
- * @returns {Array}
- */
+ * Sort a copy of `list` according to the sort column + direction in `filters`.\n *\n * Supported columns: "amount", "yield", "maturity".\n * Direction: "asc" | "desc".\n *\n * @param {Array}  list\n * @param {object} filters\n * @returns {Array}\n */
 export function applySortToList(list, filters) {
   if (!Array.isArray(list) || list.length === 0) return list;
 
@@ -101,24 +106,77 @@ export function applySortToList(list, filters) {
 }
 
 /**
- * InvestMarketplace – main component for the invest page.
- *
- * Fetches invoices via `loadInvoices`, renders them PAGE_SIZE at a time,
- * and exposes a "Load more" control to append the next batch.  Paging
- * resets whenever a new invoice set arrives so filter changes stay
- * non-breaking.
- *
- * On load failure, an ErrorBanner is rendered with a "Try again" action
- * that re-runs the load. The retry resets state to loading, cancels any
- * stale in-flight request via AbortController, and re-announces via the
- * polite status region once the new load settles.
- *
- * @param {object}   props
- * @param {Function} [props.loadInvoices] - Async function that resolves to an
- *   invoice array.  Defaults to the mock loader; injectable for testing.
- * @returns {JSX.Element}
+ * Trigger a browser download of `text` as `filename` using a transient\n * `<a>` element + `URL.createObjectURL`. Fell back to throwing rather than\n * returning a Promise so failures are easy to assert in tests.\n * @param {string} text\n * @param {string} filename\n * @param {string} mimeType
+ * @returns {void}\n */
+function triggerDownload(text, filename, mimeType = "application/json") {
+  if (typeof document === "undefined" || typeof URL === "undefined") {
+    throw new Error("Downloads are only supported in browser environments");
+  }
+  const blob = new Blob([text], { type: `${mimeType};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Default bulk-export implementation: write a JSON blob to disk via the\n * browser download mechanism. The page wires `onBulkExport` to this helper\n * unless a custom exporter is provided.\n * @param {Array} selectedInvoices
+ * @returns {{count: number}}\n */
+export function defaultBulkExport(selectedInvoices) {
+  const safeRecords = Array.isArray(selectedInvoices) ? selectedInvoices.map(toExportRecord) : [];
+  // Defensive: if the browser download sink is missing (jsdom test env,
+  // SSR builds, or first-render before hydration), degrade to a silent no-op
+  // rather than throwing. The page can still surface the file via a custom
+  // `onBulkExport` injection if it needs to.
+  if (
+    typeof URL === "undefined" ||
+    typeof URL.createObjectURL !== "function" ||
+    typeof document === "undefined"
+  ) {
+    return { count: safeRecords.length };
+  }
+  const json = JSON.stringify(
+    { exportedAt: new Date().toISOString(), invoices: safeRecords },
+    null,
+    2
+  );
+  triggerDownload(json, `liquifact-invoices-${Date.now()}.json`);
+  return { count: safeRecords.length };
+}
+
+/**
+ * Default bulk-delete implementation: optimistically updates the supplied\n * list with a no-op filter (parent owns the actual mutation so the data\n * source of truth stays outside the export helper). The handler is a\n * documented opt-in behaviour: callers that already expose a delete API\n * inject their own `onBulkDelete`.\n * @param {Set<string>|Array<string>} ids
+ * @returns {Promise<{count: number}>}
  */
-export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
+export async function defaultBulkDelete(ids) {
+  const count = ids instanceof Set ? ids.size : Array.isArray(ids) ? ids.length : 0;
+  return { count };
+}
+
+/**
+ * Resolve the toast API when supplied, otherwise null. We accept it as a\n * prop instead of importing the ToastProvider context directly so the\n * component is testable without a wrapping provider.\n */
+function safeToast(toast) {
+  if (!toast) return null;
+  return {
+    success: (msg, title) => toast.success?.(msg, title),
+    error: (msg, title) => toast.error?.(msg, title),
+    info: (msg, title) => toast.info?.(msg, title),
+  };
+}
+
+/**
+ * InvestMarketplace – main component for the invest page.\n *\n * Fetches invoices via `loadInvoices`, renders them PAGE_SIZE at a time,\n * and exposes a "Load more" control to append the next batch.  Paging\n * resets whenever a new invoice set arrives so filter changes stay\n * non-breaking.\n *\n * On load failure, an ErrorBanner is rendered with a "Try again" action\n * that re-runs the load. The retry resets state to loading, cancels any\n * stale in-flight request via AbortController, and re-announces via the\n * polite status region once the new load settles.\n *\n * @param {object}   props\n * @param {Function} [props.loadInvoices] - Async function that resolves to an\n *   invoice array.  Defaults to the mock loader; injectable for testing.\n * @param {Function} [props.onBulkDelete] - Async delete handler. Receives a\n *   Set<string> of selected ids. Defaults to a no-op pass-through.\n * @param {Function} [props.onBulkExport] - Bulk export handler. Receives the\n *   selected-invoice array; defaults to `defaultBulkExport`.\n * @param {object}   [props.toast] - Optional `{ success, error, info }`\n *   API. When provided, results are announced through it (and the toast\n *   region's `aria-live` ensures screen-reader users hear them).\n * @returns {JSX.Element}\n */
+export function InvestMarketplace({
+  loadInvoices = loadMockInvoices,
+  onBulkDelete = defaultBulkDelete,
+  onBulkExport = defaultBulkExport,
+  toast,
+}) {
   const searchParams = useSearchParams();
   const searchParamsValue = searchParams ?? new URLSearchParams();
 
@@ -127,6 +185,10 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [loadError, setLoadError] = useState("");
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState(null);
+  const [bulkRunning, setBulkRunning] = useState({ export: false, delete: false });
+  const bulkLabels = copy.invest.bulk;
+  const toastApi = useMemo(() => safeToast(toast), [toast]);
 
   /**
    * Incrementing retryKey causes the load effect to re-run, implementing
@@ -195,7 +257,9 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     setVisibleCount(PAGE_SIZE);
   }
 
-  // Filtered + sorted invoice list
+  // Filtered + sorted invoice list - computed first so the bulk-selection
+  // hook can derive a consistent selectedIds set from the same dataset the
+  // UI is rendering.
   const filteredInvoices = useMemo(() => {
     if (!Array.isArray(invoices)) return [];
     let list = invoices;
@@ -226,6 +290,19 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     }
     return applySortToList(list, filters);
   }, [invoices, debouncedSearch, filters]);
+
+  // Bulk-selection hook — auto-prunes selections when the underlying list
+  // changes (filter, optimistic delete, etc.).
+  const {
+    selectedIds,
+    selectedCount,
+    visibleCount: selectionVisibleCount,
+    allState,
+    isSelected,
+    toggle: toggleSelection,
+    selectAll: selectAllInvoices,
+    clear: clearSelection,
+  } = useBulkSelection(filteredInvoices);
 
   const filterActive = hasAnyActiveFilters(filters, debouncedSearch);
 
@@ -311,18 +388,92 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     }, 0);
   }, [filteredInvoices.length]);
 
+  // ── Bulk actions ──────────────────────────────────────────────────────────
+  const handleToggleSelectAll = useCallback(() => {
+    if (allState === "all") {
+      clearSelection();
+    } else {
+      selectAllInvoices();
+    }
+  }, [allState, clearSelection, selectAllInvoices]);
+
+  const handleRequestDelete = useCallback(() => {
+    // Snapshot the selection so the user can't race the dialog by tapping a
+    // row between opening and confirming. The hook will also prune stale
+    // ids on the next render, which keeps confirm/cancel honest.
+    setPendingDeleteIds(new Set(selectedIds));
+  }, [selectedIds]);
+
+  const handleCancelDelete = useCallback(() => {
+    setPendingDeleteIds(null);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    const idsToDelete = pendingDeleteIds;
+    if (!idsToDelete || idsToDelete.size === 0) {
+      setPendingDeleteIds(null);
+      return;
+    }
+    setBulkRunning((prev) => ({ ...prev, delete: true }));
+    try {
+      await onBulkDelete(idsToDelete);
+
+      // Optimistically remove from the visible list so the UI stays in sync
+      // with the (mock) backend. The selection hook will prune selection
+      // immediately because the row ids are no longer in the list.
+      setInvoices((currentList) => {
+        if (!Array.isArray(currentList)) return currentList;
+        return currentList.filter((inv) => !idsToDelete.has(inv.id));
+      });
+
+      const plural = idsToDelete.size === 1 ? "" : "s";
+      const successMsg = bulkLabels.deleteSuccessMsg
+        .replace("{count}", String(idsToDelete.size))
+        .replace("{plural}", plural);
+      toastApi?.success(successMsg, bulkLabels.deleteSuccessTitle);
+
+      setPendingDeleteIds(null);
+    } catch {
+      toastApi?.error(bulkLabels.deleteErrorMsg, bulkLabels.deleteErrorTitle);
+    } finally {
+      setBulkRunning((prev) => ({ ...prev, delete: false }));
+    }
+  }, [pendingDeleteIds, onBulkDelete, bulkLabels, toastApi]);
+
+  const handleExport = useCallback(() => {
+    if (selectedIds.size === 0) {
+      toastApi?.info(bulkLabels.exportEmptyMsg, bulkLabels.exportSuccessTitle);
+      return;
+    }
+    setBulkRunning((prev) => ({ ...prev, export: true }));
+    try {
+      // Build the selected-invoice slice in the order they appear in the
+      // filtered list so the export matches the visible UI order.
+      const selectedSlice = filteredInvoices.filter((inv) => selectedIds.has(inv.id));
+      const result = onBulkExport(selectedSlice) || { count: selectedSlice.length };
+      const exportCount = result.count ?? selectedSlice.length;
+      const plural = exportCount === 1 ? "" : "s";
+      const msg = bulkLabels.exportSuccessMsg
+        .replace("{count}", String(exportCount))
+        .replace("{plural}", plural);
+      toastApi?.success(msg, bulkLabels.exportSuccessTitle);
+    } finally {
+      setBulkRunning((prev) => ({ ...prev, export: false }));
+    }
+  }, [
+    selectedIds,
+    filteredInvoices,
+    onBulkExport,
+    bulkLabels,
+    toastApi,
+  ]);
+
   // const visibleInvoices = filteredInvoices.slice(0, visibleCount);
+
+  const deleteDialogOpen = pendingDeleteIds !== null;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      {/* <header className="border-b border-slate-800 px-6 py-4">
-        <Link
-          href="/"
-          className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline"
-        >
-          ← LiquiFact
-        </Link>
-      </header> */}
       <NavMenu />
 
       <main className="max-w-4xl mx-auto px-6 py-12">
@@ -334,17 +485,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
         <h1 className="text-2xl font-bold mb-2">{copy.invest.title}</h1>
         <p className="text-slate-400 mb-8">{copy.invest.subtext}</p>
 
-        {/*
-          ACCESSIBILITY DESIGN (Issue #91):
-          - We wrap the filter group in a <fieldset> with `aria-disabled="true"` to announce the preview/disabled
-            state to screen readers while keeping all controls discoverable in the tab order (unlike native `disabled`).
-          - `aria-describedby` programmatically links the fieldset to the visible "Soon" badge, ensuring that
-            assistive technologies announce the "coming soon" status when users navigate to the filters.
-          - We use a no-op handler structure (passing empty handlers) and CSS `pointer-events-none` to prevent
-            interaction while keeping the controls focusable.
-          - `opacity-60` is applied only to the inner controls container to ensure the "Soon" label itself stays
-            fully opaque for maximum contrast (WCAG AA compliant).
-        */}
+        {/*\n          ACCESSIBILITY DESIGN (Issue #91):\n          - We wrap the filter group in a <fieldset> with `aria-disabled="true"` to announce the preview/disabled\n            state to screen readers while keeping all controls discoverable in the tab order (unlike native `disabled`).\n          - `aria-describedby` programmatically links the fieldset to the visible "Soon" badge, ensuring that\n            assistive technologies announce the "coming soon" status when users navigate to the filters.\n          - We use a no-op handler structure (passing empty handlers) and CSS `pointer-events-none` to prevent\n            interaction while keeping the controls focusable.\n          - `opacity-60` is applied only to the inner controls container to ensure the "Soon" label itself stays\n            fully opaque for maximum contrast (WCAG AA compliant).\n        */}
         <div className="mb-4">
           <InvoiceSearch
             value={searchQuery}
@@ -382,6 +523,20 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           </div>
         </fieldset>
 
+        {/* Bulk-action toolbar — renders nothing when no rows are selected */}
+        <BulkActionsToolbar
+          selectedCount={selectedCount}
+          visibleCount={selectionVisibleCount}
+          allState={allState}
+          onToggleSelectAll={handleToggleSelectAll}
+          onClearSelection={clearSelection}
+          onExport={handleExport}
+          onRequestDelete={handleRequestDelete}
+          labels={bulkLabels}
+          exporting={bulkRunning.export}
+          deleting={bulkRunning.delete}
+        />
+
         {/* Error state – retryable */}
         {loadError ? (
           <ErrorBanner
@@ -403,34 +558,58 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
         ) : (
           <>
             <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
-              {filteredInvoices.slice(0, visibleCount).map((inv) => (
-                <li key={inv.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <Link
-                      href={`/invest/${inv.id}`}
-                      className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
-                    >
-                      {inv.issuer}
-                    </Link>
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
-                      {inv.status}
-                    </span>
-                  </div>
-                  <div className="flex gap-6 text-sm text-slate-400">
-                    <span>
-                      {inv.currency}&nbsp;{inv.amount}
-                    </span>
-                    <span>
-                      {copy.invest.labelYield}
-                      {inv.yield}
-                    </span>
-                    <span>
-                      {copy.invest.labelMaturity}
-                      {inv.dueDate}
-                    </span>
-                  </div>
-                </li>
-              ))}
+              {filteredInvoices.slice(0, visibleCount).map((inv) => {
+                const checked = isSelected(inv.id);
+                return (
+                  <li
+                    key={inv.id}
+                    data-testid={`invoice-row-${inv.id}`}
+                    data-selected={checked ? "true" : "false"}
+                    className={`rounded-xl border p-5 transition-colors ${
+                      checked
+                        ? "border-cyan-500/70 bg-cyan-950/40 ring-1 ring-cyan-700/40"
+                        : "border-slate-800 bg-slate-900/50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3 gap-3">
+                      <label className="inline-flex items-center gap-2 rounded px-1 py-0.5 hover:bg-slate-800/40 focus-within:ring-2 focus-within:ring-cyan-400 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleSelection(inv.id)}
+                          aria-label={bulkLabels.rowCheckboxAria
+                            .replace("{id}", inv.id)
+                            .replace("{issuer}", inv.issuer || "")}
+                          data-testid={`invoice-checkbox-${inv.id}`}
+                          className="h-4 w-4 rounded border-slate-500 bg-slate-900 text-cyan-500 accent-cyan-400 focus:ring-cyan-400"
+                        />
+                        <Link
+                          href={`/invest/${inv.id}`}
+                          className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                        >
+                          {inv.issuer}
+                        </Link>
+                      </label>
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
+                        {inv.status}
+                      </span>
+                    </div>
+                    <div className="flex gap-6 text-sm text-slate-400">
+                      <span>
+                        {inv.currency}&nbsp;{inv.amount}
+                      </span>
+                      <span>
+                        {copy.invest.labelYield}
+                        {inv.yield}
+                      </span>
+                      <span>
+                        {copy.invest.labelMaturity}
+                        {inv.dueDate}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
             {visibleCount < filteredInvoices.length && (
               <button
@@ -449,6 +628,31 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           </>
         )}
       </main>
+
+      {/* Confirmation dialog for destructive bulk action */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        title={bulkLabels.deleteConfirmTitle}
+        description={
+          pendingDeleteIds
+            ? bulkLabels.deleteConfirmBody
+                .replace("{count}", String(pendingDeleteIds.size))
+                .replace("{plural}", pendingDeleteIds.size === 1 ? "" : "s")
+            : ""
+        }
+        confirmLabel={
+          pendingDeleteIds
+            ? bulkLabels.deleteConfirmConfirmLabel
+                .replace("{count}", String(pendingDeleteIds.size))
+                .replace("{plural}", pendingDeleteIds.size === 1 ? "" : "s")
+            : "Delete"
+        }
+        cancelLabel={bulkLabels.deleteConfirmCancelLabel}
+        variant="danger"
+        confirmLoading={bulkRunning.delete}
+      />
     </div>
   );
 }
