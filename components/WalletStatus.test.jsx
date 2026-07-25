@@ -134,7 +134,7 @@ describe("WalletStatus", () => {
     freighter.getFreighterNetwork.mockResolvedValue("testnet");
 
     renderWithProviders(<WalletStatus />);
-    
+
     // Test keyboard activation of the connect button
     const connectButton = screen.getByRole("button", { name: /connect wallet/i });
     connectButton.focus();
@@ -143,7 +143,7 @@ describe("WalletStatus", () => {
 
     // Wait for connection to complete
     const disconnectButton = await screen.findByRole("button", { name: /disconnect/i });
-    
+
     // The disconnect button should be first in DOM order now
     const copyButton = screen.getByRole("button", { name: /copy wallet address/i });
     // Verify focus order by checking DOM order: primary action should be first
@@ -157,7 +157,7 @@ describe("WalletStatus", () => {
     });
     // jest-dom doesn't fully support clipboard API out of the box, we just ensure it handles the keydown
     await user.keyboard("{Enter}");
-    
+
     // And test disconnect via keyboard
     disconnectButton.focus();
     await user.keyboard("{Enter}");
