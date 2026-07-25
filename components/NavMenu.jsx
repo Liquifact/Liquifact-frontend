@@ -127,9 +127,17 @@ export default function NavMenu() {
         </Link> */}
           <Link
           href="/"
+          aria-current={isHomePage ? "page" : undefined} 
           className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline"
         >
-          {isHomePage ? "LiquiFact" : "← LiquiFact"}
+            {isHomePage ? (
+              "LiquiFact"
+            ) : (
+              <>
+                <span aria-hidden="true">← </span> {/* CHANGED */}
+                LiquiFact
+              </>
+            )}
         </Link>
 
         {/* Desktop nav */}
@@ -179,6 +187,7 @@ export default function NavMenu() {
               strokeLinecap="round"
               strokeLinejoin="round"
               aria-hidden="true"
+              focusable="false"
             >
               <line
                 x1="3"
