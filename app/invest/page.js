@@ -16,6 +16,7 @@ import NavMenu from "@/components/NavMenu";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
+import { useMarketplace } from "./MarketplaceContext";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
@@ -122,7 +123,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   const searchParams = useSearchParams();
   const searchParamsValue = searchParams ?? new URLSearchParams();
 
-  const [invoices, setInvoices] = useState(null); // null = loading
+  const { invoices, setInvoices, pendingIds } = useMarketplace();
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState("");
   const [loadError, setLoadError] = useState("");
@@ -159,7 +160,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     setInvoices(null);
     setLoadError("");
     setRetryKey((k) => k + 1);
-  }, []);
+  }, [setInvoices]);
 
   /** Toggle a status chip: add if absent, remove if present. */
   const handleStatusToggle = useCallback((status) => {
@@ -269,7 +270,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
       controller.abort();
     };
     // retryKey triggers a fresh load on retry without changing loadInvoices.
-  }, [loadInvoices, retryKey]);
+  }, [loadInvoices, retryKey, setInvoices]);
 
   // Derive the polite live-region announcement directly from reactive state.
   // Using useMemo (rather than a useEffect + setState) avoids a cascading
@@ -412,9 +413,17 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
                     >
                       {inv.issuer}
                     </Link>
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
-                      {inv.status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {pendingIds.has(inv.id) && (
+                        <span
+                          aria-label="Processing"
+                          className="h-2 w-2 rounded-full bg-amber-400 animate-pulse"
+                        />
+                      )}
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
+                        {inv.status}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex gap-6 text-sm text-slate-400">
                     <span>

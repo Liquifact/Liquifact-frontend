@@ -16,6 +16,21 @@ jest.mock("next/navigation", () => ({
   }),
 }));
 
+jest.mock("@/app/invest/MarketplaceContext", () => {
+  const React = require("react");
+  return {
+    __esModule: true,
+    useMarketplace: function () {
+      const [invoices, setInvoices] = React.useState(null);
+      const [pendingIds] = React.useState(new Set());
+      return { invoices, setInvoices, pendingIds, fundInvoice: jest.fn().mockResolvedValue(true) };
+    },
+    MarketplaceProvider: function ({ children }: { children: React.ReactNode }) {
+      return children;
+    },
+  };
+});
+
 describe("InvestMarketplace - Coming Soon Filters A11y", () => {
   const mockLoadInvoices = jest.fn(() => Promise.resolve([]));
 
