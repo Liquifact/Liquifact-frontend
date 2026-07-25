@@ -107,6 +107,49 @@ body {
   border-radius: 0.25rem;
 }
 
+/* ── Accessibility: prefers-reduced-motion (issue #689) ────────────────────── */
+/*
+   Disables non-essential animation across the app when the user has
+   requested reduced motion at the OS level:
+
+   - The skeleton list (`animate-pulse`) and the loading spinner
+     (`animate-spin`) are decorative — they communicate "loading" via
+     aria-busy / role="status" already, so the visual shimmer is
+     non-essential.
+   - Tailwind state transitions on buttons / links / cards (`transition`,
+     `transition-colors`, `transition-all`) are also suppressed.
+   - Focus outlines are NOT disabled here — `.focus-ring` controls
+     outline colour directly without using animated transitions.
+
+   Tailwind v4 utilities do not carry `!important`, so source order
+   alone lets this override win without forcing one.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse,
+  .animate-spin,
+  .transition,
+  .transition-colors,
+  .transition-all {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ── Accessibility: prefers-contrast: more (issue #689) ─────────────────────── */
+/*
+   Improves legibility for users who set "Increase Contrast" at the OS
+   level.  The marketplace "Soon" filters wrapper uses Tailwind's
+   `opacity-60` utility to signal that the controls are not yet
+   interactive — under high-contrast preference we lift it back to full
+   opacity so the labels remain readable.  Interaction is still blocked
+   by `pointer-events-none` so the controls stay non-interactive.
+*/
+@media (prefers-contrast: more) {
+  .opacity-60 {
+    opacity: 1;
+  }
+}
+
 /* ── Print stylesheet ──────────────────────────────────────────────────────── */
 /*
    Renders the invoice detail page as a clean, ink-friendly document.
