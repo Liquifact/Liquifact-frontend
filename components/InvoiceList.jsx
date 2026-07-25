@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import ErrorBanner from "./ErrorBanner";
 import EmptyState, { InvoiceEmptyIllustration } from "./EmptyState";
 import InvoiceListSkeleton from "./InvoiceListSkeleton";
@@ -198,6 +198,56 @@ export function getMaturityBadgeProps(days) {
   };
 }
 
+/**
+ * A single invoice row. Memoized so that unrelated re-renders of the parent
+ * InvoiceList (e.g. loading/error state changes, or a sibling invoice's data
+ * changing) do not force every row to re-render — only a row whose own
+ * `invoice` prop actually changed re-renders.
+ */
+export const InvoiceListItem = memo(function InvoiceListItem({ invoice }) {
+  const statusValue =
+    invoice.status in STATUS_STYLES ? invoice.status : INVOICE_STATUSES.PENDING_TOKENIZATION;
+
+  return (
+    <li className="rounded-3xl border border-slate-800 bg-slate-900/50 p-5 shadow-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-500">Invoice</p>
+          <p className="mt-2 text-lg font-semibold text-slate-100">{invoice.issuer}</p>
+        </div>
+        <span
+          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
+            STATUS_STYLES[statusValue]
+          }`}
+        >
+          {statusValue}
+        </span>
+      </div>
+
+      <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Amount</dt>
+          <dd className="mt-2 text-sm text-slate-200">
+            {invoice.currency} {invoice.amount}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Estimated yield</dt>
+          <dd className="mt-2 text-sm text-slate-200">{invoice.yield}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Due date</dt>
+          <dd className="mt-2 text-sm text-slate-200">{invoice.dueDate}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Reference</dt>
+          <dd className="mt-2 text-sm text-slate-200">{invoice.id}</dd>
+        </div>
+      </dl>
+    </li>
+  );
+});
+
 export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisticInvoices = [] }) {
   const [invoices, setInvoices] = useState(null);
   const [loadError, setLoadError] = useState("");
@@ -291,59 +341,9 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
         />
       ) : (
         <ul className="space-y-4">
-          {mergedInvoices.map((invoice) => {
-            const statusValue =
-              invoice.status in STATUS_STYLES
-                ? invoice.status
-                : INVOICE_STATUSES.PENDING_TOKENIZATION;
-            return (
-              <li
-                key={invoice.id}
-                className="rounded-3xl border border-slate-800 bg-slate-900/50 p-5 shadow-sm"
-              >
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-500">
-                      Invoice
-                    </p>
-                    <p className="mt-2 text-lg font-semibold text-slate-100">{invoice.issuer}</p>
-                  </div>
-                  <span
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
-                      STATUS_STYLES[statusValue]
-                    }`}
-                  >
-                    {statusValue}
-                  </span>
-                </div>
-
-                <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div>
-                    <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Amount</dt>
-                    <dd className="mt-2 text-sm text-slate-200">
-                      {invoice.currency} {invoice.amount}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">
-                      Estimated yield
-                    </dt>
-                    <dd className="mt-2 text-sm text-slate-200">{invoice.yield}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Due date</dt>
-                    <dd className="mt-2 text-sm text-slate-200">{invoice.dueDate}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">
-                      Reference
-                    </dt>
-                    <dd className="mt-2 text-sm text-slate-200">{invoice.id}</dd>
-                  </div>
-                </dl>
-              </li>
-            );
-          })}
+          {mergedInvoices.map((invoice) => (
+            <InvoiceListItem key={invoice.id} invoice={invoice} />
+          ))}
         </ul>
       )}
     </section>
