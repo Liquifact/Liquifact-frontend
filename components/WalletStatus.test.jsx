@@ -151,13 +151,6 @@ describe("WalletStatus", () => {
     expect(buttons[0]).toBe(disconnectButton);
     expect(buttons[1]).toBe(copyButton);
 
-    // Verify keyboard activation of copy button
-    const copySpy = Object.assign(document.createElement("input"), {
-      focus: jest.fn(),
-    });
-    // jest-dom doesn't fully support clipboard API out of the box, we just ensure it handles the keydown
-    await user.keyboard("{Enter}");
-
     // And test disconnect via keyboard
     disconnectButton.focus();
     await user.keyboard("{Enter}");
