@@ -216,7 +216,37 @@ export default function WalletStatus() {
   const helperTextId = config.showAddress ? undefined : "wallet-helper-text";
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex flex-row-reverse items-center justify-end gap-4">
+      {/*
+       * Wallet action button.
+       * Placed first in the DOM for sensible focus order, but visually on the right
+       * via flex-row-reverse.
+       *
+       * variant={config.buttonVariant}
+       *   Drives visual style. Always a valid Button variant string:
+       *   "primary" | "secondary" | "warning" | "external" | "danger".
+       *
+       * loading={state === WALLET_STATES.CONNECTING}
+       *   Renders Button's built-in Spinner, sets aria-busy="true" on the
+       *   <button> element, and disables interaction — no inline SVG needed.
+       *
+       * aria-describedby={helperTextId}
+       *   Only set when the #wallet-helper-text span is present in the DOM
+       *   (i.e. when showAddress is false). Omitted when the connected address
+       *   row is displayed to avoid dangling IDREF references.
+       */}
+      <Button
+        variant={config.buttonVariant}
+        loading={state === WALLET_STATES.CONNECTING}
+        disabled={config.disabled}
+        onClick={handleClick}
+        aria-label={config.buttonText}
+        aria-describedby={helperTextId}
+        className="focus-visible:outline-2 cursor-pointer focus-visible:outline-cyan-400 focus-visible:outline-offset-2"
+      >
+        {config.buttonText}
+      </Button>
+
       {/* Wallet state indicator + information */}
       <div className="flex items-center gap-3">
         {/* Status dot */}
@@ -271,34 +301,6 @@ export default function WalletStatus() {
           </span>
         )}
       </div>
-
-      {/*
-       * Wallet action button.
-       *
-       * variant={config.buttonVariant}
-       *   Drives visual style. Always a valid Button variant string:
-       *   "primary" | "secondary" | "warning" | "external" | "danger".
-       *
-       * loading={state === WALLET_STATES.CONNECTING}
-       *   Renders Button's built-in Spinner, sets aria-busy="true" on the
-       *   <button> element, and disables interaction — no inline SVG needed.
-       *
-       * aria-describedby={helperTextId}
-       *   Only set when the #wallet-helper-text span is present in the DOM
-       *   (i.e. when showAddress is false). Omitted when the connected address
-       *   row is displayed to avoid dangling IDREF references.
-       */}
-      <Button
-        variant={config.buttonVariant}
-        loading={state === WALLET_STATES.CONNECTING}
-        disabled={config.disabled}
-        onClick={handleClick}
-        aria-label={config.buttonText}
-        aria-describedby={helperTextId}
-        className="focus-visible:outline-2 cursor-pointer focus-visible:outline-cyan-400 focus-visible:outline-offset-2"
-      >
-        {config.buttonText}
-      </Button>
 
       {/* Accessible live region for state announcements */}
       <div className="sr-only" role="status" aria-live="polite" data-testid="wallet-live-region">

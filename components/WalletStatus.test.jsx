@@ -125,4 +125,45 @@ describe("WalletStatus", () => {
 
     openSpy.mockRestore();
   });
+
+  it("allows keyboard activation of wallet controls with sensible focus order", async () => {
+    const user = setup();
+    freighter.isFreighterConnected.mockResolvedValue(true);
+    freighter.connectFreighter.mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
+    freighter.assertExpectedNetwork.mockResolvedValue(undefined);
+    freighter.getFreighterNetwork.mockResolvedValue("testnet");
+
+    renderWithProviders(<WalletStatus />);
+    
+    // Test keyboard activation of the connect button
+    const connectButton = screen.getByRole("button", { name: /connect wallet/i });
+    connectButton.focus();
+    expect(connectButton).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    // Wait for connection to complete
+    const disconnectButton = await screen.findByRole("button", { name: /disconnect/i });
+    
+    // The disconnect button should be first in DOM order now
+    const copyButton = screen.getByRole("button", { name: /copy address/i });
+    
+    // Verify focus order: user can tab to disconnect button, then copy address button
+    document.body.focus();
+    await user.tab();
+    expect(disconnectButton).toHaveFocus();
+    await user.tab();
+    expect(copyButton).toHaveFocus();
+
+    // Verify keyboard activation of copy button
+    const copySpy = Object.assign(document.createElement("input"), {
+      focus: jest.fn(),
+    });
+    // jest-dom doesn't fully support clipboard API out of the box, we just ensure it handles the keydown
+    await user.keyboard("{Enter}");
+    
+    // And test disconnect via keyboard
+    disconnectButton.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("button", { name: /connect wallet/i })).toBeInTheDocument();
+  });
 });
