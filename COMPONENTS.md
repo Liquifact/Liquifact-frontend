@@ -11,6 +11,8 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 - [Footer](#footer)
 - [FundAmountInput](#fundamountinput)
 - [Hooks](#hooks)
+  - [`useLocalStorage`](#uselocalstorage)
+  - [`useWatchlist`](#usewatchlist)
 - [InvoiceList](#invoicelist)
 - [InvoiceListSkeleton](#invoicelistskeleton)
 - [InvoiceSearch](#invoicesearch)
@@ -1017,6 +1019,68 @@ setWallet((prev) => ({ ...prev, network: 'PUBLIC' }));
 
 // Reset.
 setWallet(undefined);
+```
+
+### `useWatchlist`
+
+A hook that lets investors star invoices into a persisted watchlist backed by
+`useLocalStorage`. Inherits all SSR-safety and write-through guarantees of that
+hook.
+
+**File:** `lib/hooks/useWatchlist.js`
+
+For the full contract, props tables, state descriptions, and a usage example see
+the dedicated **[Watchlist guide](docs/watchlist.md)**.
+
+#### Signature
+
+```js
+import { useWatchlist } from "@/lib/hooks/useWatchlist";
+
+const { watchedIds, isWatched, toggle, clear, prune } = useWatchlist();
+```
+
+#### Return value
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `watchedIds` | `string[]` | Sorted array of every currently-watched invoice ID. |
+| `isWatched(id)` | `(id: string) => boolean` | Returns `true` when the ID is in the watchlist. |
+| `toggle(id)` | `(id: string) => void` | Adds or removes the ID and writes through to `localStorage`. |
+| `clear()` | `() => void` | Empties the watchlist and clears the storage entry. |
+| `prune(validIds)` | `(validIds: string[]) => void` | Removes stale IDs not present in `validIds`. Call on each API data load. |
+
+#### Storage key
+
+`"liquifact-watchlist"` — stores a JSON-serialised `string[]`.
+
+#### Example
+
+```jsx
+"use client";
+
+import { useWatchlist } from "@/lib/hooks/useWatchlist";
+import InvoiceCard from "@/components/InvoiceCard";
+
+export default function WatchedInvoices({ invoices }) {
+  const { isWatched, toggle, prune } = useWatchlist();
+
+  prune(invoices.map((inv) => inv.id));
+
+  return (
+    <ul>
+      {invoices.map((invoice) => (
+        <li key={invoice.id}>
+          <InvoiceCard
+            invoice={invoice}
+            watched={isWatched(invoice.id)}
+            onToggleWatch={toggle}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
 ```
 
 ---
