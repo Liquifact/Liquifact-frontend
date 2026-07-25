@@ -143,7 +143,7 @@ describe("Skip-to-content link", () => {
 
 // ── Integration: confirm RootLayout renders the skip link ────────────────────
 
-import RootLayout from "./layout";
+import RootLayout, { metadata } from "./layout";
 
 describe("RootLayout", () => {
   it("renders the skip link", () => {
@@ -189,16 +189,28 @@ describe("RootLayout", () => {
   });
 
   it("has no axe violations", async () => {
-    const { container } = render(
-      <RootLayout>
-        <main id="main-content">
-          <h1>Page heading</h1>
-          <p>Content</p>
-        </main>
-      </RootLayout>
-    );
+    // RootLayout itself doesn't render a <title> — Next.js injects one from
+    // the `metadata` export at a layer this unit test doesn't exercise.
+    // Set it to match what the real app renders so this test reflects the
+    // document as users actually see it, rather than an artificially
+    // title-less fragment.
+    const previousTitle = document.title;
+    document.title = metadata.title;
 
-    const results = await axe(container);
-    expect(results).toHaveNoViolations();
+    try {
+      const { container } = render(
+        <RootLayout>
+          <main id="main-content">
+            <h1>Page heading</h1>
+            <p>Content</p>
+          </main>
+        </RootLayout>
+      );
+
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    } finally {
+      document.title = previousTitle;
+    }
   });
 });
