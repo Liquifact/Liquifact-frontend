@@ -36,15 +36,21 @@ const VARIANT_STYLES = {
     icon: "ℹ️",
     label: "Info",
   },
+  loading: {
+    base: "border-slate-500/30 bg-slate-500/10 text-slate-100",
+    accent: "text-slate-300",
+    icon: null,
+    label: "Loading",
+  },
 };
 
 function getToastKey({ variant = "info", title, message }) {
   return `${variant}::${title || ""}::${message || ""}`;
 }
 
-function createToast({ variant = "info", title, message }) {
+function createToast({ variant = "info", title, message, id }) {
   return {
-    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    id: id || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     variant,
     title: title || VARIANT_STYLES[variant]?.label || "Notice",
     message,
@@ -111,7 +117,7 @@ export function ToastProvider({ children }) {
   );
 
   const addToast = useCallback(
-    ({ variant, title, message }) => {
+    ({ variant, title, message, id }) => {
       // Snapshot the currently focused element so document-level Escape can
       // restore focus even when the toast never receives focus directly.
       const activeEl = document.activeElement;
@@ -119,21 +125,27 @@ export function ToastProvider({ children }) {
         addTimeFocusRef.current = activeEl;
       }
 
-      const nextToast = createToast({ variant, title, message });
+      const nextToast = createToast({ variant, title, message, id });
       const key = nextToast.key;
       let timerAction = null;
 
       setToasts((current) => {
-        const existingIndex = current.findIndex((toast) => toast.key === key);
+        let existingIndex = -1;
+        if (id) {
+          existingIndex = current.findIndex((toast) => toast.id === id);
+        } else {
+          existingIndex = current.findIndex((toast) => toast.key === key);
+        }
 
         if (existingIndex !== -1) {
           const existingToast = current[existingIndex];
-          timerAction = { type: "refresh", id: existingToast.id };
-          // Bump the existing toast to the front (newest position) so
-          // re-triggered messages appear at the top of the stack.
-          if (existingIndex === 0) return current;
+          // Preserve the existing toast's ID to prevent DOM remounting and layout shifts
+          nextToast.id = existingToast.id;
+          timerAction = { type: "refresh", id: nextToast.id };
+          // Replace the toast with the new one (if id matches) or bump it if key matches.
+          if (existingIndex === 0) return [nextToast, ...current.slice(1)];
           return [
-            existingToast,
+            nextToast,
             ...current.slice(0, existingIndex),
             ...current.slice(existingIndex + 1),
           ];
@@ -155,18 +167,19 @@ export function ToastProvider({ children }) {
 
       if (timerAction?.type === "refresh") {
         scheduleToastTimer(timerAction.id);
-        return;
+        return nextToast.id;
       }
 
       if (timerAction?.type === "replace") {
         clearToastTimer(timerAction.removedId);
         scheduleToastTimer(timerAction.id);
-        return;
+        return nextToast.id;
       }
 
       if (timerAction?.type === "add") {
         scheduleToastTimer(timerAction.id);
       }
+      return nextToast.id;
     },
     [clearToastTimer, scheduleToastTimer]
   );
@@ -243,9 +256,10 @@ export function ToastProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      success: (message, title) => addToast({ variant: "success", title, message }),
-      error: (message, title) => addToast({ variant: "error", title, message }),
-      info: (message, title) => addToast({ variant: "info", title, message }),
+      success: (message, title, options) => addToast({ variant: "success", title, message, ...options }),
+      error: (message, title, options) => addToast({ variant: "error", title, message, ...options }),
+      info: (message, title, options) => addToast({ variant: "info", title, message, ...options }),
+      loading: (message, title, options) => addToast({ variant: "loading", title, message, ...options }),
     }),
     [addToast]
   );

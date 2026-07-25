@@ -20,6 +20,7 @@ import { useCallback, useState } from "react";
 import { useToast } from "@/components/ToastProvider";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import FundAmountInput from "@/components/FundAmountInput";
+import FormsErrorBoundary from "@/components/FormsErrorBoundary";
 import { copy } from "@/app/copy/en";
 
 const detail = copy.invest.detail;
@@ -131,13 +132,15 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
           (real detail page) and the invoice is Open. */}
       {status === "Open" && maxAmount != null && (
         <div className="no-print mb-6">
-          <FundAmountInput
-            maxAmount={maxAmount}
-            currency={currency ?? "USD"}
-            yieldValue={yieldValue ?? 0}
-            onSubmit={handleFundAmount}
-            disabled={isFundingDisabled}
-          />
+          <FormsErrorBoundary>
+            <FundAmountInput
+              maxAmount={maxAmount}
+              currency={currency ?? "USD"}
+              yieldValue={yieldValue ?? 0}
+              onSubmit={handleFundAmount}
+              disabled={isFundingDisabled}
+            />
+          </FormsErrorBoundary>
         </div>
       )}
 

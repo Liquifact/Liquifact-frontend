@@ -48,6 +48,10 @@ and where wallet/toast/theme state lives.
 For the exact invoice fixture shape, formatted-versus-raw value rules, and the
 API migration seam, see the [Invoice data contract](docs/invoice-data.md).
 
+For the watchlist feature — the `useWatchlist` hook, the star toggle on
+`InvoiceCard`, and the watchlist filter in `InvoiceFilters` — see the
+[Watchlist guide](docs/watchlist.md).
+
 ---
 
 ## API Integration

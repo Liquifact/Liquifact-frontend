@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 // downloads. ssr: false avoids "window is not defined" during server render.
 import WalletStatusLazy from "./WalletStatusLazy";
 import NetworkBadge from "./NetworkBadge";
+import NavMenuErrorBoundary from "./NavMenuErrorBoundary";
 
 /**
  * @typedef {Object} NavLink
@@ -37,7 +38,7 @@ const NAV_LINKS = [
  * does not ship in the initial bundle for pages that don't need it
  * immediately (e.g. the static home page).
  */
-export default function NavMenu() {
+function NavMenu() {
   const pathname = usePathname();
   const toggleRef = useRef(null);
   const menuRef = useRef(null);
@@ -253,5 +254,20 @@ export default function NavMenu() {
         </nav>
       )}
     </header>
+  );
+}
+
+/**
+ * Default export — NavMenu guarded by {@link NavMenuErrorBoundary}.
+ *
+ * Wrapping here (rather than at each call site) means every page that
+ * imports NavMenu gets the same protection automatically; no call site can
+ * forget to guard it.
+ */
+export default function NavMenuWithErrorBoundary(props) {
+  return (
+    <NavMenuErrorBoundary>
+      <NavMenu {...props} />
+    </NavMenuErrorBoundary>
   );
 }

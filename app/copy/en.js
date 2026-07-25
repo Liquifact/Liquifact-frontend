@@ -159,6 +159,10 @@
  * @property {string} error.description
  * @property {string} error.actionLabel
  * @property {string} error.previewLabel
+ * @property {Object} nav - Navigation error boundary copy
+ * @property {string} nav.errorTitle
+ * @property {string} nav.errorDescription
+ * @property {string} nav.errorActionLabel
  * @property {Object} notFound - Not found page copy
  * @property {string} notFound.heading
  * @property {string} notFound.description
@@ -370,6 +374,12 @@ export const copy = {
       "An unexpected error occurred while showing notifications. You can retry, and the rest of the app is unaffected.",
     actionLabel: "Retry",
     previewLabel: "Error boundary",
+  },
+  nav: {
+    errorTitle: "Navigation unavailable",
+    errorDescription:
+      "The site navigation ran into an unexpected error. You can retry, or reload the page.",
+    errorActionLabel: "Retry",
   },
   notFound: {
     heading: "Page not found",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { INVOICE_STATUSES, STATUS_PILL_MAP } from "@/lib/types/invoice";
 
 export const DEFAULT_FILTERS = {
@@ -145,6 +145,66 @@ export function matchesMaturityRange(dueDate, from, to) {
   }
 
   return true;
+}
+
+/**
+ * Validates the yield-range fieldset (yieldMin / yieldMax).
+ *
+ * Returns an error message string on failure, or `null` when valid.
+ * Empty values are treated as unbounded and are always valid.
+ *
+ * @param {string} yieldMin
+ * @param {string} yieldMax
+ * @returns {string|null}
+ */
+export function validateYieldRange(yieldMin, yieldMax) {
+  const minSet = yieldMin != null && yieldMin !== "";
+  const maxSet = yieldMax != null && yieldMax !== "";
+
+  if (minSet && Number.isNaN(parseYield(yieldMin))) {
+    return "Minimum yield must be a valid number.";
+  }
+  if (maxSet && Number.isNaN(parseYield(yieldMax))) {
+    return "Maximum yield must be a valid number.";
+  }
+  if (minSet && parseYield(yieldMin) < 0) {
+    return "Minimum yield cannot be negative.";
+  }
+  if (maxSet && parseYield(yieldMax) < 0) {
+    return "Maximum yield cannot be negative.";
+  }
+  if (minSet && maxSet && parseYield(yieldMin) > parseYield(yieldMax)) {
+    return "Minimum yield cannot exceed maximum yield.";
+  }
+
+  return null;
+}
+
+/**
+ * Validates the maturity-date-range fieldset (maturityFrom / maturityTo).
+ *
+ * Returns an error message string on failure, or `null` when valid.
+ * Empty values are treated as unbounded and are always valid.
+ *
+ * @param {string} maturityFrom
+ * @param {string} maturityTo
+ * @returns {string|null}
+ */
+export function validateMaturityRange(maturityFrom, maturityTo) {
+  const fromSet = maturityFrom != null && maturityFrom !== "";
+  const toSet = maturityTo != null && maturityTo !== "";
+
+  if (fromSet && !isValidISODate(maturityFrom)) {
+    return "From date must be a valid date.";
+  }
+  if (toSet && !isValidISODate(maturityTo)) {
+    return "To date must be a valid date.";
+  }
+  if (fromSet && toSet && maturityFrom > maturityTo) {
+    return "From date cannot be after to date.";
+  }
+
+  return null;
 }
 
 /**
@@ -424,6 +484,12 @@ export function StatusLegendFilter({ selectedStatuses = [], onStatusToggle, onCl
 }
 
 export default function InvoiceFilters({ filters, onFilterChange, onClearFilters }) {
+  const yieldErrorId = useId();
+  const maturityErrorId = useId();
+
+  const yieldError = validateYieldRange(filters.yieldMin, filters.yieldMax);
+  const maturityError = validateMaturityRange(filters.maturityFrom, filters.maturityTo);
+
   const handleChange = useCallback(
     (key, value) => {
       onFilterChange({ ...filters, [key]: value });
@@ -447,29 +513,50 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
 
   return (
     <div className="flex flex-wrap gap-4 items-center">
-      <fieldset className="flex items-center gap-2 border-none p-0 m-0">
+      <fieldset className="flex items-start gap-2 border-none p-0 m-0">
         <legend className="sr-only">Yield Range</legend>
-        <input
-          type="number"
-          value={filters.yieldMin}
-          onChange={(e) => handleChange("yieldMin", e.target.value)}
-          placeholder="Min yield"
-          className="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-          aria-label="Minimum yield percentage"
-          min="0"
-          step="0.1"
-        />
-        <span className="text-slate-500">-</span>
-        <input
-          type="number"
-          value={filters.yieldMax}
-          onChange={(e) => handleChange("yieldMax", e.target.value)}
-          placeholder="Max yield"
-          className="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-          aria-label="Maximum yield percentage"
-          min="0"
-          step="0.1"
-        />
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={filters.yieldMin}
+              onChange={(e) => handleChange("yieldMin", e.target.value)}
+              placeholder="Min yield"
+              className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none ${
+                yieldError
+                  ? "border-red-500 focus:border-red-500"
+                  : "border-slate-700 focus:border-cyan-500"
+              }`}
+              aria-label="Minimum yield percentage"
+              aria-invalid={yieldError ? "true" : "false"}
+              aria-describedby={yieldError ? yieldErrorId : undefined}
+              min="0"
+              step="0.1"
+            />
+            <span className="text-slate-500">-</span>
+            <input
+              type="number"
+              value={filters.yieldMax}
+              onChange={(e) => handleChange("yieldMax", e.target.value)}
+              placeholder="Max yield"
+              className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none ${
+                yieldError
+                  ? "border-red-500 focus:border-red-500"
+                  : "border-slate-700 focus:border-cyan-500"
+              }`}
+              aria-label="Maximum yield percentage"
+              aria-invalid={yieldError ? "true" : "false"}
+              aria-describedby={yieldError ? yieldErrorId : undefined}
+              min="0"
+              step="0.1"
+            />
+          </div>
+          {yieldError && (
+            <p id={yieldErrorId} role="alert" aria-live="polite" className="text-xs text-red-400">
+              {yieldError}
+            </p>
+          )}
+        </div>
       </fieldset>
 
       <div
@@ -524,23 +611,44 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
         ))}
       </div>
 
-      <fieldset className="flex items-center gap-2 border-none p-0 m-0">
+      <fieldset className="flex items-start gap-2 border-none p-0 m-0">
         <legend className="sr-only">Maturity Date Range</legend>
-        <input
-          type="date"
-          value={filters.maturityFrom}
-          onChange={(e) => handleChange("maturityFrom", e.target.value)}
-          className="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-          aria-label="Maturity date from"
-        />
-        <span className="text-slate-500">-</span>
-        <input
-          type="date"
-          value={filters.maturityTo}
-          onChange={(e) => handleChange("maturityTo", e.target.value)}
-          className="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-          aria-label="Maturity date to"
-        />
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={filters.maturityFrom}
+              onChange={(e) => handleChange("maturityFrom", e.target.value)}
+              className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] ${
+                maturityError
+                  ? "border-red-500 focus:border-red-500"
+                  : "border-slate-700 focus:border-cyan-500"
+              }`}
+              aria-label="Maturity date from"
+              aria-invalid={maturityError ? "true" : "false"}
+              aria-describedby={maturityError ? maturityErrorId : undefined}
+            />
+            <span className="text-slate-500">-</span>
+            <input
+              type="date"
+              value={filters.maturityTo}
+              onChange={(e) => handleChange("maturityTo", e.target.value)}
+              className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] ${
+                maturityError
+                  ? "border-red-500 focus:border-red-500"
+                  : "border-slate-700 focus:border-cyan-500"
+              }`}
+              aria-label="Maturity date to"
+              aria-invalid={maturityError ? "true" : "false"}
+              aria-describedby={maturityError ? maturityErrorId : undefined}
+            />
+          </div>
+          {maturityError && (
+            <p id={maturityErrorId} role="alert" aria-live="polite" className="text-xs text-red-400">
+              {maturityError}
+            </p>
+          )}
+        </div>
       </fieldset>
 
       <fieldset className="flex items-center gap-2 border-none p-0 m-0">
