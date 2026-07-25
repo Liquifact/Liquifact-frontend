@@ -18,12 +18,32 @@
  */
 
 import React from "react";
+import fs from "node:fs";
+import path from "node:path";
 import { render } from "@testing-library/react";
 import { axe } from "jest-axe";
 
 import InvoiceListSkeleton from "../components/InvoiceListSkeleton";
 import InvestLoading from "./invest/loading";
 import InvoicesLoading from "./invoices/loading";
+
+const globalsCss = fs.readFileSync(path.join(__dirname, "globals.css"), "utf8");
+
+describe("Invoice detail accessibility preference CSS", () => {
+  it("scopes reduced-motion suppression to the invoice detail page", () => {
+    expect(globalsCss).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)/);
+    expect(globalsCss).toMatch(/\[data-invoice-detail\]\s*\*/);
+    expect(globalsCss).toMatch(/animation-duration:\s*0\.01ms\s*!important/);
+    expect(globalsCss).toMatch(/transition-duration:\s*0\.01ms\s*!important/);
+  });
+
+  it("provides forced-colour fallbacks for high-contrast users", () => {
+    expect(globalsCss).toMatch(/@media\s*\(forced-colors:\s*active\)/);
+    expect(globalsCss).toMatch(/background:\s*Canvas\s*!important/);
+    expect(globalsCss).toMatch(/color:\s*CanvasText\s*!important/);
+    expect(globalsCss).toMatch(/color:\s*LinkText\s*!important/);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Inline Spinner — mirrors the implementation in UploadZone exactly.

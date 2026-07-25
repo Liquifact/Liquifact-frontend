@@ -107,6 +107,58 @@ body {
   border-radius: 0.25rem;
 }
 
+/* ── Invoice-detail accessibility preferences ────────────────────────────── */
+/*
+   Keep the detail page usable for people who ask the browser to reduce motion.
+   The DOM and layout remain intact; only non-essential animation and transition
+   timing is removed at the CSS layer (including Tailwind utility classes).
+*/
+@media (prefers-reduced-motion: reduce) {
+  [data-invoice-detail] *,
+  [data-invoice-detail] *::before,
+  [data-invoice-detail] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+   Windows High Contrast and other forced-colour modes replace author colours.
+   Explicit system colours keep the invoice summary and controls legible while
+   retaining the browser's user-selected palette and focus indicators.
+*/
+@media (forced-colors: active) {
+  [data-invoice-detail] {
+    background: Canvas !important;
+    color: CanvasText !important;
+  }
+
+  [data-invoice-detail] .print-invoice-section,
+  [data-invoice-detail] .no-print {
+    background: Canvas !important;
+    border-color: CanvasText !important;
+    color: CanvasText !important;
+  }
+
+  [data-invoice-detail] dt,
+  [data-invoice-detail] dd,
+  [data-invoice-detail] p,
+  [data-invoice-detail] h1,
+  [data-invoice-detail] h2 {
+    color: CanvasText !important;
+  }
+
+  [data-invoice-detail] a {
+    color: LinkText !important;
+  }
+
+  [data-invoice-detail] button {
+    forced-color-adjust: auto;
+  }
+}
+
 /* ── Print stylesheet ──────────────────────────────────────────────────────── */
 /*
    Renders the invoice detail page as a clean, ink-friendly document.

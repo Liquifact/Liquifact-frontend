@@ -127,7 +127,10 @@ export default async function InvoiceDetailPage({ params }) {
   const invoiceJsonLd = buildInvoiceJsonLd(invoice);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 print-page-wrapper">
+    <div
+      data-invoice-detail="true"
+      className="min-h-screen bg-slate-950 text-slate-100 print-page-wrapper"
+    >
       {/* ── Navigation ────────────────────────────────────────────────── */}
       <header className="no-print border-b border-slate-800 px-6 py-4 flex items-center justify-between">
         <Link

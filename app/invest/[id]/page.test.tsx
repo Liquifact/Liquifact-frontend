@@ -276,6 +276,12 @@ describe("InvoiceDetailPage (Server Component shell)", () => {
       const main = container.querySelector("main");
       expect(main).toHaveAttribute("id", "main-content");
     });
+
+    it("scopes accessibility preference styles to the invoice detail root", async () => {
+      const { container } = await renderServerPage({ id: "inv-001" });
+
+      expect(container.querySelector('[data-invoice-detail="true"]')).toBeInTheDocument();
+    });
   });
 
   describe("when invoice does NOT exist", () => {
