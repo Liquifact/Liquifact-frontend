@@ -19,6 +19,22 @@ function TestHarness() {
       <button type="button" onClick={() => toast.error("Third error toast")}>
         trigger-three
       </button>
+      <button type="button" onClick={() => {
+        const id = toast.loading("Loading data", "Pending");
+        setTimeout(() => {
+          toast.success("Data loaded", "Success", { id });
+        }, 2000);
+      }}>
+        trigger-loading
+      </button>
+      <button type="button" onClick={() => {
+        const id = toast.loading("Loading data", "Pending");
+        setTimeout(() => {
+          toast.error("Data failed", "Failed", { id });
+        }, 2000);
+      }}>
+        trigger-loading-error
+      </button>
       <p>Body text</p>
     </div>
   );
@@ -375,5 +391,47 @@ describe("ToastProvider - escape and focus handling (#413)", () => {
     }).not.toThrow();
 
     unmount();
+  });
+
+  it("shows a skeleton and aria-busy when loading, and replaces with success on id match", async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    renderWithToastProvider();
+    const trigger = screen.getByText("trigger-loading");
+    await user.click(trigger);
+    
+    // Skeleton should be rendered with busy state
+    const toastContainer = screen.getByRole("status");
+    const skeletonToast = toastContainer.querySelector('[aria-busy="true"]');
+    expect(skeletonToast).toBeInTheDocument();
+
+    // Advance time to simulate data load
+    act(() => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    // Skeleton should be replaced by success content
+    expect(toastContainer.querySelector('[aria-busy="true"]')).not.toBeInTheDocument();
+    expect(screen.getByText("Data loaded")).toBeInTheDocument();
+  });
+
+  it("shows a skeleton and replaces with error on id match", async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    renderWithToastProvider();
+    const trigger = screen.getByText("trigger-loading-error");
+    await user.click(trigger);
+    
+    // Skeleton should be rendered with busy state
+    const toastContainer = screen.getByRole("status");
+    const skeletonToast = toastContainer.querySelector('[aria-busy="true"]');
+    expect(skeletonToast).toBeInTheDocument();
+
+    // Advance time to simulate error
+    act(() => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    // Skeleton should be replaced by error content
+    expect(toastContainer.querySelector('[aria-busy="true"]')).not.toBeInTheDocument();
+    expect(screen.getByText("Data failed")).toBeInTheDocument();
   });
 });
