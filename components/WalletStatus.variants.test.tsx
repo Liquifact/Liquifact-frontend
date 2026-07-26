@@ -134,7 +134,7 @@ describe("WalletStatus — Button variant per wallet state", () => {
 
   it("NO_WALLET → variant=external (violet)", () => {
     renderWithState(WALLET_STATES.NO_WALLET);
-    const classes = getButtonClasses(/install wallet/i);
+    const classes = getButtonClasses(/install (stellar )?wallet/i);
     expect(classes).toContain(VARIANT_MARKER.external);
     expect(classes).not.toContain(VARIANT_MARKER.primary);
   });
@@ -177,7 +177,7 @@ describe("WalletStatus — loading prop and aria-busy", () => {
 
   it("NO_WALLET → aria-busy=false (not loading)", () => {
     renderWithState(WALLET_STATES.NO_WALLET);
-    const btn = screen.getByRole("button", { name: /install wallet/i });
+    const btn = screen.getByRole("button", { name: /install (stellar )?wallet/i });
     expect(btn).toHaveAttribute("aria-busy", "false");
   });
 

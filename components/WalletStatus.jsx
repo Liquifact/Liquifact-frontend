@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useContext } from "react";
 import Button from "./Button";
 import { copy } from "../app/copy/en";
-import { useWallet, WALLET_STATES, truncateAddress } from "./WalletProvider";
+import { WalletContext, WALLET_STATES, truncateAddress } from "./WalletProvider";
 import { useToast } from "./ToastProvider";
 import { copyToClipboard } from "../lib/clipboard";
 import WalletSkeleton from "./WalletSkeleton";
@@ -134,7 +134,14 @@ function getStateConfig(currentState, walletData, error) {
 }
 
 export default function WalletStatus() {
-  const { state, walletData, error, hydrating, connect, disconnect } = useWallet();
+  const context = useContext(WalletContext);
+  const { state, walletData, error, connect, disconnect } = context || {
+    state: WALLET_STATES.DISCONNECTED,
+    walletData: null,
+    error: null,
+    connect: async () => ({ outcome: "error" }),
+    disconnect: () => {},
+  };
   const toast = useToast();
 
   /**

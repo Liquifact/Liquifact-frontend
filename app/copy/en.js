@@ -369,7 +369,7 @@ export const copy = {
     disconnectButton: "Disconnect",
     retryButton: "Retry Connection",
     switchNetworkButton: "Switch Network",
-    installWalletButton: "Install Wallet",
+    installWalletButton: "Install Stellar Wallet",
     copyAddressButton: "Copy wallet address",
     helperDisconnected: "Connect your Stellar wallet to access the platform",
     helperConnecting: "Please approve the connection in your wallet",

@@ -246,8 +246,8 @@ describe("WalletStatus Button variant + loading — per WALLET_STATE", () => {
   describe("NO_WALLET", () => {
     beforeEach(() => renderWithState(WALLET_STATES.NO_WALLET));
 
-    it('renders the "Install Wallet" button', () => {
-      expect(getWalletButton()).toHaveAccessibleName(/install wallet/i);
+    it('renders the "Install Stellar Wallet" button', () => {
+      expect(getWalletButton()).toHaveAccessibleName(/install (stellar )?wallet/i);
     });
 
     it("uses the external variant (violet background class)", () => {
