@@ -260,7 +260,7 @@ export default function FundActions({
           type="button"
           onClick={handleFund}
           disabled={isFundingDisabled}
-          className="focus-ring rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="invoice-detail-action-btn focus-ring rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label={detail.fundButtonLabel}
         >
           {isFundingPending ? "Funding…" : detail.fundButton}
@@ -270,7 +270,7 @@ export default function FundActions({
           type="button"
           onClick={handleCopyLink}
           disabled={isCopying}
-          className="focus-ring rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800/50 transition-colors disabled:opacity-50"
+          className="invoice-detail-action-btn focus-ring rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800/50 transition-colors motion-reduce:transition-none disabled:opacity-50"
           aria-label={detail.copyLinkButtonLabel}
         >
           {detail.copyLinkButton}
@@ -279,7 +279,7 @@ export default function FundActions({
         <button
           type="button"
           onClick={handlePrint}
-          className="focus-ring rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800 transition-colors"
+          className="invoice-detail-action-btn focus-ring rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800 transition-colors motion-reduce:transition-none"
           aria-label={detail.printButtonLabel}
         >
           {detail.printButton}
@@ -287,7 +287,7 @@ export default function FundActions({
       </div>
 
       {/* Disclaimer */}
-      <div className="no-print mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-300">
+      <div className="invoice-detail-disclaimer no-print mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-300">
         {detail.disclaimerNote}
       </div>
     </>

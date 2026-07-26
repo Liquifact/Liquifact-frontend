@@ -69,6 +69,12 @@ export default function InvoiceDetailClient({
     <section
       aria-labelledby="invoice-summary-heading"
       className={[
+        // invoice-detail-section: CSS hook for @media (forced-colors) and
+        // @media (prefers-contrast: more) rules in globals.css (issue #31).
+        // The bg-slate-900/50 semi-transparent fill is illegible under both
+        // forced-colors and high-contrast — globals.css replaces it with
+        // fully-opaque system colours when those media queries are active.
+        "invoice-detail-section",
         "print-invoice-section rounded-xl border border-slate-800 bg-slate-900/50",
         spacing.padding,
         "mb-6",
@@ -90,24 +96,25 @@ export default function InvoiceDetailClient({
         ].join(" ")}
       >
         <div>
-          <dt className="text-slate-500">{labelIssuer}</dt>
-          <dd className="text-slate-100">{issuer}</dd>
+          {/* invoice-detail-dt/dd: CSS hooks for high-contrast colour overrides */}
+          <dt className="invoice-detail-dt text-slate-500">{labelIssuer}</dt>
+          <dd className="invoice-detail-dd text-slate-100">{issuer}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">{labelAmount}</dt>
-          <dd className="text-slate-100">{formattedAmount}</dd>
+          <dt className="invoice-detail-dt text-slate-500">{labelAmount}</dt>
+          <dd className="invoice-detail-dd text-slate-100">{formattedAmount}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">{labelYield}</dt>
-          <dd className="text-slate-100">{formattedYield}</dd>
+          <dt className="invoice-detail-dt text-slate-500">{labelYield}</dt>
+          <dd className="invoice-detail-dd text-slate-100">{formattedYield}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">{labelMaturity}</dt>
-          <dd className="text-slate-100">{dueDate}</dd>
+          <dt className="invoice-detail-dt text-slate-500">{labelMaturity}</dt>
+          <dd className="invoice-detail-dd text-slate-100">{dueDate}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">{labelStatus}</dt>
-          <dd className="text-slate-100">{statusPill}</dd>
+          <dt className="invoice-detail-dt text-slate-500">{labelStatus}</dt>
+          <dd className="invoice-detail-dd text-slate-100">{statusPill}</dd>
         </div>
       </dl>
     </section>
