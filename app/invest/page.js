@@ -15,7 +15,8 @@ import InvoiceFilters, {
 import BulkActionsToolbar from "@/components/BulkActionsToolbar";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import NavMenu from "@/components/NavMenu";
-import { INVOICE_STATUSES } from "@/lib/types/invoice";
+import WatchlistSection from "@/components/WatchlistSection";
+import { useWatchlist } from "@/lib/hooks/useWatchlist";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
@@ -274,11 +275,12 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   const searchParamsValue = searchParams ?? new URLSearchParams();
   const searchParamsString = searchParamsValue.toString();
 
-  const initialUrlState = parseFiltersFromSearchParams(searchParamsValue, DEFAULT_FILTERS);
-
-  const { invoices, setInvoices, pendingIds } = useMarketplace();
+  const { watchlists } = useWatchlist();
+  
+  const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [searchQuery, setSearchQuery] = useState(initialUrlState.searchQuery);
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState("");
   const [loadError, setLoadError] = useState("");
   const [filters, setFilters] = useState(initialUrlState.filters);
   const [debouncedSearch, setDebouncedSearch] = useState(initialUrlState.searchQuery);
@@ -430,8 +432,12 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     if (Array.isArray(filters.statuses) && filters.statuses.length > 0) {
       list = list.filter((inv) => filters.statuses.includes(inv.status));
     }
+    if (filters.watchlistOnly) {
+      const allStarredIds = new Set(watchlists.flatMap(wl => wl.invoiceIds));
+      list = list.filter((inv) => allStarredIds.has(inv.id));
+    }
     return applySortToList(list, filters);
-  }, [invoices, debouncedSearch, filters]);
+  }, [invoices, debouncedSearch, filters, watchlists]);
 
   // Bulk-selection hook — auto-prunes selections when the underlying list
   // changes (filter, optimistic delete, etc.).
@@ -665,7 +671,19 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           </div>
         </div>
 
-        {/*\n          ACCESSIBILITY DESIGN (Issue #91):\n          - We wrap the filter group in a <fieldset> with `aria-disabled="true"` to announce the preview/disabled\n            state to screen readers while keeping all controls discoverable in the tab order (unlike native `disabled`).\n          - `aria-describedby` programmatically links the fieldset to the visible "Soon" badge, ensuring that\n            assistive technologies announce the "coming soon" status when users navigate to the filters.\n          - We use a no-op handler structure (passing empty handlers) and CSS `pointer-events-none` to prevent\n            interaction while keeping the controls focusable.\n          - `opacity-60` is applied only to the inner controls container to ensure the "Soon" label itself stays\n            fully opaque for maximum contrast (WCAG AA compliant).\n        */}
+        <WatchlistSection />
+
+        {/*
+          ACCESSIBILITY DESIGN (Issue #91):
+          - We wrap the filter group in a <fieldset> with `aria-disabled="true"` to announce the preview/disabled
+            state to screen readers while keeping all controls discoverable in the tab order (unlike native `disabled`).
+          - `aria-describedby` programmatically links the fieldset to the visible "Soon" badge, ensuring that
+            assistive technologies announce the "coming soon" status when users navigate to the filters.
+          - We use a no-op handler structure (passing empty handlers) and CSS `pointer-events-none` to prevent
+            interaction while keeping the controls focusable.
+          - `opacity-60` is applied only to the inner controls container to ensure the "Soon" label itself stays
+            fully opaque for maximum contrast (WCAG AA compliant).
+        */}
         <div className="mb-4">
           <InvoiceSearch
             value={searchQuery}

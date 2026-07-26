@@ -14,6 +14,7 @@ export const DEFAULT_FILTERS = {
   sortDir: "desc",
   /** @type {string[]} Active status filter values (empty = show all). */
   statuses: [],
+  watchlistOnly: false,
 };
 
 /**
@@ -226,7 +227,8 @@ export function hasActiveFilters(filters) {
     filters.maturityFrom !== "" ||
     filters.maturityTo !== "" ||
     filters.sort !== "" ||
-    (Array.isArray(filters.statuses) && filters.statuses.length > 0)
+    (Array.isArray(filters.statuses) && filters.statuses.length > 0) ||
+    filters.watchlistOnly === true
   );
 }
 
@@ -281,6 +283,10 @@ export function getActiveFilterChips(filters, searchQuery = "") {
 
   if (filters.yieldMax !== "") {
     chips.push({ key: "yieldMax", label: `Max yield: ${filters.yieldMax}%`, clearKey: "yieldMax" });
+  }
+
+  if (filters.watchlistOnly) {
+    chips.push({ key: "watchlistOnly", label: "Watchlist Only", clearKey: "watchlistOnly" });
   }
 
   if (filters.currency !== "") {
@@ -601,6 +607,16 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
           </p>
         )}
       </div>
+
+      <label className="flex items-center gap-2 text-sm text-slate-300">
+        <input
+          type="checkbox"
+          checked={filters.watchlistOnly || false}
+          onChange={(e) => handleChange("watchlistOnly", e.target.checked)}
+          className="rounded border-slate-700 bg-slate-800/50 text-cyan-500 focus:ring-cyan-500"
+        />
+        Watchlist Only
+      </label>
 
       <div
         role="toolbar"
