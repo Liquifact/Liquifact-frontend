@@ -123,11 +123,7 @@ function isValidISODate(str) {
   if (Number.isNaN(d.getTime())) return false;
   // new Date("2026-09-99") rolls over to 2026-10-09 in some engines,
   // so verify round-trip via ISO string.
-  try {
-    return d.toISOString().slice(0, 10) === str;
-  } catch {
-    return false;
-  }
+  return d.toISOString().slice(0, 10) === str;
 }
 
 export function matchesMaturityRange(dueDate, from, to) {

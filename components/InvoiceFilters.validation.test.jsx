@@ -20,7 +20,7 @@ describe("InvoiceFilters validation", () => {
       const minInput = screen.getByLabelText(/minimum yield/i);
       fireEvent.change(minInput, { target: { value: "-5" } });
       fireEvent.blur(minInput);
-      expect(screen.getByRole("alert")).toHaveTextContent(/positive number/i);
+      expect(screen.getByRole("alert")).toHaveTextContent("Min yield must be a positive number");
     });
 
     it("shows error when max yield is negative", () => {
@@ -28,7 +28,7 @@ describe("InvoiceFilters validation", () => {
       const maxInput = screen.getByLabelText(/maximum yield/i);
       fireEvent.change(maxInput, { target: { value: "-1" } });
       fireEvent.blur(maxInput);
-      expect(screen.getByRole("alert")).toHaveTextContent(/positive number/i);
+      expect(screen.getByRole("alert")).toHaveTextContent("Max yield must be a positive number");
     });
 
     it("shows error when min exceeds max", () => {
@@ -39,7 +39,7 @@ describe("InvoiceFilters validation", () => {
       fireEvent.blur(minInput);
       fireEvent.change(maxInput, { target: { value: "5" } });
       fireEvent.blur(maxInput);
-      expect(screen.getByRole("alert")).toHaveTextContent(/cannot exceed/i);
+      expect(screen.getByRole("alert")).toHaveTextContent("Min yield cannot exceed max yield");
     });
 
     it("does not show error for valid range", () => {
@@ -68,7 +68,7 @@ describe("InvoiceFilters validation", () => {
       fireEvent.blur(minInput);
       const errorId = minInput.getAttribute("aria-describedby");
       expect(errorId).toBeTruthy();
-      expect(document.getElementById(errorId)).toHaveTextContent(/positive number/i);
+      expect(document.getElementById(errorId)).toHaveTextContent("Min yield must be a positive number");
     });
   });
 
@@ -81,7 +81,7 @@ describe("InvoiceFilters validation", () => {
       fireEvent.blur(fromInput);
       fireEvent.change(toInput, { target: { value: "2026-01-01" } });
       fireEvent.blur(toInput);
-      expect(screen.getByRole("alert")).toHaveTextContent(/cannot be after/i);
+      expect(screen.getByRole("alert")).toHaveTextContent("Start date cannot be after end date");
     });
 
     it("does not show error for valid date range", () => {
@@ -108,39 +108,44 @@ describe("InvoiceFilters validation", () => {
     });
   });
 
-  describe("Filter controls keyboard accessibility", () => {
-    it("yield inputs are focusable", () => {
+  describe("Filter controls accessibility", () => {
+    it("does not show validation errors before blur (touched gate)", () => {
       render(<FilterWrapper />);
       const minInput = screen.getByLabelText(/minimum yield/i);
-      const maxInput = screen.getByLabelText(/maximum yield/i);
-      minInput.focus();
-      expect(minInput).toHaveFocus();
-      maxInput.focus();
-      expect(maxInput).toHaveFocus();
+      fireEvent.change(minInput, { target: { value: "-5" } });
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(minInput).toHaveAttribute("aria-invalid", "false");
     });
 
-    it("date inputs are focusable", () => {
+    it("shows validation errors after blur (touched gate opens)", () => {
       render(<FilterWrapper />);
-      const fromInput = screen.getByLabelText(/maturity date from/i);
-      const toInput = screen.getByLabelText(/maturity date to/i);
-      fromInput.focus();
-      expect(fromInput).toHaveFocus();
-      toInput.focus();
-      expect(toInput).toHaveFocus();
+      const minInput = screen.getByLabelText(/minimum yield/i);
+      fireEvent.change(minInput, { target: { value: "-5" } });
+      fireEvent.blur(minInput);
+      expect(screen.getByRole("alert")).toHaveTextContent("Min yield must be a positive number");
+      expect(minInput).toHaveAttribute("aria-invalid", "true");
     });
 
-    it("sort select is focusable", () => {
+    it("clears error when value is corrected", () => {
       render(<FilterWrapper />);
-      const select = screen.getByLabelText(/sort options/i);
-      select.focus();
-      expect(select).toHaveFocus();
+      const minInput = screen.getByLabelText(/minimum yield/i);
+      fireEvent.change(minInput, { target: { value: "-5" } });
+      fireEvent.blur(minInput);
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      fireEvent.change(minInput, { target: { value: "5" } });
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
-    it("clear filters button is focusable", () => {
+    it("clear button is disabled when no filters are active", () => {
+      render(<FilterWrapper />);
+      const clearBtn = screen.getByRole("button", { name: /clear all filters/i });
+      expect(clearBtn).toBeDisabled();
+    });
+
+    it("clear button is enabled when filters are active", () => {
       render(<FilterWrapper initialFilters={{ ...DEFAULT_FILTERS, yieldMin: "5" }} />);
       const clearBtn = screen.getByRole("button", { name: /clear all filters/i });
-      clearBtn.focus();
-      expect(clearBtn).toHaveFocus();
+      expect(clearBtn).toBeEnabled();
     });
   });
 });
