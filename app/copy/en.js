@@ -179,6 +179,32 @@
  * @property {string} invoiceTimeline.statusCompleted
  * @property {string} invoiceTimeline.statusCurrent
  * @property {string} invoiceTimeline.statusPending
+ * @property {Object} settings - Settings page copy (issue #743)
+ * @property {string} settings.title
+ * @property {string} settings.subtext
+ * @property {string} settings.emptyState
+ * @property {string} settings.errorTitle
+ * @property {string} settings.errorDescription
+ * @property {string} settings.errorStatus
+ * @property {string} settings.retryAction
+ * @property {string} settings.searchPlaceholder
+ * @property {string} settings.filterLegend
+ * @property {string} settings.filterHelp
+ * @property {string} settings.filterCategory
+ * @property {string} settings.filterSearch
+ * @property {string} settings.allCategories
+ * @property {string} settings.clearFilters
+ * @property {string} settings.noMatchFilter
+ * @property {string} settings.listAriaLabel
+ * @property {string} settings.loadingAriaLabel
+ * @property {string} settings.loadMore
+ * @property {string} settings.loadMoreAriaLabel
+ * @property {string} settings.endOfList
+ * @property {string} settings.announceNoSettings
+ * @property {string} settings.announceLoaded
+ * @property {string} settings.announceFiltered
+ * @property {string} settings.announceNoMatch
+ * @property {string} settings.announceShowing
  */
 
 /** @type {CopyDictionary} */
@@ -386,5 +412,34 @@ export const copy = {
     statusCompleted: "Completed",
     statusCurrent: "Current",
     statusPending: "Pending",
+  },
+  settings: {
+    title: "Settings",
+    subtext:
+      "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
+    emptyState: "No preferences available. Connect your wallet to unlock settings.",
+    errorTitle: "Unable to load settings",
+    errorDescription: "Unable to load settings right now.",
+    errorStatus: "Unable to load settings.",
+    retryAction: "Try again",
+    searchPlaceholder: "Search preferences…",
+    filterLegend: "Settings filters",
+    filterHelp:
+      "Use the category selector or the search box to narrow the list. Paging is reset whenever a filter changes.",
+    filterCategory: "Category:",
+    filterSearch: "Search:",
+    allCategories: "All categories",
+    clearFilters: "Reset filters",
+    noMatchFilter: "No preferences match the active filters.",
+    listAriaLabel: "Settings list",
+    loadingAriaLabel: "Loading settings",
+    loadMore: "Load more",
+    loadMoreAriaLabel: "Load more preferences",
+    endOfList: "You have reached the end of the list.",
+    announceNoSettings: "No settings available",
+    announceLoaded: "{count} preferences loaded",
+    announceFiltered: "{matched} of {total} preferences match",
+    announceNoMatch: "No preferences match",
+    announceShowing: "Showing {shown} of {total} preferences",
   },
 };
