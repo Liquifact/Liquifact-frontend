@@ -17,6 +17,10 @@ import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
 
+// Error boundary for the watchlist subtree
+import ErrorBoundary from "@/components/ErrorBoundary";
+import { reportError } from "@/lib/observability/reportError";
+
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
 
@@ -401,52 +405,59 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
             {copy.invest.noMatchFilter}
           </div>
         ) : (
-          <>
-            <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
-              {filteredInvoices.slice(0, visibleCount).map((inv) => (
-                <li key={inv.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <Link
-                      href={`/invest/${inv.id}`}
-                      className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
-                    >
-                      {inv.issuer}
-                    </Link>
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
-                      {inv.status}
-                    </span>
-                  </div>
-                  <div className="flex gap-6 text-sm text-slate-400">
-                    <span>
-                      {inv.currency}&nbsp;{inv.amount}
-                    </span>
-                    <span>
-                      {copy.invest.labelYield}
-                      {inv.yield}
-                    </span>
-                    <span>
-                      {copy.invest.labelMaturity}
-                      {inv.dueDate}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            {visibleCount < filteredInvoices.length && (
-              <button
-                ref={loadMoreRef}
-                type="button"
-                onClick={handleLoadMore}
-                aria-label={copy.invest.loadMoreAriaLabel}
-                className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50"
-              >
-                {copy.invest.loadMore}
-              </button>
-            )}
-            <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
-              {copy.invest.yieldDisclaimer}
-            </div>
-          </>
+          <ErrorBoundary
+            onError={(err, info) => reportError(err, { where: "invest.watchlist", info })}
+            fallbackTitle="Error loading watchlist"
+            fallbackDescription="An error occurred while rendering the watchlist. We logged the error — you can retry loading this section."
+            retryLabel="Retry loading watchlist"
+          >
+            <>
+              <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
+                {filteredInvoices.slice(0, visibleCount).map((inv) => (
+                  <li key={inv.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <Link
+                        href={`/invest/${inv.id}`}
+                        className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                      >
+                        {inv.issuer}
+                      </Link>
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
+                        {inv.status}
+                      </span>
+                    </div>
+                    <div className="flex gap-6 text-sm text-slate-400">
+                      <span>
+                        {inv.currency}&nbsp;{inv.amount}
+                      </span>
+                      <span>
+                        {copy.invest.labelYield}
+                        {inv.yield}
+                      </span>
+                      <span>
+                        {copy.invest.labelMaturity}
+                        {inv.dueDate}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {visibleCount < filteredInvoices.length && (
+                <button
+                  ref={loadMoreRef}
+                  type="button"
+                  onClick={handleLoadMore}
+                  aria-label={copy.invest.loadMoreAriaLabel}
+                  className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50"
+                >
+                  {copy.invest.loadMore}
+                </button>
+              )}
+              <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
+                {copy.invest.yieldDisclaimer}
+              </div>
+            </>
+          </ErrorBoundary>
         )}
       </main>
     </div>
