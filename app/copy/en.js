@@ -338,6 +338,12 @@ export const copy = {
       loadErrorMsg: "Unable to load invoice details right now.",
       loadErrorTitle: "Unable to load invoice details",
       actionGroupLabel: "Invoice actions",
+      densityToggleLabel: "Display density",
+      densityCompact: "Compact",
+      densityComfortable: "Comfortable",
+      densityCompactAriaLabel: "Switch to compact density",
+      densityComfortableAriaLabel: "Switch to comfortable density",
+      densityCurrentAriaLabel: "Current density: {density}",
     },
   },
   invoices: {
@@ -450,12 +456,6 @@ export const copy = {
     actionLabel: "Retry",
     previewLabel: "Error boundary",
   },
-  nav: {
-    errorTitle: "Navigation unavailable",
-    errorDescription:
-      "The site navigation ran into an unexpected error. You can retry, or reload the page.",
-    errorActionLabel: "Retry",
-  },
   notFound: {
     heading: "Page not found",
     description: "The page you\u2019re looking for doesn\u2019t exist or has been moved.",
@@ -483,7 +483,12 @@ export const copy = {
     /** Announced politely by NavMenu when the user navigates to a new route.
      *  Replace {label} with the matching NAV_LINKS label (e.g. "Home"). */
     announceNavigation: "Navigated to {label}",
-    settings: {
+    errorTitle: "Navigation unavailable",
+    errorDescription:
+      "The site navigation ran into an unexpected error. You can retry, or reload the page.",
+    errorActionLabel: "Retry",
+  },
+  settings: {
       title: "Settings",
       subtext:
         "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
@@ -511,5 +516,7 @@ export const copy = {
       announceFiltered: "{matched} of {total} preferences match",
       announceNoMatch: "No preferences match",
       announceShowing: "Showing {shown} of {total} preferences",
+      densityLabel: "Density",
+      densityDescription: "Control the spacing of settings sections.",
     },
 };

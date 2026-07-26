@@ -171,6 +171,30 @@ body {
    - Forces a white background and dark text to save ink.
    - Marks elements with .no-print to opt out of the printed output.
 */
+/* ── Density spacing tokens ─────────────────────────────────────────────────── */
+/*
+   Density is driven by a `data-density` attribute set on <html> by the
+   DensityToggle component via the useDensity hook.
+
+   Supported values: data-density="comfortable" | data-density="compact"
+
+   Settings page reads these variables to control section padding, gap,
+   and heading margins.
+*/
+
+:root,
+[data-density="comfortable"] {
+  --settings-section-padding: 1.5rem;
+  --settings-section-gap: 1.5rem;
+  --settings-list-gap: 0.75rem;
+}
+
+[data-density="compact"] {
+  --settings-section-padding: 1rem;
+  --settings-section-gap: 1rem;
+  --settings-list-gap: 0.5rem;
+}
+
 @media print {
   /* Switch to a light, ink-friendly palette */
   html,

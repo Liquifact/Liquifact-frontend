@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import NavMenu from "@/components/NavMenu";
+import DensityToggle from "@/components/DensityToggle";
+import { useDensity } from "@/lib/hooks/useDensity";
 import { copy } from "../copy/en";
 import { loadMockSettings, getCategoryList, MOCK_SETTINGS } from "./lib";
 
@@ -88,6 +90,7 @@ export function SettingsPage({ loadSettings = loadMockSettings } = {}) {
   const [loadError, setLoadError] = useState("");
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [density, setDensity] = useDensity();
 
   const [retryKey, setRetryKey] = useState(0);
 
@@ -208,7 +211,7 @@ export function SettingsPage({ loadSettings = loadMockSettings } = {}) {
   const categories = useMemo(() => getCategoryList(MOCK_SETTINGS), []);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div data-density={density} className="min-h-screen bg-slate-950 text-slate-100">
       <NavMenu />
 
       <main className="mx-auto max-w-4xl px-6 py-12">
@@ -220,11 +223,27 @@ export function SettingsPage({ loadSettings = loadMockSettings } = {}) {
         <h1 className="mb-2 text-2xl font-bold">{copy.settings.title}</h1>
         <p className="mb-8 text-slate-400">{copy.settings.subtext}</p>
 
+        {/* Density toggle */}
+        <section
+          data-testid="settings-density-section"
+          className="mb-6 rounded-xl border border-slate-800 bg-slate-900/30"
+          style={{ padding: "var(--settings-section-padding)" }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-slate-100">{copy.settings.densityLabel}</p>
+              <p className="mt-1 text-sm text-slate-400">{copy.settings.densityDescription}</p>
+            </div>
+              <DensityToggle density={density} onDensityChange={setDensity} />
+          </div>
+        </section>
+
         {/* Filters */}
         <fieldset
           aria-label={copy.settings.filterLegend}
           aria-describedby="settings-filters-help"
-          className="mb-6 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
+          className="mb-6 rounded-xl border border-slate-800 bg-slate-900/30"
+          style={{ padding: "var(--settings-section-padding)", marginBottom: "var(--settings-section-gap)" }}
         >
           <legend className="sr-only">{copy.settings.filterLegend}</legend>
           <p
@@ -331,7 +350,7 @@ export function SettingsPage({ loadSettings = loadMockSettings } = {}) {
               {getSettingsShowingAnnouncement(visibleSettings.length, filteredSettings.length)}
             </p>
 
-            <ul aria-label={copy.settings.listAriaLabel} className="space-y-3">
+            <ul aria-label={copy.settings.listAriaLabel} style={{ gap: "var(--settings-list-gap)" }} className="flex flex-col">
               {visibleSettings.map((row) => (
                 <li
                   key={row.id}
