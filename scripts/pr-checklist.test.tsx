@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path"; 
-
+ 
 describe("pull request checklist template", () => {
   const repoRoot = path.resolve(__dirname, "..");
   const templatePath = path.join(repoRoot, ".github", "pull_request_template.md");
