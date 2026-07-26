@@ -22,13 +22,20 @@
  *
  * Everything else on the detail page (heading, metadata table, JSON-LD
  * script) is rendered by the Server Component shell in `page.js`.
+ *
+ * Optimistic updates
+ * ──────────────────
+ * `handleFundAmount` applies the funding action optimistically via
+ * `useMarketplaceActions`: the UI reflects the pending state immediately
+ * while the async action runs.  On failure the state is rolled back and
+ * an error toast is shown, keeping the UI consistent.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ToastProvider";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import FundAmountInput from "@/components/FundAmountInput";
-import StatusPill from "@/components/StatusPill";
+import { useMarketplace } from "@/app/invest/MarketplaceContext";
 import { copy } from "@/app/copy/en";
 import { useOptimisticFund, FUNDING_STATES } from "@/lib/hooks/useOptimisticFund";
 
@@ -85,60 +92,38 @@ export async function copyInvoiceUrl(id) {
 /**
  * Interactive fund / copy / print controls for an invoice.
  *
- * @param {object}  props
- * @param {string}  props.id          - Invoice id (used to build the share URL)
- * @param {string}  props.status      - Current server-confirmed invoice status
- * @param {number}  [props.maxAmount] - Maximum fundable amount (invoice amountValue)
- * @param {string}  [props.currency]  - Invoice currency code
- * @param {number}  [props.yieldValue] - Yield rate as a percentage
+ * @param {object}   props
+ * @param {string}   props.id             - Invoice id (used to build the share URL)
+ * @param {string}   props.status         - Invoice status; disables fund button when not "Open"
+ * @param {number}   [props.maxAmount]    - Maximum fundable amount
+ * @param {string}   [props.currency]     - Invoice currency code
+ * @param {number}   [props.yieldValue]   - Yield rate as a percentage
+ * @param {Function} [props.performFund]  - Async action that executes the funding request.
+ *   Receives `(invoiceId, amount)` and should throw on failure.
+ *   Defaults to a mock that resolves immediately (placeholder until Stellar lands).
  */
-export default function FundActions({ id, status, maxAmount, currency, yieldValue }) {
+export default function FundActions({
+  id,
+  status,
+  maxAmount,
+  currency,
+  yieldValue,
+  performFund,
+}) {
   const { state: walletState, connect } = useWallet();
   const toast = useToast();
   const [isCopying, setIsCopying] = useState(false);
-  const [announcement, setAnnouncement] = useState("");
-  const debounceTimeoutRef = useRef(null);
+  const { pendingIds, fundInvoice } = useMarketplace();
 
-  // Announce the result of an invoice-detail async action via the polite
-  // live region below, debounced so rapid-fire results settle into one
-  // announcement of the latest outcome rather than one per action.
-  const announce = useCallback((message) => {
-    if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
-    debounceTimeoutRef.current = setTimeout(() => {
-      setAnnouncement(message);
-    }, ANNOUNCE_DEBOUNCE_MS);
-  }, []);
+  const isFundingPending = pendingIds.has(id);
 
-  useEffect(() => {
-    return () => {
-      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
-    };
-  }, []);
-
-  // ── Optimistic funding ──────────────────────────────────────────────────────
-  const { optimisticStatus, fundingState, isFunding, submitFund } = useOptimisticFund({
-    id,
-    status,
-    currency,
-    onSuccess: (result) => {
-      const msg = detail.fundSuccessMsg
-        .replace("{amount}", result.amount.toString())
-        .replace("{currency}", result.currency ?? "");
-      toast.success(msg, detail.fundSuccessTitle);
-    },
-    onError: () => {
-      toast.error(detail.fundErrorMsg, detail.fundErrorTitle);
-    },
-  });
-
-  // Fund button is disabled while wallet is connecting or unavailable, or
-  // if the invoice is not in an Open state (use optimisticStatus to reflect
-  // the in-flight view correctly), or if a funding request is in-flight.
+  // Fund button is disabled while wallet is connecting or unavailable,
+  // while an optimistic action is in-flight, or if the invoice is not Open.
   const isFundingDisabled =
     walletState === WALLET_STATES.CONNECTING ||
     walletState === WALLET_STATES.NO_WALLET ||
-    optimisticStatus !== "Open" ||
-    isFunding;
+    status !== "Open" ||
+    isFundingPending;
 
   const handleFund = () => {
     if (walletState === WALLET_STATES.DISCONNECTED) {
@@ -167,9 +152,18 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
     window.print();
   };
 
-  // Partial-funding submit: prompt wallet connection when disconnected,
-  // otherwise apply the optimistic update and submit to the server.
-  // Shows an immediate toast and rolls back on failure.
+  /**
+   * Partial-funding submit with optimistic update + rollback.
+   *
+   * - If the wallet is disconnected, prompt connection and return early.
+   * - Otherwise apply the funding optimistically via `useMarketplaceActions`:
+   *     • UI reflects the pending state immediately.
+   *     • On success a confirmation toast is shown.
+   *     • On failure the optimistic state is rolled back and an error toast
+   *       is shown — the invoice reverts to its pre-action appearance.
+   *
+   * @param {number} amount - Validated funding amount from FundAmountInput
+   */
   const handleFundAmount = useCallback(
     async (amount) => {
       if (walletState === WALLET_STATES.DISCONNECTED) {
@@ -177,16 +171,29 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
         return;
       }
 
-      // Show an immediate "in-progress" toast before the server responds.
-      toast.info(detail.fundOptimisticMsg, detail.fundOptimisticTitle);
+      // Default performFund: simulates a successful submission until the
+      // real Stellar sign+submit flow lands.
+      const action =
+        performFund ??
+        (async (_invoiceId, _amount) => {
+          // No-op placeholder — replace with real API call.
+        });
 
-      await submitFund(amount);
+      try {
+        await fundInvoice(id, amount, action);
+        toast.success(
+          `Funding request for ${amount} ${currency ?? ""} submitted. Awaiting wallet approval.`.trim(),
+          "Funding submitted"
+        );
+      } catch {
+        toast.error(
+          `Funding request for ${amount} ${currency ?? ""} failed. Please try again.`.trim(),
+          "Funding failed"
+        );
+      }
     },
-    [walletState, connect, toast, submitFund]
+    [walletState, connect, fundInvoice, id, currency, performFund, toast]
   );
-
-  // Show rollback banner inline when the last attempt was rolled back.
-  const showRollbackBanner = fundingState === FUNDING_STATES.ROLLED_BACK;
 
   return (
     <>
@@ -249,11 +256,11 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
           type="button"
           onClick={handleFund}
           disabled={isFundingDisabled}
-          aria-busy={isFunding}
+          aria-busy={isFundingPending}
           className="rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label={detail.fundButtonLabel}
         >
-          {isFunding ? detail.fundOptimisticTitle : detail.fundButton}
+          {isFundingPending ? "Funding…" : detail.fundButton}
         </button>
 
         <button

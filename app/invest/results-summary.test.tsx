@@ -26,6 +26,21 @@ jest.mock("next/link", () => {
   return { __esModule: true, default: MockLink };
 });
 
+jest.mock("@/app/invest/MarketplaceContext", () => {
+  const React = require("react");
+  return {
+    __esModule: true,
+    useMarketplace: function () {
+      const [invoices, setInvoices] = React.useState(null);
+      const [pendingIds] = React.useState(new Set());
+      return { invoices, setInvoices, pendingIds, fundInvoice: jest.fn().mockResolvedValue(true) };
+    },
+    MarketplaceProvider: function (_ref) {
+      return _ref.children;
+    },
+  };
+});
+
 function createDeferredLoader(invoices, delayMs = 0) {
   return jest.fn(
     () =>

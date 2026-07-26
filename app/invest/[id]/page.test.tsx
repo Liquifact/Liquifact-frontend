@@ -90,6 +90,16 @@ jest.mock(
     }
 );
 
+jest.mock("@/app/invest/MarketplaceContext", () => ({
+  useMarketplace: () => ({
+    invoices: [],
+    setInvoices: jest.fn(),
+    pendingIds: new Set(),
+    fundInvoice: jest.fn().mockResolvedValue(true),
+  }),
+  MarketplaceProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 jest.mock("@/components/ErrorBanner", () => ({
   __esModule: true,
   default: function ErrorBannerMock({ title }: { title: string }) {
