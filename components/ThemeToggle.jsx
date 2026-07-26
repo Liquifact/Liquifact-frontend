@@ -180,6 +180,11 @@ export default function ThemeToggle({ className = "" }) {
 
   const nextPref = THEMES[(THEMES.indexOf(preference) + 1) % THEMES.length];
   const capitalise = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const isDarkActive =
+    preference === "dark" ||
+    (preference === "system" &&
+      typeof window !== "undefined" &&
+      resolveTheme(preference) === "dark");
 
   return (
     <button
@@ -187,7 +192,7 @@ export default function ThemeToggle({ className = "" }) {
       type="button"
       onClick={handleClick}
       aria-label={LABELS[preference]}
-      aria-pressed={preference !== "system"}
+      aria-pressed={isDarkActive}
       title={`Current theme: ${capitalise(preference)}`}
       data-theme-pref={preference}
       data-theme-next={nextPref}

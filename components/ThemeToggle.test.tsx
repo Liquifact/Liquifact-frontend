@@ -330,23 +330,17 @@ describe("ThemeToggle", () => {
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
   });
 
-  // ── 5e. aria-pressed reflects state ──────────────────────────────────────
+  // ── 5e. aria-pressed reflects the active theme ────────────────────────
 
-  it('aria-pressed is false when preference is "system"', async () => {
-    render(<ThemeToggle />);
-    await act(async () => {});
-    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
-  });
-
-  it('aria-pressed is true when preference is "light"', async () => {
+  it("aria-pressed is false when the active theme is light", async () => {
     render(<ThemeToggle />);
     await act(async () => {
       fireEvent.click(screen.getByRole("button"));
     });
-    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
   });
 
-  it('aria-pressed is true when preference is "dark"', async () => {
+  it("aria-pressed is true when the active theme is dark", async () => {
     render(<ThemeToggle />);
     const btn = screen.getByRole("button");
     await act(async () => {
@@ -356,6 +350,13 @@ describe("ThemeToggle", () => {
       fireEvent.click(btn);
     });
     expect(btn).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("aria-pressed follows the system preference when the theme is set to system", async () => {
+    mockMatchMedia(true);
+    render(<ThemeToggle />);
+    await act(async () => {});
+    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
   });
 
   // ── 5f. data attributes stay in sync ─────────────────────────────────────
