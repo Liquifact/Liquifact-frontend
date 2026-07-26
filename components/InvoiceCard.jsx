@@ -10,6 +10,7 @@
 
 import Link from "next/link";
 import StatusPill from "@/components/StatusPill";
+import WatchlistStar from "@/components/WatchlistStar";
 import { formatAmount, formatCurrency, INVALID_VALUE_FALLBACK } from "@/lib/format/currency";
 import { resolveStatusPill } from "@/lib/types/invoice";
 
@@ -85,9 +86,12 @@ export default function InvoiceCard({ invoice }) {
           <p className="text-xs text-slate-500 mt-0.5">Maturity</p>
         </div>
 
-        {/* Status pill — w-auto (rendered via shared <StatusPill>) */}
-        <div className="basis-auto">
+        {/* Status pill and Watchlist Star — w-auto */}
+        <div className="basis-auto flex items-center gap-4">
           <StatusPill status={status ?? ""} />
+          <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+            <WatchlistStar invoiceId={id} />
+          </div>
         </div>
       </div>
     </Link>

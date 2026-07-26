@@ -13,6 +13,8 @@ import InvoiceFilters, {
   parseSortState,
 } from "@/components/InvoiceFilters";
 import NavMenu from "@/components/NavMenu";
+import WatchlistSection from "@/components/WatchlistSection";
+import { useWatchlist } from "@/lib/hooks/useWatchlist";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
@@ -122,8 +124,11 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   const searchParams = useSearchParams();
   const searchParamsValue = searchParams ?? new URLSearchParams();
 
+  const { watchlists } = useWatchlist();
+  
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  // Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [loadError, setLoadError] = useState("");
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
@@ -224,8 +229,12 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     if (Array.isArray(filters.statuses) && filters.statuses.length > 0) {
       list = list.filter((inv) => filters.statuses.includes(inv.status));
     }
+    if (filters.watchlistOnly) {
+      const allStarredIds = new Set(watchlists.flatMap(wl => wl.invoiceIds));
+      list = list.filter((inv) => allStarredIds.has(inv.id));
+    }
     return applySortToList(list, filters);
-  }, [invoices, debouncedSearch, filters]);
+  }, [invoices, debouncedSearch, filters, watchlists]);
 
   const filterActive = hasAnyActiveFilters(filters, debouncedSearch);
 
@@ -333,6 +342,8 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
 
         <h1 className="text-2xl font-bold mb-2">{copy.invest.title}</h1>
         <p className="text-slate-400 mb-8">{copy.invest.subtext}</p>
+
+        <WatchlistSection />
 
         {/*
           ACCESSIBILITY DESIGN (Issue #91):
