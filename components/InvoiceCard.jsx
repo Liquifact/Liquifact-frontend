@@ -9,7 +9,9 @@
  */
 
 import Link from "next/link";
+import { useCallback, useState } from "react";
 import StatusPill from "@/components/StatusPill";
+import { useToast } from "@/components/ToastProvider";
 import { formatAmount, formatCurrency, INVALID_VALUE_FALLBACK } from "@/lib/format/currency";
 import { resolveStatusPill } from "@/lib/types/invoice";
 
@@ -33,11 +35,100 @@ function formatDate(dateStr) {
 }
 
 /**
+ * Copies text to clipboard with a documented fallback.
+ * @param {string} text
+ * @returns {Promise<boolean>}
+ */
+async function copyToClipboard(text) {
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Clipboard API rejected — fall through to fallback
+    }
+  }
+
+  // Fallback: use a temporary textarea element
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    document.body.appendChild(textarea);
+    textarea.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Copy button rendered alongside marketplace identifiers.
+ * Keyboard-operable with a clear accessible label.
+ */
+function CopyIdButton({ id, onCopy }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleClick = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      copyToClipboard(id).then((success) => {
+        if (success) {
+          setCopied(true);
+          onCopy?.(true);
+          setTimeout(() => setCopied(false), 2000);
+        } else {
+          onCopy?.(false);
+        }
+      });
+    },
+    [id, onCopy],
+  );
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      aria-label={copied ? `Copied ${id}` : `Copy invoice ID ${id}`}
+      className={`ml-1.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900 ${
+        copied
+          ? "bg-emerald-900/50 text-emerald-300"
+          : "bg-slate-800/60 text-slate-400 hover:bg-slate-700/60 hover:text-slate-200"
+      }`}
+    >
+      {copied ? (
+        <>
+          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          Copied
+        </>
+      ) : (
+        <>
+          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          Copy
+        </>
+      )}
+    </button>
+  );
+}
+
+/**
  * @param {object}  props
  * @param {Invoice} props.invoice
  */
 export default function InvoiceCard({ invoice }) {
-  const { id, issuer, amount, currency, dueDate, yield: yieldPct, status } = invoice ?? {}; // Resolve the canonical pill label once so the link aria-label and the
+  const toast = useToast();
+  const { id, issuer, amount, currency, dueDate, yield: yieldPct, status } = invoice ?? {};
+  // Resolve the canonical pill label once so the link aria-label and the
   // pill aria-label stay in lock-step (both read from the same source).
   const { label: statusLabel } = resolveStatusPill(status);
   const formattedYield = formatAmount(yieldPct);
@@ -50,6 +141,25 @@ export default function InvoiceCard({ invoice }) {
   // status.  Computed as a small constant so the template literal below
   // stays readable and avoids any encoding pitfalls around em-dash.
   const statusSuffix = statusLabel && statusLabel !== "Unknown" ? ` \u2014 ${statusLabel}` : "";
+
+  const handleCopyResult = useCallback(
+    (success) => {
+      if (success) {
+        toast?.createToast?.({
+          variant: "success",
+          title: "Copied",
+          message: `Invoice ID ${id} copied to clipboard`,
+        });
+      } else {
+        toast?.createToast?.({
+          variant: "error",
+          title: "Copy failed",
+          message: "Unable to copy. Please select the ID manually.",
+        });
+      }
+    },
+    [id, toast],
+  );
 
   return (
     <Link
@@ -64,7 +174,10 @@ export default function InvoiceCard({ invoice }) {
           <p className="truncate font-semibold text-slate-100 group-hover:text-cyan-300 transition-colors">
             {issuer ?? <span className="text-slate-500 italic">Unknown issuer</span>}
           </p>
-          <p className="text-xs text-slate-500 mt-0.5">{id ?? "—"}</p>
+          <p className="text-xs text-slate-500 mt-0.5 flex items-center">
+            <span className="truncate">{id ?? "—"}</span>
+            {id && <CopyIdButton id={id} onCopy={handleCopyResult} />}
+          </p>
         </div>
 
         {/* Amount — w-1/5 */}
