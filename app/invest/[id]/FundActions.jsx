@@ -16,13 +16,18 @@
  * script) is rendered by the Server Component shell in `page.js`.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ToastProvider";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import FundAmountInput from "@/components/FundAmountInput";
 import { copy } from "@/app/copy/en";
 
 const detail = copy.invest.detail;
+
+// Delay before an async-action result reaches the live region. Debouncing
+// coalesces bursts of rapid results (e.g. mashing "Copy link") into a single
+// announcement of the latest outcome instead of flooding screen readers.
+const ANNOUNCE_DEBOUNCE_MS = 250;
 
 // ── Clipboard helpers ─────────────────────────────────────────────────────────
 
@@ -78,6 +83,24 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
   const { state: walletState, connect } = useWallet();
   const toast = useToast();
   const [isCopying, setIsCopying] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const debounceTimeoutRef = useRef(null);
+
+  // Announce the result of an invoice-detail async action via the polite
+  // live region below, debounced so rapid-fire results settle into one
+  // announcement of the latest outcome rather than one per action.
+  const announce = useCallback((message) => {
+    if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+    debounceTimeoutRef.current = setTimeout(() => {
+      setAnnouncement(message);
+    }, ANNOUNCE_DEBOUNCE_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+    };
+  }, []);
 
   // Fund button is disabled while wallet is connecting or unavailable, or
   // if the invoice is not in an Open state.
@@ -100,12 +123,14 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
     try {
       await copyInvoiceUrl(id);
       toast.success(detail.copySuccessMsg, detail.copySuccessTitle);
+      announce(detail.copySuccessMsg);
     } catch {
       toast.error(detail.copyErrorMsg, detail.copyErrorTitle);
+      announce(detail.copyErrorMsg);
     } finally {
       setIsCopying(false);
     }
-  }, [id, isCopying, toast]);
+  }, [id, isCopying, toast, announce]);
 
   const handlePrint = () => {
     window.print();
@@ -119,14 +144,27 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
       connect();
       return;
     }
-    toast.success(
-      `Funding request for ${amount} ${currency ?? ""} submitted. Awaiting wallet approval.`.trim(),
-      "Funding submitted"
-    );
+    const message =
+      `Funding request for ${amount} ${currency ?? ""} submitted. Awaiting wallet approval.`.trim();
+    toast.success(message, "Funding submitted");
+    announce(message);
   };
 
   return (
     <>
+      {/* Hidden polite status region announcing invoice-detail async action
+          results (copy link, funding submission) to screen readers. Visually
+          hidden — the toast above already carries the sighted feedback. */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+        data-testid="invoice-detail-announce"
+      >
+        {announcement}
+      </div>
+
       {/* Partial-funding amount input — only when an amount ceiling is known
           (real detail page) and the invoice is Open. */}
       {status === "Open" && maxAmount != null && (
