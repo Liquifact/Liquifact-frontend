@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { INVOICE_STATUSES, STATUS_PILL_MAP } from "@/lib/types/invoice";
 
 export const DEFAULT_FILTERS = {
@@ -123,11 +123,7 @@ function isValidISODate(str) {
   if (Number.isNaN(d.getTime())) return false;
   // new Date("2026-09-99") rolls over to 2026-10-09 in some engines,
   // so verify round-trip via ISO string.
-  try {
-    return d.toISOString().slice(0, 10) === str;
-  } catch {
-    return false;
-  }
+  return d.toISOString().slice(0, 10) === str;
 }
 
 export function matchesMaturityRange(dueDate, from, to) {
@@ -424,6 +420,40 @@ export function StatusLegendFilter({ selectedStatuses = [], onStatusToggle, onCl
 }
 
 export default function InvoiceFilters({ filters, onFilterChange, onClearFilters }) {
+  const yieldMinId = useId();
+  const yieldMaxId = useId();
+  const yieldErrorId = useId();
+  const maturityFromId = useId();
+  const maturityToId = useId();
+  const maturityErrorId = useId();
+
+  const [touched, setTouched] = useState({});
+
+  const validateYieldRange = useCallback((min, max) => {
+    if (min !== "" && (isNaN(Number(min)) || Number(min) < 0)) {
+      return "Min yield must be a positive number";
+    }
+    if (max !== "" && (isNaN(Number(max)) || Number(max) < 0)) {
+      return "Max yield must be a positive number";
+    }
+    if (min !== "" && max !== "" && Number(min) > Number(max)) {
+      return "Min yield cannot exceed max yield";
+    }
+    return null;
+  }, []);
+
+  const validateMaturityRange = useCallback((from, to) => {
+    if (from && to && from > to) {
+      return "Start date cannot be after end date";
+    }
+    return null;
+  }, []);
+
+  const yieldError = validateYieldRange(filters.yieldMin, filters.yieldMax);
+  const maturityError = validateMaturityRange(filters.maturityFrom, filters.maturityTo);
+
+  const yieldHasError = touched.yieldMin || touched.yieldMax ? yieldError : null;
+  const maturityHasError = touched.maturityFrom || touched.maturityTo ? maturityError : null;
   const handleChange = useCallback(
     (key, value) => {
       onFilterChange({ ...filters, [key]: value });
@@ -449,27 +479,48 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
     <div className="flex flex-wrap gap-4 items-center">
       <fieldset className="flex items-center gap-2 border-none p-0 m-0">
         <legend className="sr-only">Yield Range</legend>
-        <input
-          type="number"
-          value={filters.yieldMin}
-          onChange={(e) => handleChange("yieldMin", e.target.value)}
-          placeholder="Min yield"
-          className="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-          aria-label="Minimum yield percentage"
-          min="0"
-          step="0.1"
-        />
+        <div className="flex flex-col">
+          <input
+            id={yieldMinId}
+            type="number"
+            value={filters.yieldMin}
+            onChange={(e) => handleChange("yieldMin", e.target.value)}
+            onBlur={() => setTouched((t) => ({ ...t, yieldMin: true }))}
+            placeholder="Min yield"
+            className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500 ${
+              yieldHasError ? "border-red-500" : "border-slate-700"
+            }`}
+            aria-label="Minimum yield percentage"
+            aria-describedby={yieldHasError ? yieldErrorId : undefined}
+            aria-invalid={yieldHasError ? "true" : "false"}
+            min="0"
+            step="0.1"
+          />
+        </div>
         <span className="text-slate-500">-</span>
-        <input
-          type="number"
-          value={filters.yieldMax}
-          onChange={(e) => handleChange("yieldMax", e.target.value)}
-          placeholder="Max yield"
-          className="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-          aria-label="Maximum yield percentage"
-          min="0"
-          step="0.1"
-        />
+        <div className="flex flex-col">
+          <input
+            id={yieldMaxId}
+            type="number"
+            value={filters.yieldMax}
+            onChange={(e) => handleChange("yieldMax", e.target.value)}
+            onBlur={() => setTouched((t) => ({ ...t, yieldMax: true }))}
+            placeholder="Max yield"
+            className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500 ${
+              yieldHasError ? "border-red-500" : "border-slate-700"
+            }`}
+            aria-label="Maximum yield percentage"
+            aria-describedby={yieldHasError ? yieldErrorId : undefined}
+            aria-invalid={yieldHasError ? "true" : "false"}
+            min="0"
+            step="0.1"
+          />
+        </div>
+        {yieldHasError && (
+          <p id={yieldErrorId} role="alert" className="text-xs text-red-400 ml-2">
+            {yieldHasError}
+          </p>
+        )}
       </fieldset>
 
       <div
@@ -526,21 +577,42 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
 
       <fieldset className="flex items-center gap-2 border-none p-0 m-0">
         <legend className="sr-only">Maturity Date Range</legend>
-        <input
-          type="date"
-          value={filters.maturityFrom}
-          onChange={(e) => handleChange("maturityFrom", e.target.value)}
-          className="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-          aria-label="Maturity date from"
-        />
+        <div className="flex flex-col">
+          <input
+            id={maturityFromId}
+            type="date"
+            value={filters.maturityFrom}
+            onChange={(e) => handleChange("maturityFrom", e.target.value)}
+            onBlur={() => setTouched((t) => ({ ...t, maturityFrom: true }))}
+            className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark] ${
+              maturityHasError ? "border-red-500" : "border-slate-700"
+            }`}
+            aria-label="Maturity date from"
+            aria-describedby={maturityHasError ? maturityErrorId : undefined}
+            aria-invalid={maturityHasError ? "true" : "false"}
+          />
+        </div>
         <span className="text-slate-500">-</span>
-        <input
-          type="date"
-          value={filters.maturityTo}
-          onChange={(e) => handleChange("maturityTo", e.target.value)}
-          className="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-          aria-label="Maturity date to"
-        />
+        <div className="flex flex-col">
+          <input
+            id={maturityToId}
+            type="date"
+            value={filters.maturityTo}
+            onChange={(e) => handleChange("maturityTo", e.target.value)}
+            onBlur={() => setTouched((t) => ({ ...t, maturityTo: true }))}
+            className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark] ${
+              maturityHasError ? "border-red-500" : "border-slate-700"
+            }`}
+            aria-label="Maturity date to"
+            aria-describedby={maturityHasError ? maturityErrorId : undefined}
+            aria-invalid={maturityHasError ? "true" : "false"}
+          />
+        </div>
+        {maturityHasError && (
+          <p id={maturityErrorId} role="alert" className="text-xs text-red-400 ml-2">
+            {maturityHasError}
+          </p>
+        )}
       </fieldset>
 
       <fieldset className="flex items-center gap-2 border-none p-0 m-0">
