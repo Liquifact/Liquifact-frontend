@@ -512,4 +512,5 @@ export const copy = {
       announceNoMatch: "No preferences match",
       announceShowing: "Showing {shown} of {total} preferences",
     },
+  },
 };
