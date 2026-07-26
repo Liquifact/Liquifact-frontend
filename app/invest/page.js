@@ -446,7 +446,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
                 type="button"
                 onClick={handleLoadMore}
                 aria-label={copy.invest.loadMoreAriaLabel}
-                className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50"
+                className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               >
                 {copy.invest.loadMore}
               </button>
