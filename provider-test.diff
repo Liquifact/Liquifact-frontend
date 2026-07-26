@@ -1,0 +1,67 @@
+diff --git a/components/WalletProvider.test.tsx b/components/WalletProvider.test.tsx
+index 5ac3a9c..c8a1aa0 100644
+--- a/components/WalletProvider.test.tsx
++++ b/components/WalletProvider.test.tsx
+@@ -1,7 +1,6 @@
+ import "@testing-library/jest-dom";
+ import { act, render, screen, waitFor } from "@testing-library/react";
+ import { renderToString } from "react-dom/server.node";
+-import { ToastProvider } from "./ToastProvider";
+ import {
+   WalletProvider,
+   WALLET_STATES,
+@@ -46,34 +45,17 @@ function WalletProbe() {
+     </div>
+   );
+ }
+-// Mock ToastProvider
+-jest.mock("./ToastProvider", () => {
+-  const React = require("react");
+-
+-  return {
+-    __esModule: true,
+-
+-    ToastProvider: ({ children }) => <>{children}</>,
+-
+-    useToast: () => ({
+-      success: jest.fn(),
+-      error: jest.fn(),
+-      warning: jest.fn(),
+-      info: jest.fn(),
+-    }),
+-  };
+-});
+ 
+ function renderWithProvider(ui = <WalletProbe />) {
+   return render(<WalletProvider>{ui}</WalletProvider>);
+ }
++
+ beforeEach(() => {
+   jest.useFakeTimers();
+   localStorage.clear();
+   process.env.NEXT_PUBLIC_STELLAR_NETWORK = "testnet";
+ });
+-console.log("ToastProvider:", ToastProvider);
+-console.log("WalletProvider:", WalletProvider);
++
+ afterEach(() => {
+   jest.useRealTimers();
+   localStorage.clear();
+@@ -230,11 +212,12 @@ describe("WalletProvider", () => {
+   it("does not access localStorage during server render", () => {
+     const getItemSpy = jest.spyOn(Storage.prototype, "getItem");
+ 
+-  renderToString(
+-  <WalletProvider>
+-    <div>child</div>
+-  </WalletProvider>
+-);
++    renderToString(
++      <WalletProvider>
++        <div>child</div>
++      </WalletProvider>
++    );
++
+     expect(getItemSpy).not.toHaveBeenCalled();
+     getItemSpy.mockRestore();
+   });
