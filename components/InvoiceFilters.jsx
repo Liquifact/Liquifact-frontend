@@ -504,26 +504,23 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
   const maturityFromErrorId = useId();
   const maturityToErrorId = useId();
 
-  const validationErrors = useMemo(
-    () => validateNavigationInputs(filters),
-    [filters]
-  );
+  const validationErrors = useMemo(() => validateNavigationInputs(filters), [filters]);
 
   const markTouched = useCallback((field) => {
     setTouchedFields((prev) => ({ ...prev, [field]: true }));
   }, []);
 
   const effYieldMinError = touchedFields.yieldMin
-    ? (validationErrors.yieldMin || validationErrors.yieldRange)
+    ? validationErrors.yieldMin || validationErrors.yieldRange
     : null;
   const effYieldMaxError = touchedFields.yieldMax
-    ? (validationErrors.yieldMax || validationErrors.yieldRange)
+    ? validationErrors.yieldMax || validationErrors.yieldRange
     : null;
   const effMaturityFromError = touchedFields.maturityFrom
-    ? (validationErrors.maturityFrom || validationErrors.maturityRange)
+    ? validationErrors.maturityFrom || validationErrors.maturityRange
     : null;
   const effMaturityToError = touchedFields.maturityTo
-    ? (validationErrors.maturityTo || validationErrors.maturityRange)
+    ? validationErrors.maturityTo || validationErrors.maturityRange
     : null;
 
   return (
@@ -538,9 +535,7 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
             onBlur={() => markTouched("yieldMin")}
             placeholder="Min yield"
             className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none ${
-              effYieldMinError
-                ? "border-red-500"
-                : "border-slate-700 focus:border-cyan-500"
+              effYieldMinError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
             }`}
             aria-label="Minimum yield percentage"
             aria-invalid={effYieldMinError ? "true" : "false"}
@@ -556,9 +551,7 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
             onBlur={() => markTouched("yieldMax")}
             placeholder="Max yield"
             className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none ${
-              effYieldMaxError
-                ? "border-red-500"
-                : "border-slate-700 focus:border-cyan-500"
+              effYieldMaxError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
             }`}
             aria-label="Maximum yield percentage"
             aria-invalid={effYieldMaxError ? "true" : "false"}
@@ -640,9 +633,7 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
             onChange={(e) => handleChange("maturityFrom", e.target.value)}
             onBlur={() => markTouched("maturityFrom")}
             className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] ${
-              effMaturityFromError
-                ? "border-red-500"
-                : "border-slate-700 focus:border-cyan-500"
+              effMaturityFromError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
             }`}
             aria-label="Maturity date from"
             aria-invalid={effMaturityFromError ? "true" : "false"}
@@ -655,9 +646,7 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
             onChange={(e) => handleChange("maturityTo", e.target.value)}
             onBlur={() => markTouched("maturityTo")}
             className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] ${
-              effMaturityToError
-                ? "border-red-500"
-                : "border-slate-700 focus:border-cyan-500"
+              effMaturityToError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
             }`}
             aria-label="Maturity date to"
             aria-invalid={effMaturityToError ? "true" : "false"}
@@ -665,12 +654,22 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
           />
         </fieldset>
         {effMaturityFromError && (
-          <p id={maturityFromErrorId} role="alert" aria-live="polite" className="text-xs text-red-400">
+          <p
+            id={maturityFromErrorId}
+            role="alert"
+            aria-live="polite"
+            className="text-xs text-red-400"
+          >
             {effMaturityFromError}
           </p>
         )}
         {effMaturityToError && (
-          <p id={maturityToErrorId} role="alert" aria-live="polite" className="text-xs text-red-400">
+          <p
+            id={maturityToErrorId}
+            role="alert"
+            aria-live="polite"
+            className="text-xs text-red-400"
+          >
             {effMaturityToError}
           </p>
         )}
