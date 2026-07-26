@@ -436,10 +436,7 @@ describe("ThemeToggle - last updated timestamp", () => {
     await act(async () => {});
 
     expect(screen.getByText(/updated just now/i)).toBeInTheDocument();
-    expect(ls.setItem).toHaveBeenCalledWith(
-      THEME_UPDATED_STORAGE_KEY,
-      String(FIXED_NOW.getTime())
-    );
+    expect(ls.setItem).toHaveBeenCalledWith(THEME_UPDATED_STORAGE_KEY, String(FIXED_NOW.getTime()));
   });
 
   it("does not overwrite an already-stored timestamp on mount", async () => {

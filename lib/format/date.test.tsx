@@ -50,9 +50,7 @@ describe("formatRelativeTime - Table Driven Tests", () => {
   });
 
   it("accepts a numeric epoch-ms value for `now`", () => {
-    expect(formatRelativeTime(NOW.getTime() - 60_000, { now: NOW.getTime() })).toBe(
-      "1 minute ago"
-    );
+    expect(formatRelativeTime(NOW.getTime() - 60_000, { now: NOW.getTime() })).toBe("1 minute ago");
   });
 
   it("defaults `now` to the current time when omitted", () => {
@@ -101,8 +99,8 @@ describe("formatInvoiceDate (existing behaviour, unaffected by the new formatter
   });
 
   it("falls back when Intl.DateTimeFormat throws for a malformed locale", () => {
-    expect(
-      formatInvoiceDate("2026-01-15T00:00:00.000Z", { locale: "!!bad!!" })
-    ).toBe(INVALID_DATE_FALLBACK);
+    expect(formatInvoiceDate("2026-01-15T00:00:00.000Z", { locale: "!!bad!!" })).toBe(
+      INVALID_DATE_FALLBACK
+    );
   });
 });
