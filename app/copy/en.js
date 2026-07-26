@@ -75,6 +75,14 @@
  * @property {string} invest.detail.loadErrorMsg
  * @property {string} invest.detail.loadErrorTitle
  * @property {string} invest.detail.actionGroupLabel
+ * @property {string} invest.detail.labelReference
+ * @property {string} invest.detail.densityToggleLabel
+ * @property {string} invest.detail.densityCompact
+ * @property {string} invest.detail.densityComfortable
+ * @property {string} invest.detail.densityCompactAriaLabel
+ * @property {string} invest.detail.densityComfortableAriaLabel
+ * @property {string} invest.detail.densityCurrentAriaLabel
+ * @property {Object} invest.detail.bulk - Bulk-select toolbar copy for invoice detail documents
  * @property {Object} invoices - Invoices page copy
  * @property {string} invoices.title
  * @property {string} invoices.subtext
@@ -338,6 +346,41 @@ export const copy = {
       loadErrorMsg: "Unable to load invoice details right now.",
       loadErrorTitle: "Unable to load invoice details",
       actionGroupLabel: "Invoice actions",
+      labelReference: "Reference",
+      densityToggleLabel: "Display density",
+      densityCompact: "Compact",
+      densityComfortable: "Comfortable",
+      densityCompactAriaLabel: "Switch to compact density",
+      densityComfortableAriaLabel: "Switch to comfortable density",
+      densityCurrentAriaLabel: "Current density: {density}",
+      bulk: {
+        sectionHeading: "Invoice documents",
+        sectionSub: "Select documents to export or remove from this invoice.",
+        listAriaLabel: "Invoice detail documents",
+        toolbarLabel: "Invoice detail bulk actions",
+        selectAllLabel: "Select {selected} of {total}",
+        selectAllAria:
+          "Select all invoice documents. Currently {selected} of {total} selected.",
+        rowCheckboxAria: "Select document {name} ({id})",
+        selectedCount: "{selected} of {total} documents selected.",
+        clearButton: "Clear selection",
+        exportButton: "Export",
+        exportButtonAria: "Export selected documents as a JSON download",
+        deleteButton: "Delete",
+        deleteButtonAria: "Delete {count} selected documents after confirmation",
+        exportSuccessTitle: "Export ready",
+        exportSuccessMsg: "Exported {count} document{plural}.",
+        exportEmptyMsg: "No documents selected to export.",
+        deleteConfirmTitle: "Delete selected documents?",
+        deleteConfirmBody:
+          "You are about to permanently delete {count} document{plural} from this invoice. This cannot be undone.",
+        deleteConfirmConfirmLabel: "Delete {count} document{plural}",
+        deleteConfirmCancelLabel: "Cancel",
+        deleteSuccessTitle: "Documents deleted",
+        deleteSuccessMsg: "Removed {count} document{plural} from this invoice.",
+        deleteErrorTitle: "Delete failed",
+        deleteErrorMsg: "Could not delete the selected documents. Please try again.",
+      },
     },
   },
   invoices: {
@@ -483,33 +526,35 @@ export const copy = {
     /** Announced politely by NavMenu when the user navigates to a new route.
      *  Replace {label} with the matching NAV_LINKS label (e.g. "Home"). */
     announceNavigation: "Navigated to {label}",
-    settings: {
-      title: "Settings",
-      subtext:
-        "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
-      emptyState: "No preferences available. Connect your wallet to unlock settings.",
-      errorTitle: "Unable to load settings",
-      errorDescription: "Unable to load settings right now.",
-      errorStatus: "Unable to load settings.",
-      retryAction: "Try again",
-      searchPlaceholder: "Search preferences…",
-      filterLegend: "Settings filters",
-      filterHelp:
-        "Use the category selector or the search box to narrow the list. Paging is reset whenever a filter changes.",
-      filterCategory: "Category:",
-      filterSearch: "Search:",
-      allCategories: "All categories",
-      clearFilters: "Reset filters",
-      noMatchFilter: "No preferences match the active filters.",
-      listAriaLabel: "Settings list",
-      loadingAriaLabel: "Loading settings",
-      loadMore: "Load more",
-      loadMoreAriaLabel: "Load more preferences",
-      endOfList: "You have reached the end of the list.",
-      announceNoSettings: "No settings available",
-      announceLoaded: "{count} preferences loaded",
-      announceFiltered: "{matched} of {total} preferences match",
-      announceNoMatch: "No preferences match",
-      announceShowing: "Showing {shown} of {total} preferences",
-    },
+  },
+  settings: {
+    title: "Settings",
+    subtext:
+      "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
+    emptyState: "No preferences available. Connect your wallet to unlock settings.",
+    errorTitle: "Unable to load settings",
+    errorDescription: "Unable to load settings right now.",
+    errorStatus: "Unable to load settings.",
+    errorActionLabel: "Try again",
+    retryAction: "Try again",
+    searchPlaceholder: "Search preferences…",
+    filterLegend: "Settings filters",
+    filterHelp:
+      "Use the category selector or the search box to narrow the list. Paging is reset whenever a filter changes.",
+    filterCategory: "Category:",
+    filterSearch: "Search:",
+    allCategories: "All categories",
+    clearFilters: "Reset filters",
+    noMatchFilter: "No preferences match the active filters.",
+    listAriaLabel: "Settings list",
+    loadingAriaLabel: "Loading settings",
+    loadMore: "Load more",
+    loadMoreAriaLabel: "Load more preferences",
+    endOfList: "You have reached the end of the list.",
+    announceNoSettings: "No settings available",
+    announceLoaded: "{count} preferences loaded",
+    announceFiltered: "{matched} of {total} preferences match",
+    announceNoMatch: "No preferences match",
+    announceShowing: "Showing {shown} of {total} preferences",
+  },
 };

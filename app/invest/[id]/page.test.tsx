@@ -156,11 +156,25 @@ import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import { useOptimisticFund, FUNDING_STATES } from "@/lib/hooks/useOptimisticFund";
 import InvoiceDetailPage from "./page";
 import FundActions, { copyInvoiceUrl, copyToClipboardFallback } from "./FundActions";
+import InvoiceDetail from "@/components/InvoiceDetail";
 import { copy } from "@/app/copy/en";
 
 const mockGetInvoiceById = getInvoiceById as jest.MockedFunction<typeof getInvoiceById>;
 const mockUseWallet = useWallet as jest.MockedFunction<typeof useWallet>;
 const mockUseOptimisticFund = useOptimisticFund as jest.MockedFunction<typeof useOptimisticFund>;
+
+/** Canonical fixture used by the server-shell tests (Acme / inv-001). */
+const MOCK_INVOICE = {
+  id: "inv-001",
+  issuer: "Acme Supplies Ltd",
+  amount: "12,500",
+  amountValue: 12500,
+  currency: "USD",
+  dueDate: "2026-06-15",
+  yield: "8.2%",
+  yieldValue: 8.2,
+  status: "Open",
+};
 
 // Default hook return for "idle, Open" scenario — used by most FundActions tests
 function makeOptimisticHook(overrides: Partial<ReturnType<typeof useOptimisticFund>> = {}) {

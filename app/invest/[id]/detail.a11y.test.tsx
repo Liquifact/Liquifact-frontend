@@ -2,7 +2,7 @@ import React from "react";
 import { axe, toHaveNoViolations } from "jest-axe";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { InvoiceDetail } from "./page";
+import InvoiceDetail from "@/components/InvoiceDetail";
 
 expect.extend(toHaveNoViolations);
 
@@ -97,7 +97,9 @@ describe("InvoiceDetail accessibility", () => {
     const amountDd = screen.getByText(/5,000/);
     expect(amountDd.tagName).toBe("DD");
     expect(screen.getByText("8.2%").tagName).toBe("DD");
-    expect(screen.getByText("2026-12-31").tagName).toBe("DD");
+    // Maturity is formatted via formatInvoiceDate (e.g. "Dec 31, 2026")
+    expect(screen.getByText(/Dec 31,? 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/Dec 31,? 2026/).tagName).toBe("DD");
 
     const results = await axe(container, {
       // Keep default rules; ensure definition list doesn't introduce violations.
