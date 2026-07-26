@@ -27,6 +27,13 @@ jest.mock("@/components/NavMenu", () => {
   return { __esModule: true, default: MockNavMenu };
 });
 
+jest.mock("@/utils/export", () => ({
+  exportAsCSV: jest.fn(),
+  exportAsJSON: jest.fn(),
+}));
+
+import { exportAsCSV, exportAsJSON } from "@/utils/export";
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function createDeferredLoader(invoices, delayMs = 0) {
@@ -1296,5 +1303,65 @@ describe("getPaginationAnnouncement", () => {
   it("formats the Showing N of M string correctly", () => {
     expect(getPaginationAnnouncement(10, 25)).toBe("Showing 10 of 25 investable invoices");
     expect(getPaginationAnnouncement(3, 3)).toBe("Showing 3 of 3 investable invoices");
+  });
+});
+
+describe("Export functionality", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  });
+
+  it("calls exportAsCSV with filtered invoices when Export CSV is clicked", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    const exportCsvBtn = screen.getByRole("button", { name: "Export CSV" });
+    fireEvent.click(exportCsvBtn);
+
+    expect(exportAsCSV).toHaveBeenCalledTimes(1);
+    expect(exportAsCSV).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ issuer: "Acme Supplies Ltd" })]),
+      "invoices_export.csv"
+    );
+  });
+
+  it("calls exportAsJSON with filtered invoices when Export JSON is clicked", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    const exportJsonBtn = screen.getByRole("button", { name: "Export JSON" });
+    fireEvent.click(exportJsonBtn);
+
+    expect(exportAsJSON).toHaveBeenCalledTimes(1);
+    expect(exportAsJSON).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ issuer: "Acme Supplies Ltd" })]),
+      "invoices_export.json"
+    );
+  });
+
+  it("disables the export buttons when the filtered view is empty", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    // Apply a search that yields no results
+    const searchInput = screen.getByRole("textbox", { name: /Search by issuer name/i });
+    fireEvent.change(searchInput, { target: { value: "NonExistentIssuerXYZ123" } });
+    
+    // Fast-forward debounce
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    const exportCsvBtn = screen.getByRole("button", { name: "Export CSV" });
+    const exportJsonBtn = screen.getByRole("button", { name: "Export JSON" });
+
+    expect(exportCsvBtn).toBeDisabled();
+    expect(exportJsonBtn).toBeDisabled();
   });
 });

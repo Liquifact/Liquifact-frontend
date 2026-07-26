@@ -16,6 +16,7 @@ import NavMenu from "@/components/NavMenu";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
+import { exportAsCSV, exportAsJSON } from "@/utils/export";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
@@ -345,12 +346,30 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           - `opacity-60` is applied only to the inner controls container to ensure the "Soon" label itself stays
             fully opaque for maximum contrast (WCAG AA compliant).
         */}
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
           <InvoiceSearch
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             aria-label={copy.invest.searchPlaceholder}
           />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => exportAsCSV(filteredInvoices, "invoices_export.csv")}
+              disabled={filteredInvoices.length === 0}
+              className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => exportAsJSON(filteredInvoices, "invoices_export.json")}
+              disabled={filteredInvoices.length === 0}
+              className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Export JSON
+            </button>
+          </div>
         </div>
 
         {/* Status legend filter chip row */}
