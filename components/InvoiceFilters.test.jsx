@@ -4,6 +4,7 @@ import InvoiceFilters, {
   DEFAULT_FILTERS,
   hasActiveFilters,
   StatusLegendFilter,
+  validateNavigationInputs,
 } from "./InvoiceFilters";
 
 describe("DEFAULT_FILTERS", () => {
@@ -286,6 +287,211 @@ describe("InvoiceFilters", () => {
     expect(screen.getByLabelText("Filter by GBP")).toBeInTheDocument();
     expect(screen.getByLabelText("Filter by JPY")).toBeInTheDocument();
     expect(screen.getByLabelText("Filter by CHF")).toBeInTheDocument();
+  });
+});
+
+describe("validateNavigationInputs", () => {
+  it("returns no errors for empty (default) inputs", () => {
+    expect(validateNavigationInputs(DEFAULT_FILTERS)).toEqual({});
+  });
+
+  it("returns no errors for valid yield inputs", () => {
+    expect(
+      validateNavigationInputs({ ...DEFAULT_FILTERS, yieldMin: "2", yieldMax: "8.5" })
+    ).toEqual({});
+  });
+
+  it("rejects negative yieldMin", () => {
+    const err = validateNavigationInputs({ ...DEFAULT_FILTERS, yieldMin: "-1" });
+    expect(err.yieldMin).toBeDefined();
+    expect(err.yieldRange).toBeUndefined();
+  });
+
+  it("rejects non-numeric yieldMax", () => {
+    const err = validateNavigationInputs({ ...DEFAULT_FILTERS, yieldMax: "abc" });
+    expect(err.yieldMax).toBeDefined();
+  });
+
+  it("accepts yield values with trailing %", () => {
+    expect(
+      validateNavigationInputs({ ...DEFAULT_FILTERS, yieldMin: "3%", yieldMax: "7%" })
+    ).toEqual({});
+  });
+
+  it("sets yieldRange when min > max", () => {
+    const err = validateNavigationInputs({ ...DEFAULT_FILTERS, yieldMin: "10", yieldMax: "5" });
+    expect(err.yieldRange).toBeDefined();
+    expect(err.yieldMin).toBeUndefined();
+    expect(err.yieldMax).toBeUndefined();
+  });
+
+  it("does not set yieldRange when one bound is invalid", () => {
+    const err = validateNavigationInputs({ ...DEFAULT_FILTERS, yieldMin: "-1", yieldMax: "5" });
+    expect(err.yieldMin).toBeDefined();
+    expect(err.yieldRange).toBeUndefined();
+  });
+
+  it("rejects invalid maturityFrom date", () => {
+    const err = validateNavigationInputs({ ...DEFAULT_FILTERS, maturityFrom: "not-a-date" });
+    expect(err.maturityFrom).toBeDefined();
+  });
+
+  it("rejects invalid maturityTo date", () => {
+    const err = validateNavigationInputs({ ...DEFAULT_FILTERS, maturityTo: "13-01-2026" });
+    expect(err.maturityTo).toBeDefined();
+  });
+
+  it("sets maturityRange when from > to", () => {
+    const err = validateNavigationInputs({
+      ...DEFAULT_FILTERS,
+      maturityFrom: "2026-12-31",
+      maturityTo: "2026-01-01",
+    });
+    expect(err.maturityRange).toBeDefined();
+    expect(err.maturityFrom).toBeUndefined();
+    expect(err.maturityTo).toBeUndefined();
+  });
+
+  it("accepts valid maturity dates", () => {
+    expect(
+      validateNavigationInputs({
+        ...DEFAULT_FILTERS,
+        maturityFrom: "2026-01-01",
+        maturityTo: "2026-12-31",
+      })
+    ).toEqual({});
+  });
+
+  it("does not set maturityRange when one bound is invalid", () => {
+    const err = validateNavigationInputs({
+      ...DEFAULT_FILTERS,
+      maturityFrom: "bad-date",
+      maturityTo: "2026-01-01",
+    });
+    expect(err.maturityFrom).toBeDefined();
+    expect(err.maturityRange).toBeUndefined();
+  });
+});
+
+describe("InvoiceFilters — validation display", () => {
+  it("does not show errors before blur", () => {
+    render(
+      <InvoiceFilters
+        filters={{ ...DEFAULT_FILTERS, yieldMin: "-1" }}
+        onFilterChange={() => {}}
+        onClearFilters={() => {}}
+      />
+    );
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("shows yieldMin error after blur on invalid input", () => {
+    render(
+      <InvoiceFilters
+        filters={{ ...DEFAULT_FILTERS, yieldMin: "-5" }}
+        onFilterChange={() => {}}
+        onClearFilters={() => {}}
+      />
+    );
+
+    fireEvent.blur(screen.getByLabelText("Minimum yield percentage"));
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
+
+  it("sets aria-invalid and aria-describedby on errored input", () => {
+    render(
+      <InvoiceFilters
+        filters={{ ...DEFAULT_FILTERS, yieldMax: "abc" }}
+        onFilterChange={() => {}}
+        onClearFilters={() => {}}
+      />
+    );
+
+    fireEvent.blur(screen.getByLabelText("Maximum yield percentage"));
+
+    const input = screen.getByLabelText("Maximum yield percentage");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveAttribute("aria-describedby");
+  });
+
+  it("removes error when input becomes valid", () => {
+    const { rerender } = render(
+      <InvoiceFilters
+        filters={{ ...DEFAULT_FILTERS, yieldMin: "-1" }}
+        onFilterChange={() => {}}
+        onClearFilters={() => {}}
+      />
+    );
+
+    fireEvent.blur(screen.getByLabelText("Minimum yield percentage"));
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    rerender(
+      <InvoiceFilters
+        filters={{ ...DEFAULT_FILTERS, yieldMin: "5" }}
+        onFilterChange={() => {}}
+        onClearFilters={() => {}}
+      />
+    );
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("removes aria-invalid when error clears", () => {
+    const { rerender } = render(
+      <InvoiceFilters
+        filters={{ ...DEFAULT_FILTERS, yieldMin: "-1" }}
+        onFilterChange={() => {}}
+        onClearFilters={() => {}}
+      />
+    );
+
+    fireEvent.blur(screen.getByLabelText("Minimum yield percentage"));
+
+    rerender(
+      <InvoiceFilters
+        filters={{ ...DEFAULT_FILTERS, yieldMin: "5" }}
+        onFilterChange={() => {}}
+        onClearFilters={() => {}}
+      />
+    );
+
+    expect(screen.getByLabelText("Minimum yield percentage")).toHaveAttribute(
+      "aria-invalid",
+      "false"
+    );
+  });
+
+  it("shows range error on both yield inputs when min > max", () => {
+    render(
+      <InvoiceFilters
+        filters={{ ...DEFAULT_FILTERS, yieldMin: "15", yieldMax: "3" }}
+        onFilterChange={() => {}}
+        onClearFilters={() => {}}
+      />
+    );
+
+    fireEvent.blur(screen.getByLabelText("Minimum yield percentage"));
+    fireEvent.blur(screen.getByLabelText("Maximum yield percentage"));
+
+    const alerts = screen.getAllByRole("alert");
+    expect(alerts.length).toBe(2);
+  });
+
+  it("shows maturity error after blur on invalid date", () => {
+    render(
+      <InvoiceFilters
+        filters={{ ...DEFAULT_FILTERS, maturityFrom: "invalid" }}
+        onFilterChange={() => {}}
+        onClearFilters={() => {}}
+      />
+    );
+
+    fireEvent.blur(screen.getByLabelText("Maturity date from"));
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 });
 

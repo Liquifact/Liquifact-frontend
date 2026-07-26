@@ -59,6 +59,32 @@ describe("copy dictionary — key presence", () => {
         expect(copy.invest[key].length).toBeGreaterThan(0);
       }
     });
+
+    describe("filters", () => {
+      it("has all required error keys", () => {
+        expect(copy.invest.filters.errorYieldMin).toBeDefined();
+        expect(copy.invest.filters.errorYieldMax).toBeDefined();
+        expect(copy.invest.filters.errorYieldRange).toBeDefined();
+        expect(copy.invest.filters.errorMaturityFrom).toBeDefined();
+        expect(copy.invest.filters.errorMaturityTo).toBeDefined();
+        expect(copy.invest.filters.errorMaturityRange).toBeDefined();
+      });
+
+      it("has non-empty string values for all error keys", () => {
+        const keys = [
+          "errorYieldMin",
+          "errorYieldMax",
+          "errorYieldRange",
+          "errorMaturityFrom",
+          "errorMaturityTo",
+          "errorMaturityRange",
+        ];
+        for (const key of keys) {
+          expect(typeof copy.invest.filters[key]).toBe("string");
+          expect(copy.invest.filters[key].length).toBeGreaterThan(0);
+        }
+      });
+    });
   });
 
   describe("uploadZone", () => {

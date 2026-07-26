@@ -232,6 +232,14 @@ export const copy = {
     announceFilteredCount: "{matched} of {total} invoices match",
     announceInvoicesLoaded: "{count} investable invoices loaded",
     announceShowing: "Showing {shown} of {total} investable invoices",
+    filters: {
+      errorYieldMin: "Minimum yield must be a non-negative number.",
+      errorYieldMax: "Maximum yield must be a non-negative number.",
+      errorYieldRange: "Minimum yield cannot exceed maximum yield.",
+      errorMaturityFrom: "Maturity from must be a valid date (YYYY-MM-DD).",
+      errorMaturityTo: "Maturity to must be a valid date (YYYY-MM-DD).",
+      errorMaturityRange: "Maturity from cannot be after maturity to.",
+    },
     fundAmount: {
       label: "Funding amount",
       placeholder: "e.g. 1000",

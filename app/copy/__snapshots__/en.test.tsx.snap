@@ -83,6 +83,14 @@ exports[`copy dictionary — snapshot of full dictionary matches the full copy d
     "exampleHeading": "Example Marketplace Invoice",
     "filterLegend": "Marketplace Filters",
     "filterSoonLabel": "Soon: These filter controls are currently unavailable.",
+    "filters": {
+      "errorMaturityFrom": "Maturity from must be a valid date (YYYY-MM-DD).",
+      "errorMaturityRange": "Maturity from cannot be after maturity to.",
+      "errorMaturityTo": "Maturity to must be a valid date (YYYY-MM-DD).",
+      "errorYieldMax": "Maximum yield must be a non-negative number.",
+      "errorYieldMin": "Minimum yield must be a non-negative number.",
+      "errorYieldRange": "Minimum yield cannot exceed maximum yield.",
+    },
     "fundAmount": {
       "errorExceedsBalance": "Amount cannot exceed the remaining balance of {max} {currency}.",
       "errorPositive": "Amount must be greater than zero.",
