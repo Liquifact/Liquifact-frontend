@@ -48,6 +48,9 @@ and where wallet/toast/theme state lives.
 For the exact invoice fixture shape, formatted-versus-raw value rules, and the
 API migration seam, see the [Invoice data contract](docs/invoice-data.md).
 
+For marketplace component usage, props, and common patterns, see the
+[Marketplace usage guide](docs/marketplace.md).
+
 ---
 
 ## API Integration
