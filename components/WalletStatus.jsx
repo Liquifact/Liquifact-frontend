@@ -244,6 +244,7 @@ export default function WalletStatus() {
             </div>
             <button
               type="button"
+              role="button"
               onClick={handleCopyAddress}
               aria-label={copy.wallet.copyAddressButton}
               title={copy.wallet.copyAddressButton}

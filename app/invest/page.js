@@ -16,6 +16,7 @@ import NavMenu from "@/components/NavMenu";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
+import { exportAsCSV, exportAsJSON } from "@/utils/export";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
@@ -331,8 +332,28 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           {statusMessage}
         </div>
 
-        <h1 className="text-2xl font-bold mb-2">{copy.invest.title}</h1>
-        <p className="text-slate-400 mb-8">{copy.invest.subtext}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold mb-2">{copy.invest.title}</h1>
+            <p className="text-slate-400">{copy.invest.subtext}</p>
+          </div>
+          <div className="mt-4 sm:mt-0 flex gap-3">
+            <button
+              type="button"
+              onClick={() => exportAsCSV(filteredInvoices, "wallet-export.csv")}
+              className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-700 bg-slate-900/50 hover:bg-slate-800 text-slate-300 transition-colors"
+            >
+              Export Wallet as CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => exportAsJSON(filteredInvoices, "wallet-export.json")}
+              className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-700 bg-slate-900/50 hover:bg-slate-800 text-slate-300 transition-colors"
+            >
+              Export Wallet as JSON
+            </button>
+          </div>
+        </div>
 
         {/*
           ACCESSIBILITY DESIGN (Issue #91):
