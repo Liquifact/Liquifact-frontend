@@ -21,6 +21,7 @@ const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/invoices", label: "Invoices" },
   { href: "/invest", label: "Invest" },
+  { href: "/settings", label: "Settings" },
 ];
 
 // ---------------------------------------------------------------------------
