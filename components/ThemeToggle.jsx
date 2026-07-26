@@ -11,6 +11,12 @@ export const THEMES = /** @type {const} */ (["light", "dark", "system"]);
 /** localStorage key where the preference is persisted. */
 export const THEME_STORAGE_KEY = "liquifact-theme";
 
+/** localStorage key where the last-changed timestamp (ms epoch) is persisted. */
+export const THEME_UPDATED_KEY = "liquifact-theme-updated";
+
+/** How often (ms) the relative label re-renders itself while mounted. */
+const RELATIVE_LABEL_REFRESH_MS = 60_000;
+
 /**
  * Determine the effective visual theme from a stored preference.
  * 'system' resolves to whatever the OS prefers at that moment.
@@ -42,6 +48,52 @@ export function readStoredTheme() {
     // localStorage unavailable (private browsing, SSR, etc.)
   }
   return "system";
+}
+
+/**
+ * Read the last-changed timestamp from localStorage.
+ * Safe to call from the browser only.
+ *
+ * @returns {number|null} ms since epoch, or null if never recorded / unavailable.
+ */
+export function readStoredUpdatedAt() {
+  try {
+    const stored = localStorage.getItem(THEME_UPDATED_KEY);
+    const parsed = stored ? Number(stored) : NaN;
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Format a past timestamp as a short relative string ("just now",
+ * "5 minutes ago", "3 hours ago", "2 days ago"). Pure function so it can be
+ * unit-tested with a fixed clock via the `now` parameter.
+ *
+ * @param {number|null} updatedAt – ms since epoch, or null
+ * @param {number} [now]  – ms since epoch to compare against (defaults to Date.now())
+ * @returns {string|null} null when there is nothing to report yet
+ */
+export function formatRelativeTime(updatedAt, now = Date.now()) {
+  if (updatedAt == null || !Number.isFinite(updatedAt)) return null;
+
+  const diffSeconds = Math.max(0, Math.floor((now - updatedAt) / 1000));
+
+  if (diffSeconds < 60) return "just now";
+
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) {
+    return `${diffMinutes} minute${diffMinutes === 1 ? "" : "s"} ago`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
 }
 
 /**
@@ -80,6 +132,22 @@ export default function ThemeToggle({ className = "" }) {
     }
   });
 
+  // When the preference was last explicitly changed by the user (ms epoch).
+  // Read once on mount; only updated again from handleClick below.
+  const [updatedAt, setUpdatedAt] = useState(() => {
+    if (typeof window === "undefined") return null;
+    return readStoredUpdatedAt();
+  });
+
+  // Forces a re-render every minute so the relative label ("2 minutes ago")
+  // keeps advancing while the toggle stays mounted, without touching
+  // `updatedAt` itself (that only changes when the user picks a new theme).
+  const [, forceRefresh] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => forceRefresh((n) => n + 1), RELATIVE_LABEL_REFRESH_MS);
+    return () => clearInterval(id);
+  }, []);
+
   // Keep data-theme in sync whenever the preference state changes
   useEffect(() => {
     applyTheme(preference);
@@ -102,10 +170,17 @@ export default function ThemeToggle({ className = "" }) {
   }, [preference]);
 
   const handleClick = () => {
+    const now = Date.now();
     setPreference((prev) => {
       const idx = THEMES.indexOf(prev);
       return THEMES[(idx + 1) % THEMES.length];
     });
+    setUpdatedAt(now);
+    try {
+      localStorage.setItem(THEME_UPDATED_KEY, String(now));
+    } catch {
+      // ignore write failures (private browsing, quota exceeded)
+    }
   };
 
   const ICONS = {
@@ -181,27 +256,42 @@ export default function ThemeToggle({ className = "" }) {
   const nextPref = THEMES[(THEMES.indexOf(preference) + 1) % THEMES.length];
   const capitalise = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
+  const relativeLabel = formatRelativeTime(updatedAt);
+  const absoluteLabel = updatedAt ? new Date(updatedAt).toLocaleString() : null;
+
   return (
-    <button
-      id="theme-toggle"
-      type="button"
-      onClick={handleClick}
-      aria-label={LABELS[preference]}
-      aria-pressed={preference !== "system"}
-      title={`Current theme: ${capitalise(preference)}`}
-      data-theme-pref={preference}
-      data-theme-next={nextPref}
-      className={[
-        "rounded-lg p-2 transition-colors",
-        "text-slate-300 hover:text-cyan-400 hover:bg-slate-800",
-        "dark:text-slate-300 dark:hover:text-cyan-400",
-        "focus-ring",
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      {ICONS[preference]}
-    </button>
+    <>
+      <button
+        id="theme-toggle"
+        type="button"
+        onClick={handleClick}
+        aria-label={LABELS[preference]}
+        aria-pressed={preference !== "system"}
+        title={`Current theme: ${capitalise(preference)}`}
+        data-theme-pref={preference}
+        data-theme-next={nextPref}
+        className={[
+          "rounded-lg p-2 transition-colors",
+          "text-slate-300 hover:text-cyan-400 hover:bg-slate-800",
+          "dark:text-slate-300 dark:hover:text-cyan-400",
+          "focus-ring",
+          className,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {ICONS[preference]}
+      </button>
+      {relativeLabel && (
+        <span
+          data-testid="theme-updated-at"
+          title={`Theme last changed: ${absoluteLabel}`}
+          className="ml-1 align-middle text-[10px] text-slate-400 dark:text-slate-500"
+        >
+          <span aria-hidden="true">{relativeLabel}</span>
+          <span className="sr-only">{`Theme last changed ${absoluteLabel}`}</span>
+        </span>
+      )}
+    </>
   );
 }
