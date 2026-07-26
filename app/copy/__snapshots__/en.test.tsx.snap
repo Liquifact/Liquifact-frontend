@@ -143,11 +143,11 @@ exports[`copy dictionary — snapshot of full dictionary matches the full copy d
     "homeLabel": "← Back to LiquiFact",
     "statusLabel": "404",
   },
-  "settings": {
-    "errorActionLabel": "Try again",
-    "errorDescription": "An unexpected error occurred in the settings section. Please try again.",
-    "errorTitle": "Unable to load settings",
-    "title": "Settings",
+  "toastError": {
+    "actionLabel": "Retry",
+    "description": "An unexpected error occurred while showing notifications. You can retry, and the rest of the app is unaffected.",
+    "previewLabel": "Error boundary",
+    "title": "Notifications failed to load",
   },
   "uploadZone": {
     "badgeMaxSize": "Max {maxSizeMb} MB",
