@@ -331,6 +331,11 @@ export const copy = {
     backToHome: "\u2190 LiquiFact",
     connectWallet: "Connect Wallet",
   },
+  invoiceDetail: {
+    copyIdLabel: "Reference ID",
+    copyIdSuccess: "Reference ID copied to clipboard.",
+    copyIdError: "Unable to copy — please copy manually.",
+  },
   footer: {
     docs: "Documentation",
     docsUrl: "https://docs.liquifact.com",
