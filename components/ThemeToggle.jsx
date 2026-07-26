@@ -165,7 +165,7 @@ export default function ThemeToggle({ className = "" }) {
     return () => mq.removeEventListener("change", handler);
   }, [preference]);
 
-  const handleClick = () => {
+  const cycleTheme = (direction = "next") => {
     const now = Date.now();
     setPreference((prev) => {
       const idx = THEMES.indexOf(prev);
@@ -280,6 +280,7 @@ export default function ThemeToggle({ className = "" }) {
       <button
         id="theme-toggle"
         type="button"
+        role="button"
         onClick={handleClick}
         aria-label={LABELS[preference]}
         aria-pressed={preference !== "system"}

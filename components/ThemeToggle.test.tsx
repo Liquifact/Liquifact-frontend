@@ -199,6 +199,29 @@ describe("ThemeToggle", () => {
     expect(btn.getAttribute("aria-label")!.length).toBeGreaterThan(0);
   });
 
+  it("uses the correct button role for the icon-only theme control", () => {
+    render(<ThemeToggle />);
+    const btn = screen.getByRole("button", { name: "Theme: System (click for Light)" });
+    expect(btn).toHaveAttribute("role", "button");
+  });
+
+  it("exposes a descriptive accessible name for the system icon state", () => {
+    render(<ThemeToggle />);
+    expect(screen.getByRole("button", { name: "Theme: System (click for Light)" })).toBeInTheDocument();
+  });
+
+  it("exposes a descriptive accessible name for the light icon state", () => {
+    mockLocalStorage({ [THEME_STORAGE_KEY]: "light" });
+    render(<ThemeToggle />);
+    expect(screen.getByRole("button", { name: "Theme: Light (click for Dark)" })).toBeInTheDocument();
+  });
+
+  it("exposes a descriptive accessible name for the dark icon state", () => {
+    mockLocalStorage({ [THEME_STORAGE_KEY]: "dark" });
+    render(<ThemeToggle />);
+    expect(screen.getByRole("button", { name: "Theme: Dark (click for System)" })).toBeInTheDocument();
+  });
+
   it("aria-label mentions the current theme preference", () => {
     render(<ThemeToggle />);
     const btn = screen.getByRole("button");
