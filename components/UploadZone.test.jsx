@@ -481,32 +481,6 @@ describe("UploadZone", () => {
   });
 
   describe("GROUP 2: Keyboard activation (existing tests validated)", () => {
-    it("opens file dialog on Enter key on the drop zone (re-verify)", () => {
-      render(<UploadZone />);
-
-      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
-      const input = screen.getByLabelText(/select pdf invoice file/i);
-      const clickSpy = jest.spyOn(input, "click").mockImplementation(() => {});
-
-      fireEvent.keyDown(dropZone, { key: "Enter", code: "Enter" });
-
-      expect(clickSpy).toHaveBeenCalledTimes(1);
-      clickSpy.mockRestore();
-    });
-
-    it("opens file dialog on Space key on the drop zone (re-verify)", () => {
-      render(<UploadZone />);
-
-      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
-      const input = screen.getByLabelText(/select pdf invoice file/i);
-      const clickSpy = jest.spyOn(input, "click").mockImplementation(() => {});
-
-      fireEvent.keyDown(dropZone, { key: " ", code: "Space" });
-
-      expect(clickSpy).toHaveBeenCalledTimes(1);
-      clickSpy.mockRestore();
-    });
-
     it("does NOT open file dialog on other keys (Tab, Escape)", () => {
       render(<UploadZone />);
 
