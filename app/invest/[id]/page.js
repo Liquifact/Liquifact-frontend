@@ -1,6 +1,7 @@
 "use client";
 
 import Button from "@/components/Button";
+import CopyButton from "@/components/CopyButton";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
@@ -10,6 +11,7 @@ import StatusPill from "@/components/StatusPill";
 import WalletStatus from "@/components/WalletStatus";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import { INVALID_VALUE_FALLBACK, formatAmount, formatCurrency } from "@/lib/format/currency";
+import { copy } from "@/app/copy/en";
 import { getInvoiceById } from "../lib";
 
 const DEV_DELAY = process.env.NODE_ENV === "development" ? 800 : 0;
@@ -208,6 +210,18 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
                   <dt className="text-slate-500">Status</dt>
                   <dd className="text-slate-100">
                     <StatusPill status={invoice.status ?? ""} />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Reference</dt>
+                  <dd className="text-slate-100 flex items-center gap-1.5">
+                    <span className="font-mono">{invoice.id}</span>
+                    <CopyButton
+                      text={invoice.id}
+                      label={copy.invoiceDetail.copyIdLabel}
+                      successMessage={copy.invoiceDetail.copyIdSuccess}
+                      errorMessage={copy.invoiceDetail.copyIdError}
+                    />
                   </dd>
                 </div>
               </dl>

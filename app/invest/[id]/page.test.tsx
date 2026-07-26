@@ -60,6 +60,34 @@ jest.mock("@/components/StatusPill", () => {
   };
 });
 
+/**
+ * CopyButton is mocked here to avoid pulling in ToastProvider for the
+ * print-stylesheet tests.  Dedicated CopyButton integration tests live in
+ * the "InvoiceDetail — copy button" describe block below and use a real
+ * CopyButton + ToastProvider.
+ */
+const mockCopyButtonOnClick = jest.fn();
+jest.mock("@/components/CopyButton", () => {
+  return function CopyButtonMock({
+    text,
+    label,
+  }: {
+    text: string;
+    label: string;
+  }) {
+    return (
+      <button
+        type="button"
+        data-testid="copy-button-mock"
+        aria-label={`Copy ${label}`}
+        onClick={mockCopyButtonOnClick}
+      >
+        Copy {label}
+      </button>
+    );
+  };
+});
+
 const mockInvoice = {
   id: "invoice-123",
   issuer: "Test Issuer LLC",
@@ -134,5 +162,70 @@ describe("InvoiceDetail — print stylesheet", () => {
     const section = document.querySelector(".print-invoice-section");
     expect(section).toBeInTheDocument();
     expect(section!.tagName).toBe("SECTION");
+  });
+});
+
+// ── Copy button integration (within InvoiceDetail) ────────────────────────────
+
+describe("InvoiceDetail — copy button", () => {
+  it("renders a copy button for the Reference ID", async () => {
+    const loadInvoice = jest.fn(async () => mockInvoice);
+
+    render(<InvoiceDetail loadInvoice={loadInvoice} />);
+
+    const copyBtn = await screen.findByTestId("copy-button-mock");
+    expect(copyBtn).toBeInTheDocument();
+  });
+
+  it("copy button has an accessible label referencing the Reference ID", async () => {
+    const loadInvoice = jest.fn(async () => mockInvoice);
+
+    render(<InvoiceDetail loadInvoice={loadInvoice} />);
+
+    // aria-label should mention the label passed to CopyButton
+    const copyBtn = await screen.findByRole("button", { name: /copy reference id/i });
+    expect(copyBtn).toBeInTheDocument();
+  });
+
+  it("displays the invoice ID in the Reference row", async () => {
+    const loadInvoice = jest.fn(async () => mockInvoice);
+
+    render(<InvoiceDetail loadInvoice={loadInvoice} />);
+
+    // Wait for data to load
+    await screen.findByTestId("copy-button-mock");
+
+    expect(screen.getByText("invoice-123")).toBeInTheDocument();
+    expect(screen.getByText("Reference")).toBeInTheDocument();
+  });
+
+  it("copy button is keyboard-reachable (not disabled)", async () => {
+    const loadInvoice = jest.fn(async () => mockInvoice);
+
+    render(<InvoiceDetail loadInvoice={loadInvoice} />);
+
+    const copyBtn = await screen.findByTestId("copy-button-mock");
+    expect(copyBtn).not.toBeDisabled();
+
+    copyBtn.focus();
+    expect(copyBtn).toHaveFocus();
+  });
+
+  it("copy button is not rendered while the invoice is loading", () => {
+    // loadInvoice never resolves → stays in loading state
+    const loadInvoice = jest.fn(() => new Promise(() => {}));
+    render(<InvoiceDetail loadInvoice={loadInvoice} />);
+
+    expect(screen.queryByTestId("copy-button-mock")).not.toBeInTheDocument();
+  });
+
+  it("copy button is not rendered when the invoice fails to load", async () => {
+    const loadInvoice = jest.fn().mockRejectedValue(new Error("Network error"));
+    render(<InvoiceDetail loadInvoice={loadInvoice} />);
+
+    // Wait for the error banner
+    await screen.findByRole("alert");
+
+    expect(screen.queryByTestId("copy-button-mock")).not.toBeInTheDocument();
   });
 });
