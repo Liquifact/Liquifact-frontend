@@ -809,4 +809,161 @@ describe("UploadZone", () => {
       expect(results).toHaveNoViolations();
     }, 15000);
   });
+
+  describe("Density Toggle", () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it("renders with comfortable density by default", async () => {
+      render(<UploadZone />);
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-4");
+      });
+      expect(screen.getByTestId("density-toggle")).toBeInTheDocument();
+      expect(screen.getByText("Compact")).toBeInTheDocument();
+    });
+
+    it("toggles from comfortable to compact", async () => {
+      render(<UploadZone />);
+      const toggle = screen.getByTestId("density-toggle");
+
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-4");
+      });
+
+      fireEvent.click(toggle);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-2");
+      });
+      expect(screen.getByText("Comfortable")).toBeInTheDocument();
+    });
+
+    it("toggles back from compact to comfortable", async () => {
+      render(<UploadZone />);
+      const toggle = screen.getByTestId("density-toggle");
+
+      fireEvent.click(toggle);
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-2");
+      });
+
+      fireEvent.click(toggle);
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-4");
+      });
+      expect(screen.getByText("Compact")).toBeInTheDocument();
+    });
+
+    it("persists compact density to localStorage on toggle", async () => {
+      render(<UploadZone />);
+      const toggle = screen.getByTestId("density-toggle");
+
+      fireEvent.click(toggle);
+
+      await waitFor(() => {
+        expect(localStorage.getItem("liquifact:upload:density")).toBe("compact");
+      });
+    });
+
+    it("persists comfortable density to localStorage on second toggle", async () => {
+      render(<UploadZone />);
+      const toggle = screen.getByTestId("density-toggle");
+
+      fireEvent.click(toggle);
+      await waitFor(() => {
+        expect(localStorage.getItem("liquifact:upload:density")).toBe("compact");
+      });
+
+      fireEvent.click(toggle);
+      await waitFor(() => {
+        expect(localStorage.getItem("liquifact:upload:density")).toBe("comfortable");
+      });
+    });
+
+    it("restores compact density from localStorage on mount", async () => {
+      localStorage.setItem("liquifact:upload:density", "compact");
+
+      render(<UploadZone />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-2");
+      });
+      expect(screen.getByText("Comfortable")).toBeInTheDocument();
+    });
+
+    it("restores comfortable density from localStorage on mount", async () => {
+      localStorage.setItem("liquifact:upload:density", "comfortable");
+
+      render(<UploadZone />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-4");
+      });
+    });
+
+    it("falls back to comfortable on invalid stored density", async () => {
+      localStorage.setItem("liquifact:upload:density", "spacious");
+
+      render(<UploadZone />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-4");
+      });
+      expect(screen.getByText("Compact")).toBeInTheDocument();
+    });
+
+    it("falls back to comfortable on empty stored value", async () => {
+      localStorage.setItem("liquifact:upload:density", "");
+
+      render(<UploadZone />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-4");
+      });
+    });
+
+    it("falls back to comfortable when stored value is a number string", async () => {
+      localStorage.setItem("liquifact:upload:density", "42");
+
+      render(<UploadZone />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-4");
+      });
+    });
+
+    it("sets aria-pressed to false when comfortable", async () => {
+      render(<UploadZone />);
+      await waitFor(() => {
+        expect(screen.getByTestId("density-toggle")).toHaveAttribute("aria-pressed", "false");
+      });
+    });
+
+    it("sets aria-pressed to true when compact", async () => {
+      render(<UploadZone />);
+      const toggle = screen.getByTestId("density-toggle");
+
+      fireEvent.click(toggle);
+
+      await waitFor(() => {
+        expect(toggle).toHaveAttribute("aria-pressed", "true");
+      });
+    });
+
+    it("does not break existing upload flow when density is compact", async () => {
+      render(<UploadZone />);
+      const toggle = screen.getByTestId("density-toggle");
+
+      fireEvent.click(toggle);
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-2");
+      });
+
+      const submitBtn = screen.getByText(copy.uploadZone.submitIdle);
+      expect(submitBtn).toBeDisabled();
+    });
+  });
+
 });
