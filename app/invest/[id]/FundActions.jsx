@@ -7,10 +7,18 @@
  *
  * This is the **only** file under `app/invest/[id]/` that carries a
  * `"use client"` directive.  It owns:
- *   - Fund invoice button (wallet-state-aware)
+ *   - Fund invoice button (wallet-state-aware, with optimistic status update)
  *   - Copy link button (Clipboard API + textarea fallback)
  *   - Print / Save PDF button
  *   - Disclaimer note
+ *
+ * Optimistic update strategy
+ * ──────────────────────────
+ * When the user submits the FundAmountInput form, `useOptimisticFund` flips
+ * the displayed invoice status to "Funded" immediately.  If the server call
+ * succeeds the update is committed; if it fails the status is rolled back and
+ * an error toast is shown.  Concurrent submissions are blocked while a request
+ * is in-flight.
  *
  * Everything else on the detail page (heading, metadata table, JSON-LD
  * script) is rendered by the Server Component shell in `page.js`.
@@ -20,7 +28,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ToastProvider";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import FundAmountInput from "@/components/FundAmountInput";
+import StatusPill from "@/components/StatusPill";
 import { copy } from "@/app/copy/en";
+import { useOptimisticFund, FUNDING_STATES } from "@/lib/hooks/useOptimisticFund";
 
 const detail = copy.invest.detail;
 
@@ -75,9 +85,12 @@ export async function copyInvoiceUrl(id) {
 /**
  * Interactive fund / copy / print controls for an invoice.
  *
- * @param {object} props
- * @param {string} props.id          - Invoice id (used to build the share URL)
- * @param {string} props.status      - Invoice status; disables fund button when not "Open"
+ * @param {object}  props
+ * @param {string}  props.id          - Invoice id (used to build the share URL)
+ * @param {string}  props.status      - Current server-confirmed invoice status
+ * @param {number}  [props.maxAmount] - Maximum fundable amount (invoice amountValue)
+ * @param {string}  [props.currency]  - Invoice currency code
+ * @param {number}  [props.yieldValue] - Yield rate as a percentage
  */
 export default function FundActions({ id, status, maxAmount, currency, yieldValue }) {
   const { state: walletState, connect } = useWallet();
@@ -102,12 +115,30 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
     };
   }, []);
 
+  // ── Optimistic funding ──────────────────────────────────────────────────────
+  const { optimisticStatus, fundingState, isFunding, submitFund } = useOptimisticFund({
+    id,
+    status,
+    currency,
+    onSuccess: (result) => {
+      const msg = detail.fundSuccessMsg
+        .replace("{amount}", result.amount.toString())
+        .replace("{currency}", result.currency ?? "");
+      toast.success(msg, detail.fundSuccessTitle);
+    },
+    onError: () => {
+      toast.error(detail.fundErrorMsg, detail.fundErrorTitle);
+    },
+  });
+
   // Fund button is disabled while wallet is connecting or unavailable, or
-  // if the invoice is not in an Open state.
+  // if the invoice is not in an Open state (use optimisticStatus to reflect
+  // the in-flight view correctly), or if a funding request is in-flight.
   const isFundingDisabled =
     walletState === WALLET_STATES.CONNECTING ||
     walletState === WALLET_STATES.NO_WALLET ||
-    status !== "Open";
+    optimisticStatus !== "Open" ||
+    isFunding;
 
   const handleFund = () => {
     if (walletState === WALLET_STATES.DISCONNECTED) {
@@ -137,36 +168,69 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
   };
 
   // Partial-funding submit: prompt wallet connection when disconnected,
-  // otherwise acknowledge the funding request. A real sign+submit flow
-  // replaces the toast once the Stellar integration lands.
-  const handleFundAmount = (amount) => {
-    if (walletState === WALLET_STATES.DISCONNECTED) {
-      connect();
-      return;
-    }
-    const message =
-      `Funding request for ${amount} ${currency ?? ""} submitted. Awaiting wallet approval.`.trim();
-    toast.success(message, "Funding submitted");
-    announce(message);
-  };
+  // otherwise apply the optimistic update and submit to the server.
+  // Shows an immediate toast and rolls back on failure.
+  const handleFundAmount = useCallback(
+    async (amount) => {
+      if (walletState === WALLET_STATES.DISCONNECTED) {
+        connect();
+        return;
+      }
+
+      // Show an immediate "in-progress" toast before the server responds.
+      toast.info(detail.fundOptimisticMsg, detail.fundOptimisticTitle);
+
+      await submitFund(amount);
+    },
+    [walletState, connect, toast, submitFund]
+  );
+
+  // Show rollback banner inline when the last attempt was rolled back.
+  const showRollbackBanner = fundingState === FUNDING_STATES.ROLLED_BACK;
 
   return (
     <>
-      {/* Hidden polite status region announcing invoice-detail async action
-          results (copy link, funding submission) to screen readers. Visually
-          hidden — the toast above already carries the sighted feedback. */}
-      <div
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        className="sr-only"
-        data-testid="invoice-detail-announce"
-      >
-        {announcement}
-      </div>
+      {/* Inline status mirror — shows the optimistic state when it differs from
+          the server-confirmed status so the user sees immediate feedback without
+          relying solely on the toast system. */}
+      {optimisticStatus !== status && (
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          data-testid="optimistic-status-banner"
+          className="no-print mb-4 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-300"
+        >
+          {detail.fundOptimisticMsg}
+        </div>
+      )}
+
+      {/* Rollback banner — shown when the server rejected the funding attempt. */}
+      {showRollbackBanner && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          data-testid="rollback-banner"
+          className="no-print mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300"
+        >
+          {detail.fundRolledBackMsg}
+        </div>
+      )}
+
+      {/* Optimistic status pill — always reflects the current in-UI status. */}
+      {optimisticStatus !== status && (
+        <div
+          className="no-print mb-4 flex items-center gap-2 text-sm text-slate-400"
+          aria-label="Optimistic invoice status"
+        >
+          <span>Status:</span>
+          <StatusPill status={optimisticStatus} />
+        </div>
+      )}
 
       {/* Partial-funding amount input — only when an amount ceiling is known
-          (real detail page) and the invoice is Open. */}
+          (real detail page) and the invoice is Open (use server-confirmed status
+          to decide whether to render; optimistic feedback is in the button). */}
       {status === "Open" && maxAmount != null && (
         <div className="no-print mb-6">
           <FundAmountInput
@@ -185,10 +249,11 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
           type="button"
           onClick={handleFund}
           disabled={isFundingDisabled}
+          aria-busy={isFunding}
           className="rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label={detail.fundButtonLabel}
         >
-          {detail.fundButton}
+          {isFunding ? detail.fundOptimisticTitle : detail.fundButton}
         </button>
 
         <button
