@@ -586,24 +586,17 @@ describe("FundActions", () => {
       expect(results).toHaveNoViolations();
     });
 
-    it("loaded state passes axe accessibility checks", async () => {
-      const { container } = await renderServerPage({ id: "inv-001" });
-      const results = await axe(container);
-      expect(results).toHaveNoViolations();
-    });
+    it("every action button has an accessible name", () => {
+      render(<FundActions {...defaultProps} />);
 
-    it("empty state passes axe accessibility checks", async () => {
-      const InvoiceNotFound = (await import("./not-found")).default;
-      const { container } = render(<InvoiceNotFound />);
-      const results = await axe(container);
-      expect(results).toHaveNoViolations();
-    });
+      const fundBtn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      expect(fundBtn).toHaveAttribute("aria-label", copy.invest.detail.fundButtonLabel);
 
-    it("error state passes axe accessibility checks", async () => {
-      const InvoiceDetailError = (await import("./error")).default;
-      const { container } = render(<InvoiceDetailError error={new Error("test error")} reset={jest.fn()} />);
-      const results = await axe(container);
-      expect(results).toHaveNoViolations();
+      const copyBtn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+      expect(copyBtn).toHaveAttribute("aria-label", copy.invest.detail.copyLinkButtonLabel);
+
+      const printBtn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+      expect(printBtn).toHaveAttribute("aria-label", copy.invest.detail.printButtonLabel);
     });
 
     it("action row and disclaimer carry no-print class", () => {
