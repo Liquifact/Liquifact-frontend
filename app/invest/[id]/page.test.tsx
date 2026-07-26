@@ -540,6 +540,19 @@ describe("FundActions", () => {
       expect(results).toHaveNoViolations();
     });
 
+    it("every action button has an accessible name", () => {
+      render(<FundActions {...defaultProps} />);
+
+      const fundBtn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      expect(fundBtn).toHaveAttribute("aria-label", copy.invest.detail.fundButtonLabel);
+
+      const copyBtn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+      expect(copyBtn).toHaveAttribute("aria-label", copy.invest.detail.copyLinkButtonLabel);
+
+      const printBtn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+      expect(printBtn).toHaveAttribute("aria-label", copy.invest.detail.printButtonLabel);
+    });
+
     it("action row and disclaimer carry no-print class", () => {
       const { container } = render(<FundActions {...defaultProps} />);
       const noPrintEls = container.querySelectorAll(".no-print");
