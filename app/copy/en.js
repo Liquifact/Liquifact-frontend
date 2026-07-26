@@ -179,6 +179,8 @@
  * @property {string} invoiceTimeline.statusCompleted
  * @property {string} invoiceTimeline.statusCurrent
  * @property {string} invoiceTimeline.statusPending
+ * @property {Object} nav - Navigation copy
+ * @property {string} nav.announceNavigation - Screen-reader announcement when the user navigates to a new route. Use {label} as the placeholder for the page name.
  */
 
 /** @type {CopyDictionary} */
@@ -386,5 +388,10 @@ export const copy = {
     statusCompleted: "Completed",
     statusCurrent: "Current",
     statusPending: "Pending",
+  },
+  nav: {
+    /** Announced politely by NavMenu when the user navigates to a new route.
+     *  Replace {label} with the matching NAV_LINKS label (e.g. "Home"). */
+    announceNavigation: "Navigated to {label}",
   },
 };

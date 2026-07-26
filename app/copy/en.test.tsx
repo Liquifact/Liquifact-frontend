@@ -170,6 +170,22 @@ describe("copy dictionary — key presence", () => {
       expect(copy.footer.contact).toBeDefined();
     });
   });
+
+  describe("nav", () => {
+    it("has the announceNavigation key", () => {
+      expect(copy.nav).toBeDefined();
+      expect(copy.nav.announceNavigation).toBeDefined();
+    });
+
+    it("announceNavigation is a non-empty string", () => {
+      expect(typeof copy.nav.announceNavigation).toBe("string");
+      expect(copy.nav.announceNavigation.length).toBeGreaterThan(0);
+    });
+
+    it("announceNavigation contains the {label} placeholder", () => {
+      expect(copy.nav.announceNavigation).toContain("{label}");
+    });
+  });
 });
 
 describe("copy dictionary — template placeholder consistency", () => {
@@ -201,6 +217,13 @@ describe("copy dictionary — template placeholder consistency", () => {
   it("wallet helperConnected uses {network} placeholder", () => {
     expect(copy.wallet.helperConnected.replace("{network}", "testnet")).toContain(
       "Connected to Stellar testnet"
+    );
+  });
+
+  it("nav.announceNavigation uses {label} placeholder", () => {
+    expect(copy.nav.announceNavigation.replace("{label}", "Home")).toBe("Navigated to Home");
+    expect(copy.nav.announceNavigation.replace("{label}", "Invoices")).toBe(
+      "Navigated to Invoices"
     );
   });
 });
