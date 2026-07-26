@@ -48,6 +48,10 @@ and where wallet/toast/theme state lives.
 For the exact invoice fixture shape, formatted-versus-raw value rules, and the
 API migration seam, see the [Invoice data contract](docs/invoice-data.md).
 
+For a step-by-step diagram of how `/invest/[id]` fetches, transforms, and
+renders an invoice (including the RSC/client boundary split), see the
+[Invoice-detail data flow](docs/invoice-detail-flow.md).
+
 ---
 
 ## API Integration
