@@ -13,6 +13,7 @@ import InvoiceFilters, {
   parseSortState,
 } from "@/components/InvoiceFilters";
 import NavMenu from "@/components/NavMenu";
+import EditableInvoiceRow from "@/components/EditableInvoiceRow";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
@@ -175,6 +176,13 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   /** Clear all status chips. */
   const handleClearStatuses = useCallback(() => {
     setFilters((prev) => ({ ...prev, statuses: [] }));
+  }, []);
+
+  const handleUpdateInvoice = useCallback((updatedInvoice) => {
+    setInvoices((prev) => {
+      if (!Array.isArray(prev)) return prev;
+      return prev.map((inv) => (inv.id === updatedInvoice.id ? updatedInvoice : inv));
+    });
   }, []);
 
   // Debounced search term
@@ -404,32 +412,11 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           <>
             <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
               {filteredInvoices.slice(0, visibleCount).map((inv) => (
-                <li key={inv.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <Link
-                      href={`/invest/${inv.id}`}
-                      className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
-                    >
-                      {inv.issuer}
-                    </Link>
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
-                      {inv.status}
-                    </span>
-                  </div>
-                  <div className="flex gap-6 text-sm text-slate-400">
-                    <span>
-                      {inv.currency}&nbsp;{inv.amount}
-                    </span>
-                    <span>
-                      {copy.invest.labelYield}
-                      {inv.yield}
-                    </span>
-                    <span>
-                      {copy.invest.labelMaturity}
-                      {inv.dueDate}
-                    </span>
-                  </div>
-                </li>
+                <EditableInvoiceRow
+                  key={inv.id}
+                  invoice={inv}
+                  onSave={handleUpdateInvoice}
+                />
               ))}
             </ul>
             {visibleCount < filteredInvoices.length && (
