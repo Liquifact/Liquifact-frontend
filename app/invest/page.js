@@ -13,6 +13,7 @@ import InvoiceFilters, {
   parseSortState,
 } from "@/components/InvoiceFilters";
 import NavMenu from "@/components/NavMenu";
+import MarketplaceErrorBoundary from "@/components/MarketplaceErrorBoundary";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
@@ -454,5 +455,9 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
 }
 
 export default function InvestPage() {
-  return <InvestMarketplace />;
+  return (
+    <MarketplaceErrorBoundary>
+      <InvestMarketplace />
+    </MarketplaceErrorBoundary>
+  );
 }
