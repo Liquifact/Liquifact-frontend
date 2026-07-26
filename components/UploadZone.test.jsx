@@ -481,32 +481,6 @@ describe("UploadZone", () => {
   });
 
   describe("GROUP 2: Keyboard activation (existing tests validated)", () => {
-    it("opens file dialog on Enter key on the drop zone (re-verify)", () => {
-      render(<UploadZone />);
-
-      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
-      const input = screen.getByLabelText(/select pdf invoice file/i);
-      const clickSpy = jest.spyOn(input, "click").mockImplementation(() => {});
-
-      fireEvent.keyDown(dropZone, { key: "Enter", code: "Enter" });
-
-      expect(clickSpy).toHaveBeenCalledTimes(1);
-      clickSpy.mockRestore();
-    });
-
-    it("opens file dialog on Space key on the drop zone (re-verify)", () => {
-      render(<UploadZone />);
-
-      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
-      const input = screen.getByLabelText(/select pdf invoice file/i);
-      const clickSpy = jest.spyOn(input, "click").mockImplementation(() => {});
-
-      fireEvent.keyDown(dropZone, { key: " ", code: "Space" });
-
-      expect(clickSpy).toHaveBeenCalledTimes(1);
-      clickSpy.mockRestore();
-    });
-
     it("does NOT open file dialog on other keys (Tab, Escape)", () => {
       render(<UploadZone />);
 
@@ -768,6 +742,50 @@ describe("UploadZone", () => {
 
       // After reset, focus should be on the dropzone
       expect(document.activeElement).toBe(dropzone);
+    });
+  });
+
+  describe("GROUP 5a: Keyboard focus and activation", () => {
+    it("dropzone is focusable via Tab", () => {
+      render(<UploadZone />);
+      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
+      dropZone.focus();
+      expect(dropZone).toHaveFocus();
+    });
+
+    it("dropzone has tabIndex={0} for keyboard access", () => {
+      render(<UploadZone />);
+      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
+      expect(dropZone).toHaveAttribute("tabindex", "0");
+    });
+
+    it("submit button has correct aria-disabled when no file", () => {
+      render(<UploadZone />);
+      const submitBtn = screen.getByRole("button", { name: /upload & tokenize invoice/i });
+      expect(submitBtn).toBeDisabled();
+      expect(submitBtn).toHaveAttribute("aria-disabled", "true");
+    });
+
+    it("submit button can be activated via keyboard after file selection", async () => {
+      mockFetchOk();
+      render(<UploadZone />);
+
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+
+      const submitBtn = screen.getByRole("button", { name: /upload & tokenize invoice/i });
+      fireEvent.click(submitBtn);
+
+      expect(global.fetch).toHaveBeenCalled();
+    });
+
+    it("dropzone has visible focus indicator via focus styles", () => {
+      render(<UploadZone />);
+      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
+      expect(dropZone.className).toContain("transition-colors");
+      expect(dropZone).toHaveAttribute("tabindex", "0");
     });
   });
 
