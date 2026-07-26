@@ -15,7 +15,7 @@ import InvoiceFilters, {
 import BulkActionsToolbar from "@/components/BulkActionsToolbar";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import NavMenu from "@/components/NavMenu";
-import useBulkSelection from "@/lib/hooks/useBulkSelection";
+import MarketplaceErrorBoundary from "@/components/MarketplaceErrorBoundary";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
@@ -705,5 +705,9 @@ export function InvestMarketplace({
 }
 
 export default function InvestPage() {
-  return <InvestMarketplace />;
+  return (
+    <MarketplaceErrorBoundary>
+      <InvestMarketplace />
+    </MarketplaceErrorBoundary>
+  );
 }
