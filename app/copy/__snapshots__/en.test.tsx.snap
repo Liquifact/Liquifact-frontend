@@ -137,6 +137,14 @@ exports[`copy dictionary — snapshot of full dictionary matches the full copy d
     "homeLabel": "← Back to LiquiFact",
     "statusLabel": "404",
   },
+  "settings": {
+    "currencyLabel": "Display currency",
+    "description": "Manage your display and notification preferences.",
+    "emailNotificationsHint": "Receive email updates about your invoices and investments.",
+    "emailNotificationsLabel": "Email notifications",
+    "lastUpdatedPrefix": "Last updated",
+    "title": "Settings",
+  },
   "uploadZone": {
     "badgeMaxSize": "Max {maxSizeMb} MB",
     "badgeOneFile": "One file per invoice",

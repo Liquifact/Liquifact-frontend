@@ -281,6 +281,14 @@ export const copy = {
     backToHome: "\u2190 LiquiFact",
     connectWallet: "Connect Wallet",
   },
+  settings: {
+    title: "Settings",
+    description: "Manage your display and notification preferences.",
+    lastUpdatedPrefix: "Last updated",
+    currencyLabel: "Display currency",
+    emailNotificationsLabel: "Email notifications",
+    emailNotificationsHint: "Receive email updates about your invoices and investments.",
+  },
   layout: {
     backToHome: "\u2190 LiquiFact",
     connectWallet: "Connect Wallet",
