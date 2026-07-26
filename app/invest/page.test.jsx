@@ -1298,3 +1298,248 @@ describe("getPaginationAnnouncement", () => {
     expect(getPaginationAnnouncement(3, 3)).toBe("Showing 3 of 3 investable invoices");
   });
 });
+
+// ── Pagination boundary edge cases ───────────────────────────────────────────
+
+describe("Pagination boundary edge cases", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  });
+
+  it("handles zero items: no load-more button, empty state shown", async () => {
+    render(<InvestMarketplace loadInvoices={createDeferredLoader([], 50)} />);
+    await flushTimers(50);
+
+    expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/No investable invoices\./i)).toBeInTheDocument();
+  });
+
+  it("handles single item: no load-more button, item shown", async () => {
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(makeInvoices(1), 50)} />);
+    await flushTimers(50);
+
+    expect(getInvoiceListItems()).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
+  });
+
+  it("handles exactly PAGE_SIZE items: no load-more button, all shown", async () => {
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(makeInvoices(PAGE_SIZE), 50)} />);
+    await flushTimers(50);
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+    expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
+  });
+
+  it("handles PAGE_SIZE + 1 items: load-more shown, click reveals last item", async () => {
+    render(
+      <InvestMarketplace loadInvoices={createDeferredLoader(makeInvoices(PAGE_SIZE + 1), 50)} />
+    );
+    await flushTimers(50);
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+    expect(screen.getByRole("button", { name: /load more invoices/i })).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE + 1);
+    expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
+  });
+
+  it("handles large dataset: multiple load-more clicks work correctly", async () => {
+    const total = PAGE_SIZE * 5; // 50 items
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(makeInvoices(total), 50)} />);
+    await flushTimers(50);
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+
+    // First load-more
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE * 2);
+
+    // Second load-more
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE * 3);
+
+    // Third load-more
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE * 4);
+
+    // Fourth load-more (final)
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+    expect(getInvoiceListItems()).toHaveLength(total);
+    expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
+  });
+
+  it("rapid load-more clicks: only final state is applied", async () => {
+    const total = PAGE_SIZE * 3;
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(makeInvoices(total), 50)} />);
+    await flushTimers(50);
+
+    const loadMoreButton = screen.getByRole("button", { name: /load more invoices/i });
+
+    // Rapid double-click
+    await act(async () => {
+      fireEvent.click(loadMoreButton);
+      fireEvent.click(loadMoreButton);
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
+    // Should show PAGE_SIZE * 2 (two batches), not PAGE_SIZE * 3
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE * 2);
+  });
+
+  it("pagination resets when invoice data changes (simulating refresh)", async () => {
+    let loadInvoices = createDeferredLoader(makeInvoices(PAGE_SIZE * 2), 50);
+    const { rerender } = render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(50);
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+
+    // Load more to see 20 items
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE * 2);
+
+    // Simulate data refresh with new loader
+    loadInvoices = createDeferredLoader(makeInvoices(PAGE_SIZE * 3), 50);
+    rerender(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(50);
+
+    // Should reset to PAGE_SIZE
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+  });
+
+  it("pagination resets when sort order changes", async () => {
+    const invoices = makeInvoices(PAGE_SIZE * 2);
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 50)} />);
+    await flushTimers(50);
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+
+    // Load more
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE * 2);
+
+    // Change sort - should reset pagination
+    fireEvent.change(screen.getByLabelText("Sort options"), {
+      target: { value: "yield" },
+    });
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+  });
+
+  it("load-more button is disabled during error state", async () => {
+    const loadInvoices = jest.fn(
+      () => new Promise((_, reject) => setTimeout(() => reject(new Error("boom")), 50))
+    );
+
+    render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(50);
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
+  });
+
+  it("load-more button is not shown during loading state", async () => {
+    render(<InvestMarketplace loadInvoices={createPendingLoader()} />);
+
+    expect(screen.getByRole("list", { name: /loading investable invoices/i })).toHaveAttribute(
+      "aria-busy",
+      "true"
+    );
+    expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
+  });
+
+  it("handles boundary: PAGE_SIZE - 1 items (just below threshold)", async () => {
+    render(
+      <InvestMarketplace loadInvoices={createDeferredLoader(makeInvoices(PAGE_SIZE - 1), 50)} />
+    );
+    await flushTimers(50);
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE - 1);
+    expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
+  });
+
+  it("handles boundary: PAGE_SIZE + PAGE_SIZE - 1 items (two full pages minus one)", async () => {
+    const total = PAGE_SIZE * 2 - 1;
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(makeInvoices(total), 50)} />);
+    await flushTimers(50);
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+
+    // Load more - should show remaining PAGE_SIZE - 1 items
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
+    expect(getInvoiceListItems()).toHaveLength(total);
+    expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
+  });
+
+  it("status announcement updates correctly on each load-more", async () => {
+    const total = PAGE_SIZE * 2 + 5;
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(makeInvoices(total), 50)} />);
+    await flushTimers(50);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      `Showing ${PAGE_SIZE} of ${total} investable invoices`
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      `Showing ${PAGE_SIZE * 2} of ${total} investable invoices`
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      `Showing ${total} of ${total} investable invoices`
+    );
+  });
+});
