@@ -53,7 +53,7 @@ const Button = forwardRef(function Button(
   };
 
   const combinedClassName =
-    `${baseStyles} ${variantStyles[variant]} ${disabledClasses} ${className}`.trim();
+    `${baseStyles} ${variantStyles[variant]} ${disabledClasses} ${className} cursor-pointer`.trim();
 
   return (
     <button

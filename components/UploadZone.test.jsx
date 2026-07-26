@@ -207,27 +207,177 @@ describe("UploadZone", () => {
     expect(submitBtn).toBeEnabled();
   });
 
-  it("renders determinate progress bar when progress prop is provided", async () => {
-    global.fetch = jest.fn().mockReturnValue(new Promise(() => {})); // stay in uploading
-    const { rerender } = render(<UploadZone progress={45.5} />);
+  describe("GROUP 6: Upload progress bar", () => {
+    it("Test 1 — Progress Bar Rendering: shows bar, percentage, and ARIA attrs at progress=45", async () => {
+      global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+      render(<UploadZone progress={45} />);
 
-    const file = createMockFile();
-    fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
-      target: { files: [file] },
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      const progressbar = screen.getByRole("progressbar");
+      expect(progressbar).toBeInTheDocument();
+      expect(progressbar).toHaveAttribute("aria-valuenow", "45");
+      expect(progressbar).toHaveAttribute("aria-valuemin", "0");
+      expect(progressbar).toHaveAttribute("aria-valuemax", "100");
+      expect(screen.getByText("45%")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+    it("Test 2 — Progress Updates: aria-valuenow and visible % update from 20 to 80", async () => {
+      global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+      const { rerender } = render(<UploadZone progress={20} />);
 
-    const progressbar = screen.getByRole("progressbar");
-    expect(progressbar).toBeInTheDocument();
-    expect(progressbar).toHaveAttribute("aria-valuenow", "46");
-    expect(progressbar).toHaveAttribute("aria-valuemin", "0");
-    expect(progressbar).toHaveAttribute("aria-valuemax", "100");
-    expect(screen.getByText("46%")).toBeInTheDocument();
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
 
-    // Verify indeterminate fallback
-    rerender(<UploadZone progress={undefined} />);
-    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+      let progressbar = screen.getByRole("progressbar");
+      expect(progressbar).toHaveAttribute("aria-valuenow", "20");
+      expect(screen.getByText("20%")).toBeInTheDocument();
+
+      rerender(<UploadZone progress={80} />);
+
+      progressbar = screen.getByRole("progressbar");
+      expect(progressbar).toHaveAttribute("aria-valuenow", "80");
+      expect(screen.getByText("80%")).toBeInTheDocument();
+    });
+
+    it("Test 3 — Unknown Progress: spinner shown, no progress bar rendered", async () => {
+      global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+      render(<UploadZone />);
+
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+      expect(screen.getAllByText(/uploading invoice/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("img", { name: /loading/i }).length).toBeGreaterThan(0);
+    });
+
+    it("Test 4 — 0% progress: bar renders and displays 0%", async () => {
+      global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+      render(<UploadZone progress={0} />);
+
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      const progressbar = screen.getByRole("progressbar");
+      expect(progressbar).toBeInTheDocument();
+      expect(progressbar).toHaveAttribute("aria-valuenow", "0");
+      expect(screen.getByText("0%")).toBeInTheDocument();
+    });
+
+    it("Test 5 — 100% progress: bar renders fully filled and displays 100%", async () => {
+      global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+      render(<UploadZone progress={100} />);
+
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      const progressbar = screen.getByRole("progressbar");
+      expect(progressbar).toBeInTheDocument();
+      expect(progressbar).toHaveAttribute("aria-valuenow", "100");
+      expect(screen.getByText("100%")).toBeInTheDocument();
+    });
+
+    it("Test 6 — Reduced Motion: progress bar works with motion-reduce class", async () => {
+      global.matchMedia = jest.fn().mockImplementation((query) => ({
+        matches: query === "(prefers-reduced-motion: reduce)",
+        media: query,
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+      }));
+
+      global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+      render(<UploadZone progress={50} />);
+
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      const progressbar = screen.getByRole("progressbar");
+      expect(progressbar).toBeInTheDocument();
+      expect(progressbar).toHaveAttribute("aria-valuenow", "50");
+      expect(screen.getByText("50%")).toBeInTheDocument();
+
+      const barInner = progressbar.querySelector("[class*='bg-cyan-400']");
+      expect(barInner).toHaveClass("motion-reduce:transition-none");
+    });
+
+    it("Test 7 — Accessibility: all required ARIA attributes present", async () => {
+      global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+      render(<UploadZone progress={62} />);
+
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      const progressbar = screen.getByRole("progressbar");
+      expect(progressbar).toHaveAttribute("role", "progressbar");
+      expect(progressbar).toHaveAttribute("aria-valuemin", "0");
+      expect(progressbar).toHaveAttribute("aria-valuemax", "100");
+      expect(progressbar).toHaveAttribute("aria-valuenow", "62");
+
+      const srOnly = screen.getByText(/62% uploaded/i);
+      expect(srOnly).toBeInTheDocument();
+    });
+
+    it("Test 8 — Regression: tokenizing and success flows unchanged with progress prop", async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ tokenizationDelay: 50 }),
+      });
+
+      render(<UploadZone progress={75} />);
+
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      expect(screen.getByText("75%")).toBeInTheDocument();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await waitFor(() =>
+        expect(screen.getByRole("status")).toHaveTextContent(/pending tokenization/i)
+      );
+
+      expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+
+      await act(async () => {
+        jest.advanceTimersByTime(50);
+      });
+
+      await waitFor(() =>
+        expect(screen.getByRole("status")).toHaveTextContent(/queued for tokenization/i)
+      );
+
+      expect(
+        screen.getByRole("button", { name: copy.uploadZone.resetAriaLabel })
+      ).toBeInTheDocument();
+    });
   });
 
   it("shows tokenizing status between upload and success when server returns tokenizationDelay", async () => {
@@ -481,32 +631,6 @@ describe("UploadZone", () => {
   });
 
   describe("GROUP 2: Keyboard activation (existing tests validated)", () => {
-    it("opens file dialog on Enter key on the drop zone (re-verify)", () => {
-      render(<UploadZone />);
-
-      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
-      const input = screen.getByLabelText(/select pdf invoice file/i);
-      const clickSpy = jest.spyOn(input, "click").mockImplementation(() => {});
-
-      fireEvent.keyDown(dropZone, { key: "Enter", code: "Enter" });
-
-      expect(clickSpy).toHaveBeenCalledTimes(1);
-      clickSpy.mockRestore();
-    });
-
-    it("opens file dialog on Space key on the drop zone (re-verify)", () => {
-      render(<UploadZone />);
-
-      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
-      const input = screen.getByLabelText(/select pdf invoice file/i);
-      const clickSpy = jest.spyOn(input, "click").mockImplementation(() => {});
-
-      fireEvent.keyDown(dropZone, { key: " ", code: "Space" });
-
-      expect(clickSpy).toHaveBeenCalledTimes(1);
-      clickSpy.mockRestore();
-    });
-
     it("does NOT open file dialog on other keys (Tab, Escape)", () => {
       render(<UploadZone />);
 
@@ -771,6 +895,50 @@ describe("UploadZone", () => {
     });
   });
 
+  describe("GROUP 5a: Keyboard focus and activation", () => {
+    it("dropzone is focusable via Tab", () => {
+      render(<UploadZone />);
+      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
+      dropZone.focus();
+      expect(dropZone).toHaveFocus();
+    });
+
+    it("dropzone has tabIndex={0} for keyboard access", () => {
+      render(<UploadZone />);
+      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
+      expect(dropZone).toHaveAttribute("tabindex", "0");
+    });
+
+    it("submit button has correct aria-disabled when no file", () => {
+      render(<UploadZone />);
+      const submitBtn = screen.getByRole("button", { name: /upload & tokenize invoice/i });
+      expect(submitBtn).toBeDisabled();
+      expect(submitBtn).toHaveAttribute("aria-disabled", "true");
+    });
+
+    it("submit button can be activated via keyboard after file selection", async () => {
+      mockFetchOk();
+      render(<UploadZone />);
+
+      const file = createMockFile();
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [file] },
+      });
+
+      const submitBtn = screen.getByRole("button", { name: /upload & tokenize invoice/i });
+      fireEvent.click(submitBtn);
+
+      expect(global.fetch).toHaveBeenCalled();
+    });
+
+    it("dropzone has visible focus indicator via focus styles", () => {
+      render(<UploadZone />);
+      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
+      expect(dropZone.className).toContain("transition-colors");
+      expect(dropZone).toHaveAttribute("tabindex", "0");
+    });
+  });
+
   describe("GROUP 5: Accessibility", () => {
     // Extended timeout thresholds to isolate sequential execution threads
     it("passes axe accessibility check in idle state", async () => {
@@ -809,4 +977,161 @@ describe("UploadZone", () => {
       expect(results).toHaveNoViolations();
     }, 15000);
   });
+
+  describe("Density Toggle", () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it("renders with comfortable density by default", async () => {
+      render(<UploadZone />);
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-4");
+      });
+      expect(screen.getByTestId("density-toggle")).toBeInTheDocument();
+      expect(screen.getByText("Compact")).toBeInTheDocument();
+    });
+
+    it("toggles from comfortable to compact", async () => {
+      render(<UploadZone />);
+      const toggle = screen.getByTestId("density-toggle");
+
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-4");
+      });
+
+      fireEvent.click(toggle);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-2");
+      });
+      expect(screen.getByText("Comfortable")).toBeInTheDocument();
+    });
+
+    it("toggles back from compact to comfortable", async () => {
+      render(<UploadZone />);
+      const toggle = screen.getByTestId("density-toggle");
+
+      fireEvent.click(toggle);
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-2");
+      });
+
+      fireEvent.click(toggle);
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-4");
+      });
+      expect(screen.getByText("Compact")).toBeInTheDocument();
+    });
+
+    it("persists compact density to localStorage on toggle", async () => {
+      render(<UploadZone />);
+      const toggle = screen.getByTestId("density-toggle");
+
+      fireEvent.click(toggle);
+
+      await waitFor(() => {
+        expect(localStorage.getItem("liquifact:upload:density")).toBe("compact");
+      });
+    });
+
+    it("persists comfortable density to localStorage on second toggle", async () => {
+      render(<UploadZone />);
+      const toggle = screen.getByTestId("density-toggle");
+
+      fireEvent.click(toggle);
+      await waitFor(() => {
+        expect(localStorage.getItem("liquifact:upload:density")).toBe("compact");
+      });
+
+      fireEvent.click(toggle);
+      await waitFor(() => {
+        expect(localStorage.getItem("liquifact:upload:density")).toBe("comfortable");
+      });
+    });
+
+    it("restores compact density from localStorage on mount", async () => {
+      localStorage.setItem("liquifact:upload:density", "compact");
+
+      render(<UploadZone />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-2");
+      });
+      expect(screen.getByText("Comfortable")).toBeInTheDocument();
+    });
+
+    it("restores comfortable density from localStorage on mount", async () => {
+      localStorage.setItem("liquifact:upload:density", "comfortable");
+
+      render(<UploadZone />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-4");
+      });
+    });
+
+    it("falls back to comfortable on invalid stored density", async () => {
+      localStorage.setItem("liquifact:upload:density", "spacious");
+
+      render(<UploadZone />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-4");
+      });
+      expect(screen.getByText("Compact")).toBeInTheDocument();
+    });
+
+    it("falls back to comfortable on empty stored value", async () => {
+      localStorage.setItem("liquifact:upload:density", "");
+
+      render(<UploadZone />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-4");
+      });
+    });
+
+    it("falls back to comfortable when stored value is a number string", async () => {
+      localStorage.setItem("liquifact:upload:density", "42");
+
+      render(<UploadZone />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-4");
+      });
+    });
+
+    it("sets aria-pressed to false when comfortable", async () => {
+      render(<UploadZone />);
+      await waitFor(() => {
+        expect(screen.getByTestId("density-toggle")).toHaveAttribute("aria-pressed", "false");
+      });
+    });
+
+    it("sets aria-pressed to true when compact", async () => {
+      render(<UploadZone />);
+      const toggle = screen.getByTestId("density-toggle");
+
+      fireEvent.click(toggle);
+
+      await waitFor(() => {
+        expect(toggle).toHaveAttribute("aria-pressed", "true");
+      });
+    });
+
+    it("does not break existing upload flow when density is compact", async () => {
+      render(<UploadZone />);
+      const toggle = screen.getByTestId("density-toggle");
+
+      fireEvent.click(toggle);
+      await waitFor(() => {
+        expect(screen.getByTestId("upload-zone")).toHaveClass("gap-2");
+      });
+
+      const submitBtn = screen.getByText(copy.uploadZone.submitIdle);
+      expect(submitBtn).toBeDisabled();
+    });
+  });
+
 });

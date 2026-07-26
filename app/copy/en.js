@@ -74,6 +74,7 @@
  * @property {string} invest.detail.copyErrorTitle
  * @property {string} invest.detail.loadErrorMsg
  * @property {string} invest.detail.loadErrorTitle
+ * @property {string} invest.detail.actionGroupLabel
  * @property {Object} invoices - Invoices page copy
  * @property {string} invoices.title
  * @property {string} invoices.subtext
@@ -154,6 +155,10 @@
  * @property {string} wallet.announceError
  * @property {string} wallet.announceWrongNetwork
  * @property {string} wallet.announceNoWallet
+ * @property {string} wallet.errorTitle
+ * @property {string} wallet.errorDescription
+ * @property {string} wallet.errorActionLabel
+ * @property {string} wallet.errorPreviewLabel
  * @property {Object} error - Error page copy
  * @property {string} error.title
  * @property {string} error.description
@@ -179,8 +184,32 @@
  * @property {string} invoiceTimeline.statusCompleted
  * @property {string} invoiceTimeline.statusCurrent
  * @property {string} invoiceTimeline.statusPending
- * @property {Object} nav - Navigation copy
- * @property {string} nav.announceNavigation - Screen-reader announcement when the user navigates to a new route. Use {label} as the placeholder for the page name.
+ * @property {Object} settings - Settings page copy (issue #743)
+ * @property {string} settings.title
+ * @property {string} settings.subtext
+ * @property {string} settings.emptyState
+ * @property {string} settings.errorTitle
+ * @property {string} settings.errorDescription
+ * @property {string} settings.errorStatus
+ * @property {string} settings.retryAction
+ * @property {string} settings.searchPlaceholder
+ * @property {string} settings.filterLegend
+ * @property {string} settings.filterHelp
+ * @property {string} settings.filterCategory
+ * @property {string} settings.filterSearch
+ * @property {string} settings.allCategories
+ * @property {string} settings.clearFilters
+ * @property {string} settings.noMatchFilter
+ * @property {string} settings.listAriaLabel
+ * @property {string} settings.loadingAriaLabel
+ * @property {string} settings.loadMore
+ * @property {string} settings.loadMoreAriaLabel
+ * @property {string} settings.endOfList
+ * @property {string} settings.announceNoSettings
+ * @property {string} settings.announceLoaded
+ * @property {string} settings.announceFiltered
+ * @property {string} settings.announceNoMatch
+ * @property {string} settings.announceShowing
  */
 
 /** @type {CopyDictionary} */
@@ -234,6 +263,14 @@ export const copy = {
     announceFilteredCount: "{matched} of {total} invoices match",
     announceInvoicesLoaded: "{count} investable invoices loaded",
     announceShowing: "Showing {shown} of {total} investable invoices",
+    filters: {
+      errorYieldMin: "Minimum yield must be a non-negative number.",
+      errorYieldMax: "Maximum yield must be a non-negative number.",
+      errorYieldRange: "Minimum yield cannot exceed maximum yield.",
+      errorMaturityFrom: "Maturity from must be a valid date (YYYY-MM-DD).",
+      errorMaturityTo: "Maturity to must be a valid date (YYYY-MM-DD).",
+      errorMaturityRange: "Maturity from cannot be after maturity to.",
+    },
     fundAmount: {
       label: "Funding amount",
       placeholder: "e.g. 1000",
@@ -245,6 +282,34 @@ export const copy = {
       errorPrecision: "Amount must not exceed {decimals} decimal places for {currency}.",
       submitLabel: "Fund this invoice",
       submittingLabel: "Submitting\u2026",
+    },
+    bulk: {
+      toolbarLabel: "Bulk actions toolbar",
+      selectAllLabel: "Select {selected} of {total}",
+      selectAllAria:
+        "Select all invoices. Currently {selected} of {total} selected.",
+      rowCheckboxAria: "Select invoice {id} from {issuer}",
+      selectedCount: "{selected} of {total} invoices selected.",
+      clearButton: "Clear selection",
+      exportButton: "Export",
+      exportButtonAria: "Export selected invoices as a JSON download",
+      deleteButton: "Delete",
+      deleteButtonAria: "Delete {count} selected invoices after confirmation",
+      rowSelectedAnnounced: "Selected {count} invoices.",
+      rowClearedAnnounced: "Selection cleared.",
+      allSelectedAnnounced: "All {total} invoices selected.",
+      exportSuccessTitle: "Export ready",
+      exportSuccessMsg: "Exported {count} invoice{plural}.",
+      exportEmptyMsg: "No invoices selected to export.",
+      deleteConfirmTitle: "Delete selected invoices?",
+      deleteConfirmBody:
+        "You are about to permanently delete {count} invoice{plural} from the marketplace. This cannot be undone.",
+      deleteConfirmConfirmLabel: "Delete {count} invoice{plural}",
+      deleteConfirmCancelLabel: "Cancel",
+      deleteSuccessTitle: "Invoices deleted",
+      deleteSuccessMsg: "Removed {count} invoice{plural} from the marketplace.",
+      deleteErrorTitle: "Delete failed",
+      deleteErrorMsg: "Could not delete the selected invoices. Please try again.",
     },
     detail: {
       pageTitle: "Invoice details",
@@ -272,6 +337,7 @@ export const copy = {
       copyErrorTitle: "Copy failed",
       loadErrorMsg: "Unable to load invoice details right now.",
       loadErrorTitle: "Unable to load invoice details",
+      actionGroupLabel: "Invoice actions",
     },
   },
   invoices: {
@@ -286,6 +352,11 @@ export const copy = {
   layout: {
     backToHome: "\u2190 LiquiFact",
     connectWallet: "Connect Wallet",
+  },
+  invoiceDetail: {
+    copyIdLabel: "Reference ID",
+    copyIdSuccess: "Reference ID copied to clipboard.",
+    copyIdError: "Unable to copy — please copy manually.",
   },
   footer: {
     docs: "Documentation",
@@ -333,7 +404,7 @@ export const copy = {
     disconnectButton: "Disconnect",
     retryButton: "Retry Connection",
     switchNetworkButton: "Switch Network",
-    installWalletButton: "Install Wallet",
+    installWalletButton: "Install Stellar Wallet",
     copyAddressButton: "Copy wallet address",
     helperDisconnected: "Connect your Stellar wallet to access the platform",
     helperConnecting: "Please approve the connection in your wallet",
@@ -359,12 +430,31 @@ export const copy = {
     announceError: "Wallet connection failed.",
     announceWrongNetwork: "Wallet connected to wrong network.",
     announceNoWallet: "No wallet detected.",
+    // Wallet error-boundary fallback (see components/WalletErrorBoundary.jsx)
+    errorTitle: "Wallet unavailable",
+    errorDescription:
+      "The wallet controls hit an unexpected problem. The rest of the page still works — retry to reload them.",
+    errorActionLabel: "Retry wallet",
+    errorPreviewLabel: "Wallet",
   },
   error: {
     title: "Something went wrong",
     description: "An unexpected error occurred. We\u2019ve been notified and are looking into it.",
     actionLabel: "Try again",
     previewLabel: "Error boundary",
+  },
+  toastError: {
+    title: "Notifications failed to load",
+    description:
+      "An unexpected error occurred while showing notifications. You can retry, and the rest of the app is unaffected.",
+    actionLabel: "Retry",
+    previewLabel: "Error boundary",
+  },
+  nav: {
+    errorTitle: "Navigation unavailable",
+    errorDescription:
+      "The site navigation ran into an unexpected error. You can retry, or reload the page.",
+    errorActionLabel: "Retry",
   },
   notFound: {
     heading: "Page not found",
@@ -393,5 +483,33 @@ export const copy = {
     /** Announced politely by NavMenu when the user navigates to a new route.
      *  Replace {label} with the matching NAV_LINKS label (e.g. "Home"). */
     announceNavigation: "Navigated to {label}",
-  },
+    settings: {
+      title: "Settings",
+      subtext:
+        "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
+      emptyState: "No preferences available. Connect your wallet to unlock settings.",
+      errorTitle: "Unable to load settings",
+      errorDescription: "Unable to load settings right now.",
+      errorStatus: "Unable to load settings.",
+      retryAction: "Try again",
+      searchPlaceholder: "Search preferences…",
+      filterLegend: "Settings filters",
+      filterHelp:
+        "Use the category selector or the search box to narrow the list. Paging is reset whenever a filter changes.",
+      filterCategory: "Category:",
+      filterSearch: "Search:",
+      allCategories: "All categories",
+      clearFilters: "Reset filters",
+      noMatchFilter: "No preferences match the active filters.",
+      listAriaLabel: "Settings list",
+      loadingAriaLabel: "Loading settings",
+      loadMore: "Load more",
+      loadMoreAriaLabel: "Load more preferences",
+      endOfList: "You have reached the end of the list.",
+      announceNoSettings: "No settings available",
+      announceLoaded: "{count} preferences loaded",
+      announceFiltered: "{matched} of {total} preferences match",
+      announceNoMatch: "No preferences match",
+      announceShowing: "Showing {shown} of {total} preferences",
+    },
 };

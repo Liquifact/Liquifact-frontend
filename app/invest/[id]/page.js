@@ -23,15 +23,20 @@
  *             → RSC renders layout + passes {id, status} to <FundActions>
  */
 
+import Button from "@/components/Button";
+import CopyButton from "@/components/CopyButton";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import NavMenu from "@/components/NavMenu";
 import StatusPill from "@/components/StatusPill";
-import InvoiceTimeline from "@/components/InvoiceTimeline";
+import WalletStatus from "@/components/WalletStatus";
+import { useWallet, WALLET_STATES } from "@/components/WalletContext";
+import { INVALID_VALUE_FALLBACK, formatAmount, formatCurrency } from "@/lib/format/currency";
 import { copy } from "@/app/copy/en";
-import { INVALID_VALUE_FALLBACK, formatCurrency, formatAmount } from "@/lib/format/currency";
 import { getInvoiceById } from "../lib";
 import FundActions from "./FundActions";
+import InvoiceDetailClient from "./InvoiceDetailClient";
 
 const detail = copy.invest.detail;
 
@@ -164,42 +169,65 @@ export default async function InvoiceDetailPage({ params }) {
         <h1 className="text-2xl font-bold mb-2">{detail.pageTitle}</h1>
         <p className="text-slate-400 mb-8">{detail.pageSub}</p>
 
-        {/* ── Invoice metadata (static, server-rendered) ────────────── */}
-        <section
-          aria-labelledby="invoice-summary-heading"
-          className="print-invoice-section rounded-xl border border-slate-800 bg-slate-900/50 p-6 mb-6"
-        >
-          <h2 id="invoice-summary-heading" className="text-xl font-semibold mb-4">
-            {invoice.issuer}
-          </h2>
-
-          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div>
-              <dt className="text-slate-500">{detail.labelIssuer}</dt>
-              <dd className="text-slate-100">{invoice.issuer}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">{detail.labelAmount}</dt>
-              <dd className="text-slate-100">
-                {formatCurrency(invoice.amount, { currency: invoice.currency })}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">{detail.labelYield}</dt>
-              <dd className="text-slate-100">{formatYield(invoice.yield)}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">{detail.labelMaturity}</dt>
-              <dd className="text-slate-100">{invoice.dueDate}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">{detail.labelStatus}</dt>
-              <dd className="text-slate-100">
-                <StatusPill status={invoice.status ?? ""} />
-              </dd>
-            </div>
-          </dl>
-        </section>
+        {loadError ? (
+          <ErrorBanner
+            variant="error"
+            title="Unable to load invoice details"
+            description={loadError}
+            previewLabel="Invoice detail"
+          />
+        ) : invoice === null ? (
+          <InvoiceListSkeleton rows={1} />
+        ) : (
+          <>
+            <section
+              aria-labelledby="invoice-summary-heading"
+              className="print-invoice-section rounded-xl border border-slate-800 bg-slate-900/50 p-6 mb-6"
+            >
+              <h2 id="invoice-summary-heading" className="text-xl font-semibold mb-4">
+                {invoice.issuer}
+              </h2>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <dt className="text-slate-500">Issuer</dt>
+                  <dd className="text-slate-100">{invoice.issuer}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Amount</dt>
+                  <dd className="text-slate-100">
+                    {formatCurrency(invoice.amount, {
+                      currency: invoice.currency,
+                    })}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Estimated yield</dt>
+                  <dd className="text-slate-100">{formatYield(invoice.yield)}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Maturity date</dt>
+                  <dd className="text-slate-100">{invoice.dueDate}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Status</dt>
+                  <dd className="text-slate-100">
+                    <StatusPill status={invoice.status ?? ""} />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Reference</dt>
+                  <dd className="text-slate-100 flex items-center gap-1.5">
+                    <span className="font-mono">{invoice.id}</span>
+                    <CopyButton
+                      text={invoice.id}
+                      label={copy.invoiceDetail.copyIdLabel}
+                      successMessage={copy.invoiceDetail.copyIdSuccess}
+                      errorMessage={copy.invoiceDetail.copyIdError}
+                    />
+                  </dd>
+                </div>
+              </dl>
+            </section>
 
         {/* ── Lifecycle timeline (server-rendered, status-driven) ───────── */}
         <InvoiceTimeline status={invoice.status} timestamps={invoice.timestamps} className="mb-6" />

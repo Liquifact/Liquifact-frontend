@@ -73,11 +73,7 @@ export default function ThemeToggle({ className = "" }) {
   // effect, which would trigger a cascading render warning.
   const [preference, setPreference] = useState(() => {
     if (typeof window === "undefined") return "system";
-    try {
-      return readStoredTheme();
-    } catch {
-      return "system";
-    }
+    return readStoredTheme();
   });
 
   // Keep data-theme in sync whenever the preference state changes
@@ -101,11 +97,26 @@ export default function ThemeToggle({ className = "" }) {
     return () => mq.removeEventListener("change", handler);
   }, [preference]);
 
-  const handleClick = () => {
+  const cycleTheme = (direction) => {
     setPreference((prev) => {
       const idx = THEMES.indexOf(prev);
-      return THEMES[(idx + 1) % THEMES.length];
+      if (direction === "next") {
+        return THEMES[(idx + 1) % THEMES.length];
+      }
+      return THEMES[(idx - 1 + THEMES.length) % THEMES.length];
     });
+  };
+
+  const handleClick = () => cycleTheme("next");
+
+  const handleKeyDown = (e) => {
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      cycleTheme("next");
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      cycleTheme("prev");
+    }
   };
 
   const ICONS = {
@@ -180,14 +191,20 @@ export default function ThemeToggle({ className = "" }) {
 
   const nextPref = THEMES[(THEMES.indexOf(preference) + 1) % THEMES.length];
   const capitalise = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const isDarkActive =
+    preference === "dark" ||
+    (preference === "system" &&
+      typeof window !== "undefined" &&
+      resolveTheme(preference) === "dark");
 
   return (
     <button
       id="theme-toggle"
       type="button"
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       aria-label={LABELS[preference]}
-      aria-pressed={preference !== "system"}
+      aria-pressed={isDarkActive}
       title={`Current theme: ${capitalise(preference)}`}
       data-theme-pref={preference}
       data-theme-next={nextPref}

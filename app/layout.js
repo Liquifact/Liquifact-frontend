@@ -1,4 +1,7 @@
+import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import "./globals.css";
 import Footer from "../components/Footer";
 import { ToastProvider } from "../components/ToastProvider";
@@ -6,6 +9,7 @@ import { WalletProvider } from "../components/WalletProvider";
 import ThemeToggle, { THEME_STORAGE_KEY, THEMES } from "../components/ThemeToggle";
 import ShortcutHelpDialog from "../components/ShortcutHelpDialog";
 import { copy } from "./copy/en";
+import { MARKETPLACE_SHORTCUT_KEY, createShortcutMatcher } from "../lib/shortcuts";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -68,7 +72,9 @@ const THEME_SCRIPT = `(function(){
   document.documentElement.setAttribute('data-theme', effective);
 })();`;
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang="en">
       {/*
@@ -76,7 +82,7 @@ export default function RootLayout({ children }) {
         eliminating the flash of incorrect theme (FOIT-equivalent for themes).
       */}
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {/* Skip link: first focusable element so keyboard users can bypass the header */}
@@ -90,6 +96,8 @@ export default function RootLayout({ children }) {
         <div className="fixed top-3 right-16 z-50 md:right-20">
           <ThemeToggle />
         </div>
+        {/* Marketplace shortcut — listens for `m` keystrokes to navigate to /invest */}
+        <MarketplaceShortcut />
         {/* Shortcut help dialog — listens for `?` keystrokes to surface every
             registered keyboard shortcut. Mounted here so the gesture works
             on every page. The dialog markup only renders while open. */}

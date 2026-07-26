@@ -22,6 +22,7 @@ const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/invoices", label: "Invoices" },
   { href: "/invest", label: "Invest" },
+  { href: "/settings", label: "Settings" },
 ];
 
 /**
@@ -314,9 +315,17 @@ export default function NavMenu() {
         {/* Brand */}
         <Link
           href="/"
+          aria-current={isHomePage ? "page" : undefined} 
           className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline focus-ring rounded"
         >
-          {brandLabel}
+            {isHomePage ? (
+              "LiquiFact"
+            ) : (
+              <>
+                <span aria-hidden="true">← </span> {/* CHANGED */}
+                LiquiFact
+              </>
+            )}
         </Link>
 
         {/* Desktop nav — only re-renders when pathname changes */}
@@ -351,6 +360,7 @@ export default function NavMenu() {
               strokeLinecap="round"
               strokeLinejoin="round"
               aria-hidden="true"
+              focusable="false"
             >
               <line
                 x1="3"

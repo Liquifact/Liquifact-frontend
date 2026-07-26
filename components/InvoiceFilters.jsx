@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
+import { copy } from "@/app/copy/en";
 import { INVOICE_STATUSES, STATUS_PILL_MAP } from "@/lib/types/invoice";
 
 export const DEFAULT_FILTERS = {
@@ -13,6 +14,7 @@ export const DEFAULT_FILTERS = {
   sortDir: "desc",
   /** @type {string[]} Active status filter values (empty = show all). */
   statuses: [],
+  watchlistOnly: false,
 };
 
 /**
@@ -123,11 +125,7 @@ function isValidISODate(str) {
   if (Number.isNaN(d.getTime())) return false;
   // new Date("2026-09-99") rolls over to 2026-10-09 in some engines,
   // so verify round-trip via ISO string.
-  try {
-    return d.toISOString().slice(0, 10) === str;
-  } catch {
-    return false;
-  }
+  return d.toISOString().slice(0, 10) === str;
 }
 
 export function matchesMaturityRange(dueDate, from, to) {
@@ -145,6 +143,57 @@ export function matchesMaturityRange(dueDate, from, to) {
   }
 
   return true;
+}
+
+/**
+ * Validate navigation input fields (yield range and maturity range).
+ * Returns an object keyed by field name with error strings, or empty for valid fields.
+ * Range-level errors (yieldRange, maturityRange) are set when both bounds are
+ * valid but the lower bound exceeds the upper bound.
+ *
+ * @param {{ yieldMin: string, yieldMax: string, maturityFrom: string, maturityTo: string }} obj
+ * @returns {{ yieldMin?: string, yieldMax?: string, yieldRange?: string, maturityFrom?: string, maturityTo?: string, maturityRange?: string }}
+ */
+export function validateNavigationInputs({ yieldMin, yieldMax, maturityFrom, maturityTo }) {
+  const errors = {};
+
+  if (yieldMin !== "") {
+    const yMin = parseYield(yieldMin);
+    if (Number.isNaN(yMin) || yMin < 0) {
+      errors.yieldMin = copy.invest.filters.errorYieldMin;
+    }
+  }
+
+  if (yieldMax !== "") {
+    const yMax = parseYield(yieldMax);
+    if (Number.isNaN(yMax) || yMax < 0) {
+      errors.yieldMax = copy.invest.filters.errorYieldMax;
+    }
+  }
+
+  if (yieldMin !== "" && yieldMax !== "" && !errors.yieldMin && !errors.yieldMax) {
+    const min = parseYield(yieldMin);
+    const max = parseYield(yieldMax);
+    if (Number.isFinite(min) && Number.isFinite(max) && min > max) {
+      errors.yieldRange = copy.invest.filters.errorYieldRange;
+    }
+  }
+
+  if (maturityFrom !== "" && !isValidISODate(maturityFrom)) {
+    errors.maturityFrom = copy.invest.filters.errorMaturityFrom;
+  }
+
+  if (maturityTo !== "" && !isValidISODate(maturityTo)) {
+    errors.maturityTo = copy.invest.filters.errorMaturityTo;
+  }
+
+  if (maturityFrom !== "" && maturityTo !== "" && !errors.maturityFrom && !errors.maturityTo) {
+    if (maturityFrom > maturityTo) {
+      errors.maturityRange = copy.invest.filters.errorMaturityRange;
+    }
+  }
+
+  return errors;
 }
 
 /**
@@ -178,7 +227,8 @@ export function hasActiveFilters(filters) {
     filters.maturityFrom !== "" ||
     filters.maturityTo !== "" ||
     filters.sort !== "" ||
-    (Array.isArray(filters.statuses) && filters.statuses.length > 0)
+    (Array.isArray(filters.statuses) && filters.statuses.length > 0) ||
+    filters.watchlistOnly === true
   );
 }
 
@@ -233,6 +283,10 @@ export function getActiveFilterChips(filters, searchQuery = "") {
 
   if (filters.yieldMax !== "") {
     chips.push({ key: "yieldMax", label: `Max yield: ${filters.yieldMax}%`, clearKey: "yieldMax" });
+  }
+
+  if (filters.watchlistOnly) {
+    chips.push({ key: "watchlistOnly", label: "Watchlist Only", clearKey: "watchlistOnly" });
   }
 
   if (filters.currency !== "") {
@@ -352,7 +406,7 @@ function DirectionToggle({ column, filters, onFilterChange }) {
       onClick={handleToggle}
       disabled={!isActive}
       aria-label={ariaLabel}
-      className={`rounded px-2 py-1 text-xs font-mono transition-colors select-none ${
+      className={`focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none ${
         isActive
           ? "bg-cyan-900/40 text-cyan-300 hover:bg-cyan-800/60 border border-cyan-700"
           : "bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
@@ -424,6 +478,40 @@ export function StatusLegendFilter({ selectedStatuses = [], onStatusToggle, onCl
 }
 
 export default function InvoiceFilters({ filters, onFilterChange, onClearFilters }) {
+  const yieldMinId = useId();
+  const yieldMaxId = useId();
+  const yieldErrorId = useId();
+  const maturityFromId = useId();
+  const maturityToId = useId();
+  const maturityErrorId = useId();
+
+  const [touched, setTouched] = useState({});
+
+  const validateYieldRange = useCallback((min, max) => {
+    if (min !== "" && (isNaN(Number(min)) || Number(min) < 0)) {
+      return "Min yield must be a positive number";
+    }
+    if (max !== "" && (isNaN(Number(max)) || Number(max) < 0)) {
+      return "Max yield must be a positive number";
+    }
+    if (min !== "" && max !== "" && Number(min) > Number(max)) {
+      return "Min yield cannot exceed max yield";
+    }
+    return null;
+  }, []);
+
+  const validateMaturityRange = useCallback((from, to) => {
+    if (from && to && from > to) {
+      return "Start date cannot be after end date";
+    }
+    return null;
+  }, []);
+
+  const yieldError = validateYieldRange(filters.yieldMin, filters.yieldMax);
+  const maturityError = validateMaturityRange(filters.maturityFrom, filters.maturityTo);
+
+  const yieldHasError = touched.yieldMin || touched.yieldMax ? yieldError : null;
+  const maturityHasError = touched.maturityFrom || touched.maturityTo ? maturityError : null;
   const handleChange = useCallback(
     (key, value) => {
       onFilterChange({ ...filters, [key]: value });
@@ -445,32 +533,90 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
   const [focusedCurrencyIndex, setFocusedCurrencyIndex] = useState(0);
   const currencyRefs = useRef([]);
 
+  const [touchedFields, setTouchedFields] = useState({});
+
+  const yieldMinErrorId = useId();
+  const yieldMaxErrorId = useId();
+  const maturityFromErrorId = useId();
+  const maturityToErrorId = useId();
+
+  const validationErrors = useMemo(() => validateNavigationInputs(filters), [filters]);
+
+  const markTouched = useCallback((field) => {
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+  }, []);
+
+  const effYieldMinError = touchedFields.yieldMin
+    ? validationErrors.yieldMin || validationErrors.yieldRange
+    : null;
+  const effYieldMaxError = touchedFields.yieldMax
+    ? validationErrors.yieldMax || validationErrors.yieldRange
+    : null;
+  const effMaturityFromError = touchedFields.maturityFrom
+    ? validationErrors.maturityFrom || validationErrors.maturityRange
+    : null;
+  const effMaturityToError = touchedFields.maturityTo
+    ? validationErrors.maturityTo || validationErrors.maturityRange
+    : null;
+
   return (
     <div className="flex flex-wrap gap-4 items-center">
-      <fieldset className="flex items-center gap-2 border-none p-0 m-0">
-        <legend className="sr-only">Yield Range</legend>
+      <div className="flex flex-col gap-1">
+        <fieldset className="flex items-center gap-2 border-none p-0 m-0">
+          <legend className="sr-only">Yield Range</legend>
+          <input
+            type="number"
+            value={filters.yieldMin}
+            onChange={(e) => handleChange("yieldMin", e.target.value)}
+            onBlur={() => markTouched("yieldMin")}
+            placeholder="Min yield"
+            className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none ${
+              effYieldMinError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
+            }`}
+            aria-label="Minimum yield percentage"
+            aria-invalid={effYieldMinError ? "true" : "false"}
+            aria-describedby={effYieldMinError ? yieldMinErrorId : undefined}
+            min="0"
+            step="0.1"
+          />
+          <span className="text-slate-500">-</span>
+          <input
+            type="number"
+            value={filters.yieldMax}
+            onChange={(e) => handleChange("yieldMax", e.target.value)}
+            onBlur={() => markTouched("yieldMax")}
+            placeholder="Max yield"
+            className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none ${
+              effYieldMaxError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
+            }`}
+            aria-label="Maximum yield percentage"
+            aria-invalid={effYieldMaxError ? "true" : "false"}
+            aria-describedby={effYieldMaxError ? yieldMaxErrorId : undefined}
+            min="0"
+            step="0.1"
+          />
+        </fieldset>
+        {effYieldMinError && (
+          <p id={yieldMinErrorId} role="alert" aria-live="polite" className="text-xs text-red-400">
+            {effYieldMinError}
+          </p>
+        )}
+        {effYieldMaxError && (
+          <p id={yieldMaxErrorId} role="alert" aria-live="polite" className="text-xs text-red-400">
+            {effYieldMaxError}
+          </p>
+        )}
+      </div>
+
+      <label className="flex items-center gap-2 text-sm text-slate-300">
         <input
-          type="number"
-          value={filters.yieldMin}
-          onChange={(e) => handleChange("yieldMin", e.target.value)}
-          placeholder="Min yield"
-          className="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-          aria-label="Minimum yield percentage"
-          min="0"
-          step="0.1"
+          type="checkbox"
+          checked={filters.watchlistOnly || false}
+          onChange={(e) => handleChange("watchlistOnly", e.target.checked)}
+          className="rounded border-slate-700 bg-slate-800/50 text-cyan-500 focus:ring-cyan-500"
         />
-        <span className="text-slate-500">-</span>
-        <input
-          type="number"
-          value={filters.yieldMax}
-          onChange={(e) => handleChange("yieldMax", e.target.value)}
-          placeholder="Max yield"
-          className="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-          aria-label="Maximum yield percentage"
-          min="0"
-          step="0.1"
-        />
-      </fieldset>
+        Watchlist Only
+      </label>
 
       <div
         role="toolbar"
@@ -524,24 +670,56 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
         ))}
       </div>
 
-      <fieldset className="flex items-center gap-2 border-none p-0 m-0">
-        <legend className="sr-only">Maturity Date Range</legend>
-        <input
-          type="date"
-          value={filters.maturityFrom}
-          onChange={(e) => handleChange("maturityFrom", e.target.value)}
-          className="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-          aria-label="Maturity date from"
-        />
-        <span className="text-slate-500">-</span>
-        <input
-          type="date"
-          value={filters.maturityTo}
-          onChange={(e) => handleChange("maturityTo", e.target.value)}
-          className="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-          aria-label="Maturity date to"
-        />
-      </fieldset>
+      <div className="flex flex-col gap-1">
+        <fieldset className="flex items-center gap-2 border-none p-0 m-0">
+          <legend className="sr-only">Maturity Date Range</legend>
+          <input
+            type="date"
+            value={filters.maturityFrom}
+            onChange={(e) => handleChange("maturityFrom", e.target.value)}
+            onBlur={() => markTouched("maturityFrom")}
+            className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] ${
+              effMaturityFromError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
+            }`}
+            aria-label="Maturity date from"
+            aria-invalid={effMaturityFromError ? "true" : "false"}
+            aria-describedby={effMaturityFromError ? maturityFromErrorId : undefined}
+          />
+          <span className="text-slate-500">-</span>
+          <input
+            type="date"
+            value={filters.maturityTo}
+            onChange={(e) => handleChange("maturityTo", e.target.value)}
+            onBlur={() => markTouched("maturityTo")}
+            className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] ${
+              effMaturityToError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
+            }`}
+            aria-label="Maturity date to"
+            aria-invalid={effMaturityToError ? "true" : "false"}
+            aria-describedby={effMaturityToError ? maturityToErrorId : undefined}
+          />
+        </fieldset>
+        {effMaturityFromError && (
+          <p
+            id={maturityFromErrorId}
+            role="alert"
+            aria-live="polite"
+            className="text-xs text-red-400"
+          >
+            {effMaturityFromError}
+          </p>
+        )}
+        {effMaturityToError && (
+          <p
+            id={maturityToErrorId}
+            role="alert"
+            aria-live="polite"
+            className="text-xs text-red-400"
+          >
+            {effMaturityToError}
+          </p>
+        )}
+      </div>
 
       <fieldset className="flex items-center gap-2 border-none p-0 m-0">
         <legend className="sr-only">Sort Options</legend>
@@ -572,7 +750,7 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
         type="button"
         onClick={onClearFilters}
         disabled={!active}
-        className={`ml-auto rounded-lg border px-4 py-2 text-sm transition-colors ${
+        className={`focus-ring ml-auto rounded-lg border px-4 py-2 text-sm transition-colors ${
           active
             ? "border-slate-600 bg-slate-800/50 text-cyan-400 hover:bg-slate-700"
             : "border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"

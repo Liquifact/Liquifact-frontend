@@ -177,6 +177,7 @@ export function WalletProvider({ children }) {
   const [state, setState] = useState(WALLET_STATES.DISCONNECTED);
   const [walletData, setWalletData] = useState(null);
   const [error, setError] = useState(null);
+  const [hydrating, setHydrating] = useState(true);
   const skipPersistRef = useRef(true);
   const toast = useOptionalToast();
 
@@ -191,6 +192,7 @@ export function WalletProvider({ children }) {
       });
       /* eslint-enable react-hooks/set-state-in-effect */
     }
+    setHydrating(false);
   }, []);
 
   useEffect(() => {
@@ -279,8 +281,8 @@ export function WalletProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ state, walletData, error, connect, disconnect }),
-    [state, walletData, error, connect, disconnect]
+    () => ({ state, walletData, error, hydrating, connect, disconnect }),
+    [state, walletData, error, hydrating, connect, disconnect]
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
@@ -293,6 +295,7 @@ export function WalletProvider({ children }) {
  * @returns {{
  *   state: string,
  *   walletData: { address: string, network: string, balance?: string } | null,
+ *   hydrating: boolean,
  *   connect: () => Promise<{ outcome: string, message?: string }>,
  *   disconnect: () => void
  * }}
