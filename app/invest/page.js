@@ -22,6 +22,14 @@ import { exportAsCSV, exportAsJSON } from "@/utils/export";
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
 
+// Delay before an async load/retry outcome reaches the polite live region.
+// Debouncing coalesces a burst of rapid results (e.g. mashing "Try again")
+// into a single announcement of the latest outcome instead of flooding
+// screen readers with every intermediate state. Filter/pagination/search
+// text changes are not async results and stay immediate — see the
+// `announcedMessage` effect below.
+export const ANNOUNCE_DEBOUNCE_MS = 200;
+
 /**
  * Returns the screen-reader announcement text for the initial invoice load.
  *
@@ -136,6 +144,14 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
    * the effect itself is otherwise idempotent for the same loadInvoices ref.
    */
   const [retryKey, setRetryKey] = useState(0);
+
+  /**
+   * Bumped once per settled load/retry attempt (success or failure) that
+   * wasn't superseded by an unmount or a newer retry. Used to distinguish
+   * async-load-driven announcement changes (debounced) from filter/
+   * pagination/search-driven ones (immediate) — see `announcedMessage` below.
+   */
+  const [loadGeneration, setLoadGeneration] = useState(0);
 
   // Reset paging whenever the raw invoice data changes (new fetch, retry, etc.).
   // Compared during render per the React-recommended pattern:
@@ -268,6 +284,11 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
 
         setInvoices(null);
         setLoadError(copy.invest.errorDescription);
+      } finally {
+        // Marks this attempt as settled so the announcement effect below can
+        // tell an async result apart from a filter/pagination/search change.
+        // Skipped when the attempt was aborted/superseded (isActive is false).
+        if (isActive) setLoadGeneration((generation) => generation + 1);
       }
     };
 
@@ -305,6 +326,40 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     return getInvoiceLoadAnnouncement(invoices);
   }, [filteredInvoices, filterActive, invoices, visibleCount, loadError]);
 
+  // The text actually rendered into the live region (issue #722). Mirrors
+  // statusMessage immediately for filter/pagination/search changes, but
+  // debounces changes driven by an async load/retry settling (tracked via
+  // loadGeneration) so a burst of rapid results collapses into a single
+  // announcement of the latest outcome instead of one per attempt.
+  const [announcedMessage, setAnnouncedMessage] = useState(statusMessage);
+  const prevLoadGenerationRef = useRef(loadGeneration);
+  const announceTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    const isLoadSettle = loadGeneration !== prevLoadGenerationRef.current;
+    prevLoadGenerationRef.current = loadGeneration;
+
+    if (announceTimeoutRef.current) {
+      clearTimeout(announceTimeoutRef.current);
+      announceTimeoutRef.current = null;
+    }
+
+    if (isLoadSettle) {
+      announceTimeoutRef.current = setTimeout(() => {
+        setAnnouncedMessage(statusMessage);
+      }, ANNOUNCE_DEBOUNCE_MS);
+      return;
+    }
+
+    setAnnouncedMessage(statusMessage);
+  }, [statusMessage, loadGeneration]);
+
+  useEffect(() => {
+    return () => {
+      if (announceTimeoutRef.current) clearTimeout(announceTimeoutRef.current);
+    };
+  }, []);
+
   // ── Load-more handler ──────────────────────────────────────────────────────
   /**
    * Appends the next PAGE_SIZE items and updates the live-region status.
@@ -335,9 +390,11 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
       <NavMenu />
 
       <main className="max-w-4xl mx-auto px-6 py-12">
-        {/* Polite live region – announced to screen readers on every state change */}
+        {/* Polite live region – announced to screen readers on every state change.
+            Async load/retry outcomes are debounced (issue #722); filter,
+            pagination, and search text update immediately. */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-          {statusMessage}
+          {announcedMessage}
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
