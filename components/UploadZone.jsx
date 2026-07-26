@@ -263,7 +263,7 @@ function UploadZone({ onUploadSuccess, progress }) {
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
         onKeyDown={handleKeyDown}
-        className={`upload-dropzone cursor-pointer rounded-xl border-2 border-dashed transition-colors duration-200 motion-reduce:transition-none p-10 text-center ${dropZoneBorder}`}
+        className={`focus-ring cursor-pointer rounded-xl border-2 border-dashed transition-colors duration-200 p-10 text-center ${dropZoneBorder}`}
       >
         {file ? (
           <div className="space-y-2">

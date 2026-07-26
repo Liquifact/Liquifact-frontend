@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom";
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import InvoiceFilters, {
   DEFAULT_FILTERS,
   hasActiveFilters,
@@ -203,6 +204,29 @@ describe("InvoiceFilters", () => {
     expect(handleChange).toHaveBeenCalledWith(
       expect.objectContaining({
         sort: "yield",
+      })
+    );
+  });
+
+  it("calls onFilterChange when sort direction toggle is activated via keyboard", async () => {
+    const user = userEvent.setup();
+    const handleChange = jest.fn();
+    render(
+      <InvoiceFilters
+        filters={{ ...DEFAULT_FILTERS, sort: "amount", sortDir: "desc" }}
+        onFilterChange={handleChange}
+        onClearFilters={() => {}}
+      />
+    );
+
+    const amountToggle = screen.getByLabelText("Sort amount ascending");
+    amountToggle.focus();
+    await user.keyboard("{Enter}");
+
+    expect(handleChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sort: "amount",
+        sortDir: "asc",
       })
     );
   });
