@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import CopyButton from "./CopyButton";
 
 /**
  * The three theme options the user can cycle through.
@@ -13,6 +14,9 @@ export const THEME_STORAGE_KEY = "liquifact-theme";
 
 /** localStorage key where the last-changed timestamp (ms epoch) is persisted. */
 export const THEME_UPDATED_KEY = "liquifact-theme-updated";
+
+/** Stable identifier for the theme preference setting. */
+export const THEME_IDENTIFIER = THEME_STORAGE_KEY;
 
 /** How often (ms) the relative label re-renders itself while mounted. */
 const RELATIVE_LABEL_REFRESH_MS = 60_000;
@@ -165,7 +169,7 @@ export default function ThemeToggle({ className = "" }) {
     return () => mq.removeEventListener("change", handler);
   }, [preference]);
 
-  const handleClick = () => {
+  const cycleTheme = (direction = "next") => {
     const now = Date.now();
     setPreference((prev) => {
       const idx = THEMES.indexOf(prev);
@@ -276,7 +280,7 @@ export default function ThemeToggle({ className = "" }) {
   const absoluteLabel = updatedAt ? new Date(updatedAt).toLocaleString() : null;
 
   return (
-    <>
+    <span className="inline-flex items-center gap-1">
       <button
         id="theme-toggle"
         type="button"
@@ -298,6 +302,13 @@ export default function ThemeToggle({ className = "" }) {
       >
         {ICONS[preference]}
       </button>
+      <CopyButton
+        text={THEME_IDENTIFIER}
+        label="theme identifier"
+        successMessage="Theme identifier copied to clipboard."
+        errorMessage="Unable to copy theme identifier. Select and copy it manually."
+        className="h-8 w-8 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-cyan-400 dark:text-slate-300 dark:hover:text-cyan-400"
+      />
       {relativeLabel && (
         <span
           data-testid="theme-updated-at"
@@ -308,6 +319,6 @@ export default function ThemeToggle({ className = "" }) {
           <span className="sr-only">{`Theme last changed ${absoluteLabel}`}</span>
         </span>
       )}
-    </>
+    </span>
   );
 }
