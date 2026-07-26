@@ -3,11 +3,17 @@ import { act, render, screen, fireEvent, within } from "@testing-library/react";
 import InvestPage, {
   getInvoiceLoadAnnouncement,
   getPaginationAnnouncement,
+  applySortToList,
   InvestMarketplace,
   PAGE_SIZE,
   SEARCH_DEBOUNCE_MS,
+  URL_SYNC_DEBOUNCE_MS,
+  parseFiltersFromSearchParams,
+  buildSearchParams,
 } from "./page";
 import { getInvoiceById, loadMockInvoices, MOCK_INVOICES } from "./lib";
+import { useSearchParams, useRouter } from "next/navigation";
+import { DEFAULT_FILTERS } from "@/components/InvoiceFilters";
 
 jest.mock("next/link", () => {
   function MockLink({ href, children, ...props }) {
@@ -25,6 +31,18 @@ jest.mock("@/components/NavMenu", () => {
     return <nav aria-label="site navigation" />;
   }
   return { __esModule: true, default: MockNavMenu };
+});
+
+jest.mock("next/navigation", () => ({
+  __esModule: true,
+  useSearchParams: jest.fn(),
+  useRouter: jest.fn(),
+  usePathname: jest.fn(),
+}));
+
+beforeEach(() => {
+  useSearchParams.mockReturnValue(new URLSearchParams());
+  useRouter.mockReturnValue({ replace: jest.fn() });
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1296,5 +1314,280 @@ describe("getPaginationAnnouncement", () => {
   it("formats the Showing N of M string correctly", () => {
     expect(getPaginationAnnouncement(10, 25)).toBe("Showing 10 of 25 investable invoices");
     expect(getPaginationAnnouncement(3, 3)).toBe("Showing 3 of 3 investable invoices");
+  });
+});
+
+describe("parseFiltersFromSearchParams", () => {
+  it("restores valid filter and sort params from the URL", () => {
+    const params = new URLSearchParams(
+      "?currency=EUR&yieldMin=5&yieldMax=10&maturityFrom=2026-01-01&maturityTo=2026-12-31&sort=yield&sortDir=asc&statuses=Open,Funded&q=acme"
+    );
+    const { filters, searchQuery } = parseFiltersFromSearchParams(params);
+    expect(filters.currency).toBe("EUR");
+    expect(filters.yieldMin).toBe("5");
+    expect(filters.yieldMax).toBe("10");
+    expect(filters.maturityFrom).toBe("2026-01-01");
+    expect(filters.maturityTo).toBe("2026-12-31");
+    expect(filters.sort).toBe("yield");
+    expect(filters.sortDir).toBe("asc");
+    expect(filters.statuses).toEqual(["Open", "Funded"]);
+    expect(searchQuery).toBe("acme");
+  });
+
+  it("ignores invalid params and falls back to defaults", () => {
+    const params = new URLSearchParams(
+      "?currency=BTC&yieldMin=&yieldMax=bad&maturityFrom=notadate&maturityTo=2026-13-01&sort=foo&sortDir=upside&statuses=Open,Bogus"
+    );
+    const { filters, searchQuery } = parseFiltersFromSearchParams(params);
+    expect(filters.currency).toBe("");
+    expect(filters.yieldMin).toBe("");
+    expect(filters.yieldMax).toBe("");
+    expect(filters.maturityFrom).toBe("");
+    expect(filters.maturityTo).toBe("");
+    expect(filters.sort).toBe("");
+    expect(filters.sortDir).toBe("desc");
+    expect(filters.statuses).toEqual(["Open"]);
+    expect(searchQuery).toBe("");
+  });
+
+  it("uses empty params when searchParams is nullish", () => {
+    const { filters, searchQuery } = parseFiltersFromSearchParams(null, DEFAULT_FILTERS);
+    expect(filters).toEqual(DEFAULT_FILTERS);
+    expect(searchQuery).toBe("");
+  });
+
+  it("supports legacy compound sort values", () => {
+    const params = new URLSearchParams("?sort=amount_desc");
+    const { filters } = parseFiltersFromSearchParams(params);
+    expect(filters.sort).toBe("amount");
+    expect(filters.sortDir).toBe("desc");
+  });
+});
+
+describe("buildSearchParams", () => {
+  it("omits empty/default fields", () => {
+    const params = buildSearchParams(DEFAULT_FILTERS, "");
+    expect(params.toString()).toBe("");
+    const whitespace = buildSearchParams(DEFAULT_FILTERS, "   ");
+    expect(whitespace.toString()).toBe("");
+    const malformedStatuses = buildSearchParams({ ...DEFAULT_FILTERS, statuses: "Open" }, "");
+    expect(malformedStatuses.toString()).toBe("");
+  });
+
+  it("round-trips with parseFiltersFromSearchParams", () => {
+    const filters = {
+      ...DEFAULT_FILTERS,
+      currency: "USD",
+      yieldMin: "4",
+      yieldMax: "9",
+      maturityFrom: "2026-06-01",
+      maturityTo: "2026-09-01",
+      sort: "maturity",
+      sortDir: "asc",
+      statuses: ["Open", "Overdue"],
+    };
+    const built = buildSearchParams(filters, "test query");
+    const parsed = parseFiltersFromSearchParams(built, DEFAULT_FILTERS);
+    expect(parsed.filters).toEqual(filters);
+    expect(parsed.searchQuery).toBe("test query");
+  });
+
+  it("handles nullish or missing sortDir and searchQuery", () => {
+    const built = buildSearchParams({ ...DEFAULT_FILTERS, sort: "amount", sortDir: "" }, null);
+    expect(built.get("sortDir")).toBe("desc");
+    expect(built.get("q")).toBeNull();
+  });
+});
+
+describe("URL state integration", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  });
+
+  it("restores filters and sort from URL query params on load", async () => {
+    useSearchParams.mockReturnValue(new URLSearchParams("?currency=EUR&sort=yield&sortDir=asc"));
+    const invoices = [
+      { id: "inv-001", issuer: "A", amount: "100", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
+      { id: "inv-002", issuer: "B", amount: "200", currency: "EUR", dueDate: "2026-06-15", yield: "9%", status: "Open" },
+      { id: "inv-003", issuer: "C", amount: "300", currency: "EUR", dueDate: "2026-06-15", yield: "7%", status: "Open" },
+    ];
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    const items = getInvoiceListItems();
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent("C");
+    expect(items[1]).toHaveTextContent("B");
+  });
+
+  it("ignores invalid query params on load", async () => {
+    useSearchParams.mockReturnValue(
+      new URLSearchParams("?currency=BTC&sort=foo&sortDir=up&yieldMin=bad")
+    );
+    const invoices = [
+      { id: "inv-001", issuer: "A", amount: "100", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
+      { id: "inv-002", issuer: "B", amount: "200", currency: "EUR", dueDate: "2026-06-15", yield: "9%", status: "Open" },
+    ];
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    const items = getInvoiceListItems();
+    expect(items).toHaveLength(2);
+  });
+
+  it("writes debounced URL query when filters change", async () => {
+    const replace = jest.fn();
+    useRouter.mockReturnValue({ replace });
+    const invoices = [
+      { id: "inv-001", issuer: "A", amount: "100", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
+      { id: "inv-002", issuer: "B", amount: "200", currency: "EUR", dueDate: "2026-06-15", yield: "9%", status: "Open" },
+    ];
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    fireEvent.click(screen.getByLabelText("Filter by EUR"));
+    await flushTimers(URL_SYNC_DEBOUNCE_MS);
+
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledWith("?currency=EUR", { scroll: false });
+  });
+
+  it("debounces rapid URL writes to a single update", async () => {
+    const replace = jest.fn();
+    useRouter.mockReturnValue({ replace });
+    const invoices = [
+      { id: "inv-001", issuer: "A", amount: "100", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
+      { id: "inv-002", issuer: "B", amount: "200", currency: "EUR", dueDate: "2026-06-15", yield: "9%", status: "Open" },
+    ];
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    fireEvent.click(screen.getByLabelText("Filter by EUR"));
+    fireEvent.click(screen.getByLabelText("Filter by USD"));
+    await flushTimers(URL_SYNC_DEBOUNCE_MS);
+
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledWith("?currency=USD", { scroll: false });
+  });
+
+  it("updates filters when the URL query changes (back/forward style)", async () => {
+    useSearchParams.mockReturnValue(new URLSearchParams());
+    const invoices = [
+      { id: "inv-001", issuer: "A", amount: "100", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
+      { id: "inv-002", issuer: "B", amount: "200", currency: "EUR", dueDate: "2026-06-15", yield: "9%", status: "Open" },
+    ];
+    const loadInvoices = createDeferredLoader(invoices, 0);
+    const { rerender } = render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(0);
+
+    await act(async () => {
+      useSearchParams.mockReturnValue(new URLSearchParams("?currency=EUR"));
+      rerender(<InvestMarketplace loadInvoices={loadInvoices} />);
+      await Promise.resolve();
+    });
+
+    const items = getInvoiceListItems();
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent("B");
+  });
+
+  it("filters by status chip toggles and clear button", async () => {
+    const invoices = [
+      { id: "inv-001", issuer: "A", amount: "100", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
+      { id: "inv-002", issuer: "B", amount: "200", currency: "USD", dueDate: "2026-06-15", yield: "9%", status: "Settled" },
+    ];
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    fireEvent.click(screen.getByRole("button", { name: /Settled/i }));
+    await flushTimers(0);
+
+    expect(getInvoiceListItems()).toHaveLength(1);
+    expect(getInvoiceListItems()[0]).toHaveTextContent("B");
+
+    fireEvent.click(screen.getByRole("button", { name: /Settled/i }));
+    await flushTimers(0);
+
+    expect(getInvoiceListItems()).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: /Settled/i }));
+    await flushTimers(0);
+
+    expect(getInvoiceListItems()).toHaveLength(1);
+
+    fireEvent.click(screen.getByLabelText("Clear status filters"));
+    await flushTimers(0);
+
+    expect(getInvoiceListItems()).toHaveLength(2);
+  });
+
+  it("filters by yieldMax and maturityTo", async () => {
+    const invoices = [
+      { id: "inv-001", issuer: "A", amount: "100", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
+      { id: "inv-002", issuer: "B", amount: "200", currency: "USD", dueDate: "2026-06-25", yield: "9%", status: "Open" },
+    ];
+    useSearchParams.mockReturnValue(new URLSearchParams("?yieldMax=7&maturityTo=2026-06-20"));
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    const items = getInvoiceListItems();
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent("A");
+  });
+});
+
+describe("applySortToList", () => {
+  it("sorts by amount ascending and descending", () => {
+    const invoices = [
+      { id: "1", amount: "3,000", yield: "5%", dueDate: "2026-06-15" },
+      { id: "2", amount: "1,000", yield: "7%", dueDate: "2026-06-01" },
+      { id: "3", amount: "2,000", yield: "6%", dueDate: "2026-06-30" },
+    ];
+    const asc = applySortToList(invoices, { sort: "amount", sortDir: "asc" });
+    expect(asc.map((i) => i.id)).toEqual(["2", "3", "1"]);
+    const desc = applySortToList(invoices, { sort: "amount", sortDir: "desc" });
+    expect(desc.map((i) => i.id)).toEqual(["1", "3", "2"]);
+  });
+
+  it("sorts by maturity", () => {
+    const invoices = [
+      { id: "1", amount: "100", yield: "5%", dueDate: "2026-06-15" },
+      { id: "2", amount: "100", yield: "5%", dueDate: "2026-06-01" },
+      { id: "3", amount: "100", yield: "5%", dueDate: "2026-06-30" },
+    ];
+    const sorted = applySortToList(invoices, { sort: "maturity", sortDir: "asc" });
+    expect(sorted.map((i) => i.id)).toEqual(["2", "1", "3"]);
+  });
+
+  it("treats unparseable amount strings as zero", () => {
+    const invoices = [
+      { id: "1", amount: "N/A", yield: "5%", dueDate: "2026-06-15" },
+      { id: "2", amount: "1,000", yield: "5%", dueDate: "2026-06-15" },
+    ];
+    const sorted = applySortToList(invoices, { sort: "amount", sortDir: "asc" });
+    expect(sorted.map((i) => i.id)).toEqual(["1", "2"]);
+  });
+
+  it("treats unparseable yield strings as zero", () => {
+    const invoices = [
+      { id: "1", amount: "100", yield: "N/A", dueDate: "2026-06-15" },
+      { id: "2", amount: "100", yield: "9%", dueDate: "2026-06-15" },
+    ];
+    const sorted = applySortToList(invoices, { sort: "yield", sortDir: "asc" });
+    expect(sorted.map((i) => i.id)).toEqual(["1", "2"]);
+  });
+
+  it("returns early for no sort column, empty, or non-array lists", () => {
+    const list = [{ id: "1", amount: "100", yield: "5%", dueDate: "2026-06-15" }];
+    expect(applySortToList(list, { sort: "", sortDir: "desc" })).toBe(list);
+    expect(applySortToList([], { sort: "amount", sortDir: "asc" })).toEqual([]);
+    expect(applySortToList(null, { sort: "amount", sortDir: "asc" })).toBeNull();
   });
 });
