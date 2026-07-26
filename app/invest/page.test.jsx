@@ -384,6 +384,79 @@ describe("InvestMarketplace", () => {
     expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
   });
 
+  it("shows the first page and initial pagination announcement before any load more", async () => {
+    const total = PAGE_SIZE + 7;
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(makeInvoices(total), 50)} />);
+    await flushTimers(50);
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      `Showing ${PAGE_SIZE} of ${total} investable invoices`
+    );
+    expect(screen.getByRole("button", { name: /load more invoices/i })).toBeInTheDocument();
+  });
+
+  it("appends the next page without duplicating already visible invoices", async () => {
+    const total = PAGE_SIZE + 5;
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(makeInvoices(total), 50)} />);
+    await flushTimers(50);
+
+    const firstPage = getInvoiceListItems().map((item) => item.textContent);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
+    const nextPage = getInvoiceListItems().map((item) => item.textContent);
+    expect(nextPage).toHaveLength(total);
+    expect(nextPage.slice(0, PAGE_SIZE)).toEqual(firstPage);
+  });
+
+  it("resets pagination when a filter is applied and then cleared", async () => {
+    const invoices = [
+      ...Array.from({ length: 15 }, (_, i) => ({
+        id: `usd-${i + 1}`,
+        issuer: `USD Issuer ${i + 1}`,
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-12-31",
+        yield: "5.0%",
+        status: "Open",
+      })),
+      ...Array.from({ length: 15 }, (_, i) => ({
+        id: `eur-${i + 1}`,
+        issuer: `EUR Issuer ${i + 1}`,
+        amount: "1,000",
+        currency: "EUR",
+        dueDate: "2026-12-31",
+        yield: "5.0%",
+        status: "Open",
+      })),
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 50)} />);
+    await flushTimers(50);
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+    expect(getInvoiceListItems()).toHaveLength(20);
+
+    fireEvent.click(screen.getByLabelText("Filter by EUR"));
+    expect(getInvoiceListItems()).toHaveLength(10);
+    expect(screen.getByRole("button", { name: /load more invoices/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Clear all filters"));
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+    expect(screen.getByRole("button", { name: /load more invoices/i })).toBeInTheDocument();
+  });
+
   it.skip("moves focus back to the Load-more button after each click (e2e only)", async () => {
     render(
       <InvestMarketplace loadInvoices={createDeferredLoader(makeInvoices(PAGE_SIZE * 3), 50)} />
