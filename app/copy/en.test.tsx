@@ -61,6 +61,39 @@ describe("copy dictionary — key presence", () => {
     });
   });
 
+  describe("invest.detail", () => {
+    it("has all density toggle copy keys", () => {
+      expect(copy.invest.detail.densityToggleLabel).toBeDefined();
+      expect(copy.invest.detail.densityCompact).toBeDefined();
+      expect(copy.invest.detail.densityComfortable).toBeDefined();
+      expect(copy.invest.detail.densityCompactAriaLabel).toBeDefined();
+      expect(copy.invest.detail.densityComfortableAriaLabel).toBeDefined();
+      expect(copy.invest.detail.densityCurrentAriaLabel).toBeDefined();
+    });
+
+    it("density toggle copy values are non-empty strings", () => {
+      const densityKeys = [
+        "densityToggleLabel",
+        "densityCompact",
+        "densityComfortable",
+        "densityCompactAriaLabel",
+        "densityComfortableAriaLabel",
+        "densityCurrentAriaLabel",
+      ] as const;
+      for (const key of densityKeys) {
+        expect(typeof copy.invest.detail[key]).toBe("string");
+        expect(copy.invest.detail[key].length).toBeGreaterThan(0);
+      }
+    });
+
+    it("densityCurrentAriaLabel has {density} placeholder", () => {
+      expect(copy.invest.detail.densityCurrentAriaLabel).toContain("{density}");
+      expect(
+        copy.invest.detail.densityCurrentAriaLabel.replace("{density}", "compact")
+      ).toBe("Current density: compact");
+    });
+  });
+
   describe("uploadZone", () => {
     it("has all required keys including error messages", () => {
       expect(copy.uploadZone.requirementsTitle).toBeDefined();

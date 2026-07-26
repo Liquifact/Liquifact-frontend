@@ -32,6 +32,7 @@ import { copy } from "@/app/copy/en";
 import { INVALID_VALUE_FALLBACK, formatCurrency, formatAmount } from "@/lib/format/currency";
 import { getInvoiceById } from "../lib";
 import FundActions from "./FundActions";
+import InvoiceDetailClient from "./InvoiceDetailClient";
 
 const detail = copy.invest.detail;
 
@@ -164,42 +165,20 @@ export default async function InvoiceDetailPage({ params }) {
         <h1 className="text-2xl font-bold mb-2">{detail.pageTitle}</h1>
         <p className="text-slate-400 mb-8">{detail.pageSub}</p>
 
-        {/* ── Invoice metadata (static, server-rendered) ────────────── */}
-        <section
-          aria-labelledby="invoice-summary-heading"
-          className="print-invoice-section rounded-xl border border-slate-800 bg-slate-900/50 p-6 mb-6"
-        >
-          <h2 id="invoice-summary-heading" className="text-xl font-semibold mb-4">
-            {invoice.issuer}
-          </h2>
-
-          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div>
-              <dt className="text-slate-500">{detail.labelIssuer}</dt>
-              <dd className="text-slate-100">{invoice.issuer}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">{detail.labelAmount}</dt>
-              <dd className="text-slate-100">
-                {formatCurrency(invoice.amount, { currency: invoice.currency })}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">{detail.labelYield}</dt>
-              <dd className="text-slate-100">{formatYield(invoice.yield)}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">{detail.labelMaturity}</dt>
-              <dd className="text-slate-100">{invoice.dueDate}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">{detail.labelStatus}</dt>
-              <dd className="text-slate-100">
-                <StatusPill status={invoice.status ?? ""} />
-              </dd>
-            </div>
-          </dl>
-        </section>
+        {/* ── Invoice metadata (density-aware, client-rendered) ─────── */}
+        <InvoiceDetailClient
+          summaryHeading={invoice.issuer}
+          labelIssuer={detail.labelIssuer}
+          labelAmount={detail.labelAmount}
+          labelYield={detail.labelYield}
+          labelMaturity={detail.labelMaturity}
+          labelStatus={detail.labelStatus}
+          issuer={invoice.issuer}
+          formattedAmount={formatCurrency(invoice.amount, { currency: invoice.currency })}
+          formattedYield={formatYield(invoice.yield)}
+          dueDate={invoice.dueDate}
+          statusPill={<StatusPill status={invoice.status ?? ""} />}
+        />
 
         {/* ── Lifecycle timeline (server-rendered, status-driven) ───────── */}
         <InvoiceTimeline status={invoice.status} timestamps={invoice.timestamps} className="mb-6" />

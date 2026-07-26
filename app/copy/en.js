@@ -74,6 +74,12 @@
  * @property {string} invest.detail.copyErrorTitle
  * @property {string} invest.detail.loadErrorMsg
  * @property {string} invest.detail.loadErrorTitle
+ * @property {string} invest.detail.densityToggleLabel
+ * @property {string} invest.detail.densityCompact
+ * @property {string} invest.detail.densityComfortable
+ * @property {string} invest.detail.densityCompactAriaLabel
+ * @property {string} invest.detail.densityComfortableAriaLabel
+ * @property {string} invest.detail.densityCurrentAriaLabel
  * @property {Object} invoices - Invoices page copy
  * @property {string} invoices.title
  * @property {string} invoices.subtext
@@ -270,6 +276,12 @@ export const copy = {
       copyErrorTitle: "Copy failed",
       loadErrorMsg: "Unable to load invoice details right now.",
       loadErrorTitle: "Unable to load invoice details",
+      densityToggleLabel: "Display density",
+      densityCompact: "Compact",
+      densityComfortable: "Comfortable",
+      densityCompactAriaLabel: "Switch to compact density",
+      densityComfortableAriaLabel: "Switch to comfortable density",
+      densityCurrentAriaLabel: "Current density: {density}",
     },
   },
   invoices: {
