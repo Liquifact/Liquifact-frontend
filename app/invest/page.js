@@ -337,6 +337,27 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   const loadMoreRef = useRef(null);
 
   /**
+   * Ref for the page heading — the focus target for route-change focus
+   * management (see the mount effect below).
+   */
+  const headingRef = useRef(null);
+
+  // Focus management: Next.js client-side navigation does not reset focus
+  // or announce the new view the way a full page load does, so keyboard
+  // and screen-reader users who navigate into /invest can be left with
+  // focus stranded on a now-removed element (e.g. a nav link). Moving
+  // focus to the page heading on mount gives every arrival at this route —
+  // whether via link, back/forward, or hard reload — a consistent, sensible
+  // focus target and causes the heading to be announced. `tabIndex={-1}` on
+  // the heading makes it programmatically focusable without adding it to
+  // the natural Tab order; `outline-none` on the heading suppresses the
+  // browser's default focus ring since this is not an interactive element,
+  // keeping the change invisible to sighted users.
+  useEffect(() => {
+    headingRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  /**
    * Resets error/loading state and re-runs the load effect.
    *
    * Sets invoices back to null (loading skeleton) and clears loadError so the
@@ -652,30 +673,10 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           {debouncedAnnouncement}
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold mb-2">{copy.invest.title}</h1>
-            <p className="text-slate-400">{copy.invest.subtext}</p>
-          </div>
-          <div className="mt-4 sm:mt-0 flex gap-3">
-            <button
-              type="button"
-              onClick={() => exportAsCSV(filteredInvoices, "wallet-export.csv")}
-              className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-700 bg-slate-900/50 hover:bg-slate-800 text-slate-300 transition-colors"
-            >
-              Export Wallet as CSV
-            </button>
-            <button
-              type="button"
-              onClick={() => exportAsJSON(filteredInvoices, "wallet-export.json")}
-              className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-700 bg-slate-900/50 hover:bg-slate-800 text-slate-300 transition-colors"
-            >
-              Export Wallet as JSON
-            </button>
-          </div>
-        </div>
-
-        <WatchlistSection />
+        <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold mb-2 outline-none">
+          {copy.invest.title}
+        </h1>
+        <p className="text-slate-400 mb-8">{copy.invest.subtext}</p>
 
         {/*
           ACCESSIBILITY DESIGN (Issue #91):
