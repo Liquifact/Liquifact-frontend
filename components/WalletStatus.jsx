@@ -6,6 +6,7 @@ import { copy } from "../app/copy/en";
 import { useWallet, WALLET_STATES, truncateAddress } from "./WalletProvider";
 import { useToast } from "./ToastProvider";
 import { copyToClipboard } from "../lib/clipboard";
+import WalletSkeleton from "./WalletSkeleton";
 
 /**
  * Returns a concise, non-sensitive announcement string for a wallet state
@@ -133,7 +134,7 @@ function getStateConfig(currentState, walletData, error) {
 }
 
 export default function WalletStatus() {
-  const { state, walletData, error, connect, disconnect } = useWallet();
+  const { state, walletData, error, hydrating, connect, disconnect } = useWallet();
   const toast = useToast();
 
   /**
@@ -167,6 +168,14 @@ export default function WalletStatus() {
       }
     }
   }, [state]);
+
+  // Show skeleton while WalletProvider is rehydrating from localStorage.
+  // This prevents the layout from shifting from the placeholder (shown by
+  // WalletStatusLazy while the JS chunk loads) to a transient DISCONNECTED
+  // state before the persisted snapshot is applied.
+  if (hydrating) {
+    return <WalletSkeleton />;
+  }
 
   const handleCopyAddress = async () => {
     if (!walletData?.address) return;

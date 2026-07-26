@@ -149,6 +149,7 @@ describe("copy dictionary — key presence", () => {
       expect(copy.wallet.announceError).toBeDefined();
       expect(copy.wallet.announceWrongNetwork).toBeDefined();
       expect(copy.wallet.announceNoWallet).toBeDefined();
+      expect(copy.wallet.skeletonLabel).toBeDefined();
     });
 
     it("announcement strings match expected values (byte-identical)", () => {

@@ -199,6 +199,7 @@ exports[`copy dictionary — snapshot of full dictionary matches the full copy d
     "installWalletButton": "Install Wallet",
     "installWalletUrl": "https://www.stellar.org/wallets",
     "retryButton": "Retry Connection",
+    "skeletonLabel": "Loading wallet status…",
     "switchNetworkButton": "Switch Network",
     "toastConnectedMsg": "Wallet connected successfully.",
     "toastConnectedTitle": "Wallet connected",
