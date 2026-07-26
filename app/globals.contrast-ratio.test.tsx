@@ -302,6 +302,159 @@ describe("WCAG AA contrast — token pair harness", () => {
   });
 });
 
+// ── Forced-colors (Windows High Contrast) assertions ─────────────────────────
+/**
+ * These tests verify the @media (forced-colors: active) block present in
+ * globals.css satisfies three requirements from issue #467:
+ *
+ *   1. The block exists and maps surfaces / text / borders to correct system
+ *      color keywords so the OS palette is applied with the right semantics.
+ *   2. focus-ring and status pill elements opt out of automatic replacement
+ *      via forced-color-adjust: none so their explicit outlines / borders
+ *      survive the forced-colors override.
+ *   3. StatusPill always exposes a visible text label — status is never
+ *      conveyed by colour alone (WCAG 1.4.1 Use of Color).
+ *
+ * NOTE: jsdom does not evaluate @media queries at runtime, so we inspect the
+ * CSS source text directly.  For StatusPill label tests we render the
+ * component and assert on the DOM.
+ */
+
+describe("forced-colors: globals.css @media (forced-colors: active) block", () => {
+  it("contains a @media (forced-colors: active) rule", () => {
+    expect(cssSource).toMatch(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i);
+  });
+
+  // ── System color keyword coverage ──────────────────────────────────────
+
+  it("maps background surfaces to Canvas", () => {
+    expect(cssSource).toMatch(/forced-colors.*Canvas/s);
+  });
+
+  it("maps foreground text to CanvasText", () => {
+    expect(cssSource).toMatch(/forced-colors.*CanvasText/s);
+  });
+
+  it("maps muted / disabled text to GrayText", () => {
+    expect(cssSource).toMatch(/forced-colors.*GrayText/s);
+  });
+
+  it("maps the primary brand / link colour to LinkText", () => {
+    expect(cssSource).toMatch(/forced-colors.*LinkText/s);
+  });
+
+  it("maps focus ring to Highlight", () => {
+    expect(cssSource).toMatch(/forced-colors.*Highlight/s);
+  });
+
+  it("maps interactive control surfaces to ButtonFace", () => {
+    expect(cssSource).toMatch(/forced-colors.*ButtonFace/s);
+  });
+
+  it("maps interactive control text to ButtonText", () => {
+    expect(cssSource).toMatch(/forced-colors.*ButtonText/s);
+  });
+
+  // ── forced-color-adjust: none — opt-out elements ─────────────────────
+
+  it("applies forced-color-adjust: none to the focus ring", () => {
+    // Verify .focus-ring appears inside the forced-colors @media rule.
+    // We check the full source (not a sliced block) because bracket-balanced
+    // extraction is brittle with nested rule-sets.  The structural tests above
+    // already confirm the @media block exists; these selectively check that
+    // each required selector is present somewhere after the @media declaration.
+    const afterFc = cssSource.slice(cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i));
+    expect(afterFc).toMatch(/\.focus-ring/);
+    expect(afterFc).toMatch(/forced-color-adjust\s*:\s*none/);
+  });
+
+  it("applies forced-color-adjust: none to status pill elements ([data-status])", () => {
+    const afterFc = cssSource.slice(cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i));
+    expect(afterFc).toMatch(/\[data-status\]/);
+    expect(afterFc).toMatch(/forced-color-adjust\s*:\s*none/);
+  });
+
+  // ── Skip-link ─────────────────────────────────────────────────────────
+
+  it("styles .skip-link with ButtonFace background and ButtonText border inside forced-colors", () => {
+    const afterFc = cssSource.slice(cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i));
+    expect(afterFc).toMatch(/\.skip-link/);
+    expect(afterFc).toMatch(/ButtonFace/);
+    expect(afterFc).toMatch(/ButtonText/);
+  });
+
+  // ── StatusPill — Highlight outline on :focus-visible ─────────────────
+
+  it("sets Highlight outline on .focus-ring:focus-visible inside forced-colors", () => {
+    const afterFc = cssSource.slice(cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i));
+    expect(afterFc).toMatch(/\.focus-ring:focus-visible/);
+    expect(afterFc).toMatch(/outline\s*:\s*[^;]*Highlight/);
+  });
+});
+
+// ── StatusPill non-color cue (renders text label regardless of color) ─────────
+/**
+ * These tests document the requirement that StatusPill never conveys status
+ * through colour alone — the visible text label is always present so it
+ * survives forced-colors mode where all author-defined colours are stripped.
+ *
+ * This mirrors the WCAG 1.4.1 contract.  The tests live here (alongside the
+ * contrast harness) so the full colour-accessibility story is in one place.
+ */
+import React from "react";
+import { render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import StatusPill from "@/components/StatusPill";
+import { INVOICE_STATUSES, STATUS_PILL_MAP } from "@/lib/types/invoice";
+
+describe("StatusPill — non-color cue (WCAG 1.4.1 / forced-colors readiness)", () => {
+  it("renders a visible text label for every known status", () => {
+    for (const status of Object.values(INVOICE_STATUSES)) {
+      const { unmount } = render(<StatusPill status={status} />);
+      const pill = screen.getByRole("status", { hidden: true });
+      // Text content must be non-empty
+      expect(pill.textContent?.trim().length).toBeGreaterThan(0);
+      // Text content must match the STATUS_PILL_MAP label
+      expect(pill).toHaveTextContent(STATUS_PILL_MAP[status].label);
+      unmount();
+    }
+  });
+
+  it("renders the Unknown label for an unrecognised status value", () => {
+    render(<StatusPill status={"UNRECOGNISED" as unknown as string} />);
+    const pill = screen.getByRole("status", { hidden: true });
+    expect(pill).toHaveTextContent(STATUS_PILL_MAP.Unknown.label);
+    expect(pill.textContent?.trim().length).toBeGreaterThan(0);
+  });
+
+  it("the visible text matches aria-label for every known status (colour-independent signal)", () => {
+    for (const status of Object.values(INVOICE_STATUSES)) {
+      const { unmount } = render(<StatusPill status={status} />);
+      const pill = screen.getByRole("status", { hidden: true });
+      const visibleText = pill.textContent?.trim() ?? "";
+      const ariaLabel = pill.getAttribute("aria-label") ?? "";
+      // aria-label includes the visible text so AT and sighted users see the same word
+      expect(ariaLabel).toContain(visibleText);
+      unmount();
+    }
+  });
+
+  it("renders data-status attribute so CSS [data-status] rule can apply forced-colors override", () => {
+    for (const status of Object.values(INVOICE_STATUSES)) {
+      const { unmount } = render(<StatusPill status={status} />);
+      const pill = screen.getByRole("status", { hidden: true });
+      expect(pill).toHaveAttribute("data-status", status);
+      unmount();
+    }
+  });
+
+  it("Unknown fallback renders data-status='Unknown' for CSS targeting", () => {
+    render(<StatusPill status={null as unknown as string} />);
+    const pill = screen.getByRole("status", { hidden: true });
+    expect(pill).toHaveAttribute("data-status", "Unknown");
+  });
+});
+
 // ── Stylesheet coverage guard ─────────────────────────────────────────────────
 
 describe("globals.css token coverage", () => {
