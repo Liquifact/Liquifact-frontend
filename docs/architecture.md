@@ -146,7 +146,7 @@ All permanent reference material for this frontend belongs in `docs/`:
 | `docs/api-integration.md` | HTTP payload / endpoint contract with the Express backend |
 | `docs/configuration.md` | Every `NEXT_PUBLIC_*` env variable, validation rules, defaults |
 | `docs/design-tokens.md` | CSS custom properties, Tailwind token mapping |
-| `docs/accessibility.md` | Accessibility statement and WCAG notes |
+| `docs/accessibility.md` | Accessibility statement and WCAG notes — includes [marketplace roles, keyboard, and focus](accessibility.md#marketplace-accessibility-issue-692) |
 | `docs/wallet-developer-guide.md` | Stellar / Freighter integration guide |
 | `docs/observability.md` | `reportError` sink and pluggable observability |
 | `docs/performance.md` | Bundle-size targets and code-splitting notes |
