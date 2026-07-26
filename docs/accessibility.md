@@ -12,6 +12,10 @@ LiquiFact Frontend is committed to meeting **WCAG 2.1 AA** accessibility sta
 - **Form Labels** – All form controls include associated `<label>` elements or `aria-label` attributes.
 - **Button Roles** – Buttons are native `<button>` elements; where custom elements are used, `role="button"` and keyboard handlers are added.
 
+### Upload Component Accessibility (issue #31)
+
+The `UploadZone` component (`components/UploadZone.jsx`) implements a comprehensive accessibility contract covering drag-and-drop, file validation, and upload progress. Full documentation is available in [docs/upload-a11y.md](upload-a11y.md).
+
 ### Focus‑Ring Audit
 
 A comprehensive focus‑ring audit was performed across all interactive components to ensure
