@@ -184,7 +184,11 @@
  * @property {string} invoiceTimeline.stageSettled
  * @property {string} invoiceTimeline.statusCompleted
  * @property {string} invoiceTimeline.statusCurrent
- * @property {string} invoiceTimeline.statusPending
+ * @property {Object} settings - Settings page copy
+ * @property {string} settings.title
+ * @property {string} settings.errorTitle
+ * @property {string} settings.errorDescription
+ * @property {string} settings.errorActionLabel
  */
 
 /** @type {CopyDictionary} */
@@ -398,5 +402,11 @@ export const copy = {
     statusCompleted: "Completed",
     statusCurrent: "Current",
     statusPending: "Pending",
+  },
+  settings: {
+    title: "Settings",
+    errorTitle: "Unable to load settings",
+    errorDescription: "An unexpected error occurred in the settings section. Please try again.",
+    errorActionLabel: "Try again",
   },
 };

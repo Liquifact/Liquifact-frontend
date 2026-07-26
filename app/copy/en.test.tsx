@@ -203,6 +203,15 @@ describe("copy dictionary — key presence", () => {
       expect(copy.footer.contact).toBeDefined();
     });
   });
+
+  describe("settings", () => {
+    it("has required keys", () => {
+      expect(copy.settings.title).toBeDefined();
+      expect(copy.settings.errorTitle).toBeDefined();
+      expect(copy.settings.errorDescription).toBeDefined();
+      expect(copy.settings.errorActionLabel).toBeDefined();
+    });
+  });
 });
 
 describe("copy dictionary — template placeholder consistency", () => {
