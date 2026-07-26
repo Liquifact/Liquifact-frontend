@@ -458,7 +458,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           >
             {copy.invest.filterSoonLabel}
           </div>
-          <div className="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none">
+          <div          className="flex flex-wrap gap-4 items-center pointer-events-none opacity-60">
             {/* InvoiceFilters only — search moved above */}
             <InvoiceFilters
               filters={filters}
