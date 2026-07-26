@@ -162,7 +162,10 @@
  * @property {string} wallet.announceError
  * @property {string} wallet.announceWrongNetwork
  * @property {string} wallet.announceNoWallet
- * @property {string} wallet.skeletonLabel
+ * @property {string} wallet.errorTitle
+ * @property {string} wallet.errorDescription
+ * @property {string} wallet.errorActionLabel
+ * @property {string} wallet.errorPreviewLabel
  * @property {Object} error - Error page copy
  * @property {string} error.title
  * @property {string} error.description
@@ -378,7 +381,12 @@ export const copy = {
     announceError: "Wallet connection failed.",
     announceWrongNetwork: "Wallet connected to wrong network.",
     announceNoWallet: "No wallet detected.",
-    skeletonLabel: "Loading wallet status…",
+    // Wallet error-boundary fallback (see components/WalletErrorBoundary.jsx)
+    errorTitle: "Wallet unavailable",
+    errorDescription:
+      "The wallet controls hit an unexpected problem. The rest of the page still works — retry to reload them.",
+    errorActionLabel: "Retry wallet",
+    errorPreviewLabel: "Wallet",
   },
   error: {
     title: "Something went wrong",
