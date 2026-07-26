@@ -76,6 +76,7 @@ exports[`copy dictionary — snapshot of full dictionary matches the full copy d
       "toolbarLabel": "Bulk actions toolbar",
     },
     "detail": {
+      "actionGroupLabel": "Invoice actions",
       "backToHome": "← LiquiFact",
       "backToMarketplace": "← Back to marketplace",
       "backToMarketplaceLabel": "Back to marketplace",

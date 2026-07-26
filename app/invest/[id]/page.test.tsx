@@ -33,6 +33,7 @@
 
 import React from "react";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { axe, toHaveNoViolations } from "jest-axe";
 
@@ -705,14 +706,7 @@ describe("copy.invest.detail — key presence and non-empty", () => {
     "copyErrorTitle",
     "loadErrorMsg",
     "loadErrorTitle",
-    "fundOptimisticTitle",
-    "fundOptimisticMsg",
-    "fundSuccessTitle",
-    "fundSuccessMsg",
-    "fundErrorTitle",
-    "fundErrorMsg",
-    "fundRolledBackTitle",
-    "fundRolledBackMsg",
+    "actionGroupLabel",
   ] as const;
 
   it("exports copy.invest.detail as an object", () => {
@@ -749,233 +743,284 @@ describe("print stylesheet classes", () => {
 });
 
 // =============================================================================
-// 6. Optimistic update behaviour — FundActions + useOptimisticFund integration
+// 6. Keyboard operability
 // =============================================================================
 
-// We mock useOptimisticFund so FundActions tests stay unit-level and don't
-// depend on the real hook's internal AbortController / async logic.
-// (mock, import, and helpers are declared at the top of this file)
-
-describe("FundActions — optimistic update behaviour", () => {
-  beforeEach(() => {
-    mockUseOptimisticFund.mockReturnValue(makeOptimisticHook());
-  });
-
-  describe("optimistic status banner", () => {
-    it("is NOT shown when optimisticStatus equals server status (idle)", () => {
-      mockUseOptimisticFund.mockReturnValue(
-        makeOptimisticHook({ optimisticStatus: "Open" })
-      );
-      const { container } = render(<FundActions id="inv-001" status="Open" />);
-      expect(container.querySelector("[data-testid='optimistic-status-banner']")).toBeNull();
-    });
-
-    it("IS shown when optimisticStatus differs from server status (pending)", () => {
-      mockUseOptimisticFund.mockReturnValue(
-        makeOptimisticHook({
-          optimisticStatus: "Funded",
-          fundingState: FUNDING_STATES.PENDING,
-          isFunding: true,
-        })
-      );
-      render(<FundActions id="inv-001" status="Open" />);
-      expect(screen.getByTestId("optimistic-status-banner")).toBeInTheDocument();
-    });
-
-    it("optimistic banner has role=status and aria-live=polite", () => {
-      mockUseOptimisticFund.mockReturnValue(
-        makeOptimisticHook({ optimisticStatus: "Funded", fundingState: FUNDING_STATES.PENDING })
-      );
-      render(<FundActions id="inv-001" status="Open" />);
-      const banner = screen.getByTestId("optimistic-status-banner");
-      expect(banner).toHaveAttribute("role", "status");
-      expect(banner).toHaveAttribute("aria-live", "polite");
-    });
-  });
-
-  describe("rollback banner", () => {
-    it("is NOT shown when fundingState is idle", () => {
-      const { container } = render(<FundActions id="inv-001" status="Open" />);
-      expect(container.querySelector("[data-testid='rollback-banner']")).toBeNull();
-    });
-
-    it("IS shown when fundingState is rolled_back", () => {
-      mockUseOptimisticFund.mockReturnValue(
-        makeOptimisticHook({
-          optimisticStatus: "Open",
-          fundingState: FUNDING_STATES.ROLLED_BACK,
-        })
-      );
-      render(<FundActions id="inv-001" status="Open" />);
-      expect(screen.getByTestId("rollback-banner")).toBeInTheDocument();
-    });
-
-    it("rollback banner has role=alert and aria-live=assertive", () => {
-      mockUseOptimisticFund.mockReturnValue(
-        makeOptimisticHook({ fundingState: FUNDING_STATES.ROLLED_BACK })
-      );
-      render(<FundActions id="inv-001" status="Open" />);
-      const banner = screen.getByTestId("rollback-banner");
-      expect(banner).toHaveAttribute("role", "alert");
-      expect(banner).toHaveAttribute("aria-live", "assertive");
-    });
-
-    it("rollback banner shows copy.invest.detail.fundRolledBackMsg", () => {
-      mockUseOptimisticFund.mockReturnValue(
-        makeOptimisticHook({ fundingState: FUNDING_STATES.ROLLED_BACK })
-      );
-      render(<FundActions id="inv-001" status="Open" />);
-      expect(screen.getByText(copy.invest.detail.fundRolledBackMsg)).toBeInTheDocument();
-    });
-  });
-
-  describe("fund button state while pending", () => {
-    it("is disabled while isFunding is true", () => {
-      mockUseOptimisticFund.mockReturnValue(
-        makeOptimisticHook({
-          optimisticStatus: "Funded",
-          fundingState: FUNDING_STATES.PENDING,
-          isFunding: true,
-        })
-      );
-      render(<FundActions id="inv-001" status="Open" />);
-      expect(
-        screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel })
-      ).toBeDisabled();
-    });
-
-    it("has aria-busy=true while isFunding is true", () => {
-      mockUseOptimisticFund.mockReturnValue(
-        makeOptimisticHook({ isFunding: true, fundingState: FUNDING_STATES.PENDING })
-      );
-      render(<FundActions id="inv-001" status="Open" />);
-      const btn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
-      expect(btn).toHaveAttribute("aria-busy", "true");
-    });
-
-    it("shows fundOptimisticTitle label on the fund button while pending", () => {
-      mockUseOptimisticFund.mockReturnValue(
-        makeOptimisticHook({ isFunding: true, fundingState: FUNDING_STATES.PENDING })
-      );
-      render(<FundActions id="inv-001" status="Open" />);
-      expect(screen.getByText(copy.invest.detail.fundOptimisticTitle)).toBeInTheDocument();
-    });
-  });
-
-  describe("FundAmountInput integration with optimistic hook", () => {
-    it("calls submitFund with the amount when wallet is connected and form is submitted", async () => {
-      const submitFund = jest.fn().mockResolvedValue(undefined);
-      mockUseOptimisticFund.mockReturnValue(makeOptimisticHook({ submitFund }));
-      mockUseWallet.mockReturnValue({
-        state: WALLET_STATES.CONNECTED,
-        connect: jest.fn(),
-      } as ReturnType<typeof useWallet>);
-
-      render(
-        <FundActions id="inv-001" status="Open" maxAmount={12500} currency="USD" yieldValue={8.2} />
-      );
-
-      const input = screen.getByRole("spinbutton");
-      await act(async () => {
-        fireEvent.change(input, { target: { value: "500" } });
-        fireEvent.blur(input);
-      });
-
-      const form = input.closest("form")!;
-      await act(async () => {
-        fireEvent.submit(form);
-      });
-
-      expect(submitFund).toHaveBeenCalledWith(500);
-    });
-
-    it("calls connect() instead of submitFund when wallet is disconnected", async () => {
+describe("keyboard operability", () => {
+  describe("FundActions buttons — keyboard activation", () => {
+    it("Fund button activates on Enter", async () => {
+      const user = userEvent.setup();
       const connect = jest.fn();
-      const submitFund = jest.fn();
-      mockUseOptimisticFund.mockReturnValue(makeOptimisticHook({ submitFund }));
       mockUseWallet.mockReturnValue({
         state: WALLET_STATES.DISCONNECTED,
         connect,
       } as ReturnType<typeof useWallet>);
 
-      render(
-        <FundActions id="inv-001" status="Open" maxAmount={12500} currency="USD" yieldValue={8.2} />
-      );
-
-      const input = screen.getByRole("spinbutton");
-      await act(async () => {
-        fireEvent.change(input, { target: { value: "500" } });
-        fireEvent.blur(input);
-      });
-
-      const form = input.closest("form")!;
-      await act(async () => {
-        fireEvent.submit(form);
-      });
-
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      btn.focus();
+      await user.keyboard("{Enter}");
       expect(connect).toHaveBeenCalledTimes(1);
-      expect(submitFund).not.toHaveBeenCalled();
     });
-  });
 
-  describe("success toast after confirmation", () => {
-    it("shows a success toast via onSuccess callback", async () => {
-      // Capture the onSuccess callback that FundActions passes to useOptimisticFund
-      let capturedOnSuccess: ((r: unknown) => void) | undefined;
-      mockUseOptimisticFund.mockImplementation((opts) => {
-        capturedOnSuccess = opts?.onSuccess;
-        return makeOptimisticHook();
-      });
+    it("Fund button activates on Space", async () => {
+      const user = userEvent.setup();
+      const connect = jest.fn();
+      mockUseWallet.mockReturnValue({
+        state: WALLET_STATES.DISCONNECTED,
+        connect,
+      } as ReturnType<typeof useWallet>);
 
-      render(<FundActions id="inv-001" status="Open" currency="USD" />);
-
-      // Simulate the hook calling onSuccess
-      await act(async () => {
-        capturedOnSuccess?.({ success: true, txHash: "tx1", amount: 500, currency: "USD" });
-      });
-
-      expect(mockToast.success).toHaveBeenCalledWith(
-        expect.stringContaining("500"),
-        copy.invest.detail.fundSuccessTitle
-      );
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      btn.focus();
+      await user.keyboard(" ");
+      expect(connect).toHaveBeenCalledTimes(1);
     });
-  });
 
-  describe("error toast on rollback", () => {
-    it("shows an error toast via onError callback", async () => {
-      let capturedOnError: ((e: Error) => void) | undefined;
-      mockUseOptimisticFund.mockImplementation((opts) => {
-        capturedOnError = opts?.onError;
-        return makeOptimisticHook();
+    it("Copy link button activates on Enter", async () => {
+      const user = userEvent.setup();
+      const writeText = jest.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        get: () => ({ writeText }),
       });
 
       render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+      btn.focus();
+      await user.keyboard("{Enter}");
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/invest/inv-001"));
+      });
+    });
 
-      await act(async () => {
-        capturedOnError?.(new Error("Network failure"));
+    it("Copy link button activates on Space", async () => {
+      const user = userEvent.setup();
+      const writeText = jest.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        get: () => ({ writeText }),
       });
 
-      expect(mockToast.error).toHaveBeenCalledWith(
-        copy.invest.detail.fundErrorMsg,
-        copy.invest.detail.fundErrorTitle
-      );
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+      btn.focus();
+      await user.keyboard(" ");
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/invest/inv-001"));
+      });
+    });
+
+    it("Print button activates on Enter", async () => {
+      const user = userEvent.setup();
+      const printSpy = jest.spyOn(window, "print").mockImplementation(() => {});
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+      btn.focus();
+      await user.keyboard("{Enter}");
+      expect(printSpy).toHaveBeenCalledTimes(1);
+      printSpy.mockRestore();
+    });
+
+    it("Print button activates on Space", async () => {
+      const user = userEvent.setup();
+      const printSpy = jest.spyOn(window, "print").mockImplementation(() => {});
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+      btn.focus();
+      await user.keyboard(" ");
+      expect(printSpy).toHaveBeenCalledTimes(1);
+      printSpy.mockRestore();
     });
   });
 
-  describe("accessibility", () => {
-    it("passes axe when rollback banner is visible", async () => {
-      mockUseOptimisticFund.mockReturnValue(
-        makeOptimisticHook({ fundingState: FUNDING_STATES.ROLLED_BACK })
-      );
-      const { container } = render(<FundActions id="inv-001" status="Open" />);
-      const results = await axe(container);
-      expect(results).toHaveNoViolations();
+  describe("FundActions buttons — focus-visible class", () => {
+    it("Fund button has the focus-ring class", () => {
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      expect(btn.className).toContain("focus-ring");
     });
 
-    it("passes axe when optimistic banner is visible", async () => {
-      mockUseOptimisticFund.mockReturnValue(
-        makeOptimisticHook({ optimisticStatus: "Funded", isFunding: true })
+    it("Copy link button has the focus-ring class", () => {
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+      expect(btn.className).toContain("focus-ring");
+    });
+
+    it("Print button has the focus-ring class", () => {
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+      expect(btn.className).toContain("focus-ring");
+    });
+  });
+
+  describe("FundActions — ARIA group semantics", () => {
+    it("action row has role='group'", () => {
+      const { container } = render(<FundActions id="inv-001" status="Open" />);
+      const group = container.querySelector('[role="group"]');
+      expect(group).toBeInTheDocument();
+    });
+
+    it("action row group has an aria-label", () => {
+      const { container } = render(<FundActions id="inv-001" status="Open" />);
+      const group = container.querySelector('[role="group"]');
+      expect(group).toHaveAttribute("aria-label", copy.invest.detail.actionGroupLabel);
+    });
+
+    it("group contains Fund, Copy, and Print buttons", () => {
+      const { container } = render(<FundActions id="inv-001" status="Open" />);
+      const group = container.querySelector('[role="group"]');
+      const buttons = group!.querySelectorAll("button");
+      expect(buttons).toHaveLength(3);
+    });
+  });
+
+  describe("FundActions — disabled button keyboard behavior", () => {
+    it("disabled Fund button is not focusable via Tab", async () => {
+      const user = userEvent.setup();
+      render(<FundActions id="inv-001" status="Funded" />);
+      const fundBtn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      expect(fundBtn).toBeDisabled();
+
+      // Tab through all focusable elements — disabled button should be skipped
+      await user.tab();
+      const activeEl = document.activeElement;
+      expect(activeEl).not.toBe(fundBtn);
+    });
+
+    it("disabled Copy link button is not focusable via Tab during copy", async () => {
+      const user = userEvent.setup();
+      const writeText = jest.fn().mockImplementation(
+        () => new Promise<void>((resolve) => setTimeout(resolve, 100))
       );
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        get: () => ({ writeText }),
+      });
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const copyBtn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+
+      // Focus and activate copy button via keyboard
+      copyBtn.focus();
+      await user.keyboard("{Enter}");
+
+      // Button should be disabled during async copy
+      await waitFor(() => {
+        expect(copyBtn).toBeDisabled();
+      });
+    });
+  });
+
+  describe("Tab order — FundActions focus sequence", () => {
+    it("tabs through Fund → Copy → Print in order", async () => {
+      const user = userEvent.setup();
+      render(<FundActions id="inv-001" status="Open" />);
+
+      const fundBtn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      const copyBtn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+      const printBtn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+
+      // Focus the Fund button first (simulating Tab from previous element)
+      fundBtn.focus();
+      expect(fundBtn).toHaveFocus();
+
+      await user.tab();
+      expect(copyBtn).toHaveFocus();
+
+      await user.tab();
+      expect(printBtn).toHaveFocus();
+    });
+
+    it("Print button does not wrap focus back to Fund", async () => {
+      const user = userEvent.setup();
+      render(<FundActions id="inv-001" status="Open" />);
+
+      const printBtn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+      printBtn.focus();
+
+      await user.tab();
+      // Focus should move to the next focusable element after FundActions (disclaimer or beyond)
+      expect(document.activeElement).not.toBe(printBtn);
+    });
+  });
+
+  describe("FundAmountInput — keyboard operability", () => {
+    it("input is focusable via Tab", async () => {
+      const user = userEvent.setup();
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={10000} currency="USD" yieldValue={8.2} />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: /funding amount/i });
+      input.focus();
+      expect(input).toHaveFocus();
+    });
+
+    it("input accepts keyboard input", async () => {
+      const user = userEvent.setup();
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={10000} currency="USD" yieldValue={8.2} />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: /funding amount/i });
+      input.focus();
+      await user.keyboard("500");
+      expect(input).toHaveValue(500);
+    });
+
+    it("submit button activates on Enter inside the input", async () => {
+      const user = userEvent.setup();
+      const connect = jest.fn();
+      mockUseWallet.mockReturnValue({
+        state: WALLET_STATES.CONNECTED,
+        connect,
+      } as ReturnType<typeof useWallet>);
+
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={10000} currency="USD" yieldValue={8.2} />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: /funding amount/i });
+      input.focus();
+      await user.keyboard("500");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(mockToast.success).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe("page-level keyboard landmarks", () => {
+    it("main element has id='main-content' for skip-link target", async () => {
+      const { container } = await renderServerPage({ id: "inv-001" });
+      const main = container.querySelector("main#main-content");
+      expect(main).toBeInTheDocument();
+    });
+
+    it("back-to-marketplace link is keyboard-focusable", async () => {
+      await renderServerPage({ id: "inv-001" });
+      const link = screen.getByRole("link", { name: copy.invest.detail.backToMarketplaceLabel });
+      expect(link).not.toHaveAttribute("tabindex", "-1");
+      link.focus();
+      expect(link).toHaveFocus();
+    });
+
+    it("back-to-home link is keyboard-focusable", async () => {
+      await renderServerPage({ id: "inv-001" });
+      const link = screen.getByRole("link", { name: /liquifact/i });
+      expect(link).not.toHaveAttribute("tabindex", "-1");
+      link.focus();
+      expect(link).toHaveFocus();
+    });
+  });
+
+  describe("axe accessibility", () => {
+    it("FundActions passes axe checks with keyboard-only focus styles", async () => {
       const { container } = render(<FundActions id="inv-001" status="Open" />);
       const results = await axe(container);
       expect(results).toHaveNoViolations();

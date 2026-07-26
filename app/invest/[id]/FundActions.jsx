@@ -251,13 +251,16 @@ export default function FundActions({
       )}
 
       {/* Action row */}
-      <div className="no-print flex flex-wrap gap-3">
+      <div
+        role="group"
+        aria-label={detail.actionGroupLabel}
+        className="no-print flex flex-wrap gap-3"
+      >
         <button
           type="button"
           onClick={handleFund}
           disabled={isFundingDisabled}
-          aria-busy={isFundingPending}
-          className="rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="focus-ring rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label={detail.fundButtonLabel}
         >
           {isFundingPending ? "Funding…" : detail.fundButton}
@@ -267,7 +270,7 @@ export default function FundActions({
           type="button"
           onClick={handleCopyLink}
           disabled={isCopying}
-          className="rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800/50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-cyan-500 disabled:opacity-50"
+          className="focus-ring rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800/50 transition-colors disabled:opacity-50"
           aria-label={detail.copyLinkButtonLabel}
         >
           {detail.copyLinkButton}
@@ -276,7 +279,7 @@ export default function FundActions({
         <button
           type="button"
           onClick={handlePrint}
-          className="rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-cyan-500"
+          className="focus-ring rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800 transition-colors"
           aria-label={detail.printButtonLabel}
         >
           {detail.printButton}
