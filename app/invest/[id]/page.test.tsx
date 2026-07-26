@@ -534,8 +534,28 @@ describe("FundActions", () => {
   });
 
   describe("accessibility", () => {
-    it("passes axe accessibility checks", async () => {
+    it("FundActions passes axe accessibility checks", async () => {
       const { container } = render(<FundActions {...defaultProps} />);
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+
+    it("loaded state passes axe accessibility checks", async () => {
+      const { container } = await renderServerPage({ id: "inv-001" });
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+
+    it("empty state passes axe accessibility checks", async () => {
+      const InvoiceNotFound = (await import("./not-found")).default;
+      const { container } = render(<InvoiceNotFound />);
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+
+    it("error state passes axe accessibility checks", async () => {
+      const InvoiceDetailError = (await import("./error")).default;
+      const { container } = render(<InvoiceDetailError error={new Error("test error")} reset={jest.fn()} />);
       const results = await axe(container);
       expect(results).toHaveNoViolations();
     });
