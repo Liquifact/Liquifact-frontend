@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 // downloads. ssr: false avoids "window is not defined" during server render.
 import WalletStatusLazy from "./WalletStatusLazy";
 import NetworkBadge from "./NetworkBadge";
+import { copy } from "../app/copy/en";
 
 /**
  * @typedef {Object} NavLink
@@ -23,6 +24,13 @@ const NAV_LINKS = [
   { href: "/invest", label: "Invest" },
   { href: "/settings", label: "Settings" },
 ];
+
+/**
+ * Debounce delay (ms) for the navigation announcement.
+ * Rapid route changes (e.g. prefetch-driven navigations) are collapsed into a
+ * single announcement so the live region is not spammed.
+ */
+export const ANNOUNCE_DEBOUNCE_MS = 200;
 
 // ---------------------------------------------------------------------------
 // Memoized sub-components
@@ -152,6 +160,60 @@ export default function NavMenu() {
   // Both branches use async callbacks so setState is never called
   // synchronously inside the effect body (avoids react-hooks/set-state-in-effect).
   const [visible, setVisible] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Navigation announcement (aria-live, polite)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Text injected into the sr-only live region. Empty string = nothing
+   * announced (initial mount and any state where there is no matching label).
+   */
+  const [announcement, setAnnouncement] = useState("");
+
+  /**
+   * Tracks whether this is the very first render so we never announce on mount
+   * (the user is already on the page — no navigation has occurred).
+   */
+  const isMounted = useRef(false);
+
+  /**
+   * Holds the debounce timer handle so it can be cancelled on rapid updates
+   * or on unmount.
+   */
+  const announceTimer = useRef(null);
+
+  useEffect(() => {
+    // Skip the initial mount: no navigation has occurred yet.
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
+    }
+
+    // Cancel any pending announcement from a previous rapid update.
+    if (announceTimer.current !== null) {
+      clearTimeout(announceTimer.current);
+    }
+
+    // Find the label for the current pathname (e.g. "Home", "Invoices", …).
+    // If the pathname does not match a known route (e.g. an invoice detail
+    // page) we still announce with the raw pathname so the user is not left
+    // completely in the dark.
+    const matchedLink = NAV_LINKS.find((link) => link.href === pathname);
+    const label = matchedLink ? matchedLink.label : pathname;
+
+    announceTimer.current = setTimeout(() => {
+      setAnnouncement(copy.nav.announceNavigation.replace("{label}", label));
+      announceTimer.current = null;
+    }, ANNOUNCE_DEBOUNCE_MS);
+
+    return () => {
+      if (announceTimer.current !== null) {
+        clearTimeout(announceTimer.current);
+        announceTimer.current = null;
+      }
+    };
+  }, [pathname]);
 
   // ---------------------------------------------------------------------------
   // Derived / memoized data — stable across open/visible state changes
@@ -341,6 +403,20 @@ export default function NavMenu() {
       {open && (
         <MobileMenu navItems={navItems} visible={visible} menuRef={menuRef} />
       )}
+
+      {/* Polite live region — announces route changes to screen-reader users.
+          Kept visually hidden (sr-only) so it never affects layout.
+          Empty on mount so no announcement fires before any navigation occurs.
+          aria-atomic ensures the full string is read, not just the changed part. */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="nav-announce"
+        className="sr-only"
+      >
+        {announcement}
+      </div>
     </header>
   );
 }
