@@ -154,6 +154,7 @@ All permanent reference material for this frontend belongs in `docs/`:
 | `docs/security.md` | CSP policy rationale and threat model |
 | `docs/getting-started.md` | Onboarding walkthrough for new contributors |
 | `docs/marketplace-data-flow.md` | Marketplace data-flow diagram (fetch -> transform -> render) |
+| `docs/settings-api.md` | Settings component props/API reference and minimal usage examples |
 | `docs/issue-334-cpu-budget-median-throttling.md` | Archived: CPU budget fix for median price oracle (contracts context) |
 | `docs/issue-334-flow-diagram.md` | Archived: Flow diagram for Issue #334 buffer truncation |
 
