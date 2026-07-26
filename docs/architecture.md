@@ -74,7 +74,7 @@ There are **two** invoice data paths today, and they are intentionally separate:
    `{ id, issuer, amount, currency, dueDate, yield, status }` (missing fields
    default to `null`, unknown fields are dropped). Consumed by `/invest` via the
    `InvestMarketplace({ loadInvoices = fetchInvestableInvoices })` seam, which
-   makes the data source injectable for tests.
+   makes the data source injectable for tests. For a visual map of the marketplace data loading, filtering, sorting, and rendering pipeline, see the [Marketplace Data Flow diagram](marketplace-data-flow.md).
 
 2. **Mock layer — `app/invest/lib.js`** (`MOCK_INVOICES`, `loadMockInvoices`,
    `getInvoiceById`)
@@ -153,6 +153,7 @@ All permanent reference material for this frontend belongs in `docs/`:
 | `docs/performance.md` | Bundle-size targets and code-splitting notes |
 | `docs/security.md` | CSP policy rationale and threat model |
 | `docs/getting-started.md` | Onboarding walkthrough for new contributors |
+| `docs/marketplace-data-flow.md` | Marketplace data-flow diagram (fetch -> transform -> render) |
 | `docs/issue-334-cpu-budget-median-throttling.md` | Archived: CPU budget fix for median price oracle (contracts context) |
 | `docs/issue-334-flow-diagram.md` | Archived: Flow diagram for Issue #334 buffer truncation |
 
