@@ -219,7 +219,7 @@ describe("InvoiceFilters", () => {
       />
     );
 
-    const amountToggle = screen.getByLabelText("Sort amount descending");
+    const amountToggle = screen.getByLabelText("Sort amount ascending");
     amountToggle.focus();
     await user.keyboard("{Enter}");
 
