@@ -220,7 +220,11 @@ describe("InvoiceDetailPage (Server Component shell)", () => {
     it("renders the StatusPill for the invoice status", async () => {
       await renderServerPage({ id: "inv-001" });
 
-      expect(screen.getByRole("status")).toHaveAttribute("data-status", "Open");
+      // FundActions also renders a role="status" live region (issue #727),
+      // so the StatusPill is located by its data-status attribute.
+      const statusRegions = screen.getAllByRole("status");
+      const statusPill = statusRegions.find((el) => el.hasAttribute("data-status"));
+      expect(statusPill).toHaveAttribute("data-status", "Open");
     });
 
     it("injects a JSON-LD script tag", async () => {
