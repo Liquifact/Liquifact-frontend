@@ -36,6 +36,7 @@ const VARIANT_STYLES = {
     icon: "ℹ️",
     label: "Info",
   },
+  
 };
 
 function getToastKey({ variant = "info", title, message }) {
