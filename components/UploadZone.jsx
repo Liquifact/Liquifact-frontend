@@ -4,12 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import { env } from "../lib/config/env";
 import { copy } from "../app/copy/en";
 import { validatePdfFile, sanitizeFilename } from "../lib/validation/pdf";
-import {
-  readDensity,
-  writeDensity,
-  toggleDensityValue,
-  DEFAULT_DENSITY,
-} from "../lib/storage/uploadDensity";
+import ProgressBar from "./ProgressBar";
 
 const API_URL = env.apiUrl;
 
@@ -285,36 +280,20 @@ function UploadZone({ onUploadSuccess, progress }) {
           onKeyDown={handleKeyDown}
           className={`cursor-pointer rounded-xl border-2 border-dashed transition-colors duration-200 ${dropzonePadding} text-center ${dropZoneBorder}`}
         >
-          {file ? (
-            <div className="space-y-2">
-              <span className="text-3xl" aria-hidden="true">
-                {"\u2705"}
-              </span>
-              <p
-                className="font-medium text-emerald-400"
-                dangerouslySetInnerHTML={{ __html: sanitizeFilename(file.name) }}
-              />
-              <p className="text-xs text-slate-500">
-                {(file.size / 1024 / 1024).toFixed(2)} MB {"\u00B7"} PDF
-              </p>
-              <p className="text-xs text-slate-500">{copy.uploadZone.changeFile}</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <span className="text-4xl" aria-hidden="true">
-                {"\u{1F4C2}"}
-              </span>
-              <p className="font-medium text-slate-300">{copy.uploadZone.dragDropPrompt}</p>
-              <p className="text-sm text-slate-500">{copy.uploadZone.browsePrompt}</p>
-              <div className="flex justify-center gap-2 flex-wrap pt-1">
-                <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-400">
-                  {copy.uploadZone.badgePdfOnly}
-                </span>
-                <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-400">
-                  {copy.uploadZone.badgeMaxSize.replace("{maxSizeMb}", FILE_CONSTRAINTS.maxSizeMb)}
-                </span>
-              </div>
-            </div>
+          <div className="flex items-center gap-2">
+            {typeof progress !== "number" && <Spinner />}
+            <span id="upload-status-text">{copy.uploadZone.statusUploading}</span>
+            {typeof progress === "number" && (
+              <span className="ml-auto font-medium">{Math.round(progress)}%</span>
+            )}
+          </div>
+          {typeof progress === "number" && (
+            <ProgressBar
+              value={progress}
+              max={100}
+              label={copy.uploadZone.statusUploading}
+              className="mt-1"
+            />
           )}
         </div>
 
