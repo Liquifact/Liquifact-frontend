@@ -18,7 +18,6 @@ import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
-import { exportAsCSV, exportAsJSON } from "@/utils/export";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
