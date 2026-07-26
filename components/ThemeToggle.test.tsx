@@ -231,6 +231,44 @@ describe("ThemeToggle", () => {
     expect(btn).toHaveAttribute("data-theme-pref", "light");
   });
 
+  // ── 5b-i. Keyboard activation ────────────────────────────────────────────
+
+  it("is focusable and keyboard-accessible (button is natively operable)", async () => {
+    render(<ThemeToggle />);
+    const btn = screen.getByRole("button");
+    btn.focus();
+    expect(btn).toHaveFocus();
+    expect(btn.tagName).toBe("BUTTON");
+  });
+
+  it("cycles theme via keyboard click (simulates Enter/Space activation)", async () => {
+    render(<ThemeToggle />);
+    const btn = screen.getByRole("button");
+    btn.focus();
+    await act(async () => {
+      fireEvent.click(btn);
+    });
+    expect(btn).toHaveAttribute("data-theme-pref", "light");
+  });
+
+  it("cycles theme forward on ArrowDown keydown", async () => {
+    render(<ThemeToggle />);
+    const btn = screen.getByRole("button");
+    await act(async () => {
+      fireEvent.keyDown(btn, { key: "ArrowDown" });
+    });
+    expect(btn).toHaveAttribute("data-theme-pref", "light");
+  });
+
+  it("cycles theme backward on ArrowUp keydown", async () => {
+    render(<ThemeToggle />);
+    const btn = screen.getByRole("button");
+    await act(async () => {
+      fireEvent.keyDown(btn, { key: "ArrowUp" });
+    });
+    expect(btn).toHaveAttribute("data-theme-pref", "dark");
+  });
+
   it("cycles light → dark on second click", async () => {
     render(<ThemeToggle />);
     const btn = screen.getByRole("button");
@@ -307,7 +345,7 @@ describe("ThemeToggle", () => {
   it("sets data-theme on <html> after mount", async () => {
     render(<ThemeToggle />);
     await act(async () => {});
-    expect(document.documentElement).toHaveAttribute("data-theme");
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
   });
 
   it('sets data-theme="light" on <html> after clicking to light', async () => {
@@ -390,7 +428,15 @@ describe("ThemeToggle", () => {
     expect(screen.getByRole("button")).toHaveClass("extra");
   });
 
-  // ── 5h. SVG icons are decorative ─────────────────────────────────────────
+  // ── 5h. Title attribute ──────────────────────────────────────────────────
+
+  it("has a descriptive title attribute with the current theme", () => {
+    render(<ThemeToggle />);
+    const btn = screen.getByRole("button");
+    expect(btn).toHaveAttribute("title", "Current theme: System. Use arrow keys to change.");
+  });
+
+  // ── 5i. SVG icons are decorative ─────────────────────────────────────────
 
   it("renders an SVG icon that is aria-hidden", () => {
     render(<ThemeToggle />);

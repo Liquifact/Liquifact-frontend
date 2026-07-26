@@ -73,11 +73,7 @@ export default function ThemeToggle({ className = "" }) {
   // effect, which would trigger a cascading render warning.
   const [preference, setPreference] = useState(() => {
     if (typeof window === "undefined") return "system";
-    try {
-      return readStoredTheme();
-    } catch {
-      return "system";
-    }
+    return readStoredTheme();
   });
 
   // Keep data-theme in sync whenever the preference state changes
