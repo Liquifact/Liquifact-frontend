@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useId, useRef, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
+import { copy } from "@/app/copy/en";
 import { INVOICE_STATUSES, STATUS_PILL_MAP } from "@/lib/types/invoice";
 
 export const DEFAULT_FILTERS = {
@@ -141,6 +142,57 @@ export function matchesMaturityRange(dueDate, from, to) {
   }
 
   return true;
+}
+
+/**
+ * Validate navigation input fields (yield range and maturity range).
+ * Returns an object keyed by field name with error strings, or empty for valid fields.
+ * Range-level errors (yieldRange, maturityRange) are set when both bounds are
+ * valid but the lower bound exceeds the upper bound.
+ *
+ * @param {{ yieldMin: string, yieldMax: string, maturityFrom: string, maturityTo: string }} obj
+ * @returns {{ yieldMin?: string, yieldMax?: string, yieldRange?: string, maturityFrom?: string, maturityTo?: string, maturityRange?: string }}
+ */
+export function validateNavigationInputs({ yieldMin, yieldMax, maturityFrom, maturityTo }) {
+  const errors = {};
+
+  if (yieldMin !== "") {
+    const yMin = parseYield(yieldMin);
+    if (Number.isNaN(yMin) || yMin < 0) {
+      errors.yieldMin = copy.invest.filters.errorYieldMin;
+    }
+  }
+
+  if (yieldMax !== "") {
+    const yMax = parseYield(yieldMax);
+    if (Number.isNaN(yMax) || yMax < 0) {
+      errors.yieldMax = copy.invest.filters.errorYieldMax;
+    }
+  }
+
+  if (yieldMin !== "" && yieldMax !== "" && !errors.yieldMin && !errors.yieldMax) {
+    const min = parseYield(yieldMin);
+    const max = parseYield(yieldMax);
+    if (Number.isFinite(min) && Number.isFinite(max) && min > max) {
+      errors.yieldRange = copy.invest.filters.errorYieldRange;
+    }
+  }
+
+  if (maturityFrom !== "" && !isValidISODate(maturityFrom)) {
+    errors.maturityFrom = copy.invest.filters.errorMaturityFrom;
+  }
+
+  if (maturityTo !== "" && !isValidISODate(maturityTo)) {
+    errors.maturityTo = copy.invest.filters.errorMaturityTo;
+  }
+
+  if (maturityFrom !== "" && maturityTo !== "" && !errors.maturityFrom && !errors.maturityTo) {
+    if (maturityFrom > maturityTo) {
+      errors.maturityRange = copy.invest.filters.errorMaturityRange;
+    }
+  }
+
+  return errors;
 }
 
 /**
@@ -475,53 +527,80 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
   const [focusedCurrencyIndex, setFocusedCurrencyIndex] = useState(0);
   const currencyRefs = useRef([]);
 
+  const [touchedFields, setTouchedFields] = useState({});
+
+  const yieldMinErrorId = useId();
+  const yieldMaxErrorId = useId();
+  const maturityFromErrorId = useId();
+  const maturityToErrorId = useId();
+
+  const validationErrors = useMemo(() => validateNavigationInputs(filters), [filters]);
+
+  const markTouched = useCallback((field) => {
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+  }, []);
+
+  const effYieldMinError = touchedFields.yieldMin
+    ? validationErrors.yieldMin || validationErrors.yieldRange
+    : null;
+  const effYieldMaxError = touchedFields.yieldMax
+    ? validationErrors.yieldMax || validationErrors.yieldRange
+    : null;
+  const effMaturityFromError = touchedFields.maturityFrom
+    ? validationErrors.maturityFrom || validationErrors.maturityRange
+    : null;
+  const effMaturityToError = touchedFields.maturityTo
+    ? validationErrors.maturityTo || validationErrors.maturityRange
+    : null;
+
   return (
     <div className="flex flex-wrap gap-4 items-center">
-      <fieldset className="flex items-center gap-2 border-none p-0 m-0">
-        <legend className="sr-only">Yield Range</legend>
-        <div className="flex flex-col">
+      <div className="flex flex-col gap-1">
+        <fieldset className="flex items-center gap-2 border-none p-0 m-0">
+          <legend className="sr-only">Yield Range</legend>
           <input
-            id={yieldMinId}
             type="number"
             value={filters.yieldMin}
             onChange={(e) => handleChange("yieldMin", e.target.value)}
-            onBlur={() => setTouched((t) => ({ ...t, yieldMin: true }))}
+            onBlur={() => markTouched("yieldMin")}
             placeholder="Min yield"
-            className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500 ${
-              yieldHasError ? "border-red-500" : "border-slate-700"
+            className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none ${
+              effYieldMinError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
             }`}
             aria-label="Minimum yield percentage"
-            aria-describedby={yieldHasError ? yieldErrorId : undefined}
-            aria-invalid={yieldHasError ? "true" : "false"}
+            aria-invalid={effYieldMinError ? "true" : "false"}
+            aria-describedby={effYieldMinError ? yieldMinErrorId : undefined}
             min="0"
             step="0.1"
           />
-        </div>
-        <span className="text-slate-500">-</span>
-        <div className="flex flex-col">
+          <span className="text-slate-500">-</span>
           <input
-            id={yieldMaxId}
             type="number"
             value={filters.yieldMax}
             onChange={(e) => handleChange("yieldMax", e.target.value)}
-            onBlur={() => setTouched((t) => ({ ...t, yieldMax: true }))}
+            onBlur={() => markTouched("yieldMax")}
             placeholder="Max yield"
-            className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500 ${
-              yieldHasError ? "border-red-500" : "border-slate-700"
+            className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none ${
+              effYieldMaxError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
             }`}
             aria-label="Maximum yield percentage"
-            aria-describedby={yieldHasError ? yieldErrorId : undefined}
-            aria-invalid={yieldHasError ? "true" : "false"}
+            aria-invalid={effYieldMaxError ? "true" : "false"}
+            aria-describedby={effYieldMaxError ? yieldMaxErrorId : undefined}
             min="0"
             step="0.1"
           />
-        </div>
-        {yieldHasError && (
-          <p id={yieldErrorId} role="alert" className="text-xs text-red-400 ml-2">
-            {yieldHasError}
+        </fieldset>
+        {effYieldMinError && (
+          <p id={yieldMinErrorId} role="alert" aria-live="polite" className="text-xs text-red-400">
+            {effYieldMinError}
           </p>
         )}
-      </fieldset>
+        {effYieldMaxError && (
+          <p id={yieldMaxErrorId} role="alert" aria-live="polite" className="text-xs text-red-400">
+            {effYieldMaxError}
+          </p>
+        )}
+      </div>
 
       <div
         role="toolbar"
@@ -575,45 +654,56 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
         ))}
       </div>
 
-      <fieldset className="flex items-center gap-2 border-none p-0 m-0">
-        <legend className="sr-only">Maturity Date Range</legend>
-        <div className="flex flex-col">
+      <div className="flex flex-col gap-1">
+        <fieldset className="flex items-center gap-2 border-none p-0 m-0">
+          <legend className="sr-only">Maturity Date Range</legend>
           <input
-            id={maturityFromId}
             type="date"
             value={filters.maturityFrom}
             onChange={(e) => handleChange("maturityFrom", e.target.value)}
-            onBlur={() => setTouched((t) => ({ ...t, maturityFrom: true }))}
-            className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark] ${
-              maturityHasError ? "border-red-500" : "border-slate-700"
+            onBlur={() => markTouched("maturityFrom")}
+            className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] ${
+              effMaturityFromError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
             }`}
             aria-label="Maturity date from"
-            aria-describedby={maturityHasError ? maturityErrorId : undefined}
-            aria-invalid={maturityHasError ? "true" : "false"}
+            aria-invalid={effMaturityFromError ? "true" : "false"}
+            aria-describedby={effMaturityFromError ? maturityFromErrorId : undefined}
           />
-        </div>
-        <span className="text-slate-500">-</span>
-        <div className="flex flex-col">
+          <span className="text-slate-500">-</span>
           <input
-            id={maturityToId}
             type="date"
             value={filters.maturityTo}
             onChange={(e) => handleChange("maturityTo", e.target.value)}
-            onBlur={() => setTouched((t) => ({ ...t, maturityTo: true }))}
-            className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark] ${
-              maturityHasError ? "border-red-500" : "border-slate-700"
+            onBlur={() => markTouched("maturityTo")}
+            className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] ${
+              effMaturityToError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
             }`}
             aria-label="Maturity date to"
-            aria-describedby={maturityHasError ? maturityErrorId : undefined}
-            aria-invalid={maturityHasError ? "true" : "false"}
+            aria-invalid={effMaturityToError ? "true" : "false"}
+            aria-describedby={effMaturityToError ? maturityToErrorId : undefined}
           />
-        </div>
-        {maturityHasError && (
-          <p id={maturityErrorId} role="alert" className="text-xs text-red-400 ml-2">
-            {maturityHasError}
+        </fieldset>
+        {effMaturityFromError && (
+          <p
+            id={maturityFromErrorId}
+            role="alert"
+            aria-live="polite"
+            className="text-xs text-red-400"
+          >
+            {effMaturityFromError}
           </p>
         )}
-      </fieldset>
+        {effMaturityToError && (
+          <p
+            id={maturityToErrorId}
+            role="alert"
+            aria-live="polite"
+            className="text-xs text-red-400"
+          >
+            {effMaturityToError}
+          </p>
+        )}
+      </div>
 
       <fieldset className="flex items-center gap-2 border-none p-0 m-0">
         <legend className="sr-only">Sort Options</legend>
