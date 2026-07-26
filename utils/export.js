@@ -1,49 +1,27 @@
 /**
- * Safely escape a value for CSV.
- * - Wraps in double quotes if it contains commas, double quotes, or newlines.
- * - Escapes inner double quotes by doubling them.
+ * Safely escapes a string for CSV.
+ * If the value contains commas, quotes, or newlines, it wraps the value in quotes
+ * and escapes inner quotes by doubling them.
  *
- * @param {any} value
- * @returns {string}
+ * @param {any} val - The value to escape
+ * @returns {string} - Escaped CSV string
  */
-export function escapeCSVValue(value) {
-  if (value === null || value === undefined) {
-    return "";
-  }
-  const str = String(value);
-  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+export function escapeCSVValue(val) {
+  if (val === null || val === undefined) return "";
+  const str = String(val);
+  if (/[",\n\r]/.test(str)) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;
 }
 
 /**
- * Converts an array of objects to a CSV string.
+ * Triggers a client-side file download.
  *
- * @param {Array<object>} data
- * @returns {string}
+ * @param {Blob} blob - The blob to download
+ * @param {string} filename - The filename to save as
  */
-export function convertToCSV(data) {
-  if (!Array.isArray(data) || data.length === 0) {
-    return "";
-  }
-  const headers = Object.keys(data[0]);
-  const headerRow = headers.map(escapeCSVValue).join(",");
-
-  const rows = data.map((row) => {
-    return headers.map((header) => escapeCSVValue(row[header])).join(",");
-  });
-
-  return [headerRow, ...rows].join("\n");
-}
-
-/**
- * Trigger a file download in the browser.
- *
- * @param {Blob} blob
- * @param {string} filename
- */
-export function downloadBlob(blob, filename) {
+export function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -55,25 +33,48 @@ export function downloadBlob(blob, filename) {
 }
 
 /**
- * Exports data as a CSV file and triggers download.
+ * Exports an array of objects to a CSV file.
+ * Extracts headers from the keys of the first object.
  *
- * @param {Array<object>} data
- * @param {string} filename
+ * @param {Array<Object>} data - The data to export
+ * @param {string} filename - The target filename
  */
-export function exportAsCSV(data, filename = "export.csv") {
-  const csvStr = convertToCSV(data);
-  const blob = new Blob([csvStr], { type: "text/csv;charset=utf-8;" });
-  downloadBlob(blob, filename);
+export function exportAsCSV(data, filename) {
+  if (!Array.isArray(data) || data.length === 0) {
+    // Export empty file if no data
+    const blob = new Blob([""], { type: "text/csv;charset=utf-8;" });
+    triggerDownload(blob, filename);
+    return;
+  }
+
+  const headers = Object.keys(data[0]);
+  const csvRows = [];
+
+  // Add header row
+  csvRows.push(headers.map(escapeCSVValue).join(","));
+
+  // Add data rows
+  for (const row of data) {
+    const values = headers.map((header) => {
+      return escapeCSVValue(row[header]);
+    });
+    csvRows.push(values.join(","));
+  }
+
+  const csvString = csvRows.join("\n");
+  const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+  triggerDownload(blob, filename);
 }
 
 /**
- * Exports data as a JSON file and triggers download.
+ * Exports an array of objects to a JSON file.
  *
- * @param {Array<object>} data
- * @param {string} filename
+ * @param {Array<Object>} data - The data to export
+ * @param {string} filename - The target filename
  */
-export function exportAsJSON(data, filename = "export.json") {
-  const jsonStr = JSON.stringify(data, null, 2);
-  const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8;" });
-  downloadBlob(blob, filename);
+export function exportAsJSON(data, filename) {
+  if (!Array.isArray(data)) data = [];
+  const jsonString = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonString], { type: "application/json;charset=utf-8;" });
+  triggerDownload(blob, filename);
 }

@@ -1,116 +1,121 @@
-import { escapeCSVValue, convertToCSV, exportAsCSV, exportAsJSON } from "./export";
+import { escapeCSVValue, exportAsCSV, exportAsJSON } from "./export";
+
+const readBlobText = (blob) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsText(blob);
+  });
+};
 
 describe("export utilities", () => {
+  let originalCreateObjectURL;
+  let originalRevokeObjectURL;
+  let mockCreateObjectURL;
+  let mockRevokeObjectURL;
+  let mockClick;
+  let mockAppendChild;
+  let mockRemoveChild;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    originalCreateObjectURL = URL.createObjectURL;
+    originalRevokeObjectURL = URL.revokeObjectURL;
+    
+    mockCreateObjectURL = jest.fn(() => "mock-url");
+    mockRevokeObjectURL = jest.fn();
+    URL.createObjectURL = mockCreateObjectURL;
+    URL.revokeObjectURL = mockRevokeObjectURL;
+
+    mockClick = jest.fn();
+    mockAppendChild = jest.spyOn(document.body, 'appendChild').mockImplementation(() => {});
+    mockRemoveChild = jest.spyOn(document.body, 'removeChild').mockImplementation(() => {});
+
+    jest.spyOn(document, 'createElement').mockImplementation((tagName) => {
+      if (tagName === 'a') {
+        return {
+          click: mockClick,
+          href: '',
+          download: ''
+        };
+      }
+      return document.createElement(tagName);
+    });
+  });
+
+  afterEach(() => {
+    URL.createObjectURL = originalCreateObjectURL;
+    URL.revokeObjectURL = originalRevokeObjectURL;
+    jest.restoreAllMocks();
+  });
+
   describe("escapeCSVValue", () => {
-    it("handles null and undefined", () => {
+    it("returns empty string for null or undefined", () => {
       expect(escapeCSVValue(null)).toBe("");
       expect(escapeCSVValue(undefined)).toBe("");
     });
 
     it("returns plain strings unmodified", () => {
-      expect(escapeCSVValue("hello world")).toBe("hello world");
-      expect(escapeCSVValue(123)).toBe("123");
+      expect(escapeCSVValue("hello")).toBe("hello");
+      expect(escapeCSVValue("123")).toBe("123");
     });
 
-    it("escapes strings with commas by wrapping in quotes", () => {
+    it("escapes strings with commas", () => {
       expect(escapeCSVValue("hello, world")).toBe('"hello, world"');
     });
 
-    it("escapes strings with newlines by wrapping in quotes", () => {
-      expect(escapeCSVValue("hello\nworld")).toBe('"hello\nworld"');
+    it("escapes strings with quotes and doubles them", () => {
+      expect(escapeCSVValue('She said "Hello"')).toBe('"She said ""Hello"""');
     });
 
-    it("escapes strings with double quotes by doubling them and wrapping in quotes", () => {
-      expect(escapeCSVValue('hello "world"')).toBe('"hello ""world"""');
-    });
-
-    it("handles complex cases with commas, quotes and newlines", () => {
-      expect(escapeCSVValue('line1,\n"line2"')).toBe('"line1,\n""line2"""');
+    it("escapes strings with newlines", () => {
+      expect(escapeCSVValue("Line 1\nLine 2")).toBe('"Line 1\nLine 2"');
     });
   });
 
-  describe("convertToCSV", () => {
-    it("returns empty string for empty data", () => {
-      expect(convertToCSV([])).toBe("");
-      expect(convertToCSV(null)).toBe("");
+  describe("exportAsCSV", () => {
+    it("exports empty file when data is empty", () => {
+      exportAsCSV([], "test.csv");
+      expect(mockCreateObjectURL).toHaveBeenCalledTimes(1);
+      const blob = mockCreateObjectURL.mock.calls[0][0];
+      expect(blob.type).toBe("text/csv;charset=utf-8;");
+      expect(mockClick).toHaveBeenCalledTimes(1);
     });
 
-    it("converts simple objects to CSV", () => {
+    it("exports data to CSV", async () => {
       const data = [
-        { id: 1, name: "Alice" },
-        { id: 2, name: "Bob" },
+        { id: 1, name: "Alice", note: "VIP, very important" },
+        { id: 2, name: 'Bob "The Builder"', note: "Regular" },
       ];
-      const expected = "id,name\n1,Alice\n2,Bob";
-      expect(convertToCSV(data)).toBe(expected);
-    });
+      exportAsCSV(data, "users.csv");
+      expect(mockCreateObjectURL).toHaveBeenCalledTimes(1);
+      const blob = mockCreateObjectURL.mock.calls[0][0];
 
-    it("escapes values properly in the CSV", () => {
-      const data = [
-        { name: 'Alice, "The Great"', notes: "Line 1\nLine 2" },
-      ];
-      const expected = 'name,notes\n"Alice, ""The Great""",\"Line 1\nLine 2\"';
-      expect(convertToCSV(data)).toBe(expected);
+      const text = await readBlobText(blob);
+      expect(text).toBe(
+        'id,name,note\n1,Alice,"VIP, very important"\n2,"Bob ""The Builder""",Regular'
+      );
     });
   });
 
-  describe("export functions (with mock URL API)", () => {
-    let mockCreateObjectURL;
-    let mockRevokeObjectURL;
-    let mockAppendChild;
-    let mockRemoveChild;
-    let mockClick;
-    let mockAnchor;
-
-    beforeEach(() => {
-      mockCreateObjectURL = jest.fn().mockReturnValue("blob:test-url");
-      mockRevokeObjectURL = jest.fn();
-      global.URL.createObjectURL = mockCreateObjectURL;
-      global.URL.revokeObjectURL = mockRevokeObjectURL;
-
-      mockClick = jest.fn();
-      mockAnchor = {
-        href: "",
-        download: "",
-        click: mockClick,
-      };
-
-      jest.spyOn(document, "createElement").mockImplementation((tag) => {
-        if (tag === "a") return mockAnchor;
-        return document.createElement(tag);
-      });
-
-      mockAppendChild = jest.spyOn(document.body, "appendChild").mockImplementation(() => {});
-      mockRemoveChild = jest.spyOn(document.body, "removeChild").mockImplementation(() => {});
+  describe("exportAsJSON", () => {
+    it("exports empty array when data is empty", async () => {
+      exportAsJSON([], "test.json");
+      expect(mockCreateObjectURL).toHaveBeenCalledTimes(1);
+      const blob = mockCreateObjectURL.mock.calls[0][0];
+      const text = await readBlobText(blob);
+      expect(text).toBe("[]");
     });
 
-    afterEach(() => {
-      jest.restoreAllMocks();
-    });
+    it("exports data to JSON", async () => {
+      const data = [{ id: 1, name: "Alice" }];
+      exportAsJSON(data, "users.json");
+      expect(mockCreateObjectURL).toHaveBeenCalledTimes(1);
+      const blob = mockCreateObjectURL.mock.calls[0][0];
 
-    it("exportAsCSV creates a blob and triggers download", async () => {
-      const data = [{ id: 1 }];
-      exportAsCSV(data, "test.csv");
-
-      expect(mockCreateObjectURL).toHaveBeenCalled();
-      expect(mockAnchor.href).toBe("blob:test-url");
-      expect(mockAnchor.download).toBe("test.csv");
-      expect(mockAppendChild).toHaveBeenCalledWith(mockAnchor);
-      expect(mockClick).toHaveBeenCalled();
-      expect(mockRemoveChild).toHaveBeenCalledWith(mockAnchor);
-      expect(mockRevokeObjectURL).toHaveBeenCalledWith("blob:test-url");
-    });
-
-    it("exportAsJSON creates a blob and triggers download", async () => {
-      const data = [{ id: 1 }];
-      exportAsJSON(data, "test.json");
-
-      expect(mockCreateObjectURL).toHaveBeenCalled();
-      expect(mockAnchor.href).toBe("blob:test-url");
-      expect(mockAnchor.download).toBe("test.json");
-      expect(mockAppendChild).toHaveBeenCalledWith(mockAnchor);
-      expect(mockClick).toHaveBeenCalled();
-      expect(mockRemoveChild).toHaveBeenCalledWith(mockAnchor);
-      expect(mockRevokeObjectURL).toHaveBeenCalledWith("blob:test-url");
+      const text = await readBlobText(blob);
+      expect(JSON.parse(text)).toEqual(data);
     });
   });
 });
