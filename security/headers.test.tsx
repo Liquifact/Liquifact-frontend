@@ -105,6 +105,12 @@ describe("buildContentSecurityPolicy", () => {
     expect(csp["form-action"]).toEqual(["'self'"]);
   });
 
+  it("uses a nonce for inline scripts when one is supplied", () => {
+    const csp = parseCsp(buildContentSecurityPolicy({ nonce: "abc123" }));
+    expect(csp["script-src"]).toContain("'nonce-abc123'");
+    expect(csp["script-src"]).not.toContain("'unsafe-inline'");
+  });
+
   it("permits 'unsafe-inline' for styles only (documented trade-off)", () => {
     const csp = parseCsp(buildContentSecurityPolicy());
     expect(csp["style-src"]).toContain("'unsafe-inline'");
@@ -178,6 +184,14 @@ describe("buildSecurityHeaders", () => {
 
   it("includes a Content-Security-Policy header", () => {
     expect(asMap["Content-Security-Policy"]).toContain("default-src 'self'");
+  });
+
+  it("supports a nonce in the CSP builder output", () => {
+    const headers = buildSecurityHeaders({ nonce: "abc123" });
+    const csp = headers.find((header) => header.key === "Content-Security-Policy")?.value;
+    expect(csp).toContain("'nonce-abc123'");
+    expect(csp).toContain("script-src 'self' 'nonce-abc123'");
+    expect(csp).toContain("style-src 'self' 'unsafe-inline' https://fonts.googleapis.com");
   });
 
   it("includes Strict-Transport-Security", () => {

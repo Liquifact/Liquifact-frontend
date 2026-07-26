@@ -279,17 +279,55 @@ describe("ThemeToggle", () => {
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
   });
 
-  it('aria-pressed is false when preference is "system"', async () => {
+  // ── 5e. aria-pressed reflects the active theme ────────────────────────
+
+  it("aria-pressed is false when the active theme is light", async () => {
+    render(<ThemeToggle />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button"));
+    });
+    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("aria-pressed is true when the active theme is dark", async () => {
+    render(<ThemeToggle />);
+    const btn = screen.getByRole("button");
+    await act(async () => {
+      fireEvent.click(btn);
+    });
+    await act(async () => {
+      fireEvent.click(btn);
+    });
+    expect(btn).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("aria-pressed follows the system preference when the theme is set to system", async () => {
+    mockMatchMedia(true);
     render(<ThemeToggle />);
     await act(async () => {});
     expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
   });
 
-  it('aria-pressed is true when preference is "light"', async () => {
+  // ── 5f. data attributes stay in sync ─────────────────────────────────────
+
+  it("data-theme-next shows the next theme in the cycle", async () => {
     render(<ThemeToggle />);
-    await act(async () => fireEvent.click(screen.getByRole("button")));
-    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true");
+    await act(async () => {});
+    const btn = screen.getByRole("button");
+    // starts at 'system', next is 'light'
+    expect(btn).toHaveAttribute("data-theme-next", "light");
   });
+
+  it("updates data-theme-next after a click", async () => {
+    render(<ThemeToggle />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button"));
+    });
+    // now at 'light', next is 'dark'
+    expect(screen.getByRole("button")).toHaveAttribute("data-theme-next", "dark");
+  });
+
+  // ── 5g. className forwarding ──────────────────────────────────────────────
 
   it("forwards className to the button", () => {
     render(<ThemeToggle className="my-extra-class" />);

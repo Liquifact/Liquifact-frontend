@@ -1,5 +1,4 @@
-"use client";
-
+import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -73,22 +72,9 @@ const THEME_SCRIPT = `(function(){
   document.documentElement.setAttribute('data-theme', effective);
 })();`;
 
-function MarketplaceShortcut() {
-  const router = useRouter();
+export default async function RootLayout({ children }) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
 
-  useEffect(() => {
-    const handler = createShortcutMatcher(MARKETPLACE_SHORTCUT_KEY, () => {
-      router.push("/invest");
-    });
-
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [router]);
-
-  return null;
-}
-
-export default function RootLayout({ children }) {
   return (
     <html lang="en">
       {/*
@@ -96,7 +82,7 @@ export default function RootLayout({ children }) {
         eliminating the flash of incorrect theme (FOIT-equivalent for themes).
       */}
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {/* Skip link: first focusable element so keyboard users can bypass the header */}
