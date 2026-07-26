@@ -4,6 +4,7 @@
  */
 
 import { fetchInvestableInvoices, InvoiceTimeoutError } from "./invoices";
+import { ApiError } from "./ApiError";
 
 describe("fetchInvestableInvoices", () => {
   afterEach(() => {
@@ -47,33 +48,66 @@ describe("fetchInvestableInvoices", () => {
   });
 
   it("throws on non-200 response", async () => {
-    const fetchMock = jest
-      .fn()
-      .mockResolvedValue({ ok: false, status: 500, statusText: "Server Error" });
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: "Server Error",
+      headers: { get: () => null },
+    });
     (global as any).fetch = fetchMock;
 
-    await expect(fetchInvestableInvoices()).rejects.toThrow(
-      "Failed to fetch invoices: 500 Server Error"
-    );
+    const err = await fetchInvestableInvoices().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    const apiErr = err as ApiError;
+    expect(apiErr.status).toBe(500);
+    expect(apiErr.code).toBe("500");
+    expect(apiErr.message).toBe("Failed to fetch invoices: 500 Server Error");
+    expect(apiErr.requestId).toBeUndefined();
   });
 
-  it("throws on invalid JSON", async () => {
+  it("includes requestId from X-Request-Id header when present", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      statusText: "Unprocessable Entity",
+      headers: { get: (h: string) => (h === "x-request-id" ? "req-abc-123" : null) },
+    });
+    (global as any).fetch = fetchMock;
+
+    const err = await fetchInvestableInvoices().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).requestId).toBe("req-abc-123");
+    expect((err as ApiError).status).toBe(422);
+  });
+
+  it("throws ApiError on invalid JSON (non-JSON body edge case)", async () => {
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
+      status: 200,
       json: async () => {
         throw new Error("invalid json");
       },
     });
     (global as any).fetch = fetchMock;
 
-    await expect(fetchInvestableInvoices()).rejects.toThrow("Response is not valid JSON");
+    const err = await fetchInvestableInvoices().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).message).toBe("Response is not valid JSON");
+    expect((err as ApiError).status).toBe(200);
   });
 
-  it("throws when payload is not an array", async () => {
-    const fetchMock = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ foo: "bar" }) });
+  it("throws ApiError when payload is not an array", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ foo: "bar" }),
+    });
     (global as any).fetch = fetchMock;
 
-    await expect(fetchInvestableInvoices()).rejects.toThrow("Invoice payload is not an array");
+    const err = await fetchInvestableInvoices().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).message).toBe("Invoice payload is not an array");
+    expect((err as ApiError).status).toBe(200);
   });
 
   it("passes an AbortSignal to fetch", async () => {
