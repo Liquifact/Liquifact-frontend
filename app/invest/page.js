@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import ErrorBanner from "@/components/ErrorBanner";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
 import InvoiceSearch from "@/components/InvoiceSearch";
@@ -15,7 +15,7 @@ import InvoiceFilters, {
 import BulkActionsToolbar from "@/components/BulkActionsToolbar";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import NavMenu from "@/components/NavMenu";
-import MarketplaceErrorBoundary from "@/components/MarketplaceErrorBoundary";
+import { INVOICE_STATUSES } from "@/lib/types/invoice";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
@@ -23,6 +23,112 @@ import { useMarketplace } from "./MarketplaceContext";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
+export const URL_SYNC_DEBOUNCE_MS = 200;
+
+const VALID_CURRENCIES = new Set(["USD", "EUR", "GBP", "JPY", "CHF"]);
+const VALID_SORT_COLUMNS = new Set(["amount", "yield", "maturity"]);
+const VALID_SORT_DIRS = new Set(["asc", "desc"]);
+const VALID_STATUSES = new Set(Object.values(INVOICE_STATUSES));
+
+function isValidISODate(str) {
+  if (typeof str !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
+  const d = new Date(str + "T00:00:00Z");
+  if (Number.isNaN(d.getTime())) return false;
+  // new Date("2026-09-99") rolls over in some engines, so verify round-trip.
+  return d.toISOString().slice(0, 10) === str;
+}
+
+function isValidYieldString(value) {
+  if (typeof value !== "string" || value === "") return false;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0;
+}
+
+/**
+ * Parse a shareable URL query into validated marketplace filters and search.
+ * Unknown/invalid params are ignored and fall back to defaults.
+ *
+ * @param {URLSearchParams} searchParams
+ * @param {object} [defaults=DEFAULT_FILTERS]
+ * @returns {{ filters: object, searchQuery: string }}
+ */
+export function parseFiltersFromSearchParams(searchParams, defaults = DEFAULT_FILTERS) {
+  const params = searchParams ?? new URLSearchParams();
+
+  const rawSort = params.get("sort") ?? "";
+  const rawSortDir = params.get("sortDir") ?? "";
+  let sort = "";
+  let sortDir = "desc";
+  const compound = rawSort.match(/^(amount|yield|maturity)_(asc|desc)$/);
+  if (compound) {
+    sort = compound[1];
+    sortDir = compound[2];
+  } else if (VALID_SORT_COLUMNS.has(rawSort)) {
+    sort = rawSort;
+  }
+  if (VALID_SORT_DIRS.has(rawSortDir)) {
+    sortDir = rawSortDir;
+  }
+
+  const currency = VALID_CURRENCIES.has(params.get("currency")) ? params.get("currency") : "";
+  const yieldMin = isValidYieldString(params.get("yieldMin")) ? params.get("yieldMin") : "";
+  const yieldMax = isValidYieldString(params.get("yieldMax")) ? params.get("yieldMax") : "";
+  const maturityFrom = isValidISODate(params.get("maturityFrom")) ? params.get("maturityFrom") : "";
+  const maturityTo = isValidISODate(params.get("maturityTo")) ? params.get("maturityTo") : "";
+
+  const statuses = (params.get("statuses") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => VALID_STATUSES.has(s));
+
+  const searchQuery = (params.get("q") ?? "").trim();
+
+  return {
+    filters: {
+      ...defaults,
+      currency,
+      yieldMin,
+      yieldMax,
+      maturityFrom,
+      maturityTo,
+      sort,
+      sortDir,
+      statuses,
+    },
+    searchQuery,
+  };
+}
+
+/**
+ * Build a shareable URLSearchParams object from the current filters and search.
+ * Empty/default values are omitted so the URL stays clean.
+ *
+ * @param {object} filters
+ * @param {string} [searchQuery=""]
+ * @returns {URLSearchParams}
+ */
+export function buildSearchParams(filters, searchQuery = "") {
+  const params = new URLSearchParams();
+  const trimmedSearch = (searchQuery ?? "").trim();
+  if (trimmedSearch) params.set("q", trimmedSearch);
+
+  if (filters.currency) params.set("currency", filters.currency);
+  if (filters.yieldMin !== "") params.set("yieldMin", filters.yieldMin);
+  if (filters.yieldMax !== "") params.set("yieldMax", filters.yieldMax);
+  if (filters.maturityFrom) params.set("maturityFrom", filters.maturityFrom);
+  if (filters.maturityTo) params.set("maturityTo", filters.maturityTo);
+
+  if (filters.sort) {
+    params.set("sort", filters.sort);
+    params.set("sortDir", filters.sortDir || "desc");
+  }
+
+  if (Array.isArray(filters.statuses) && filters.statuses.length > 0) {
+    params.set("statuses", filters.statuses.join(","));
+  }
+
+  return params;
+}
 
 // Delay before an async load/retry outcome reaches the polite live region.
 // Debouncing coalesces a burst of rapid results (e.g. mashing "Try again")
@@ -162,42 +268,40 @@ export function defaultBulkExport(selectedInvoices) {
  * Default bulk-delete implementation: optimistically updates the supplied\n * list with a no-op filter (parent owns the actual mutation so the data\n * source of truth stays outside the export helper). The handler is a\n * documented opt-in behaviour: callers that already expose a delete API\n * inject their own `onBulkDelete`.\n * @param {Set<string>|Array<string>} ids
  * @returns {Promise<{count: number}>}
  */
-export async function defaultBulkDelete(ids) {
-  const count = ids instanceof Set ? ids.size : Array.isArray(ids) ? ids.length : 0;
-  return { count };
-}
-
-/**
- * Resolve the toast API when supplied, otherwise null. We accept it as a\n * prop instead of importing the ToastProvider context directly so the\n * component is testable without a wrapping provider.\n */
-function safeToast(toast) {
-  if (!toast) return null;
-  return {
-    success: (msg, title) => toast.success?.(msg, title),
-    error: (msg, title) => toast.error?.(msg, title),
-    info: (msg, title) => toast.info?.(msg, title),
-  };
-}
-
-/**
- * InvestMarketplace – main component for the invest page.\n *\n * Fetches invoices via `loadInvoices`, renders them PAGE_SIZE at a time,\n * and exposes a "Load more" control to append the next batch.  Paging\n * resets whenever a new invoice set arrives so filter changes stay\n * non-breaking.\n *\n * On load failure, an ErrorBanner is rendered with a "Try again" action\n * that re-runs the load. The retry resets state to loading, cancels any\n * stale in-flight request via AbortController, and re-announces via the\n * polite status region once the new load settles.\n *\n * @param {object}   props\n * @param {Function} [props.loadInvoices] - Async function that resolves to an\n *   invoice array.  Defaults to the mock loader; injectable for testing.\n * @param {Function} [props.onBulkDelete] - Async delete handler. Receives a\n *   Set<string> of selected ids. Defaults to a no-op pass-through.\n * @param {Function} [props.onBulkExport] - Bulk export handler. Receives the\n *   selected-invoice array; defaults to `defaultBulkExport`.\n * @param {object}   [props.toast] - Optional `{ success, error, info }`\n *   API. When provided, results are announced through it (and the toast\n *   region's `aria-live` ensures screen-reader users hear them).\n * @returns {JSX.Element}\n */
-export function InvestMarketplace({
-  loadInvoices = loadMockInvoices,
-  onBulkDelete = defaultBulkDelete,
-  onBulkExport = defaultBulkExport,
-  toast,
-}) {
+export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const searchParamsValue = searchParams ?? new URLSearchParams();
+  const searchParamsString = searchParamsValue.toString();
+
+  const initialUrlState = parseFiltersFromSearchParams(searchParamsValue, DEFAULT_FILTERS);
 
   const { invoices, setInvoices, pendingIds } = useMarketplace();
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialUrlState.searchQuery);
   const [loadError, setLoadError] = useState("");
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const [pendingDeleteIds, setPendingDeleteIds] = useState(null);
-  const [bulkRunning, setBulkRunning] = useState({ export: false, delete: false });
-  const bulkLabels = copy.invest.bulk;
-  const toastApi = useMemo(() => safeToast(toast), [toast]);
+  const [filters, setFilters] = useState(initialUrlState.filters);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialUrlState.searchQuery);
+
+  const committedSearchRef = useRef(
+    buildSearchParams(initialUrlState.filters, initialUrlState.searchQuery).toString()
+  );
+  const urlUpdateTimerRef = useRef(null);
+
+  /**
+   * When the URL query changes (back/forward, shared link), parse and apply
+   * validated filters. committedSearchRef prevents overwriting our own writes.
+   */
+  useEffect(() => {
+    if (searchParamsString === committedSearchRef.current) return;
+    const parsed = parseFiltersFromSearchParams(searchParamsValue, DEFAULT_FILTERS);
+    setFilters(parsed.filters);
+    setSearchQuery(parsed.searchQuery);
+    setDebouncedSearch(parsed.searchQuery);
+    committedSearchRef.current = buildSearchParams(parsed.filters, parsed.searchQuery).toString();
+    // searchParamsValue is intentionally omitted; searchParamsString is the stable signal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParamsString]);
 
   /**
    * Incrementing retryKey causes the load effect to re-run, implementing
@@ -238,7 +342,7 @@ export function InvestMarketplace({
     setInvoices(null);
     setLoadError("");
     setRetryKey((k) => k + 1);
-  }, [setInvoices]);
+  }, [setInvoices, setLoadError, setRetryKey]);
 
   /** Toggle a status chip: add if absent, remove if present. */
   const handleStatusToggle = useCallback((status) => {
@@ -249,12 +353,12 @@ export function InvestMarketplace({
         : [...current, status];
       return { ...prev, statuses: next };
     });
-  }, []);
+  }, [setFilters]);
 
   /** Clear all status chips. */
   const handleClearStatuses = useCallback(() => {
     setFilters((prev) => ({ ...prev, statuses: [] }));
-  }, []);
+  }, [setFilters]);
 
   const handleUpdateInvoice = useCallback((updatedInvoice) => {
     setInvoices((prev) => {
@@ -264,8 +368,25 @@ export function InvestMarketplace({
   }, []);
 
   // Debounced search term
-  const debouncedSearch = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
+  // Persist active filters/sort/search in the URL so the view is shareable and
+  // survives reloads. router.replace keeps the back button friendly (no new
+  // history entries for every filter keystroke) and a debounce prevents rapid
+  // successive updates.
+  useEffect(() => {
+    const next = buildSearchParams(filters, debouncedSearch).toString();
+    if (next === committedSearchRef.current) return;
+    clearTimeout(urlUpdateTimerRef.current);
+    urlUpdateTimerRef.current = setTimeout(() => {
+      committedSearchRef.current = next;
+      router.replace(`?${next}`, { scroll: false });
+    }, URL_SYNC_DEBOUNCE_MS);
+    return () => clearTimeout(urlUpdateTimerRef.current);
+  }, [filters, debouncedSearch, router]);
 
   // Reset the visible page count to PAGE_SIZE whenever the filters or debounced
   // search term change, using the React-sanctioned "adjust state during render"
@@ -423,7 +544,7 @@ export function InvestMarketplace({
     setTimeout(() => {
       loadMoreRef.current?.focus();
     }, 0);
-  }, [filteredInvoices.length]);
+  }, [filteredInvoices.length, setVisibleCount]);
 
   // ── Bulk actions ──────────────────────────────────────────────────────────
   const handleToggleSelectAll = useCallback(() => {
