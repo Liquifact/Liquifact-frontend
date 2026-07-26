@@ -181,6 +181,1122 @@ describe("InvestMarketplace", () => {
     expect(listItems[1]).toHaveTextContent("Bright Logistics GmbH");
   });
 
+  it("renders a stable structure for the loaded marketplace state", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "12,500",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "8.2%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "Bright Logistics GmbH",
+        amount: "7,800",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "7.5%",
+        status: "Open",
+      },
+    ];
+
+    const { container } = render(
+      <InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />
+    );
+    await flushTimers(0);
+
+    expect(getInvoiceListItems()).toHaveLength(2);
+    expect(container.firstChild).toMatchInlineSnapshot(`
+      <div
+        class="min-h-screen bg-slate-950 text-slate-100"
+      >
+        <nav
+          aria-label="site navigation"
+        />
+        <main
+          class="max-w-4xl mx-auto px-6 py-12"
+        >
+          <div
+            aria-atomic="true"
+            aria-live="polite"
+            class="sr-only"
+            role="status"
+          >
+            2 investable invoices loaded
+          </div>
+          <h1
+            class="text-2xl font-bold mb-2"
+          >
+            Invest
+          </h1>
+          <p
+            class="text-slate-400 mb-8"
+          >
+            Browse tokenized invoices and fund them. Estimated yield is shown for educational purposes; actual payment is received at invoice maturity.
+          </p>
+          <div
+            class="mb-4"
+          >
+            <div
+              class="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
+            >
+              <div
+                class="mb-4"
+              >
+                <input
+                  aria-label="Search by issuer name"
+                  class="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  placeholder="Search invoices..."
+                  type="text"
+                  value=""
+                />
+              </div>
+              <div
+                class="flex flex-wrap gap-4 items-center opacity-60"
+              >
+                <button
+                  class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500"
+                  disabled=""
+                  type="button"
+                >
+                  Sort: 
+                  Best Yield
+                </button>
+                <button
+                  class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500"
+                  disabled=""
+                  type="button"
+                >
+                  Filters: 
+                  None
+                </button>
+              </div>
+            </div>
+          </div>
+          <div
+            class="mb-4"
+          >
+            <div
+              aria-label="Filter by status"
+              class="flex flex-wrap items-center gap-2"
+              role="group"
+            >
+              <span
+                class="text-xs font-medium text-slate-400 mr-1"
+              >
+                Status:
+              </span>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Open
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Funded
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Settled
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Overdue
+              </button>
+            </div>
+          </div>
+          <fieldset
+            aria-describedby="filters-coming-soon"
+            aria-disabled="true"
+            class="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
+          >
+            <legend
+              class="sr-only"
+            >
+              Marketplace Filters
+            </legend>
+            <div
+              class="mb-4 inline-block rounded bg-slate-800 px-2 py-1 text-xs font-semibold tracking-wide text-slate-300"
+              id="filters-coming-soon"
+            >
+              Soon: These filter controls are currently unavailable.
+            </div>
+            <div
+              class="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none"
+            >
+              <div
+                class="flex flex-wrap gap-4 items-center"
+              >
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Yield Range
+                  </legend>
+                  <input
+                    aria-label="Minimum yield percentage"
+                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    min="0"
+                    placeholder="Min yield"
+                    step="0.1"
+                    type="number"
+                    value=""
+                  />
+                  <span
+                    class="text-slate-500"
+                  >
+                    -
+                  </span>
+                  <input
+                    aria-label="Maximum yield percentage"
+                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    min="0"
+                    placeholder="Max yield"
+                    step="0.1"
+                    type="number"
+                    value=""
+                  />
+                </fieldset>
+                <div
+                  aria-label="Currency filter"
+                  class="flex items-center gap-1"
+                  role="toolbar"
+                >
+                  <button
+                    aria-label="Filter by USD"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="0"
+                    type="button"
+                  >
+                    USD
+                  </button>
+                  <button
+                    aria-label="Filter by EUR"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    EUR
+                  </button>
+                  <button
+                    aria-label="Filter by GBP"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    GBP
+                  </button>
+                  <button
+                    aria-label="Filter by JPY"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    JPY
+                  </button>
+                  <button
+                    aria-label="Filter by CHF"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    CHF
+                  </button>
+                </div>
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Maturity Date Range
+                  </legend>
+                  <input
+                    aria-label="Maturity date from"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
+                    type="date"
+                    value=""
+                  />
+                  <span
+                    class="text-slate-500"
+                  >
+                    -
+                  </span>
+                  <input
+                    aria-label="Maturity date to"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
+                    type="date"
+                    value=""
+                  />
+                </fieldset>
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Sort Options
+                  </legend>
+                  <select
+                    aria-label="Sort options"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500"
+                  >
+                    <option
+                      value=""
+                    >
+                      Sort By
+                    </option>
+                    <option
+                      value="amount"
+                    >
+                      Amount
+                    </option>
+                    <option
+                      value="yield"
+                    >
+                      Yield
+                    </option>
+                    <option
+                      value="maturity"
+                    >
+                      Maturity
+                    </option>
+                  </select>
+                  <button
+                    aria-label="Sort amount direction"
+                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    disabled=""
+                    type="button"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    aria-label="Sort yield direction"
+                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    disabled=""
+                    type="button"
+                  >
+                    ↓
+                  </button>
+                </fieldset>
+                <button
+                  aria-label="Clear all filters"
+                  class="ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                  disabled=""
+                  type="button"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </fieldset>
+          <ul
+            aria-label="Investable invoices"
+            class="space-y-4"
+          >
+            <li
+              class="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
+            >
+              <div
+                class="flex items-center justify-between mb-3"
+              >
+                <a
+                  class="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                  href="/invest/inv-001"
+                >
+                  Acme Supplies Ltd
+                </a>
+                <span
+                  class="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300"
+                >
+                  Open
+                </span>
+              </div>
+              <div
+                class="flex gap-6 text-sm text-slate-400"
+              >
+                <span>
+                  USD
+                   
+                  12,500
+                </span>
+                <span>
+                  Est. yield 
+                  8.2%
+                </span>
+                <span>
+                  Maturity 
+                  2026-06-15
+                </span>
+              </div>
+            </li>
+            <li
+              class="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
+            >
+              <div
+                class="flex items-center justify-between mb-3"
+              >
+                <a
+                  class="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                  href="/invest/inv-002"
+                >
+                  Bright Logistics GmbH
+                </a>
+                <span
+                  class="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300"
+                >
+                  Open
+                </span>
+              </div>
+              <div
+                class="flex gap-6 text-sm text-slate-400"
+              >
+                <span>
+                  EUR
+                   
+                  7,800
+                </span>
+                <span>
+                  Est. yield 
+                  7.5%
+                </span>
+                <span>
+                  Maturity 
+                  2026-07-01
+                </span>
+              </div>
+            </li>
+          </ul>
+          <div
+            class="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400"
+          >
+            Note: Yield references are educational only and reflect on-chain basis-point assumptions. Invoice contracts settle at maturity.
+          </div>
+        </main>
+      </div>
+    `);
+  });
+
+  it("renders a stable structure for the empty marketplace state", async () => {
+    const { container } = render(<InvestMarketplace loadInvoices={createDeferredLoader([], 0)} />);
+    await flushTimers(0);
+
+    expect(
+      screen.getByText(/No investable invoices\. Connect wallet to see the marketplace\./i)
+    ).toBeInTheDocument();
+    expect(container.firstChild).toMatchInlineSnapshot(`
+      <div
+        class="min-h-screen bg-slate-950 text-slate-100"
+      >
+        <nav
+          aria-label="site navigation"
+        />
+        <main
+          class="max-w-4xl mx-auto px-6 py-12"
+        >
+          <div
+            aria-atomic="true"
+            aria-live="polite"
+            class="sr-only"
+            role="status"
+          >
+            No invoices available
+          </div>
+          <h1
+            class="text-2xl font-bold mb-2"
+          >
+            Invest
+          </h1>
+          <p
+            class="text-slate-400 mb-8"
+          >
+            Browse tokenized invoices and fund them. Estimated yield is shown for educational purposes; actual payment is received at invoice maturity.
+          </p>
+          <div
+            class="mb-4"
+          >
+            <div
+              class="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
+            >
+              <div
+                class="mb-4"
+              >
+                <input
+                  aria-label="Search by issuer name"
+                  class="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  placeholder="Search invoices..."
+                  type="text"
+                  value=""
+                />
+              </div>
+              <div
+                class="flex flex-wrap gap-4 items-center opacity-60"
+              >
+                <button
+                  class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500"
+                  disabled=""
+                  type="button"
+                >
+                  Sort: 
+                  Best Yield
+                </button>
+                <button
+                  class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500"
+                  disabled=""
+                  type="button"
+                >
+                  Filters: 
+                  None
+                </button>
+              </div>
+            </div>
+          </div>
+          <div
+            class="mb-4"
+          >
+            <div
+              aria-label="Filter by status"
+              class="flex flex-wrap items-center gap-2"
+              role="group"
+            >
+              <span
+                class="text-xs font-medium text-slate-400 mr-1"
+              >
+                Status:
+              </span>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Open
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Funded
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Settled
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Overdue
+              </button>
+            </div>
+          </div>
+          <fieldset
+            aria-describedby="filters-coming-soon"
+            aria-disabled="true"
+            class="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
+          >
+            <legend
+              class="sr-only"
+            >
+              Marketplace Filters
+            </legend>
+            <div
+              class="mb-4 inline-block rounded bg-slate-800 px-2 py-1 text-xs font-semibold tracking-wide text-slate-300"
+              id="filters-coming-soon"
+            >
+              Soon: These filter controls are currently unavailable.
+            </div>
+            <div
+              class="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none"
+            >
+              <div
+                class="flex flex-wrap gap-4 items-center"
+              >
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Yield Range
+                  </legend>
+                  <input
+                    aria-label="Minimum yield percentage"
+                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    min="0"
+                    placeholder="Min yield"
+                    step="0.1"
+                    type="number"
+                    value=""
+                  />
+                  <span
+                    class="text-slate-500"
+                  >
+                    -
+                  </span>
+                  <input
+                    aria-label="Maximum yield percentage"
+                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    min="0"
+                    placeholder="Max yield"
+                    step="0.1"
+                    type="number"
+                    value=""
+                  />
+                </fieldset>
+                <div
+                  aria-label="Currency filter"
+                  class="flex items-center gap-1"
+                  role="toolbar"
+                >
+                  <button
+                    aria-label="Filter by USD"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="0"
+                    type="button"
+                  >
+                    USD
+                  </button>
+                  <button
+                    aria-label="Filter by EUR"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    EUR
+                  </button>
+                  <button
+                    aria-label="Filter by GBP"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    GBP
+                  </button>
+                  <button
+                    aria-label="Filter by JPY"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    JPY
+                  </button>
+                  <button
+                    aria-label="Filter by CHF"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    CHF
+                  </button>
+                </div>
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Maturity Date Range
+                  </legend>
+                  <input
+                    aria-label="Maturity date from"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
+                    type="date"
+                    value=""
+                  />
+                  <span
+                    class="text-slate-500"
+                  >
+                    -
+                  </span>
+                  <input
+                    aria-label="Maturity date to"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
+                    type="date"
+                    value=""
+                  />
+                </fieldset>
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Sort Options
+                  </legend>
+                  <select
+                    aria-label="Sort options"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500"
+                  >
+                    <option
+                      value=""
+                    >
+                      Sort By
+                    </option>
+                    <option
+                      value="amount"
+                    >
+                      Amount
+                    </option>
+                    <option
+                      value="yield"
+                    >
+                      Yield
+                    </option>
+                    <option
+                      value="maturity"
+                    >
+                      Maturity
+                    </option>
+                  </select>
+                  <button
+                    aria-label="Sort amount direction"
+                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    disabled=""
+                    type="button"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    aria-label="Sort yield direction"
+                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    disabled=""
+                    type="button"
+                  >
+                    ↓
+                  </button>
+                </fieldset>
+                <button
+                  aria-label="Clear all filters"
+                  class="ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                  disabled=""
+                  type="button"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </fieldset>
+          <div
+            class="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
+          >
+            No investable invoices. Connect wallet to see the marketplace.
+          </div>
+        </main>
+      </div>
+    `);
+  });
+
+  it("renders a stable structure for the error marketplace state", async () => {
+    const loadInvoices = jest.fn(
+      () =>
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("boom")), 50);
+        })
+    );
+
+    const { container } = render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(50);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Unable to load investable invoices right now."
+    );
+    expect(container.firstChild).toMatchInlineSnapshot(`
+      <div
+        class="min-h-screen bg-slate-950 text-slate-100"
+      >
+        <nav
+          aria-label="site navigation"
+        />
+        <main
+          class="max-w-4xl mx-auto px-6 py-12"
+        >
+          <div
+            aria-atomic="true"
+            aria-live="polite"
+            class="sr-only"
+            role="status"
+          >
+            Unable to load investable invoices.
+          </div>
+          <h1
+            class="text-2xl font-bold mb-2"
+          >
+            Invest
+          </h1>
+          <p
+            class="text-slate-400 mb-8"
+          >
+            Browse tokenized invoices and fund them. Estimated yield is shown for educational purposes; actual payment is received at invoice maturity.
+          </p>
+          <div
+            class="mb-4"
+          >
+            <div
+              class="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
+            >
+              <div
+                class="mb-4"
+              >
+                <input
+                  aria-label="Search by issuer name"
+                  class="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  placeholder="Search invoices..."
+                  type="text"
+                  value=""
+                />
+              </div>
+              <div
+                class="flex flex-wrap gap-4 items-center opacity-60"
+              >
+                <button
+                  class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500"
+                  disabled=""
+                  type="button"
+                >
+                  Sort: 
+                  Best Yield
+                </button>
+                <button
+                  class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500"
+                  disabled=""
+                  type="button"
+                >
+                  Filters: 
+                  None
+                </button>
+              </div>
+            </div>
+          </div>
+          <div
+            class="mb-4"
+          >
+            <div
+              aria-label="Filter by status"
+              class="flex flex-wrap items-center gap-2"
+              role="group"
+            >
+              <span
+                class="text-xs font-medium text-slate-400 mr-1"
+              >
+                Status:
+              </span>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Open
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Funded
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Settled
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Overdue
+              </button>
+            </div>
+          </div>
+          <fieldset
+            aria-describedby="filters-coming-soon"
+            aria-disabled="true"
+            class="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
+          >
+            <legend
+              class="sr-only"
+            >
+              Marketplace Filters
+            </legend>
+            <div
+              class="mb-4 inline-block rounded bg-slate-800 px-2 py-1 text-xs font-semibold tracking-wide text-slate-300"
+              id="filters-coming-soon"
+            >
+              Soon: These filter controls are currently unavailable.
+            </div>
+            <div
+              class="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none"
+            >
+              <div
+                class="flex flex-wrap gap-4 items-center"
+              >
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Yield Range
+                  </legend>
+                  <input
+                    aria-label="Minimum yield percentage"
+                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    min="0"
+                    placeholder="Min yield"
+                    step="0.1"
+                    type="number"
+                    value=""
+                  />
+                  <span
+                    class="text-slate-500"
+                  >
+                    -
+                  </span>
+                  <input
+                    aria-label="Maximum yield percentage"
+                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    min="0"
+                    placeholder="Max yield"
+                    step="0.1"
+                    type="number"
+                    value=""
+                  />
+                </fieldset>
+                <div
+                  aria-label="Currency filter"
+                  class="flex items-center gap-1"
+                  role="toolbar"
+                >
+                  <button
+                    aria-label="Filter by USD"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="0"
+                    type="button"
+                  >
+                    USD
+                  </button>
+                  <button
+                    aria-label="Filter by EUR"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    EUR
+                  </button>
+                  <button
+                    aria-label="Filter by GBP"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    GBP
+                  </button>
+                  <button
+                    aria-label="Filter by JPY"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    JPY
+                  </button>
+                  <button
+                    aria-label="Filter by CHF"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    CHF
+                  </button>
+                </div>
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Maturity Date Range
+                  </legend>
+                  <input
+                    aria-label="Maturity date from"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
+                    type="date"
+                    value=""
+                  />
+                  <span
+                    class="text-slate-500"
+                  >
+                    -
+                  </span>
+                  <input
+                    aria-label="Maturity date to"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
+                    type="date"
+                    value=""
+                  />
+                </fieldset>
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Sort Options
+                  </legend>
+                  <select
+                    aria-label="Sort options"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500"
+                  >
+                    <option
+                      value=""
+                    >
+                      Sort By
+                    </option>
+                    <option
+                      value="amount"
+                    >
+                      Amount
+                    </option>
+                    <option
+                      value="yield"
+                    >
+                      Yield
+                    </option>
+                    <option
+                      value="maturity"
+                    >
+                      Maturity
+                    </option>
+                  </select>
+                  <button
+                    aria-label="Sort amount direction"
+                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    disabled=""
+                    type="button"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    aria-label="Sort yield direction"
+                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    disabled=""
+                    type="button"
+                  >
+                    ↓
+                  </button>
+                </fieldset>
+                <button
+                  aria-label="Clear all filters"
+                  class="ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                  disabled=""
+                  type="button"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </fieldset>
+          <div
+            aria-live="assertive"
+            class="rounded-3xl border border-red-500/30 bg-red-500/10 p-5 text-slate-50 shadow-sm sm:p-6"
+            role="alert"
+          >
+            <div
+              class="flex flex-wrap items-start gap-4"
+            >
+              <div
+                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-red-500/20 text-red-200 ring-1 ring-red-300/30"
+              >
+                <span
+                  aria-hidden="true"
+                  class="text-lg font-semibold"
+                >
+                  !
+                </span>
+              </div>
+              <div
+                class="min-w-0 flex-1"
+              >
+                <div
+                  class="flex items-start gap-3"
+                >
+                  <p
+                    class="text-sm font-semibold uppercase tracking-[0.18em] text-red-200"
+                  >
+                    Server error
+                  </p>
+                  <span
+                    class="rounded-full bg-slate-800/80 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-300"
+                  >
+                    Preview only
+                  </span>
+                </div>
+                <h2
+                  class="mt-3 text-xl font-semibold text-white"
+                >
+                  Unable to load investable invoices
+                </h2>
+                <p
+                  class="mt-2 text-sm leading-6 text-slate-300"
+                >
+                  Unable to load investable invoices right now.
+                </p>
+              </div>
+            </div>
+            <div
+              class="mt-5 flex flex-wrap items-center gap-3"
+            >
+              <button
+                aria-busy="false"
+                class="inline-flex items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-medium transition-all duration-200 focus-ring disabled:opacity-50 disabled:cursor-not-allowed bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 active:bg-cyan-500/40"
+                type="button"
+              >
+                Try again
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    `);
+  });
+
   it("announces the empty marketplace state when no invoices load", async () => {
     render(<InvestMarketplace loadInvoices={createDeferredLoader([], 100)} />);
     await flushTimers(100);
