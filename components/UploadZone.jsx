@@ -35,7 +35,7 @@ function FileConstraintNotice() {
     <div
       role="note"
       aria-label="File upload requirements"
-      className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 mb-6"
+      className="upload-subtle-panel rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 mb-6"
     >
       <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400 mb-3">
         {copy.uploadZone.requirementsTitle}
@@ -48,7 +48,7 @@ function FileConstraintNotice() {
         />
         <ConstraintBadge icon="\u{1F512}" label={copy.uploadZone.badgeOneFile} />
       </div>
-      <p className="text-xs text-slate-400 leading-relaxed">
+      <p className="upload-muted-text text-xs text-slate-400 leading-relaxed">
         {copy.uploadZone.requirementsBody
           .replace(/\{maxSizeMb\}/g, maxSizeMb)
           .split(/(PDF documents|{maxSizeMb} MB)/)
@@ -69,7 +69,7 @@ function FileConstraintNotice() {
 function Spinner({ className = "" }) {
   return (
     <svg
-      className={`animate-spin -ml-1 mr-2 h-4 w-4 inline ${className}`}
+      className={`animate-spin motion-reduce:animate-none -ml-1 mr-2 h-4 w-4 inline ${className}`}
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
@@ -238,18 +238,64 @@ function UploadZone({ onUploadSuccess, progress }) {
     <form onSubmit={handleSubmit} noValidate>
       <FileConstraintNotice />
 
-      <div className="mb-4 flex justify-end">
-        <button
-          type="button"
-          data-testid="density-toggle"
-          onClick={handleDensityToggle}
-          aria-label={`Switch to ${toggleLabel.toLowerCase()} density`}
-          aria-pressed={isCompact}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-slate-600 hover:text-slate-200 focus-ring"
-        >
-          <span aria-hidden="true">{isCompact ? "\u{1F4CF}" : "\u{1F4D0}"}</span>
-          {toggleLabel}
-        </button>
+      <label htmlFor="invoice-file-input" className="sr-only">
+        {copy.uploadZone.fileInputLabel}
+      </label>
+      <input
+        ref={inputRef}
+        id="invoice-file-input"
+        type="file"
+        accept={FILE_CONSTRAINTS.accept}
+        className="sr-only"
+        aria-label={copy.uploadZone.fileInputLabel}
+        onChange={handleChange}
+      />
+      <div
+        ref={dropzoneRef}
+        role="button"
+        tabIndex={0}
+        aria-label={copy.uploadZone.dropZoneLabel}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => inputRef.current?.click()}
+        onKeyDown={handleKeyDown}
+        className={`upload-dropzone cursor-pointer rounded-xl border-2 border-dashed transition-colors duration-200 motion-reduce:transition-none p-10 text-center ${dropZoneBorder}`}
+      >
+        {file ? (
+          <div className="space-y-2">
+            <span className="text-3xl" aria-hidden="true">
+              {"\u2705"}
+            </span>
+            <p
+              className="font-medium text-emerald-400"
+              dangerouslySetInnerHTML={{ __html: sanitizeFilename(file.name) }}
+            />
+            <p className="upload-muted-text text-xs text-slate-500">
+              {(file.size / 1024 / 1024).toFixed(2)} MB {"\u00B7"} PDF
+            </p>
+            <p className="upload-muted-text text-xs text-slate-500">{copy.uploadZone.changeFile}</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <span className="text-4xl" aria-hidden="true">
+              {"\u{1F4C2}"}
+            </span>
+            <p className="font-medium text-slate-300">{copy.uploadZone.dragDropPrompt}</p>
+            <p className="upload-muted-text text-sm text-slate-500">{copy.uploadZone.browsePrompt}</p>
+            <div className="flex justify-center gap-2 flex-wrap pt-1">
+              <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-400">
+                {copy.uploadZone.badgePdfOnly}
+              </span>
+              <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-400">
+                {copy.uploadZone.badgeMaxSize.replace("{maxSizeMb}", FILE_CONSTRAINTS.maxSizeMb)}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div data-testid="upload-zone" className={`flex flex-col ${densityGap}`}>
@@ -348,27 +394,31 @@ function UploadZone({ onUploadSuccess, progress }) {
             <Spinner />
             {copy.uploadZone.statusTokenizing}
           </p>
-        )}
+          <button
+            type="button"
+            onClick={resetUpload}
+            className="mt-3 w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white transition-all duration-200 motion-reduce:transition-none hover:bg-emerald-500 focus-ring"
+            aria-label={copy.uploadZone.resetAriaLabel}
+          >
+            {copy.uploadZone.resetAction}
+          </button>
+        </div>
+      )}
 
-        {status === "success" && (
-          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
-            <p
-              role="status"
-              aria-live="polite"
-              className="flex items-start gap-2 text-sm text-emerald-400"
-            >
-              <span aria-hidden="true">{"\u{1F680}"}</span>
-              {copy.uploadZone.statusSuccess}
-            </p>
-            <button
-              type="button"
-              onClick={resetUpload}
-              className="mt-3 w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-emerald-500 focus-ring"
-              aria-label={copy.uploadZone.resetAriaLabel}
-            >
-              {copy.uploadZone.resetAction}
-            </button>
-          </div>
+      <button
+        id="invoice-upload-btn"
+        type="submit"
+        disabled={!file || isProcessing}
+        aria-disabled={!file || isProcessing}
+        className="mt-4 w-full rounded-xl bg-cyan-500 py-3 text-sm font-semibold text-slate-950 transition-all duration-200 motion-reduce:transition-none
+          hover:bg-cyan-400 focus-ring
+          disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {status === "uploading" && (
+          <>
+            <Spinner />
+            {copy.uploadZone.submitUploading}
+          </>
         )}
 
         <button
