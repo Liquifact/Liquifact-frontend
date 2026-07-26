@@ -260,6 +260,8 @@ Tech: **Next.js 16** (App Router), **React 19**, **Tailwind CSS 4**.
 
 ## Accessibility
 
+See the full [Accessibility Statement](docs/accessibility.md) for WCAG commitment, focus-ring audit, live regions, and contributor checklist. Marketplace-specific **roles, keyboard interactions, and focus behaviour** for `/invest` and `/invest/[id]` are documented in [Marketplace accessibility](docs/accessibility.md#marketplace-accessibility-issue-692).
+
 ### Skip-to-content link
 
 A visually-hidden "Skip to content" link is the first focusable element on every page. It becomes visible when focused (first Tab press) and jumps the keyboard user past the navigation header directly to `<main id="main-content">`.
@@ -730,6 +732,8 @@ Tech: **Next.js 16** (App Router), **React 19**, **Tailwind CSS 4**.
 ---
 
 ## Accessibility
+
+See the full [Accessibility Statement](docs/accessibility.md) for WCAG commitment, focus-ring audit, live regions, and contributor checklist. Marketplace-specific **roles, keyboard interactions, and focus behaviour** for `/invest` and `/invest/[id]` are documented in [Marketplace accessibility](docs/accessibility.md#marketplace-accessibility-issue-692).
 
 ### Skip-to-content link
 
