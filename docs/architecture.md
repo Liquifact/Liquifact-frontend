@@ -100,7 +100,7 @@ Other live clients: `lib/api/health.js` (`/health`, used on the home page) and
 
 | State              | Owner                                        | Notes                                                              |
 | ------------------ | -------------------------------------------- | ----------------------------------------------------------------- |
-| Wallet connection  | `components/WalletProvider.jsx` (`useWallet`) | Mounted once in `app/layout.js`; persists a minimal, non-secret snapshot to `localStorage`. |
+| Wallet connection  | `components/WalletProvider.jsx` (`useWallet`) | Mounted once in `app/layout.js`; persists a minimal, non-secret snapshot to `localStorage`. See [`docs/wallet-data-flow.md`](wallet-data-flow.md) for the full fetch → transform → render diagram. |
 | Toasts             | `components/ToastProvider.jsx` (`useToast`)   | Mounted once in `app/layout.js`.                                  |
 | Theme              | `components/ThemeToggle.jsx` + pre-paint script | Persisted in `localStorage`; applied before hydration.           |
 | Marketplace filters| `/invest` page + `lib/hooks/useInvoiceFilters.js` | Search/filter/sort state is serialized to the URL query string.  |
@@ -148,6 +148,7 @@ All permanent reference material for this frontend belongs in `docs/`:
 | `docs/design-tokens.md` | CSS custom properties, Tailwind token mapping |
 | `docs/accessibility.md` | Accessibility statement and WCAG notes |
 | `docs/wallet-developer-guide.md` | Stellar / Freighter integration guide |
+| `docs/wallet-data-flow.md` | Wallet data-flow diagrams (fetch → transform → render) |
 | `docs/observability.md` | `reportError` sink and pluggable observability |
 | `docs/performance.md` | Bundle-size targets and code-splitting notes |
 | `docs/security.md` | CSP policy rationale and threat model |
