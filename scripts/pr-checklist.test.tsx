@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import path from "node:path";
+import path from "node:path"; 
 
 describe("pull request checklist template", () => {
   const repoRoot = path.resolve(__dirname, "..");
