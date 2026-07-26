@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom";
 import { act, render, screen, fireEvent, within } from "@testing-library/react";
 import InvestPage, {
+  ANNOUNCE_DEBOUNCE_MS,
   getInvoiceLoadAnnouncement,
   getPaginationAnnouncement,
   InvestMarketplace,
@@ -44,8 +45,10 @@ function createPendingLoader() {
 
 async function flushTimers(delayMs = 0) {
   await act(async () => {
-    jest.advanceTimersByTime(delayMs);
-    await Promise.resolve();
+    // The async variant correctly cascades timers scheduled during
+    // resolution (e.g. the announcement debounce scheduled once a load
+    // settles), unlike the sync advanceTimersByTime + a single microtask hop.
+    await jest.advanceTimersByTimeAsync(delayMs);
   });
 }
 
@@ -137,7 +140,12 @@ describe("InvestMarketplace", () => {
       "true"
     );
 
+    // The load-settle announcement is debounced (issue #722): the debounce
+    // timer is scheduled from a React effect once state settles, so it must
+    // be advanced in its own flush rather than combined with the network
+    // delay in a single advanceTimersByTimeAsync call.
     await flushTimers(100);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
     expect(screen.getByRole("status")).toHaveTextContent("3 investable invoices loaded");
     expect(getInvoiceListItems()).toHaveLength(3);
@@ -184,6 +192,7 @@ describe("InvestMarketplace", () => {
   it("announces the empty marketplace state when no invoices load", async () => {
     render(<InvestMarketplace loadInvoices={createDeferredLoader([], 100)} />);
     await flushTimers(100);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
     const status = screen.getByRole("status");
     expect(status).toHaveTextContent("No invoices available");
@@ -198,6 +207,7 @@ describe("InvestMarketplace", () => {
 
     render(<InvestMarketplace loadInvoices={loadInvoices} />);
     await flushTimers(100);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
     const status = screen.getByRole("status");
     expect(status).toHaveTextContent("No invoices available");
@@ -218,6 +228,7 @@ describe("InvestMarketplace", () => {
 
     render(<InvestMarketplace loadInvoices={loadInvoices} />);
     await flushTimers(50);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
     const status = screen.getByRole("status");
     expect(status).toHaveTextContent("Unable to load investable invoices.");
@@ -731,6 +742,7 @@ describe("InvestMarketplace", () => {
 
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
     expect(screen.getByRole("status")).toHaveTextContent("2 investable invoices loaded");
 
@@ -916,6 +928,7 @@ describe("InvestMarketplace", () => {
 
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
     expect(screen.getByRole("status")).toHaveTextContent("3 investable invoices loaded");
 
@@ -1014,6 +1027,7 @@ describe("InvestMarketplace", () => {
 
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
     expect(screen.getByRole("status")).toHaveTextContent("2 investable invoices loaded");
 
@@ -1068,8 +1082,9 @@ describe("InvestMarketplace", () => {
       "true"
     );
 
-    // Wait for the successful load
+    // Wait for the successful load, then for the announcement debounce
     await flushTimers(50);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(getInvoiceListItems()).toHaveLength(2);
@@ -1237,6 +1252,7 @@ describe("InvestMarketplace renders from shared lib.js fixture", () => {
   it("announces the correct invoice count based on MOCK_INVOICES length", async () => {
     render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
     await flushTimers(0);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
     expect(screen.getByRole("status")).toHaveTextContent(
       `${MOCK_INVOICES.length} investable invoices loaded`
