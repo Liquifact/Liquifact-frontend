@@ -114,8 +114,8 @@ describe("WalletStatus", () => {
     renderWithProviders(<WalletStatus />);
     await user.click(screen.getByRole("button", { name: /connect wallet/i }));
 
-    await screen.findByRole("button", { name: /install wallet/i });
-    await user.click(screen.getByRole("button", { name: /install wallet/i }));
+    await screen.findByRole("button", { name: /install (stellar )?wallet/i });
+    await user.click(screen.getByRole("button", { name: /install (stellar )?wallet/i }));
 
     expect(openSpy).toHaveBeenCalledWith(
       "https://www.stellar.org/wallets",

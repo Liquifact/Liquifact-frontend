@@ -6,7 +6,7 @@ import { copy } from "../app/copy/en";
 import { validatePdfFile, sanitizeFilename } from "../lib/validation/pdf";
 
 // Base URL for backend API; validated and centralized in lib/config/env.
-const API_URL = env.apiUrl;
+const API_URL = env?.apiUrl || "";
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 

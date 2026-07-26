@@ -184,7 +184,7 @@ exports[`copy dictionary — snapshot of full dictionary matches the full copy d
     "helperError": "Connection failed. Please try again.",
     "helperNoWallet": "No Stellar wallet detected. Install one to continue",
     "helperWrongNetwork": "Please switch to the Stellar public network",
-    "installWalletButton": "Install Wallet",
+    "installWalletButton": "Install Stellar Wallet",
     "installWalletUrl": "https://www.stellar.org/wallets",
     "retryButton": "Retry Connection",
     "switchNetworkButton": "Switch Network",
