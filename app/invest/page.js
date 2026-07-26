@@ -14,7 +14,7 @@ import InvoiceFilters, {
 } from "@/components/InvoiceFilters";
 import { useSettingsAnnouncer } from "@/components/useSettingsAnnouncer";
 import NavMenu from "@/components/NavMenu";
-import EditableInvoiceRow from "@/components/EditableInvoiceRow";
+import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
@@ -204,11 +204,8 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   }, []);
 
   // Debounced search term
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchQuery), SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [searchQuery]);
+  const debouncedSearch = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
+
 
   // Reset the visible page count to PAGE_SIZE whenever the filters or debounced
   // search term change, using the React-sanctioned "adjust state during render"
@@ -448,20 +445,24 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
 
         {/* Error state – retryable */}
         {loadError ? (
+         <div role="alert" aria-live="assertive">
           <ErrorBanner
             title={copy.invest.errorTitle}
             description={loadError}
             actionLabel={copy.invest.retryAction}
             onAction={reload}
           />
+         </div>
         ) : invoices === null ? (
-          <InvoiceListSkeleton rows={3} />
+          <div role="status" aria-live="polite" aria-label="Loading marketplace invoices">
+            <InvoiceListSkeleton rows={3} />
+          </div>
         ) : invoices.length === 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
             {copy.invest.emptyState}
           </div>
         ) : filteredInvoices.length === 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
             {copy.invest.noMatchFilter}
           </div>
         ) : (
