@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom";
-import { act, render, screen, fireEvent, within } from "@testing-library/react";
+import { act, render, screen, fireEvent, within, waitFor } from "@testing-library/react";
+import { axe } from "jest-axe";
 import InvestPage, {
   ANNOUNCE_DEBOUNCE_MS,
   getInvoiceLoadAnnouncement,
@@ -2237,6 +2238,37 @@ describe("InvestMarketplace", () => {
 
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
+  });
+
+  it("has no axe violations in the loaded state", async () => {
+    const invoices = makeInvoices(2);
+    const loadInvoices = createDeferredLoader(invoices, 0);
+
+    const { container } = render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(0);
+
+    expect(screen.getByText("Issuer 1")).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("has no axe violations in the empty state", async () => {
+    const loadInvoices = createDeferredLoader([], 0);
+
+    const { container } = render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(0);
+
+    expect(screen.getByText(/No investable invoices\./i)).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("has no axe violations in the error state", async () => {
+    const loadInvoices = jest.fn(() => new Promise((_, reject) => setTimeout(() => reject(new Error("boom")), 0)));
+
+    const { container } = render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(0);
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
   });
 
   it("retry: shows skeleton while reloading, then renders list on success", async () => {
