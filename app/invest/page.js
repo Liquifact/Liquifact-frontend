@@ -12,6 +12,7 @@ import InvoiceFilters, {
   hasAnyActiveFilters,
   parseSortState,
 } from "@/components/InvoiceFilters";
+import { useSettingsAnnouncer } from "@/components/useSettingsAnnouncer";
 import NavMenu from "@/components/NavMenu";
 import EditableInvoiceRow from "@/components/EditableInvoiceRow";
 import { copy } from "../copy/en";
@@ -304,6 +305,9 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   // Derive the polite live-region announcement directly from reactive state.
   // Using useMemo (rather than a useEffect + setState) avoids a cascading
   // re-render and satisfies the react-hooks/set-state-in-effect lint rule.
+  // The debounced version is then passed to the live region via
+  // useSettingsAnnouncer, which skips the mount announcement and coalesces
+  // rapid filter changes before they reach the screen-reader queue.
   const statusMessage = useMemo(() => {
     // Loading or error states — error copy is announced by the ErrorBanner role="alert";
     // the status region is cleared so screen readers only hear one announcement.
@@ -326,39 +330,13 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     return getInvoiceLoadAnnouncement(invoices);
   }, [filteredInvoices, filterActive, invoices, visibleCount, loadError]);
 
-  // The text actually rendered into the live region (issue #722). Mirrors
-  // statusMessage immediately for filter/pagination/search changes, but
-  // debounces changes driven by an async load/retry settling (tracked via
-  // loadGeneration) so a burst of rapid results collapses into a single
-  // announcement of the latest outcome instead of one per attempt.
-  const [announcedMessage, setAnnouncedMessage] = useState(statusMessage);
-  const prevLoadGenerationRef = useRef(loadGeneration);
-  const announceTimeoutRef = useRef(null);
-
-  useEffect(() => {
-    const isLoadSettle = loadGeneration !== prevLoadGenerationRef.current;
-    prevLoadGenerationRef.current = loadGeneration;
-
-    if (announceTimeoutRef.current) {
-      clearTimeout(announceTimeoutRef.current);
-      announceTimeoutRef.current = null;
-    }
-
-    if (isLoadSettle) {
-      announceTimeoutRef.current = setTimeout(() => {
-        setAnnouncedMessage(statusMessage);
-      }, ANNOUNCE_DEBOUNCE_MS);
-      return;
-    }
-
-    setAnnouncedMessage(statusMessage);
-  }, [statusMessage, loadGeneration]);
-
-  useEffect(() => {
-    return () => {
-      if (announceTimeoutRef.current) clearTimeout(announceTimeoutRef.current);
-    };
-  }, []);
+  // Pass statusMessage through useSettingsAnnouncer with delay=0 so the
+  // live region updates immediately on each state change, while still
+  // honouring the hook's "silent on mount" contract (no spurious announcement
+  // when the page first renders).  Rapid search-input updates are already
+  // coalesced upstream by the SEARCH_DEBOUNCE_MS delay on debouncedSearch,
+  // so no additional debounce is needed at the announcement layer here.
+  const debouncedAnnouncement = useSettingsAnnouncer(statusMessage, 0);
 
   // ── Load-more handler ──────────────────────────────────────────────────────
   /**
@@ -394,7 +372,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
             Async load/retry outcomes are debounced (issue #722); filter,
             pagination, and search text update immediately. */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-          {announcedMessage}
+          {debouncedAnnouncement}
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
