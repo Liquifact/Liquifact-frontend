@@ -8,6 +8,7 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 
 - [EmptyState](#emptystate)
 - [ErrorBanner](#errorbanner)
+- [OfflineBanner](#offlinebanner)
 - [Footer](#footer)
 - [Form](#form)
 - [FundAmountInput](#fundamountinput)
@@ -145,6 +146,38 @@ Displays a structured error message with a variant label, title, description, op
 
 ---
 
+## OfflineBanner
+
+A persistent banner displayed when the browser loses network connectivity. When the connection is restored, a transient success notification is shown via the toast system.
+
+**File:** `components/OfflineBanner.jsx`
+
+### Behaviour
+
+- **Offline:** renders a fixed-position amber banner at the top of the viewport reading "You are offline — some features may be unavailable."
+- **Reconnection:** when the browser transitions from offline to online, fires a `success` toast with the title "Back online" and message "Your network connection has been restored."
+- **Online (stable):** renders nothing — no banner, no toast.
+
+### Dependencies
+
+- `useNetworkStatus` — SSR-safe hook from `lib/hooks/useNetworkStatus.js`
+- `useToast` — from the `ToastProvider` context (must be rendered inside a `<ToastProvider>`)
+
+### Accessibility
+
+- The offline banner uses `role="alert"` and `aria-live="assertive"` so screen readers announce the offline state immediately when it appears.
+- The reconnection toast uses the existing toast system, which announces via `aria-live="polite"`.
+- A warning triangle icon is present as a visual cue but marked `aria-hidden="true"` — the text alone conveys the meaning (WCAG 2.1 §1.4.1).
+
+### Example
+
+```jsx
+// Mounted in app/layout.js inside ToastProvider
+<OfflineBanner />
+```
+
+---
+
 ## Footer
 
 Site footer with navigation links (Docs, System Status, Contact Support). Links are sourced from the `app/copy/en.js` copy file.
@@ -189,6 +222,11 @@ Marketplace invoice card for the Invest list. The entire card is a single naviga
 - The card root is one focusable `Link` with a composed `aria-label` of the form `Invoice {id} from {issuer}` plus an optional status segment when the canonical pill resolves.
 - Nested `StatusPill` exposes `role="status"` and `aria-label="Status: …"` (text + tone; not colour-only).
 - Focus indicator: `focus-visible:ring-2` cyan outline (see Known Limitations in `docs/accessibility.md` for `.focus-ring` alignment).
+
+### Design tokens
+
+- Card spacing and typography now follow the shared marketplace-card tokens defined in `app/globals.css` (`--market-card-padding`, `--market-card-gap`, and the title/meta typography tokens).
+- These values keep the marketplace card layout consistent across the shared `InvoiceCard` component and the `/invest` list experience.
 
 > **Note:** `/invest` currently renders inline list rows rather than mounting `InvoiceCard`. Prefer this component when consolidating list markup so a11y and layout stay in sync with `InvoiceListSkeleton`.
 
@@ -1061,6 +1099,49 @@ deriveExpectedYield(10000, 10000, 8.2); // 820 (full amount)
 ## Hooks
 
 Reusable React hooks that live under `lib/hooks/`. Hooks are the canonical home for shared persistence and behaviour so any feature can adopt the same contract without re-implementing edge cases (SSR safety, quota errors, type preservation).
+
+### `useNetworkStatus`
+
+SSR-safe hook that tracks the browser's online/offline status by subscribing to the `online` and `offline` events on `window`.
+
+**File:** `lib/hooks/useNetworkStatus.js`
+
+#### Signature
+
+```js
+const isOnline = useNetworkStatus();
+```
+
+| Returns    | Type      | Description                                        |
+| ---------- | --------- | -------------------------------------------------- |
+| `isOnline` | `boolean` | `true` when the browser reports a network connection, `false` when offline. Always `true` during SSR. |
+
+#### SSR-safety contract
+
+- **Initial render always returns `true`** — the hook never reads `navigator.onLine` during render. This keeps React hydration deterministic in a Next.js app router context.
+- The actual `navigator.onLine` read happens inside `useEffect` after mount on the client.
+- Event listeners are registered after mount and cleaned up on unmount — no stale handlers leak across navigations or hot-reloads.
+
+#### Behaviour
+
+- Listens to `window` `online` and `offline` events. When the browser fires `offline`, the hook sets `isOnline` to `false`; when `online` fires, it sets `isOnline` to `true`.
+- Does NOT subscribe to `focus` or `visibilitychange` — only the standard `online`/`offline` API events are used, eliminating false re-connection announcements on tab switches.
+- Callers that need to detect the transition (e.g. show a reconnected toast) should track the previous value via `useRef`.
+
+#### Example
+
+```jsx
+'use client';
+
+import { useNetworkStatus } from '@/lib/hooks/useNetworkStatus';
+
+function MyComponent() {
+  const isOnline = useNetworkStatus();
+  return <span>{isOnline ? 'Online' : 'Offline'}</span>;
+}
+```
+
+---
 
 ### `useLocalStorage`
 
