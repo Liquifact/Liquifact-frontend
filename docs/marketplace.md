@@ -1,462 +1,614 @@
-# Invest Marketplace — Component Contract
+# Marketplace Usage Guide
 
-This document describes the contract for the **`InvestMarketplace`** component
-(`app/invest/page.js`) and its supporting exports. It covers props, component
-states, accessibility behaviour, and related helpers.
+This guide covers the marketplace components used on the Invest page (`/invest`). The marketplace allows investors to browse, filter, and fund tokenized invoices.
 
-For architecture context (data layer, route map, state ownership) see
-[`docs/architecture.md`](architecture.md).  
-For the invoice data shape see [`docs/invoice-data.md`](invoice-data.md).  
-For the filter predicate API see [`FILTER_CONTRACTS.md`](../FILTER_CONTRACTS.md).
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Core Components](#core-components)
+- [Data Contracts](#data-contracts)
+- [Common Patterns](#common-patterns)
+- [Accessibility](#accessibility)
+- [Examples](#examples)
 
 ---
 
 ## Overview
 
-`InvestMarketplace` is the primary investor-facing route component rendered at
-`/invest`. It:
+The marketplace is built around the `InvestMarketplace` component (`app/invest/page.js`) which orchestrates:
 
-- Fetches a list of tokenised invoices via an injectable `loadInvoices` function.
-- Applies a debounced issuer-name search and structured panel filters (yield
-  range, currency, maturity range, status, and sort).
-- Renders results PAGE\_SIZE (10) at a time with a "Load more" control.
-- Manages loading, error, empty, no-match, and list states with appropriate
-  visual treatments and screen-reader announcements.
-- Exposes a "Try again" recovery path on load failure.
+- **Invoice loading** with error handling and retry
+- **Search** by issuer name with keyboard shortcut (`/`)
+- **Filtering** by status, currency, yield range, and maturity date
+- **Sorting** by amount, yield, or maturity
+- **Pagination** with "Load more" functionality
+- **Screen reader announcements** for state changes
 
-The **default export** `InvestPage` is the Next.js App Router page entry point.
-It renders `<InvestMarketplace />` with no props (using the live data loader).
-`InvestMarketplace` itself is a **named export** so tests can inject a custom
-`loadInvoices` without navigating.
+The marketplace uses a client-side filtering approach: all invoices are fetched once, then filtered/sorted in the browser. This provides instant feedback as users adjust filters.
 
 ---
 
-## Files
+## Core Components
 
-| File | Role |
-| ---- | ---- |
-| `app/invest/page.js` | `InvestMarketplace` component + helper exports |
-| `app/invest/lib.js` | Mock invoice fixtures + data helpers |
-| `app/invest/loading.js` | App Router Suspense skeleton (rendered while the route segment loads) |
-| `components/InvoiceFilters.jsx` | Filter panel component (yield, currency, maturity, sort, status chips) |
-| `components/InvoiceSearch.jsx` | Controlled issuer search input |
-| `components/Pagination.jsx` | "Load more" / page-based pagination control |
+### InvestMarketplace
 
----
+Main marketplace container that fetches invoices and manages filtering/sorting state.
 
-## `InvestMarketplace` — named export
+**File:** `app/invest/page.js`
 
-```js
+#### Props
+
+| Prop            | Type       | Default           | Description                                                                 |
+| --------------- | ---------- | ----------------- | --------------------------------------------------------------------------- |
+| `loadInvoices`  | `function` | `loadMockInvoices` | Async function that resolves to an invoice array. Injectable for testing. |
+
+#### Behaviour
+
+- Fetches invoices on mount using `loadInvoices({ signal })`
+- Supports retry via ErrorBanner action button
+- Resets pagination when filters change
+- Debounces search input (300ms)
+- Announces state changes to screen readers via `aria-live="polite"`
+
+#### Example
+
+```jsx
 import { InvestMarketplace } from "@/app/invest/page";
-```
 
-### Props
-
-| Prop | Type | Default | Description |
-| ---- | ---- | ------- | ----------- |
-| `loadInvoices` | `(options?: { signal?: AbortSignal }) => Promise<Invoice[]>` | `loadMockInvoices` | Async function that resolves to an array of invoice objects. Defaults to the mock data loader defined in `app/invest/lib.js`. Injectable for tests and for swapping in the live API client. |
-
-`loadInvoices` is the **only** public prop. All other state (search query,
-filters, pagination, loading) is managed internally.
-
-### Invoice object shape
-
-`loadInvoices` must resolve to an array where each element conforms to:
-
-| Field | Type | Example | Notes |
-| ----- | ---- | ------- | ----- |
-| `id` | `string` | `"inv-001"` | Unique identifier; used as React list key and for the detail route `/invest/[id]`. |
-| `issuer` | `string` | `"Acme Supplies Ltd"` | Matched against the search query (case-insensitive substring). |
-| `amount` | `string` | `"12,500"` | Formatted display amount (comma-separated). Used with `parseAmount` internally for sorting. |
-| `currency` | `string` | `"USD"` | ISO 4217 currency code. Matched exactly by the currency filter. |
-| `dueDate` | `string` | `"2026-06-15"` | ISO 8601 date string (`YYYY-MM-DD`). Used for maturity-range filtering and sort. |
-| `yield` | `string` | `"8.2%"` | Percentage string. Used for yield-range filtering and sort. |
-| `status` | `string` | `"Open"` | Status value. Must be one of the canonical `INVOICE_STATUSES` values defined in `lib/types/invoice.js`. |
-| `amountValue` | `number` | `12500` | *Optional.* Numeric representation; present in mock fixtures but not consumed directly by `InvestMarketplace` (sorting parses `amount` via `parseAmount`). |
-| `yieldValue` | `number` | `8.2` | *Optional.* Same note as `amountValue`. |
-
-Missing or non-array results are normalised to `[]` rather than throwing.
-
----
-
-## Component States
-
-`InvestMarketplace` moves through the following mutually exclusive render
-states, driven entirely by internal state:
-
-| State | Trigger | Rendered output |
-| ----- | ------- | --------------- |
-| **Loading** | `invoices === null` (initial mount or after retry) | `<InvoiceListSkeleton rows={3} />` |
-| **Error** | `loadInvoices` rejects and `loadError` is non-empty | `<ErrorBanner>` with a "Try again" action button |
-| **Empty marketplace** | `invoices` resolved to `[]` (no invoices exist at all) | Muted `"No investable invoices"` message |
-| **No filter match** | `filteredInvoices.length === 0` after filters/search applied to a non-empty list | Muted `"No invoices match your filters."` message |
-| **List** | One or more `filteredInvoices` | Invoice card list with optional "Load more" button |
-
-The **error** state is distinguished from **loading** because `invoices` is
-reset to `null` before each retry — both look like "loading" to a new mount but
-differ in that `loadError` is non-empty before the retry begins.
-
-### State transitions
-
-```
-                    mount / retry
-                         │
-                         ▼
-                    [ LOADING ]   ← invoices === null
-                    /          \
-              resolve         reject
-                /                \
-    [ LIST / EMPTY / NO-MATCH ]  [ ERROR ]
-                         ▲           │
-                         └── retry ──┘
+// With custom loader
+<InvestMarketplace loadInvoices={fetchInvoicesFromApi} />
 ```
 
 ---
 
-## Constants
+### InvoiceCard
 
-Exported from `app/invest/page.js`:
+Individual invoice card rendered in the marketplace list. Links to the invoice detail page.
 
-| Export | Value | Description |
-| ------ | ----- | ----------- |
-| `PAGE_SIZE` | `10` | Maximum invoices rendered per load-more batch. Also the initial visible count on first render. |
-| `SEARCH_DEBOUNCE_MS` | `300` | Milliseconds of inactivity before the debounced search state updates and filtering runs. |
+**File:** `components/InvoiceCard.jsx`
 
----
+#### Props
 
-## Exported helper functions
+| Prop      | Type      | Required | Description          |
+| --------- | --------- | -------- | -------------------- |
+| `invoice` | `Invoice` | Yes      | Invoice data object  |
 
-### `getInvoiceLoadAnnouncement(invoices, options?)`
+#### Invoice Shape
 
-Returns the screen-reader announcement text for the current invoice list state.
-Used by the polite `aria-live` region inside `InvestMarketplace`.
+| Field      | Type            | Required | Description                              |
+| ---------- | --------------- | -------- | ---------------------------------------- |
+| `id`       | `string`        | Yes      | Unique identifier                        |
+| `issuer`   | `string`        | Yes      | Company name                             |
+| `amount`   | `number|string` | Yes      | Invoice face value                       |
+| `currency` | `string`        | Yes      | ISO currency code (e.g., "USD", "EUR")   |
+| `dueDate`  | `string`        | Yes      | ISO 8601 date (e.g., "2025-09-30")       |
+| `yield`    | `number|string` | Yes      | Expected annual yield percentage         |
+| `status`   | `InvoiceStatus` | Yes      | One of: "Open", "Funded", "Settled", "Overdue" |
 
-```js
-/**
- * @param {Array}   invoices                    The full (unfiltered) invoice array.
- * @param {object}  [options]
- * @param {boolean} [options.filterActive]       True when any search/panel filter is applied.
- * @param {number}  [options.filteredCount]      Number of invoices matching the active filter(s).
- * @returns {string}
- */
-export function getInvoiceLoadAnnouncement(invoices, { filterActive, filteredCount } = {})
+#### Behaviour
+
+- Formats amounts using `formatCurrency` from `lib/format/currency.js`
+- Formats dates using `toLocaleDateString`
+- Renders status via `StatusPill` component
+- Includes accessible link with dynamic `aria-label`
+
+#### Example
+
+```jsx
+import InvoiceCard from "@/components/InvoiceCard";
+
+<InvoiceCard
+  invoice={{
+    id: "INV-001",
+    issuer: "Acme Corp",
+    amount: 12500,
+    currency: "USD",
+    dueDate: "2025-09-30",
+    yield: 8.5,
+    status: "Open",
+  }}
+/>
 ```
 
-| Scenario | Return value |
-| -------- | ------------ |
-| `invoices` is empty or not an array | `copy.invest.announceNoInvoices` — `"No invoices available"` |
-| `filterActive` is `true` and `filteredCount === 0` | `copy.invest.announceNoMatch` — `"No invoices match"` |
-| `filterActive` is `true` and `filteredCount > 0` | `"N of M invoices match"` |
-| No filter active | `"N investable invoices loaded"` |
-
-Both `filterActive` and `filteredCount` must be passed explicitly — the
-function has no implicit dependencies on component state.
-
-### `getPaginationAnnouncement(shown, total)`
-
-Returns the pagination announcement string for the polite `aria-live` status
-region. Called when `visibleCount < filteredInvoices.length` (i.e. while
-pagination is active).
-
-```js
-/**
- * @param {number} shown  - Items currently visible.
- * @param {number} total  - Total items matching active filters.
- * @returns {string}
- */
-export function getPaginationAnnouncement(shown, total)
-```
-
-| Scenario | Return value |
-| -------- | ------------ |
-| `total === 0` | `"No invoices available"` |
-| `shown < total` | `"Showing N of M investable invoices"` |
-| `shown === total` (last page) | `"Showing M of M investable invoices"` |
-
-### `applySortToList(list, filters)`
-
-Sorts a copy of `list` according to the sort column and direction held in
-`filters`. Returns the original reference unchanged when the list is empty or
-no sort column is active.
-
-```js
-/**
- * @param {Invoice[]} list    - Invoice array to sort.
- * @param {object}    filters - Filters object (uses `sort` and `sortDir` fields).
- * @returns {Invoice[]}
- */
-export function applySortToList(list, filters)
-```
-
-Supported sort columns:
-
-| `filters.sort` | Sort key | Parsing |
-| -------------- | -------- | ------- |
-| `"amount"` | `invoice.amount` | Strips commas, parses as float |
-| `"yield"` | `invoice.yield` | Strips `%`, parses as float |
-| `"maturity"` | `invoice.dueDate` | Lexicographic ISO date comparison |
-
-Direction is read via `parseSortState(filters)` (exported from
-`components/InvoiceFilters.jsx`), which supports both plain column keys
-(`"yield"`) and compound keys (`"yield_desc"`).
-
 ---
 
-## Internal state summary
+### InvoiceSearch
 
-These are internal to `InvestMarketplace` and not part of the public API. They
-are documented here for contributors reading the source:
+Controlled search input for filtering invoices by issuer name. Includes a global keyboard shortcut (`/`) to focus the input.
 
-| State variable | Type | Initial value | Purpose |
-| -------------- | ---- | ------------- | ------- |
-| `invoices` | `Invoice[] \| null` | `null` | Raw invoice list; `null` signals loading. |
-| `visibleCount` | `number` | `PAGE_SIZE` | How many `filteredInvoices` are rendered (load-more cursor). |
-| `searchQuery` | `string` | `""` | Live (unthrottled) value of the search input. |
-| `debouncedSearch` | `string` | `""` | Settles `SEARCH_DEBOUNCE_MS` after `searchQuery` stops changing. |
-| `filters` | `object` | `DEFAULT_FILTERS` | Structured panel filters (yield, currency, maturity, sort, statuses). |
-| `loadError` | `string` | `""` | Error message from a failed `loadInvoices` call. |
-| `retryKey` | `number` | `0` | Incremented by `reload()` to re-trigger the load `useEffect`. |
+**File:** `components/InvoiceSearch.jsx`
 
----
+#### Props
 
-## Search behaviour
+| Prop         | Type       | Default                        | Description                                      |
+| ------------ | ---------- | ------------------------------ | ------------------------------------------------ |
+| `value`      | `string`   | —                              | Current search query (controlled)                |
+| `onChange`   | `function` | —                              | Called with new value on keystroke               |
+| `placeholder` | `string`   | `"Search invoices..."`         | Placeholder text                                |
+| `aria-label` | `string`   | —                              | Accessible label for the input                   |
 
-| Aspect | Detail |
-| ------ | ------ |
-| Component | `<InvoiceSearch value={searchQuery} onChange={…} />` |
-| Match field | `invoice.issuer` |
-| Match strategy | Case-insensitive substring (`String#includes`) |
-| Debounce | `SEARCH_DEBOUNCE_MS` (300 ms) — filtering waits for settled input |
-| Shortcut | Pressing `/` anywhere on the page (outside an input) focuses the search field |
-| Clear | Emptying the field restores the full unfiltered list and re-announces the total count |
+#### Behaviour
 
----
+- Supports both `{value, onChange}` and `{searchTerm, onSearchChange}` prop patterns
+- Global `/` shortcut focuses input (ignored when already in an editable field)
+- Shortcut registered via `lib/shortcuts.js` for consistency with help dialog
 
-## Filter panel
+#### Example
 
-`<InvoiceFilters>` is rendered inside a `<fieldset aria-disabled="true">` to
-signal that the panel is a preview / coming-soon feature. All controls remain
-focusable (unlike native `disabled`) so screen readers can discover them.
+```jsx
+import InvoiceSearch from "@/components/InvoiceSearch";
 
-| Filter | Field | Match rule |
-| ------ | ----- | ---------- |
-| Yield minimum | `filters.yieldMin` | `parseYield(inv.yield) >= yieldMin` |
-| Yield maximum | `filters.yieldMax` | `parseYield(inv.yield) <= yieldMax` |
-| Currency | `filters.currency` | Exact match (`inv.currency === currency`) |
-| Maturity from | `filters.maturityFrom` | `inv.dueDate >= maturityFrom` (ISO string compare) |
-| Maturity to | `filters.maturityTo` | `inv.dueDate <= maturityTo` (ISO string compare) |
-| Status chips | `filters.statuses[]` | `filters.statuses.includes(inv.status)` (OR union across selected statuses) |
-| Sort column / dir | `filters.sort`, `filters.sortDir` | Applied via `applySortToList` after all predicates |
+function MarketplaceFilters() {
+  const [searchQuery, setSearchQuery] = useState("");
 
-`DEFAULT_FILTERS` (exported from `components/InvoiceFilters.jsx`) is the reset
-target for "Clear Filters":
-
-```js
-{
-  yieldMin: "",
-  yieldMax: "",
-  currency: "",
-  maturityFrom: "",
-  maturityTo: "",
-  sort: "",
-  sortDir: "desc",
-  statuses: [],
+  return (
+    <InvoiceSearch
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+      aria-label="Search invoices by issuer name"
+    />
+  );
 }
 ```
 
 ---
 
-## Pagination (load-more)
+### InvoiceFilters
 
-| Behaviour | Detail |
-| --------- | ------ |
-| Initial page | First `PAGE_SIZE` (10) items are rendered; the rest are hidden. |
-| Load more | Clicking "Load more" appends the next `PAGE_SIZE` batch via `setVisibleCount`. |
-| Button visibility | Button disappears once `visibleCount >= filteredInvoices.length`. |
-| Reset on new data | `visibleCount` resets to `PAGE_SIZE` when a new invoice set arrives (mount, retry). |
-| Reset on filter/search | `visibleCount` resets to `PAGE_SIZE` when `filters` or `debouncedSearch` change, so the user always starts at the top of a freshly filtered list. |
-| Focus management | After each "Load more" click, `setTimeout(0)` returns focus to the button via a forwarded ref so keyboard users do not lose their place. |
+Structured filter controls for yield range, currency, maturity date, and sorting.
+
+**File:** `components/InvoiceFilters.jsx`
+
+#### Named Exports
+
+| Export                | Description                                           |
+| --------------------- | ----------------------------------------------------- |
+| `default`             | Main filter component with all controls               |
+| `StatusLegendFilter`  | Toggleable status chip row (see below)               |
+| `DEFAULT_FILTERS`     | Default filter state object                           |
+| `SORT_OPTIONS`        | Available sort column options                         |
+| `parseSortState`      | Parses sort column and direction from filters         |
+| `matchesFilters`      | Predicate: checks if invoice matches filters          |
+| `hasActiveFilters`    | Returns true if any filter is active                  |
+| `hasAnyActiveFilters`  | Returns true if search or filters are active          |
+| `getActiveFilterChips` | Returns removable chip objects for active filters    |
+| `clearFilterByKey`    | Returns filters with a single field cleared           |
+
+#### Props (InvoiceFilters)
+
+| Prop            | Type       | Required | Description                              |
+| --------------- | ---------- | -------- | ---------------------------------------- |
+| `filters`       | `object`   | Yes      | Current filter state                     |
+| `onFilterChange`| `function` | Yes      | Called with updated filters object       |
+| `onClearFilters`| `function` | Yes      | Called to reset all filters to defaults  |
+
+#### Filter State Shape
+
+```javascript
+{
+  yieldMin: "",        // Minimum yield percentage (string)
+  yieldMax: "",        // Maximum yield percentage (string)
+  currency: "",        // Selected currency code (string)
+  maturityFrom: "",    // ISO date string (YYYY-MM-DD)
+  maturityTo: "",      // ISO date string (YYYY-MM-DD)
+  sort: "",            // Sort column: "", "amount", "yield", "maturity"
+  sortDir: "desc",     // Sort direction: "asc" or "desc"
+  statuses: [],        // Array of active status filters
+}
+```
+
+#### Behaviour
+
+- Currency filter uses roving tabindex for keyboard navigation
+- Sort direction toggle (↑↓) only active for sortable columns (amount, yield)
+- All inputs are controlled components
+- Clear button disabled when no filters are active
+
+#### Example
+
+```jsx
+import InvoiceFilters, { DEFAULT_FILTERS } from "@/components/InvoiceFilters";
+
+function Marketplace() {
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+
+  return (
+    <InvoiceFilters
+      filters={filters}
+      onFilterChange={setFilters}
+      onClearFilters={() => setFilters(DEFAULT_FILTERS)}
+    />
+  );
+}
+```
 
 ---
 
-## Error recovery
+### StatusLegendFilter
 
-1. `loadInvoices` rejects → `loadError` is set, `invoices` remains `null`.
-2. `<ErrorBanner>` renders with a "Try again" (`copy.invest.retryAction`) action.
-3. Clicking "Try again" calls `reload()`:
-   - Sets `invoices` back to `null` (renders the loading skeleton immediately).
-   - Clears `loadError` (hides the error banner immediately).
-   - Increments `retryKey`, which re-runs the load `useEffect`.
-   - The previous in-flight request (if any) is aborted via `AbortController`.
-4. The polite `aria-live` status region is cleared on retry and re-announces once
-   the new load settles.
+Toggleable chip row for filtering by invoice status. Derived from `INVOICE_STATUSES` to stay in sync with the canonical status vocabulary.
+
+**File:** `components/InvoiceFilters.jsx` (named export)
+
+#### Props
+
+| Prop               | Type       | Required | Description                                  |
+| ------------------ | ---------- | -------- | -------------------------------------------- |
+| `selectedStatuses` | `string[]` | Yes      | Currently active status values              |
+| `onStatusToggle`   | `function` | Yes      | Called with toggled status string            |
+| `onClearStatuses`  | `function` | No       | Called when "Clear" button is clicked        |
+
+#### Behaviour
+
+- Each chip is a `<button>` with `aria-pressed`
+- Multiple selections use union (OR) logic
+- When empty, all invoices are shown
+- Chip tone matches `STATUS_PILL_MAP` from `lib/types/invoice.js`
+
+#### Example
+
+```jsx
+import { StatusLegendFilter } from "@/components/InvoiceFilters";
+
+function Marketplace() {
+  const [selectedStatuses, setSelectedStatuses] = useState([]);
+
+  const handleToggle = (status) => {
+    setSelectedStatuses((prev) =>
+      prev.includes(status)
+        ? prev.filter((s) => s !== status)
+        : [...prev, status]
+    );
+  };
+
+  return (
+    <StatusLegendFilter
+      selectedStatuses={selectedStatuses}
+      onStatusToggle={handleToggle}
+      onClearStatuses={() => setSelectedStatuses([])}
+    />
+  );
+}
+```
+
+---
+
+### StatusPill
+
+Single source of truth for rendering invoice status badges. Used on cards and detail pages.
+
+**File:** `components/StatusPill.jsx`
+
+#### Props
+
+| Prop        | Type      | Default | Description                                    |
+| ----------- | --------- | ------- | ---------------------------------------------- |
+| `status`    | `unknown` | —       | Any invoice status value                       |
+| `className` | `string`  | `""`    | Optional Tailwind classes (layout only)        |
+
+#### Behaviour
+
+- Reads from `INVOICE_STATUSES` and `STATUS_PILL_MAP` in `lib/types/invoice.js`
+- Unknown/nullish/empty input → neutral "Unknown" pill
+- Never throws, never renders raw input
+- Renders `data-status` attribute for testing
+- Status conveyed by text, not colour alone (WCAG compliant)
+
+#### Example
+
+```jsx
+import StatusPill from "@/components/StatusPill";
+
+<StatusPill status="Open" />      // Cyan pill
+<StatusPill status="Funded" />    // Slate pill
+<StatusPill status="Settled" />   // Emerald pill
+<StatusPill status="Overdue" />   // Amber pill
+<StatusPill status={null} />      // Neutral "Unknown" pill
+```
+
+---
+
+## Data Contracts
+
+### Invoice Type
+
+The canonical invoice shape is defined in `lib/types/invoice.js`:
+
+```javascript
+/**
+ * @typedef {Object} Invoice
+ * @property {string}        id
+
+ - Unique invoice identifier
+ * @property {string}        issuer    - Company name
+ * @property {number|string} amount    - Invoice face value
+ * @property {string}        currency  - ISO currency code
+ * @property {string}        dueDate   - ISO 8601 date string
+ * @property {number|string} yield     - Expected yield percentage
+ * @property {InvoiceStatus} status    - Status value
+ */
+```
+
+### InvoiceStatus Union
+
+The exhaustive set of status values:
+
+```javascript
+/**
+ * @typedef {"Open" | "Funded" | "Settled" | "Overdue"} InvoiceStatus
+ */
+```
+
+### Constants
+
+```javascript
+import { INVOICE_STATUSES, STATUS_PILL_MAP } from "@/lib/types/invoice";
+
+// INVOICE_STATUSES = { OPEN: "Open", FUNDED: "Funded", SETTLED: "Settled", OVERDUE: "Overdue" }
+// STATUS_PILL_MAP maps each status to label and Tailwind tone classes
+```
+
+---
+
+## Common Patterns
+
+### Filtering and Sorting Together
+
+The marketplace combines search, status filters, and structured filters:
+
+```jsx
+import { useState, useMemo } from "react";
+import { matchesFilters, applySortToList } from "@/components/InvoiceFilters";
+
+function Marketplace() {
+  const [invoices, setInvoices] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+
+  const filteredInvoices = useMemo(() => {
+    let list = invoices;
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter((inv) => inv.issuer?.toLowerCase().includes(q));
+    }
+
+    // Structured filters
+    list = list.filter((inv) => matchesFilters(inv, filters));
+
+    // Status filters
+    if (filters.statuses.length > 0) {
+      list = list.filter((inv) => filters.statuses.includes(inv.status));
+    }
+
+    // Sort
+    return applySortToList(list, filters);
+  }, [invoices, searchQuery, filters]);
+
+  return <InvoiceList invoices={filteredInvoices} />;
+}
+```
+
+### Resetting Pagination on Filter Change
+
+When filters change, reset pagination to show results from the top:
+
+```jsx
+const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+const filterSignature = JSON.stringify([searchQuery, filters]);
+const [prevFilterSignature, setPrevFilterSignature] = useState(filterSignature);
+
+if (filterSignature !== prevFilterSignature) {
+  setPrevFilterSignature(filterSignature);
+  setVisibleCount(PAGE_SIZE);
+}
+```
+
+### Accessible Filter Chips
+
+Use `aria-pressed` for toggleable filter chips:
+
+```jsx
+<button
+  type="button"
+  aria-pressed={isSelected}
+  onClick={() => onToggle(value)}
+  className={isSelected ? "active-styles" : "inactive-styles"}
+>
+  {label}
+</button>
+```
+
+### Loading with Error Handling
+
+Use `AbortController` for cancellable requests:
+
+```jsx
+useEffect(() => {
+  let isActive = true;
+  const controller = new AbortController();
+
+  const load = async () => {
+    try {
+      const data = await loadInvoices({ signal: controller.signal });
+      if (isActive) setInvoices(data);
+    } catch (err) {
+      if (isActive) setError(err.message);
+    }
+  };
+
+  load();
+
+  return () => {
+    isActive = false;
+    controller.abort();
+  };
+}, [loadInvoices, retryKey]);
+```
 
 ---
 
 ## Accessibility
 
-### Screen-reader announcements
+### Screen Reader Announcements
 
-A `<div role="status" aria-live="polite" aria-atomic="true" className="sr-only">`
-is always present in the DOM. Its text content (`statusMessage`) changes on every
-meaningful state transition:
+The marketplace uses `aria-live="polite"` regions to announce state changes:
 
-| Transition | Announcement |
-| ---------- | ------------ |
-| Invoices loaded (no filter) | `"N investable invoices loaded"` |
-| Filter active, matches found | `"N of M invoices match"` |
-| Filter active, no matches | `"No invoices match"` |
-| Paging active (shown < total) | `"Showing N of M investable invoices"` |
-| All items shown after Load more | `"Showing M of M investable invoices"` |
-| Error state | `""` (cleared; `ErrorBanner` carries `role="alert"` for assertive announcement) |
-| Loading | `""` (silent; skeleton is visually apparent) |
-
-### Focus ring
-
-All interactive elements (invoice links, "Load more" button, filter chips) use
-the `.focus-ring` / `focus-visible:outline` utility classes defined in
-`app/globals.css` for a consistent, theme-aware cyan outline.
-
-### Coming-soon filter fieldset
-
-```html
-<fieldset aria-disabled="true" aria-describedby="filters-coming-soon">
-  <div id="filters-coming-soon">Soon: These filter controls are currently unavailable.</div>
-  <div class="opacity-60 pointer-events-none">
-    <!-- InvoiceFilters -->
-  </div>
-</fieldset>
+```jsx
+<div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+  {statusMessage}
+</div>
 ```
 
-- `aria-disabled="true"` announces the preview state without removing controls
-  from the tab order (unlike native `disabled`).
-- `aria-describedby` links the fieldset to the visible "Soon" label so assistive
-  technologies announce the status when users navigate into the group.
-- `pointer-events-none` + `opacity-60` provide the visual disabled treatment
-  while keeping controls keyboard-discoverable.
+Announce:
+- Initial load count
+- Filtered result count
+- Pagination changes
+- Empty states
 
-### Status chip row (`StatusLegendFilter`)
+### Keyboard Navigation
 
-Each chip is a `<button aria-pressed="true|false">`. Multiple chips form a
-`role="group" aria-label="Filter by status"` toolbar. The union (OR) semantics
-mean selecting multiple statuses shows invoices matching any of the selected
-values.
+- **Search shortcut**: Press `/` to focus search (ignored when in editable fields)
+- **Currency filter**: Roving tabindex with Arrow keys, Home, End
+- **Status chips**: Standard tab order with `aria-pressed`
+- **Sort toggle**: Only active for sortable columns
+
+### Focus Management
+
+After "Load more" is clicked, focus returns to the button:
+
+```jsx
+const handleLoadMore = () => {
+  setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, total));
+  setTimeout(() => loadMoreRef.current?.focus(), 0);
+};
+```
+
+### Colour Independence
+
+Status is conveyed by text, not colour alone:
+- `StatusPill` includes `aria-label="Status: {label}"`
+- Invoice card links include status in `aria-label`
+- All status tones have distinct labels
 
 ---
 
-## Usage example
+## Examples
 
-The default page entry point uses `InvestMarketplace` with no props:
+### Complete Marketplace Implementation
 
 ```jsx
-// app/invest/page.js (default export — do not copy, already exists)
-export default function InvestPage() {
-  return <InvestMarketplace />;
+"use client";
+
+import { useState, useMemo, useCallback } from "react";
+import InvoiceSearch from "@/components/InvoiceSearch";
+import InvoiceFilters, { DEFAULT_FILTERS, StatusLegendFilter } from "@/components/InvoiceFilters";
+import InvoiceCard from "@/components/InvoiceCard";
+import { loadMockInvoices } from "@/app/invest/lib";
+
+export function Marketplace() {
+  const [invoices, setInvoices] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [selectedStatuses, setSelectedStatuses] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(10);
+
+  // Fetch invoices
+  useState(() => {
+    loadMockInvoices().then(setInvoices);
+  });
+
+  // Filter and sort
+  const filteredInvoices = useMemo(() => {
+    if (!invoices) return [];
+    let list = invoices;
+
+    if (searchQuery.trim()) {
+      list = list.filter((inv) => inv.issuer?.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+
+    if (selectedStatuses.length > 0) {
+      list = list.filter((inv) => selectedStatuses.includes(inv.status));
+    }
+
+    return list.slice(0, visibleCount);
+  }, [invoices, searchQuery, selectedStatuses, visibleCount]);
+
+  const handleStatusToggle = useCallback((status) => {
+    setSelectedStatuses((prev) =>
+      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
+    );
+  }, []);
+
+  return (
+    <div>
+      <InvoiceSearch value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+      
+      <StatusLegendFilter
+        selectedStatuses={selectedStatuses}
+        onStatusToggle={handleStatusToggle}
+        onClearStatuses={() => setSelectedStatuses([])}
+      />
+
+      <InvoiceFilters
+        filters={filters}
+        onFilterChange={setFilters}
+        onClearFilters={() => setFilters(DEFAULT_FILTERS)}
+      />
+
+      <ul>
+        {filteredInvoices.map((invoice) => (
+          <li key={invoice.id}>
+            <InvoiceCard invoice={invoice} />
+          </li>
+        ))}
+      </ul>
+
+      {filteredInvoices.length > visibleCount && (
+        <button onClick={() => setVisibleCount((c) => c + 10)}>
+          Load more
+        </button>
+      )}
+    </div>
+  );
 }
 ```
 
-**Injecting a custom data loader (tests and Storybook):**
+### Custom Invoice Loader
 
 ```jsx
-import { InvestMarketplace } from "@/app/invest/page";
-
-// Supply a fixed dataset — no network, no delay
-const STUB_INVOICES = [
-  {
-    id: "inv-stub-1",
-    issuer: "Demo Corp",
-    amount: "5,000",
-    currency: "USD",
-    dueDate: "2027-01-01",
-    yield: "6.0%",
-    status: "Open",
-  },
-];
-
-function loadStubInvoices() {
-  return Promise.resolve(STUB_INVOICES);
+async function fetchInvoicesFromApi({ signal }) {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/invoices`, {
+    signal,
+  });
+  if (!response.ok) throw new Error("Failed to fetch invoices");
+  return response.json();
 }
 
-export function MarketplacePreview() {
-  return <InvestMarketplace loadInvoices={loadStubInvoices} />;
-}
+<InvestMarketplace loadInvoices={fetchInvoicesFromApi} />
 ```
 
-**Simulating the loading state:**
+### Using Filter Predicates Directly
 
 ```jsx
-function loadNever() {
-  return new Promise(() => {}); // never resolves → component stays in loading state
-}
+import { matchesFilters, matchesYieldRange, matchesCurrency } from "@/components/InvoiceFilters";
 
-<InvestMarketplace loadInvoices={loadNever} />;
-```
+// Check if a single invoice matches filters
+const isMatch = matchesFilters(invoice, filters);
 
-**Simulating an error:**
-
-```jsx
-function loadFails() {
-  return Promise.reject(new Error("Network error"));
-}
-
-<InvestMarketplace loadInvoices={loadFails} />;
+// Check specific dimensions
+const hasValidYield = matchesYieldRange(invoice.yield, "5", "10");
+const isUSD = matchesCurrency(invoice.currency, "USD");
 ```
 
 ---
 
-## `app/invest/lib.js` exports
+## Related Documentation
 
-Supporting helpers for the marketplace and the detail route:
-
-| Export | Signature | Description |
-| ------ | --------- | ----------- |
-| `MOCK_INVOICES` | `Invoice[]` | Static fixture array of 3 invoices (USD and EUR). Single source of truth for mock data. |
-| `loadMockInvoices` | `() => Promise<Invoice[]>` | Returns `MOCK_INVOICES` after a 1500 ms dev-only delay. In tests, returns `window.__TEST_MOCK_INVOICES__` if set. |
-| `daysUntilMaturity` | `(dateStr: string, now?: Date) => number` | Days between `now` and `dateStr`. Positive = future, negative = overdue, 0 = today. Compares at midnight UTC. |
-| `getInvoiceById` | `(id: string) => Invoice \| undefined` | Looks up an invoice from `MOCK_INVOICES` by `id`. Used by the detail route `/invest/[id]`. |
-
-### Test hook
-
-Tests (Jest and Playwright) can override the fixture by assigning to
-`window.__TEST_MOCK_INVOICES__` before the component mounts:
-
-```js
-// jest setup or playwright beforeEach
-window.__TEST_MOCK_INVOICES__ = [{ id: "test-1", issuer: "Test Co", ... }];
-```
-
-This override is ignored in SSR environments and production builds.
-
----
-
-## Current limitations
-
-- **Filter panel is preview only.** The `<InvoiceFilters>` fieldset is wrapped
-  in `aria-disabled="true"` and `pointer-events-none`. The yield, currency,
-  maturity, and sort controls are not fully wired for live use (per
-  `copy.invest.filterSoonLabel`). The search field and status chips are fully
-  functional.
-- **Mock data only for the detail route.** `/invest/[id]` reads from
-  `getInvoiceById` (mock layer). The migration to a live single-invoice endpoint
-  is tracked separately (see `docs/architecture.md` — Data layer section).
-- **No page-based URL routing.** Pagination is load-more only; there is no
-  `/invest?page=2` deep-link support. URL-serialised filter state is managed by
-  `lib/hooks/useInvoiceFilters.js` but is not yet wired to `InvestMarketplace`.
-- **Wallet gating not implemented.** The empty-state copy (`copy.invest.emptyState`)
-  mentions connecting a wallet, but `InvestMarketplace` does not currently gate
-  or react to wallet connection state. This is planned as part of the Stellar /
-  Freighter integration.
-
----
-
-## Cross-references
-
-- [`docs/architecture.md`](architecture.md) — Route map and data layer overview
-- [`docs/invoice-data.md`](invoice-data.md) — Invoice object shape and field contracts
-- [`docs/api-integration.md`](api-integration.md) — Live API endpoint contract (`GET /invoices`)
-- [`docs/accessibility.md`](accessibility.md) — WCAG notes and accessibility statement
-- [`FILTER_CONTRACTS.md`](../FILTER_CONTRACTS.md) — Filter predicate function contracts
-- [`WALLET_INTEGRATION_CONTRACT.md`](../WALLET_INTEGRATION_CONTRACT.md) — Wallet state machine
-- [`COMPONENTS.md`](../COMPONENTS.md) — Shared component reference (`InvoiceSearch`, `InvoiceFilters`, `Pagination`, `ErrorBanner`, etc.)
-- [`app/invest/page.test.jsx`](../app/invest/page.test.jsx) — Unit and pagination tests
-- [`app/invest/filters.a11y.test.tsx`](../app/invest/filters.a11y.test.tsx) — Accessibility tests for the coming-soon filter panel
+- [Invoice data contract](invoice-data.md) - Data shape and API migration
+- [Component Library Reference](../COMPONENTS.md) - Full component API
+- [Accessibility guide](accessibility.md) - A11y patterns and testing
+- [API integration](api-integration.md) - Backend contract details

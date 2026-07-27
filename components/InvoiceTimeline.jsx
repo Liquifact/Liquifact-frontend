@@ -18,13 +18,6 @@
  * Tone classes are sourced from STATUS_PILL_MAP so timeline and pill colours
  * are always in lock-step and share one source of truth.
  *
- * Memoization
- * ───────────
- * Stage descriptors are derived by `deriveTimelineStages` (pure).  Each stage
- * is rendered by `TimelineStageRow` wrapped in `React.memo`, so when a parent
- * client tree re-renders for an unrelated reason with the same status /
- * timestamps, individual stage rows skip reconciliation.
- *
  * Accessibility contract:
  *   • The timeline is rendered as an <ol> (ordered list) to convey sequence.
  *   • The current / active stage carries aria-current="step".
@@ -36,8 +29,7 @@
  *     timestamp and maintains its positional role in the list.
  */
 
-import { memo } from "react";
-import { INVOICE_STATUSES } from "@/lib/types/invoice";
+import { INVOICE_STATUSES, STATUS_PILL_MAP } from "@/lib/types/invoice";
 import { copy } from "@/app/copy/en";
 
 // ---------------------------------------------------------------------------
@@ -148,149 +140,6 @@ const STAGE_LABELS = {
 };
 
 // ---------------------------------------------------------------------------
-// Derived stage descriptors
-// ---------------------------------------------------------------------------
-
-/**
- * Derive the ordered list of stage row descriptors for a given invoice status.
- *
- * Pure — safe to call from RSC or from a `useMemo` in a client parent.  Output
- * is referentially new each call; callers that need stable references should
- * memoize on `[status, timestamps]`.
- *
- * @param {string|null|undefined} status
- * @param {object} [timestamps]
- * @returns {Array<{
- *   stageKey: string,
- *   stageState: "completed"|"current"|"pending",
- *   label: string,
- *   ariaLabel: string,
- *   timestamp: string|null,
- *   isLast: boolean,
- *   tone: typeof STAGE_TONES.completed,
- * }>}
- */
-export function deriveTimelineStages(status, timestamps = {}) {
-  const currentStage = resolveCurrentStage(status);
-  const currentIndex = currentStage !== null ? STAGE_ORDER.indexOf(currentStage) : -1;
-
-  return STAGE_ORDER.map((stageKey, index) => {
-    let stageState;
-    if (currentIndex === -1) {
-      stageState = "pending";
-    } else if (index < currentIndex) {
-      stageState = "completed";
-    } else if (index === currentIndex) {
-      stageState = "current";
-    } else {
-      stageState = "pending";
-    }
-
-    const label = STAGE_LABELS[stageKey];
-    let stageStatusWord;
-    if (stageState === "completed") {
-      stageStatusWord = copy.invoiceTimeline.statusCompleted;
-    } else if (stageState === "current") {
-      stageStatusWord = copy.invoiceTimeline.statusCurrent;
-    } else {
-      stageStatusWord = copy.invoiceTimeline.statusPending;
-    }
-
-    const rawTimestamp = timestamps?.[stageKey];
-    const timestamp =
-      rawTimestamp != null && String(rawTimestamp).trim().length > 0
-        ? String(rawTimestamp).trim()
-        : null;
-
-    return {
-      stageKey,
-      stageState,
-      label,
-      ariaLabel: `${label} \u2014 ${stageStatusWord}`,
-      timestamp,
-      isLast: index === STAGE_ORDER.length - 1,
-      tone: getTone(stageState),
-    };
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Memoized stage row
-// ---------------------------------------------------------------------------
-
-/**
- * A single timeline stage. Wrapped in `memo` so unrelated parent re-renders
- * with identical stage descriptors skip this row entirely.
- *
- * @param {object} props
- * @param {string} props.stageKey
- * @param {"completed"|"current"|"pending"} props.stageState
- * @param {string} props.label
- * @param {string} props.ariaLabel
- * @param {string|null} props.timestamp
- * @param {boolean} props.isLast
- * @param {{ dot: string, label: string, connector: string }} props.tone
- */
-export const TimelineStageRow = memo(function TimelineStageRow({
-  stageKey: _stageKey,
-  stageState,
-  label,
-  ariaLabel,
-  timestamp,
-  isLast,
-  tone,
-}) {
-  return (
-    <li
-      aria-current={stageState === "current" ? "step" : undefined}
-      aria-label={ariaLabel}
-      className="relative flex items-start gap-4 pb-6 last:pb-0"
-    >
-      {/* Vertical connector line — hidden on the last item */}
-      {!isLast && (
-        <span
-          aria-hidden="true"
-          className={["absolute left-[11px] top-6 w-0.5 h-full", tone.connector].join(" ")}
-        />
-      )}
-
-      {/* Stage dot / indicator */}
-      <span
-        aria-hidden="true"
-        className={[
-          "relative z-10 flex-shrink-0 mt-0.5 h-6 w-6 rounded-full flex items-center justify-center",
-          tone.dot,
-        ].join(" ")}
-      >
-        {stageState === "completed" && (
-          /* Checkmark SVG for completed stages */
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 16 16"
-            fill="currentColor"
-            aria-hidden="true"
-            focusable="false"
-            className="w-3.5 h-3.5 text-slate-950"
-          >
-            <path
-              fillRule="evenodd"
-              d="M12.78 4.22a.75.75 0 0 1 0 1.06l-5.5 5.5a.75.75 0 0 1-1.06 0l-2.5-2.5a.75.75 0 0 1 1.06-1.06L6.75 9.19l4.97-4.97a.75.75 0 0 1 1.06 0Z"
-              clipRule="evenodd"
-            />
-          </svg>
-        )}
-      </span>
-
-      {/* Stage text block */}
-      <div className="flex flex-col min-w-0">
-        <span className={["text-sm leading-6", tone.label].join(" ")}>{label}</span>
-        {timestamp != null && <span className="text-xs text-slate-500 mt-0.5">{timestamp}</span>}
-      </div>
-    </li>
-  );
-});
-
-// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -305,8 +154,9 @@ export const TimelineStageRow = memo(function TimelineStageRow({
  * @param {string}  [props.className]  - Additional Tailwind classes on the root element.
  * @returns {JSX.Element}
  */
-function InvoiceTimeline({ status, timestamps = {}, className = "" }) {
-  const stages = deriveTimelineStages(status, timestamps);
+export default function InvoiceTimeline({ status, timestamps = {}, className = "" }) {
+  const currentStage = resolveCurrentStage(status);
+  const currentIndex = currentStage !== null ? STAGE_ORDER.indexOf(currentStage) : -1;
 
   return (
     <section
@@ -320,12 +170,89 @@ function InvoiceTimeline({ status, timestamps = {}, className = "" }) {
       </h2>
 
       <ol aria-label={copy.invoiceTimeline.heading} className="relative flex flex-col gap-0">
-        {stages.map((stage) => (
-          <TimelineStageRow key={stage.stageKey} {...stage} />
-        ))}
+        {STAGE_ORDER.map((stageKey, index) => {
+          // Determine visual state
+          let stageState;
+          if (currentIndex === -1) {
+            // Unknown invoice status — all stages pending
+            stageState = "pending";
+          } else if (index < currentIndex) {
+            stageState = "completed";
+          } else if (index === currentIndex) {
+            stageState = "current";
+          } else {
+            stageState = "pending";
+          }
+
+          const tone = getTone(stageState);
+          const isLast = index === STAGE_ORDER.length - 1;
+          const label = STAGE_LABELS[stageKey];
+          const timestamp = timestamps[stageKey];
+
+          // Build accessible stage label: "Uploaded — Completed" etc.
+          let stageStatusWord;
+          if (stageState === "completed") {
+            stageStatusWord = copy.invoiceTimeline.statusCompleted;
+          } else if (stageState === "current") {
+            stageStatusWord = copy.invoiceTimeline.statusCurrent;
+          } else {
+            stageStatusWord = copy.invoiceTimeline.statusPending;
+          }
+          const ariaLabel = `${label} \u2014 ${stageStatusWord}`;
+
+          return (
+            <li
+              key={stageKey}
+              aria-current={stageState === "current" ? "step" : undefined}
+              aria-label={ariaLabel}
+              className="relative flex items-start gap-4 pb-6 last:pb-0"
+            >
+              {/* Vertical connector line — hidden on the last item */}
+              {!isLast && (
+                <span
+                  aria-hidden="true"
+                  className={["absolute left-[11px] top-6 w-0.5 h-full", tone.connector].join(" ")}
+                />
+              )}
+
+              {/* Stage dot / indicator */}
+              <span
+                aria-hidden="true"
+                className={[
+                  "relative z-10 flex-shrink-0 mt-0.5 h-6 w-6 rounded-full flex items-center justify-center",
+                  tone.dot,
+                ].join(" ")}
+              >
+                {stageState === "completed" && (
+                  /* Checkmark SVG for completed stages */
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                    aria-hidden="true"
+                    focusable="false"
+                    className="w-3.5 h-3.5 text-slate-950"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M12.78 4.22a.75.75 0 0 1 0 1.06l-5.5 5.5a.75.75 0 0 1-1.06 0l-2.5-2.5a.75.75 0 0 1 1.06-1.06L6.75 9.19l4.97-4.97a.75.75 0 0 1 1.06 0Z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+              </span>
+
+              {/* Stage text block */}
+              <div className="flex flex-col min-w-0">
+                <span className={["text-sm leading-6", tone.label].join(" ")}>{label}</span>
+                {timestamp != null && String(timestamp).trim().length > 0 && (
+                  <span className="text-xs text-slate-500 mt-0.5">{String(timestamp).trim()}</span>
+                )}
+              </div>
+            </li>
+          );
+        })}
       </ol>
     </section>
   );
 }
-
-export default memo(InvoiceTimeline);

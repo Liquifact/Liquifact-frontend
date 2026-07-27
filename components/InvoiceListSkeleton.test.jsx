@@ -36,12 +36,12 @@ describe("InvoiceListSkeleton", () => {
 
   it("has aria-busy true", () => {
     render(<InvoiceListSkeleton />);
-    expect(screen.getByRole("list")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("list", { hidden: true })).toHaveAttribute("aria-busy", "true");
   });
 
-  it("has descriptive aria-label", () => {
+  it("is hidden from screen readers via aria-hidden", () => {
     render(<InvoiceListSkeleton />);
-    expect(screen.getByRole("list")).toHaveAttribute("aria-label", "Loading investable invoices");
+    expect(screen.getByRole("list", { hidden: true })).toHaveAttribute("aria-hidden", "true");
   });
 
   it("each row has animate-pulse class", () => {

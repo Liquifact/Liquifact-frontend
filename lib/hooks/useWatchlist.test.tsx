@@ -1,314 +1,114 @@
-/**
- * @file lib/hooks/useWatchlist.test.tsx
- *
- * Comprehensive tests for `lib/hooks/useWatchlist.js`.  Covers the
- * initial state, toggle behaviour, persistence, pruning, SSR safety,
- * and edge cases.
- *
- * Target: ≥ 95% branch coverage for `useWatchlist.js`.
- */
+import { renderHook, act } from '@testing-library/react';
+import { useWatchlist } from './useWatchlist';
 
-import { act, renderHook, waitFor } from "@testing-library/react";
-import useWatchlist from "./useWatchlist";
+// Mock the localStorage hook to avoid hitting the actual localStorage in tests.
+jest.mock('./useLocalStorage', () => ({
+  useLocalStorage: jest.fn(),
+}));
 
-const WATCHLIST_KEY = "liquifact:watchlist";
+import { useLocalStorage } from './useLocalStorage';
 
-function seedStorage(ids: string[]) {
-  window.localStorage.clear();
-  if (ids.length > 0) {
-    window.localStorage.setItem(WATCHLIST_KEY, JSON.stringify(ids));
-  }
-}
+describe('useWatchlist', () => {
+  let mockSetWatchlists;
 
-// ─── 1. Initial state ──────────────────────────────────────────────────────
-
-describe("useWatchlist — initial state", () => {
-  it("returns an empty watchlist array when nothing is stored", () => {
-    seedStorage([]);
-    const { result } = renderHook(() => useWatchlist());
-    expect(result.current.watchlist).toEqual([]);
-  });
-
-  it("adopts stored watchlist IDs after mount", async () => {
-    seedStorage(["inv-001", "inv-003"]);
-    const { result } = renderHook(() => useWatchlist());
-
-    await waitFor(() => expect(result.current.watchlist).toEqual(["inv-001", "inv-003"]));
-  });
-
-  it("isWatched returns false for any ID when watchlist is empty", () => {
-    seedStorage([]);
-    const { result } = renderHook(() => useWatchlist());
-
-    expect(result.current.isWatched("inv-001")).toBe(false);
-    expect(result.current.isWatched("inv-999")).toBe(false);
-  });
-
-  it.skip("initial render does not read from storage (SSR-safe)", () => {
-    // NOTE: This test is skipped because the underlying useLocalStorage hook
-    // also skips the equivalent test (the first-render default is asserted
-    // implicitly by the adoption-on-mount tests).  Behaviour depends on the
-    // React renderer flushing effects synchronously in test, which is not
-    // guaranteed across environments.
-    seedStorage(["inv-001"]);
-    const { result } = renderHook(() => useWatchlist());
-
-    expect(result.current.watchlist).toEqual([]);
-  });
-});
-
-// ─── 2. Toggle behaviour ────────────────────────────────────────────────────
-
-describe("useWatchlist — toggleWatch", () => {
   beforeEach(() => {
-    seedStorage([]);
+    mockSetWatchlists = jest.fn();
+    (useLocalStorage).mockReturnValue([[], mockSetWatchlists]);
   });
 
-  it("adds an ID to the watchlist when toggled", () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should initialize with an empty array if storage is empty', () => {
+    const { result } = renderHook(() => useWatchlist());
+    expect(result.current.watchlists).toEqual([]);
+  });
+
+  it('should add a new watchlist', () => {
     const { result } = renderHook(() => useWatchlist());
 
     act(() => {
-      result.current.toggleWatch("inv-001");
+      result.current.addWatchlist('High Yield');
     });
 
-    expect(result.current.watchlist).toEqual(["inv-001"]);
+    expect(mockSetWatchlists).toHaveBeenCalled();
+    const updateFn = mockSetWatchlists.mock.calls[0][0];
+    const nextState = updateFn([]);
+
+    expect(nextState).toHaveLength(1);
+    expect(nextState[0].name).toBe('High Yield');
+    expect(nextState[0].invoiceIds).toEqual([]);
+    expect(typeof nextState[0].id).toBe('string');
   });
 
-  it("removes an ID from the watchlist when toggled again", () => {
-    seedStorage(["inv-001", "inv-002"]);
+  it('should not add a duplicate watchlist name', () => {
     const { result } = renderHook(() => useWatchlist());
 
     act(() => {
-      result.current.toggleWatch("inv-001");
+      result.current.addWatchlist('duplicate');
     });
+    const updateFn = mockSetWatchlists.mock.calls[0][0];
+    const nextState = updateFn([{ id: '1', name: 'Duplicate', invoiceIds: [] }]);
 
-    expect(result.current.watchlist).toEqual(["inv-002"]);
+    // Should return the exact previous state array without modification
+    expect(nextState).toHaveLength(1);
+    expect(nextState[0].id).toBe('1');
   });
 
-  it("adds multiple IDs sequentially", () => {
+  it('should remove a watchlist by id', () => {
     const { result } = renderHook(() => useWatchlist());
 
     act(() => {
-      result.current.toggleWatch("inv-001");
-    });
-    act(() => {
-      result.current.toggleWatch("inv-002");
-    });
-    act(() => {
-      result.current.toggleWatch("inv-003");
+      result.current.removeWatchlist('1');
     });
 
-    expect(result.current.watchlist).toEqual(["inv-001", "inv-002", "inv-003"]);
+    const updateFn = mockSetWatchlists.mock.calls[0][0];
+    const prevState = [
+      { id: '1', name: 'To Remove', invoiceIds: [] },
+      { id: '2', name: 'Keep', invoiceIds: [] }
+    ];
+    const nextState = updateFn(prevState);
+
+    expect(nextState).toHaveLength(1);
+    expect(nextState[0].id).toBe('2');
   });
 
-  it("toggleWatch + isWatched stay in sync after multiple toggles", () => {
+  it('should toggle an invoice id in a watchlist', () => {
     const { result } = renderHook(() => useWatchlist());
 
     act(() => {
-      result.current.toggleWatch("inv-001");
+      result.current.toggleInvoice('1', 'inv_123');
     });
-    expect(result.current.isWatched("inv-001")).toBe(true);
 
-    act(() => {
-      result.current.toggleWatch("inv-001");
-    });
-    expect(result.current.isWatched("inv-001")).toBe(false);
+    const updateFn1 = mockSetWatchlists.mock.calls[0][0];
+    const prevState1 = [{ id: '1', name: 'Test', invoiceIds: [] }];
+    const nextState1 = updateFn1(prevState1);
 
-    act(() => {
-      result.current.toggleWatch("inv-001");
-    });
-    expect(result.current.isWatched("inv-001")).toBe(true);
+    // Added
+    expect(nextState1[0].invoiceIds).toContain('inv_123');
+
+    // Toggle again
+    const updateFn2 = mockSetWatchlists.mock.calls[0][0];
+    const nextState2 = updateFn2(nextState1);
+
+    // Removed
+    expect(nextState2[0].invoiceIds).not.toContain('inv_123');
   });
-});
 
-// ─── 3. Persistence ─────────────────────────────────────────────────────────
-
-describe("useWatchlist — persistence", () => {
-  it("persists the watchlist to localStorage after toggle", () => {
-    seedStorage([]);
+  it('should prune stale invoice ids', () => {
     const { result } = renderHook(() => useWatchlist());
 
     act(() => {
-      result.current.toggleWatch("inv-001");
+      result.current.pruneStaleInvoices(['inv_active']);
     });
 
-    expect(JSON.parse(window.localStorage.getItem(WATCHLIST_KEY) ?? "null")).toEqual(["inv-001"]);
-  });
+    const updateFn = mockSetWatchlists.mock.calls[0][0];
+    const prevState = [
+      { id: '1', name: 'Test', invoiceIds: ['inv_active', 'inv_stale'] }
+    ];
+    const nextState = updateFn(prevState);
 
-  it("persists removal from localStorage after toggle removes an ID", () => {
-    seedStorage(["inv-001", "inv-002"]);
-    const { result } = renderHook(() => useWatchlist());
-
-    act(() => {
-      result.current.toggleWatch("inv-001");
-    });
-
-    expect(JSON.parse(window.localStorage.getItem(WATCHLIST_KEY) ?? "null")).toEqual(["inv-002"]);
-  });
-
-  it("persisted value is stored in localStorage after toggleWatch", () => {
-    // Renders a fresh hook instance, toggles an ID, then confirms the
-    // value was written to localStorage.  Cross-instance adoption on
-    // re-mount depends on the underlying useLocalStorage hook (which
-    // tests that independently).
-    window.localStorage.clear();
-
-    const { result } = renderHook(() => useWatchlist());
-    act(() => {
-      result.current.toggleWatch("inv-005");
-    });
-
-    expect(JSON.parse(window.localStorage.getItem(WATCHLIST_KEY) ?? "null")).toEqual(["inv-005"]);
-  });
-
-  it("returns a default value and allows toggle when localStorage state is corrupted (non-array)", () => {
-    // When stored value is not a valid array (e.g. corrupted JSON), the
-    // hook must gracefully handle it by falling back to the default and
-    // allowing toggles to work.
-    window.localStorage.clear();
-    window.localStorage.setItem(WATCHLIST_KEY, JSON.stringify({ not: "an-array" }));
-
-    const { result } = renderHook(() => useWatchlist());
-
-    // The hook will eventually overwrite the corrupted value with a valid
-    // array when toggleWatch is called.
-    act(() => {
-      result.current.toggleWatch("inv-001");
-    });
-
-    expect(result.current.watchlist).toEqual(["inv-001"]);
-  });
-});
-
-// ─── 4. Pruning stale IDs ───────────────────────────────────────────────────
-
-describe("useWatchlist — pruneWatchlist", () => {
-  it("removes IDs that are not in the valid set", () => {
-    seedStorage(["inv-001", "inv-002", "inv-003"]);
-    const { result } = renderHook(() => useWatchlist());
-
-    act(() => {
-      result.current.pruneWatchlist(["inv-001", "inv-003"]);
-    });
-
-    expect(result.current.watchlist).toEqual(["inv-001", "inv-003"]);
-  });
-
-  it("keeps all IDs when all are valid", () => {
-    seedStorage(["inv-001", "inv-002"]);
-    const { result } = renderHook(() => useWatchlist());
-
-    act(() => {
-      result.current.pruneWatchlist(["inv-001", "inv-002", "inv-003"]);
-    });
-
-    expect(result.current.watchlist).toEqual(["inv-001", "inv-002"]);
-  });
-
-  it("clears the watchlist when validIds is empty", () => {
-    seedStorage(["inv-001", "inv-002"]);
-    const { result } = renderHook(() => useWatchlist());
-
-    act(() => {
-      result.current.pruneWatchlist([]);
-    });
-
-    expect(result.current.watchlist).toEqual([]);
-  });
-
-  it("is a no-op when the watchlist is already empty", () => {
-    seedStorage([]);
-    const { result } = renderHook(() => useWatchlist());
-
-    act(() => {
-      result.current.pruneWatchlist(["inv-001"]);
-    });
-
-    expect(result.current.watchlist).toEqual([]);
-  });
-
-  it("is a no-op when validIds is not an array", () => {
-    seedStorage(["inv-001"]);
-    const { result } = renderHook(() => useWatchlist());
-
-    act(() => {
-      result.current.pruneWatchlist(null as unknown as string[]);
-    });
-
-    expect(result.current.watchlist).toEqual(["inv-001"]);
-  });
-
-  it("pruneWatchlist keeps the watchlist unchanged when all IDs are valid", () => {
-    seedStorage(["inv-001", "inv-002"]);
-
-    const { result } = renderHook(() => useWatchlist());
-
-    act(() => {
-      result.current.pruneWatchlist(["inv-001", "inv-002", "inv-003"]);
-    });
-
-    // All current IDs are in the valid set — the watchlist stays intact.
-    expect(result.current.watchlist).toEqual(["inv-001", "inv-002"]);
-  });
-
-  it("prunes stale IDs after a new valid set is provided", () => {
-    seedStorage(["inv-001", "inv-002", "inv-003"]);
-    const { result } = renderHook(() => useWatchlist());
-
-    act(() => {
-      result.current.pruneWatchlist(["inv-003"]);
-    });
-
-    expect(result.current.watchlist).toEqual(["inv-003"]);
-  });
-});
-
-// ─── 5. isWatched ────────────────────────────────────────────────────────────
-
-describe("useWatchlist — isWatched", () => {
-  it("returns true for an ID that is in the watchlist", () => {
-    seedStorage(["inv-001"]);
-    const { result } = renderHook(() => useWatchlist());
-
-    expect(result.current.isWatched("inv-001")).toBe(true);
-    expect(result.current.isWatched("inv-002")).toBe(false);
-  });
-
-  it("returns false for undefined input", () => {
-    seedStorage(["inv-001"]);
-    const { result } = renderHook(() => useWatchlist());
-
-    expect(result.current.isWatched(undefined as unknown as string)).toBe(false);
-  });
-
-  it("returns false for null input", () => {
-    seedStorage(["inv-001"]);
-    const { result } = renderHook(() => useWatchlist());
-
-    expect(result.current.isWatched(null as unknown as string)).toBe(false);
-  });
-});
-
-// ─── 6. Returned object stability ──────────────────────────────────────────
-
-describe("useWatchlist — reference stability", () => {
-  it("returns the same toggleWatch function across renders", () => {
-    seedStorage([]);
-    const { result, rerender } = renderHook(() => useWatchlist());
-    const firstToggle = result.current.toggleWatch;
-
-    rerender();
-
-    expect(result.current.toggleWatch).toBe(firstToggle);
-  });
-
-  it("returns the same pruneWatchlist function across renders", () => {
-    seedStorage([]);
-    const { result, rerender } = renderHook(() => useWatchlist());
-    const firstPrune = result.current.pruneWatchlist;
-
-    rerender();
-
-    expect(result.current.pruneWatchlist).toBe(firstPrune);
+    expect(nextState[0].invoiceIds).toEqual(['inv_active']);
   });
 });

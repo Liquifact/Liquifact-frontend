@@ -101,10 +101,10 @@ describe("WalletStatus live region", () => {
 // the correct aria-busy / loading-spinner presence.
 //
 // Variant → Tailwind class mapping (from Button.jsx variantStyles):
-//   primary   → bg-cyan-500
-//   secondary → bg-slate-800 (border-slate-600)
-//   warning   → bg-amber-500
-//   external  → bg-violet-500
+//   primary   → bg-cyan-500/20
+//   secondary → border-slate-600 (border)
+//   warning   → bg-amber-500/20
+//   external  → bg-violet-500/20
 // ---------------------------------------------------------------------------
 
 describe("WalletStatus Button variant + loading — per WALLET_STATE", () => {
@@ -128,7 +128,7 @@ describe("WalletStatus Button variant + loading — per WALLET_STATE", () => {
     });
 
     it("uses the primary variant (cyan background class)", () => {
-      expect(getWalletButton()).toHaveClass("bg-cyan-500");
+      expect(getWalletButton()).toHaveClass("bg-cyan-500/20");
     });
 
     it("is not in loading state (no Spinner, aria-busy false)", () => {
@@ -152,7 +152,7 @@ describe("WalletStatus Button variant + loading — per WALLET_STATE", () => {
 
     it("uses the primary variant (cyan background class)", () => {
       // CONNECTING keeps primary variant; loading=true conveys the spinner state
-      expect(getWalletButton()).toHaveClass("bg-cyan-500");
+      expect(getWalletButton()).toHaveClass("bg-cyan-500/20");
     });
 
     it("is in loading state (aria-busy true)", () => {
@@ -205,7 +205,7 @@ describe("WalletStatus Button variant + loading — per WALLET_STATE", () => {
     });
 
     it("uses the primary variant (cyan background class)", () => {
-      expect(getWalletButton()).toHaveClass("bg-cyan-500");
+      expect(getWalletButton()).toHaveClass("bg-cyan-500/20");
     });
 
     it("is not in loading state", () => {
@@ -230,7 +230,7 @@ describe("WalletStatus Button variant + loading — per WALLET_STATE", () => {
     });
 
     it("uses the warning variant (amber background class)", () => {
-      expect(getWalletButton()).toHaveClass("bg-amber-500");
+      expect(getWalletButton()).toHaveClass("bg-amber-500/20");
     });
 
     it("is not in loading state", () => {
@@ -246,12 +246,12 @@ describe("WalletStatus Button variant + loading — per WALLET_STATE", () => {
   describe("NO_WALLET", () => {
     beforeEach(() => renderWithState(WALLET_STATES.NO_WALLET));
 
-    it('renders the "Install Wallet" button', () => {
-      expect(getWalletButton()).toHaveAccessibleName(/install wallet/i);
+    it('renders the "Install Stellar Wallet" button', () => {
+      expect(getWalletButton()).toHaveAccessibleName(/install (stellar )?wallet/i);
     });
 
     it("uses the external variant (violet background class)", () => {
-      expect(getWalletButton()).toHaveClass("bg-violet-500");
+      expect(getWalletButton()).toHaveClass("bg-violet-500/20");
     });
 
     it("is not in loading state", () => {

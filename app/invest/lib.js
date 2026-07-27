@@ -49,7 +49,6 @@ export const MOCK_INVOICES = [
 ];
 
 // DEV-only delay (ms) to make the skeleton visible during local development.
-// eslint-disable-next-line no-restricted-syntax -- NODE_ENV is a standard Node.js built-in, not a NEXT_PUBLIC_ var that belongs in the typed loader
 const DEV_DELAY = process.env.NODE_ENV === "development" ? 1500 : 0;
 
 export function loadMockInvoices() {

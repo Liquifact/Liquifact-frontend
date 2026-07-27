@@ -211,19 +211,19 @@ describe("createSearchShortcutHandler", () => {
 describe("InvoiceSearch placeholder", () => {
   it("uses the default placeholder with shortcut hint", () => {
     renderSearch();
-    expect(screen.getByRole("searchbox")).toHaveAttribute("placeholder", DEFAULT_PLACEHOLDER);
+    expect(screen.getByRole("textbox")).toHaveAttribute("placeholder", DEFAULT_PLACEHOLDER);
   });
 
   it("respects a custom placeholder prop", () => {
     renderSearch({ placeholder: "Find issuer" });
-    expect(screen.getByRole("searchbox")).toHaveAttribute("placeholder", "Find issuer");
+    expect(screen.getByRole("textbox")).toHaveAttribute("placeholder", "Find issuer");
   });
 });
 
 describe.skip("InvoiceSearch global shortcut (behavior not yet exercised in this suite)", () => {
   it("focuses the search input when / is pressed from the document body", () => {
     renderSearch();
-    const searchInput = screen.getByRole("searchbox");
+    const searchInput = screen.getByRole("textbox");
 
     document.body.focus();
     fireEvent.keyDown(window, { key: SEARCH_SHORTCUT_KEY });
@@ -234,7 +234,7 @@ describe.skip("InvoiceSearch global shortcut (behavior not yet exercised in this
   it("does not intercept / when the search input is already focused", async () => {
     const user = userEvent.setup();
     const { onChange } = renderSearch();
-    const searchInput = screen.getByRole("searchbox");
+    const searchInput = screen.getByRole("textbox");
 
     await user.click(searchInput);
     await user.keyboard("/");
@@ -244,7 +244,7 @@ describe.skip("InvoiceSearch global shortcut (behavior not yet exercised in this
 
   it("does not focus search when another input is active", () => {
     renderSearch();
-    const searchInput = screen.getByRole("searchbox");
+    const searchInput = screen.getByRole("textbox");
     const otherInput = document.createElement("input");
     document.body.appendChild(otherInput);
     otherInput.focus();
@@ -259,7 +259,7 @@ describe.skip("InvoiceSearch global shortcut (behavior not yet exercised in this
 
   it("does not focus search when a textarea is active", () => {
     renderSearch();
-    const searchInput = screen.getByRole("searchbox");
+    const searchInput = screen.getByRole("textbox");
     const textarea = document.createElement("textarea");
     document.body.appendChild(textarea);
     textarea.focus();
@@ -274,7 +274,7 @@ describe.skip("InvoiceSearch global shortcut (behavior not yet exercised in this
 
   it("does not focus search when a contenteditable element is active", () => {
     renderSearch();
-    const searchInput = screen.getByRole("searchbox");
+    const searchInput = screen.getByRole("textbox");
     const editable = document.createElement("div");
     editable.setAttribute("contenteditable", "true");
     Object.defineProperty(editable, "isContentEditable", { value: true });
@@ -290,7 +290,7 @@ describe.skip("InvoiceSearch global shortcut (behavior not yet exercised in this
 
   it("removes the keydown listener on unmount", () => {
     const { unmount } = renderSearch();
-    const searchInput = screen.getByRole("searchbox");
+    const searchInput = screen.getByRole("textbox");
 
     unmount();
 

@@ -1,4 +1,10 @@
-import robots from "./robots";
+if (typeof global.Request === "undefined") {
+  (global as any).Request = class Request {};
+  (global as any).Response = class Response {};
+  (global as any).Headers = class Headers {};
+}
+
+const robots = require("./robots").default;
 
 describe("Robots Route", () => {
   it("returns proper robots meta", () => {

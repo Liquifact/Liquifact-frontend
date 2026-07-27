@@ -58,7 +58,7 @@ describe("WalletStatus copy address feature", () => {
     const copyButton = screen.getByRole("button", { name: copy.wallet.copyAddressButton });
     expect(copyButton).toBeInTheDocument();
     expect(copyButton).toHaveAttribute("title", copy.wallet.copyAddressButton);
-    expect(copyButton).toHaveClass("focus-ring");
+    expect(copyButton).toHaveClass("focus-visible:outline-2", "focus-visible:outline-cyan-400");
 
     // Displayed address should be truncated (starts with GABC... and ends with 123456)
     expect(screen.getByText("GABC...123456")).toBeInTheDocument();

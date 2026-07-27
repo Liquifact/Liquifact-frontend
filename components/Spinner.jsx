@@ -1,19 +1,9 @@
-"use client";
-
 /**
- * Spinner — shared loading indicator component.
+ * Spinner — shared loading indicator.
  *
- * Renders an accessible animated SVG spinner.  `aria-hidden="true"` ensures
- * screen readers rely on the parent button's `aria-busy` attribute instead
- * of announcing the spinner graphic directly.
- *
- * Replaces inline SVG spinners previously defined in:
- *   - components/WalletStatus.jsx
- *   - components/UploadZone.jsx
- *
- * @param {Object}  props
- * @param {string}  [props.className="h-4 w-4"] — Tailwind sizing classes.
- * @param {Object}  [props...] — Additional attributes forwarded to the `<svg>` element.
+ * Replaces inline SVG spinners in WalletStatus and UploadZone.
+ * Renders an accessible animated SVG with aria-hidden so screen
+ * readers rely on the parent button's aria-busy state instead.
  */
 export default function Spinner({ className = "h-4 w-4", ...props }) {
   return (

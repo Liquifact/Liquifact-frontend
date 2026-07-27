@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRef, useState, useEffect } from "react";
 import NavMenu from "../components/NavMenu";
-import Button from "../components/Button";
 import { copy } from "./copy/en";
 import { getHealth } from "../lib/api/health";
 import { env } from "../lib/config/env";
@@ -104,15 +103,15 @@ export default function Home() {
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-6">
           <p className="text-sm font-medium text-slate-400 mb-2">{copy.home.apiStatus}</p>
-          <Button
-            variant="primary"
+          <button
+            type="button"
             onClick={checkApi}
             disabled={loading}
-            loading={loading}
             aria-label={copy.home.checkApiHealth}
+            className="rounded-lg cursor-pointer bg-slate-800 px-4 py-3 text-sm font-medium hover:bg-slate-700 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
           >
             {loading ? copy.home.checking : copy.home.checkApiHealth}
-          </Button>
+          </button>
 
           {!loading && health && (
             <div className="mt-4">

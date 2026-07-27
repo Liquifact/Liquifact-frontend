@@ -1,6 +1,4 @@
-import { env } from "../lib/config/env";
-
-const baseUrl = env.siteUrl;
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export default function robots() {
   return {

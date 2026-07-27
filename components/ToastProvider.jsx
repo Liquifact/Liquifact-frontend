@@ -2,7 +2,6 @@
 
 import {
   createContext,
-  memo,
   useCallback,
   useContext,
   useEffect,
@@ -10,6 +9,8 @@ import {
   useRef,
   useState,
 } from "react";
+import ToastErrorBoundary from "./toast/ToastErrorBoundary";
+import { ToastStack } from "./toast/ToastStack";
 
 const ToastContext = createContext(null);
 export { ToastContext };
@@ -69,106 +70,6 @@ function restoreFocusTo(el) {
     }
   });
 }
-
-const ToastRow = memo(function ToastRow({
-  toast,
-  variant,
-  pauseToast,
-  resumeToast,
-  dismissAndReturnFocus,
-  containerRef,
-  preDismissFocusRef,
-}) {
-  return (
-    <div
-      key={toast.id}
-      tabIndex={0}
-      onMouseEnter={() => pauseToast(toast.id)}
-      onMouseLeave={() => resumeToast(toast.id)}
-      onFocus={(e) => {
-        if (!containerRef.current?.contains(e.relatedTarget)) {
-          preDismissFocusRef.current = e.relatedTarget;
-        }
-        pauseToast(toast.id);
-      }}
-      onBlur={(e) => {
-        if (!containerRef.current?.contains(e.relatedTarget)) {
-          resumeToast(toast.id);
-        }
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") {
-          e.preventDefault();
-          dismissAndReturnFocus(toast.id);
-        }
-      }}
-      className={`pointer-events-auto overflow-hidden rounded-3xl border p-4 shadow-2xl shadow-slate-950/30 transition duration-200 ${variant.base}`}
-    >
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 text-xl" aria-hidden="true">
-          {variant.icon}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-slate-100">{toast.title}</p>
-          <p className="mt-1 text-sm leading-6 text-slate-300">{toast.message}</p>
-        </div>
-        <button
-          type="button"
-          className="rounded-full border border-slate-700/80 bg-slate-950/70 px-2.5 py-1 text-xs font-semibold text-slate-100 outline-none transition duration-150 hover:bg-slate-900 focus-visible:ring-2 focus-visible:ring-cyan-400"
-          aria-label="Dismiss notification"
-          onClick={() => dismissAndReturnFocus(toast.id)}
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  );
-});
-
-export const ToastViewport = memo(function ToastViewport({
-  toasts,
-  pauseToast,
-  resumeToast,
-  dismissAndReturnFocus,
-  containerRef,
-  preDismissFocusRef,
-}) {
-  const memoizedRows = useMemo(
-    () =>
-      toasts.map((toast) => {
-        const variant = VARIANT_STYLES[toast.variant] || VARIANT_STYLES.info;
-        return {
-          toast,
-          variant,
-        };
-      }),
-    [toasts]
-  );
-
-  return (
-    <div
-      aria-live="polite"
-      role="status"
-      ref={containerRef}
-      className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4 sm:justify-end sm:px-6"
-    >
-      <div className="flex w-full max-w-md flex-col gap-3">
-        {memoizedRows.map(({ toast, variant }) => (
-          <ToastRow
-            key={toast.id}
-            toast={toast}
-            variant={variant}
-            pauseToast={pauseToast}
-            resumeToast={resumeToast}
-            dismissAndReturnFocus={dismissAndReturnFocus}
-            containerRef={containerRef}
-            preDismissFocusRef={preDismissFocusRef}
-          />
-        ))}
-      </div>
-    </div>
-  );
-});
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
@@ -353,14 +254,19 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={value}>
       {children}
 
-      <ToastViewport
-        toasts={toasts}
-        pauseToast={pauseToast}
-        resumeToast={resumeToast}
-        dismissAndReturnFocus={dismissAndReturnFocus}
-        containerRef={containerRef}
-        preDismissFocusRef={preDismissFocusRef}
-      />
+      <ToastErrorBoundary>
+        <ToastStack
+          toasts={toasts}
+          variantStyles={VARIANT_STYLES}
+          containerRef={containerRef}
+          pauseToast={pauseToast}
+          resumeToast={resumeToast}
+          dismissAndReturnFocus={dismissAndReturnFocus}
+          recordPreDismissFocus={(el) => {
+            preDismissFocusRef.current = el;
+          }}
+        />
+      </ToastErrorBoundary>
     </ToastContext.Provider>
   );
 }

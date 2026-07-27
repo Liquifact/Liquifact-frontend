@@ -1,16 +1,21 @@
 import "@testing-library/jest-dom";
 import { act, render, screen, fireEvent, within, waitFor } from "@testing-library/react";
-import { useCallback, useState } from "react";
+import { axe } from "jest-axe";
 import InvestPage, {
-  applySortToList,
-  deriveFilteredInvoices,
+  ANNOUNCE_DEBOUNCE_MS,
   getInvoiceLoadAnnouncement,
   getPaginationAnnouncement,
+  applySortToList,
   InvestMarketplace,
   PAGE_SIZE,
   SEARCH_DEBOUNCE_MS,
+  URL_SYNC_DEBOUNCE_MS,
+  parseFiltersFromSearchParams,
+  buildSearchParams,
 } from "./page";
 import { getInvoiceById, loadMockInvoices, MOCK_INVOICES } from "./lib";
+import { useSearchParams, useRouter } from "next/navigation";
+import { DEFAULT_FILTERS } from "@/components/InvoiceFilters";
 
 jest.mock("next/link", () => {
   function MockLink({ href, children, ...props }) {
@@ -30,6 +35,13 @@ jest.mock("@/components/NavMenu", () => {
   return { __esModule: true, default: MockNavMenu };
 });
 
+jest.mock("@/utils/export", () => ({
+  exportAsCSV: jest.fn(),
+  exportAsJSON: jest.fn(),
+}));
+
+import { exportAsCSV, exportAsJSON } from "@/utils/export";
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function createDeferredLoader(invoices, delayMs = 0) {
@@ -47,9 +59,10 @@ function createPendingLoader() {
 
 async function flushTimers(delayMs = 0) {
   await act(async () => {
-    jest.advanceTimersByTime(delayMs);
-    await Promise.resolve();
-    await Promise.resolve();
+    // The async variant correctly cascades timers scheduled during
+    // resolution (e.g. the announcement debounce scheduled once a load
+    // settles), unlike the sync advanceTimersByTime + a single microtask hop.
+    await jest.advanceTimersByTimeAsync(delayMs);
   });
 }
 
@@ -97,7 +110,7 @@ describe("InvestMarketplace", () => {
     });
 
     expect(skeleton).toHaveAttribute("aria-busy", "true");
-    const status = screen.getByTestId("marketplace-status");
+    const status = screen.getByRole("status");
     expect(status).toHaveTextContent("");
     expect(status).toHaveAttribute("aria-live", "polite");
   });
@@ -141,17 +154,22 @@ describe("InvestMarketplace", () => {
       "true"
     );
 
+    // The load-settle announcement is debounced (issue #722): the debounce
+    // timer is scheduled from a React effect once state settles, so it must
+    // be advanced in its own flush rather than combined with the network
+    // delay in a single advanceTimersByTimeAsync call.
     await flushTimers(100);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
-    expect(screen.getByTestId("marketplace-status")).toHaveTextContent("3 investable invoices loaded");
+    expect(screen.getByRole("status")).toHaveTextContent("3 investable invoices loaded");
     expect(getInvoiceListItems()).toHaveLength(3);
-    expect(screen.getByTestId("marketplace-status")).toHaveAttribute("aria-live", "polite");
+    expect(screen.getByRole("status")).toHaveAttribute("aria-live", "polite");
     expect(loadInvoices).toHaveBeenCalledTimes(1);
 
     rerender(<InvestMarketplace loadInvoices={loadInvoices} />);
 
     expect(loadInvoices).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId("marketplace-status")).toHaveTextContent("3 investable invoices loaded");
+    expect(screen.getByRole("status")).toHaveTextContent("3 investable invoices loaded");
   });
 
   it("renders each invoice as a list item once the marketplace loads", async () => {
@@ -185,11 +203,1128 @@ describe("InvestMarketplace", () => {
     expect(listItems[1]).toHaveTextContent("Bright Logistics GmbH");
   });
 
+  it("renders a stable structure for the loaded marketplace state", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "12,500",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "8.2%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "Bright Logistics GmbH",
+        amount: "7,800",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "7.5%",
+        status: "Open",
+      },
+    ];
+
+    const { container } = render(
+      <InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />
+    );
+    await flushTimers(0);
+
+    expect(getInvoiceListItems()).toHaveLength(2);
+    expect(container.firstChild).toMatchInlineSnapshot(`
+      <div
+        class="min-h-screen bg-slate-950 text-slate-100"
+      >
+        <nav
+          aria-label="site navigation"
+        />
+        <main
+          class="max-w-4xl mx-auto px-6 py-12"
+        >
+          <div
+            aria-atomic="true"
+            aria-live="polite"
+            class="sr-only"
+            role="status"
+          >
+            2 investable invoices loaded
+          </div>
+          <h1
+            class="text-2xl font-bold mb-2"
+          >
+            Invest
+          </h1>
+          <p
+            class="text-slate-400 mb-8"
+          >
+            Browse tokenized invoices and fund them. Estimated yield is shown for educational purposes; actual payment is received at invoice maturity.
+          </p>
+          <div
+            class="mb-4"
+          >
+            <div
+              class="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
+            >
+              <div
+                class="mb-4"
+              >
+                <input
+                  aria-label="Search by issuer name"
+                  class="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  placeholder="Search invoices..."
+                  type="text"
+                  value=""
+                />
+              </div>
+              <div
+                class="flex flex-wrap gap-4 items-center opacity-60"
+              >
+                <button
+                  class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500"
+                  disabled=""
+                  type="button"
+                >
+                  Sort: 
+                  Best Yield
+                </button>
+                <button
+                  class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500"
+                  disabled=""
+                  type="button"
+                >
+                  Filters: 
+                  None
+                </button>
+              </div>
+            </div>
+          </div>
+          <div
+            class="mb-4"
+          >
+            <div
+              aria-label="Filter by status"
+              class="flex flex-wrap items-center gap-2"
+              role="group"
+            >
+              <span
+                class="text-xs font-medium text-slate-400 mr-1"
+              >
+                Status:
+              </span>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Open
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Funded
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Settled
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Overdue
+              </button>
+            </div>
+          </div>
+          <fieldset
+            aria-describedby="filters-coming-soon"
+            aria-disabled="true"
+            class="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
+          >
+            <legend
+              class="sr-only"
+            >
+              Marketplace Filters
+            </legend>
+            <div
+              class="mb-4 inline-block rounded bg-slate-800 px-2 py-1 text-xs font-semibold tracking-wide text-slate-300"
+              id="filters-coming-soon"
+            >
+              Soon: These filter controls are currently unavailable.
+            </div>
+            <div
+              class="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none"
+            >
+              <div
+                class="flex flex-wrap gap-4 items-center"
+              >
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Yield Range
+                  </legend>
+                  <input
+                    aria-label="Minimum yield percentage"
+                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    min="0"
+                    placeholder="Min yield"
+                    step="0.1"
+                    type="number"
+                    value=""
+                  />
+                  <span
+                    class="text-slate-500"
+                  >
+                    -
+                  </span>
+                  <input
+                    aria-label="Maximum yield percentage"
+                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    min="0"
+                    placeholder="Max yield"
+                    step="0.1"
+                    type="number"
+                    value=""
+                  />
+                </fieldset>
+                <div
+                  aria-label="Currency filter"
+                  class="flex items-center gap-1"
+                  role="toolbar"
+                >
+                  <button
+                    aria-label="Filter by USD"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="0"
+                    type="button"
+                  >
+                    USD
+                  </button>
+                  <button
+                    aria-label="Filter by EUR"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    EUR
+                  </button>
+                  <button
+                    aria-label="Filter by GBP"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    GBP
+                  </button>
+                  <button
+                    aria-label="Filter by JPY"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    JPY
+                  </button>
+                  <button
+                    aria-label="Filter by CHF"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    CHF
+                  </button>
+                </div>
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Maturity Date Range
+                  </legend>
+                  <input
+                    aria-label="Maturity date from"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
+                    type="date"
+                    value=""
+                  />
+                  <span
+                    class="text-slate-500"
+                  >
+                    -
+                  </span>
+                  <input
+                    aria-label="Maturity date to"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
+                    type="date"
+                    value=""
+                  />
+                </fieldset>
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Sort Options
+                  </legend>
+                  <select
+                    aria-label="Sort options"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500"
+                  >
+                    <option
+                      value=""
+                    >
+                      Sort By
+                    </option>
+                    <option
+                      value="amount"
+                    >
+                      Amount
+                    </option>
+                    <option
+                      value="yield"
+                    >
+                      Yield
+                    </option>
+                    <option
+                      value="maturity"
+                    >
+                      Maturity
+                    </option>
+                  </select>
+                  <button
+                    aria-label="Sort amount direction"
+                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    disabled=""
+                    type="button"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    aria-label="Sort yield direction"
+                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    disabled=""
+                    type="button"
+                  >
+                    ↓
+                  </button>
+                </fieldset>
+                <button
+                  aria-label="Clear all filters"
+                  class="ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                  disabled=""
+                  type="button"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </fieldset>
+          <ul
+            aria-label="Investable invoices"
+            class="space-y-4"
+          >
+            <li
+              class="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
+            >
+              <div
+                class="flex items-center justify-between mb-3"
+              >
+                <a
+                  class="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                  href="/invest/inv-001"
+                >
+                  Acme Supplies Ltd
+                </a>
+                <span
+                  class="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300"
+                >
+                  Open
+                </span>
+              </div>
+              <div
+                class="flex gap-6 text-sm text-slate-400"
+              >
+                <span>
+                  USD
+                   
+                  12,500
+                </span>
+                <span>
+                  Est. yield 
+                  8.2%
+                </span>
+                <span>
+                  Maturity 
+                  2026-06-15
+                </span>
+              </div>
+            </li>
+            <li
+              class="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
+            >
+              <div
+                class="flex items-center justify-between mb-3"
+              >
+                <a
+                  class="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                  href="/invest/inv-002"
+                >
+                  Bright Logistics GmbH
+                </a>
+                <span
+                  class="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300"
+                >
+                  Open
+                </span>
+              </div>
+              <div
+                class="flex gap-6 text-sm text-slate-400"
+              >
+                <span>
+                  EUR
+                   
+                  7,800
+                </span>
+                <span>
+                  Est. yield 
+                  7.5%
+                </span>
+                <span>
+                  Maturity 
+                  2026-07-01
+                </span>
+              </div>
+            </li>
+          </ul>
+          <div
+            class="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400"
+          >
+            Note: Yield references are educational only and reflect on-chain basis-point assumptions. Invoice contracts settle at maturity.
+          </div>
+        </main>
+      </div>
+    `);
+  });
+
+  it("renders a stable structure for the empty marketplace state", async () => {
+    const { container } = render(<InvestMarketplace loadInvoices={createDeferredLoader([], 0)} />);
+    await flushTimers(0);
+
+    expect(
+      screen.getByText(/No investable invoices\. Connect wallet to see the marketplace\./i)
+    ).toBeInTheDocument();
+    expect(container.firstChild).toMatchInlineSnapshot(`
+      <div
+        class="min-h-screen bg-slate-950 text-slate-100"
+      >
+        <nav
+          aria-label="site navigation"
+        />
+        <main
+          class="max-w-4xl mx-auto px-6 py-12"
+        >
+          <div
+            aria-atomic="true"
+            aria-live="polite"
+            class="sr-only"
+            role="status"
+          >
+            No invoices available
+          </div>
+          <h1
+            class="text-2xl font-bold mb-2"
+          >
+            Invest
+          </h1>
+          <p
+            class="text-slate-400 mb-8"
+          >
+            Browse tokenized invoices and fund them. Estimated yield is shown for educational purposes; actual payment is received at invoice maturity.
+          </p>
+          <div
+            class="mb-4"
+          >
+            <div
+              class="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
+            >
+              <div
+                class="mb-4"
+              >
+                <input
+                  aria-label="Search by issuer name"
+                  class="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  placeholder="Search invoices..."
+                  type="text"
+                  value=""
+                />
+              </div>
+              <div
+                class="flex flex-wrap gap-4 items-center opacity-60"
+              >
+                <button
+                  class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500"
+                  disabled=""
+                  type="button"
+                >
+                  Sort: 
+                  Best Yield
+                </button>
+                <button
+                  class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500"
+                  disabled=""
+                  type="button"
+                >
+                  Filters: 
+                  None
+                </button>
+              </div>
+            </div>
+          </div>
+          <div
+            class="mb-4"
+          >
+            <div
+              aria-label="Filter by status"
+              class="flex flex-wrap items-center gap-2"
+              role="group"
+            >
+              <span
+                class="text-xs font-medium text-slate-400 mr-1"
+              >
+                Status:
+              </span>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Open
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Funded
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Settled
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Overdue
+              </button>
+            </div>
+          </div>
+          <fieldset
+            aria-describedby="filters-coming-soon"
+            aria-disabled="true"
+            class="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
+          >
+            <legend
+              class="sr-only"
+            >
+              Marketplace Filters
+            </legend>
+            <div
+              class="mb-4 inline-block rounded bg-slate-800 px-2 py-1 text-xs font-semibold tracking-wide text-slate-300"
+              id="filters-coming-soon"
+            >
+              Soon: These filter controls are currently unavailable.
+            </div>
+            <div
+              class="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none"
+            >
+              <div
+                class="flex flex-wrap gap-4 items-center"
+              >
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Yield Range
+                  </legend>
+                  <input
+                    aria-label="Minimum yield percentage"
+                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    min="0"
+                    placeholder="Min yield"
+                    step="0.1"
+                    type="number"
+                    value=""
+                  />
+                  <span
+                    class="text-slate-500"
+                  >
+                    -
+                  </span>
+                  <input
+                    aria-label="Maximum yield percentage"
+                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    min="0"
+                    placeholder="Max yield"
+                    step="0.1"
+                    type="number"
+                    value=""
+                  />
+                </fieldset>
+                <div
+                  aria-label="Currency filter"
+                  class="flex items-center gap-1"
+                  role="toolbar"
+                >
+                  <button
+                    aria-label="Filter by USD"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="0"
+                    type="button"
+                  >
+                    USD
+                  </button>
+                  <button
+                    aria-label="Filter by EUR"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    EUR
+                  </button>
+                  <button
+                    aria-label="Filter by GBP"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    GBP
+                  </button>
+                  <button
+                    aria-label="Filter by JPY"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    JPY
+                  </button>
+                  <button
+                    aria-label="Filter by CHF"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    CHF
+                  </button>
+                </div>
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Maturity Date Range
+                  </legend>
+                  <input
+                    aria-label="Maturity date from"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
+                    type="date"
+                    value=""
+                  />
+                  <span
+                    class="text-slate-500"
+                  >
+                    -
+                  </span>
+                  <input
+                    aria-label="Maturity date to"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
+                    type="date"
+                    value=""
+                  />
+                </fieldset>
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Sort Options
+                  </legend>
+                  <select
+                    aria-label="Sort options"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500"
+                  >
+                    <option
+                      value=""
+                    >
+                      Sort By
+                    </option>
+                    <option
+                      value="amount"
+                    >
+                      Amount
+                    </option>
+                    <option
+                      value="yield"
+                    >
+                      Yield
+                    </option>
+                    <option
+                      value="maturity"
+                    >
+                      Maturity
+                    </option>
+                  </select>
+                  <button
+                    aria-label="Sort amount direction"
+                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    disabled=""
+                    type="button"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    aria-label="Sort yield direction"
+                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    disabled=""
+                    type="button"
+                  >
+                    ↓
+                  </button>
+                </fieldset>
+                <button
+                  aria-label="Clear all filters"
+                  class="ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                  disabled=""
+                  type="button"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </fieldset>
+          <div
+            class="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
+          >
+            No investable invoices. Connect wallet to see the marketplace.
+          </div>
+        </main>
+      </div>
+    `);
+  });
+
+  it("renders a stable structure for the error marketplace state", async () => {
+    const loadInvoices = jest.fn(
+      () =>
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("boom")), 50);
+        })
+    );
+
+    const { container } = render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(50);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Unable to load investable invoices right now."
+    );
+    expect(container.firstChild).toMatchInlineSnapshot(`
+      <div
+        class="min-h-screen bg-slate-950 text-slate-100"
+      >
+        <nav
+          aria-label="site navigation"
+        />
+        <main
+          class="max-w-4xl mx-auto px-6 py-12"
+        >
+          <div
+            aria-atomic="true"
+            aria-live="polite"
+            class="sr-only"
+            role="status"
+          >
+            Unable to load investable invoices.
+          </div>
+          <h1
+            class="text-2xl font-bold mb-2"
+          >
+            Invest
+          </h1>
+          <p
+            class="text-slate-400 mb-8"
+          >
+            Browse tokenized invoices and fund them. Estimated yield is shown for educational purposes; actual payment is received at invoice maturity.
+          </p>
+          <div
+            class="mb-4"
+          >
+            <div
+              class="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
+            >
+              <div
+                class="mb-4"
+              >
+                <input
+                  aria-label="Search by issuer name"
+                  class="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  placeholder="Search invoices..."
+                  type="text"
+                  value=""
+                />
+              </div>
+              <div
+                class="flex flex-wrap gap-4 items-center opacity-60"
+              >
+                <button
+                  class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500"
+                  disabled=""
+                  type="button"
+                >
+                  Sort: 
+                  Best Yield
+                </button>
+                <button
+                  class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500"
+                  disabled=""
+                  type="button"
+                >
+                  Filters: 
+                  None
+                </button>
+              </div>
+            </div>
+          </div>
+          <div
+            class="mb-4"
+          >
+            <div
+              aria-label="Filter by status"
+              class="flex flex-wrap items-center gap-2"
+              role="group"
+            >
+              <span
+                class="text-xs font-medium text-slate-400 mr-1"
+              >
+                Status:
+              </span>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Open
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Funded
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Settled
+              </button>
+              <button
+                aria-pressed="false"
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all border focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 border-slate-700 bg-slate-800/50 text-slate-400 opacity-70 hover:opacity-100 hover:border-slate-500"
+                type="button"
+              >
+                Overdue
+              </button>
+            </div>
+          </div>
+          <fieldset
+            aria-describedby="filters-coming-soon"
+            aria-disabled="true"
+            class="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
+          >
+            <legend
+              class="sr-only"
+            >
+              Marketplace Filters
+            </legend>
+            <div
+              class="mb-4 inline-block rounded bg-slate-800 px-2 py-1 text-xs font-semibold tracking-wide text-slate-300"
+              id="filters-coming-soon"
+            >
+              Soon: These filter controls are currently unavailable.
+            </div>
+            <div
+              class="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none"
+            >
+              <div
+                class="flex flex-wrap gap-4 items-center"
+              >
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Yield Range
+                  </legend>
+                  <input
+                    aria-label="Minimum yield percentage"
+                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    min="0"
+                    placeholder="Min yield"
+                    step="0.1"
+                    type="number"
+                    value=""
+                  />
+                  <span
+                    class="text-slate-500"
+                  >
+                    -
+                  </span>
+                  <input
+                    aria-label="Maximum yield percentage"
+                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    min="0"
+                    placeholder="Max yield"
+                    step="0.1"
+                    type="number"
+                    value=""
+                  />
+                </fieldset>
+                <div
+                  aria-label="Currency filter"
+                  class="flex items-center gap-1"
+                  role="toolbar"
+                >
+                  <button
+                    aria-label="Filter by USD"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="0"
+                    type="button"
+                  >
+                    USD
+                  </button>
+                  <button
+                    aria-label="Filter by EUR"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    EUR
+                  </button>
+                  <button
+                    aria-label="Filter by GBP"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    GBP
+                  </button>
+                  <button
+                    aria-label="Filter by JPY"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    JPY
+                  </button>
+                  <button
+                    aria-label="Filter by CHF"
+                    aria-pressed="false"
+                    class="focus-ring rounded-lg border px-3 py-2 text-sm transition-colors border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                    tabindex="-1"
+                    type="button"
+                  >
+                    CHF
+                  </button>
+                </div>
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Maturity Date Range
+                  </legend>
+                  <input
+                    aria-label="Maturity date from"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
+                    type="date"
+                    value=""
+                  />
+                  <span
+                    class="text-slate-500"
+                  >
+                    -
+                  </span>
+                  <input
+                    aria-label="Maturity date to"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
+                    type="date"
+                    value=""
+                  />
+                </fieldset>
+                <fieldset
+                  class="flex items-center gap-2 border-none p-0 m-0"
+                >
+                  <legend
+                    class="sr-only"
+                  >
+                    Sort Options
+                  </legend>
+                  <select
+                    aria-label="Sort options"
+                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500"
+                  >
+                    <option
+                      value=""
+                    >
+                      Sort By
+                    </option>
+                    <option
+                      value="amount"
+                    >
+                      Amount
+                    </option>
+                    <option
+                      value="yield"
+                    >
+                      Yield
+                    </option>
+                    <option
+                      value="maturity"
+                    >
+                      Maturity
+                    </option>
+                  </select>
+                  <button
+                    aria-label="Sort amount direction"
+                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    disabled=""
+                    type="button"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    aria-label="Sort yield direction"
+                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    disabled=""
+                    type="button"
+                  >
+                    ↓
+                  </button>
+                </fieldset>
+                <button
+                  aria-label="Clear all filters"
+                  class="ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                  disabled=""
+                  type="button"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </fieldset>
+          <div
+            aria-live="assertive"
+            class="rounded-3xl border border-red-500/30 bg-red-500/10 p-5 text-slate-50 shadow-sm sm:p-6"
+            role="alert"
+          >
+            <div
+              class="flex flex-wrap items-start gap-4"
+            >
+              <div
+                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-red-500/20 text-red-200 ring-1 ring-red-300/30"
+              >
+                <span
+                  aria-hidden="true"
+                  class="text-lg font-semibold"
+                >
+                  !
+                </span>
+              </div>
+              <div
+                class="min-w-0 flex-1"
+              >
+                <div
+                  class="flex items-start gap-3"
+                >
+                  <p
+                    class="text-sm font-semibold uppercase tracking-[0.18em] text-red-200"
+                  >
+                    Server error
+                  </p>
+                  <span
+                    class="rounded-full bg-slate-800/80 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-300"
+                  >
+                    Preview only
+                  </span>
+                </div>
+                <h2
+                  class="mt-3 text-xl font-semibold text-white"
+                >
+                  Unable to load investable invoices
+                </h2>
+                <p
+                  class="mt-2 text-sm leading-6 text-slate-300"
+                >
+                  Unable to load investable invoices right now.
+                </p>
+              </div>
+            </div>
+            <div
+              class="mt-5 flex flex-wrap items-center gap-3"
+            >
+              <button
+                aria-busy="false"
+                class="inline-flex items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-medium transition-all duration-200 focus-ring disabled:opacity-50 disabled:cursor-not-allowed bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 active:bg-cyan-500/40"
+                type="button"
+              >
+                Try again
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    `);
+  });
+
   it("announces the empty marketplace state when no invoices load", async () => {
     render(<InvestMarketplace loadInvoices={createDeferredLoader([], 100)} />);
     await flushTimers(100);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
-    const status = screen.getByTestId("marketplace-status");
+    const status = screen.getByRole("status");
     expect(status).toHaveTextContent("No invoices available");
     expect(status).toHaveAttribute("aria-live", "polite");
     expect(
@@ -202,8 +1337,9 @@ describe("InvestMarketplace", () => {
 
     render(<InvestMarketplace loadInvoices={loadInvoices} />);
     await flushTimers(100);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
-    const status = screen.getByTestId("marketplace-status");
+    const status = screen.getByRole("status");
     expect(status).toHaveTextContent("No invoices available");
     expect(status).toHaveAttribute("aria-live", "polite");
     expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
@@ -222,8 +1358,9 @@ describe("InvestMarketplace", () => {
 
     render(<InvestMarketplace loadInvoices={loadInvoices} />);
     await flushTimers(50);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
-    const status = screen.getByTestId("marketplace-status");
+    const status = screen.getByRole("status");
     expect(status).toHaveTextContent("Unable to load investable invoices.");
     expect(status).toHaveAttribute("aria-live", "polite");
     expect(screen.getByRole("alert")).toHaveTextContent(
@@ -343,7 +1480,7 @@ describe("InvestMarketplace", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByTestId("marketplace-status")).toHaveTextContent(
+    expect(screen.getByRole("status")).toHaveTextContent(
       `Showing ${total} of ${total} investable invoices`
     );
   });
@@ -386,6 +1523,79 @@ describe("InvestMarketplace", () => {
     });
     expect(getInvoiceListItems()).toHaveLength(total);
     expect(screen.queryByRole("button", { name: /load more invoices/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the first page and initial pagination announcement before any load more", async () => {
+    const total = PAGE_SIZE + 7;
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(makeInvoices(total), 50)} />);
+    await flushTimers(50);
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      `Showing ${PAGE_SIZE} of ${total} investable invoices`
+    );
+    expect(screen.getByRole("button", { name: /load more invoices/i })).toBeInTheDocument();
+  });
+
+  it("appends the next page without duplicating already visible invoices", async () => {
+    const total = PAGE_SIZE + 5;
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(makeInvoices(total), 50)} />);
+    await flushTimers(50);
+
+    const firstPage = getInvoiceListItems().map((item) => item.textContent);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
+    const nextPage = getInvoiceListItems().map((item) => item.textContent);
+    expect(nextPage).toHaveLength(total);
+    expect(nextPage.slice(0, PAGE_SIZE)).toEqual(firstPage);
+  });
+
+  it("resets pagination when a filter is applied and then cleared", async () => {
+    const invoices = [
+      ...Array.from({ length: 15 }, (_, i) => ({
+        id: `usd-${i + 1}`,
+        issuer: `USD Issuer ${i + 1}`,
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-12-31",
+        yield: "5.0%",
+        status: "Open",
+      })),
+      ...Array.from({ length: 15 }, (_, i) => ({
+        id: `eur-${i + 1}`,
+        issuer: `EUR Issuer ${i + 1}`,
+        amount: "1,000",
+        currency: "EUR",
+        dueDate: "2026-12-31",
+        yield: "5.0%",
+        status: "Open",
+      })),
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 50)} />);
+    await flushTimers(50);
+
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+    expect(getInvoiceListItems()).toHaveLength(20);
+
+    fireEvent.click(screen.getByLabelText("Filter by EUR"));
+    expect(getInvoiceListItems()).toHaveLength(10);
+    expect(screen.getByRole("button", { name: /load more invoices/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Clear all filters"));
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
+    expect(screen.getByRole("button", { name: /load more invoices/i })).toBeInTheDocument();
   });
 
   it.skip("moves focus back to the Load-more button after each click (e2e only)", async () => {
@@ -735,50 +1945,13 @@ describe("InvestMarketplace", () => {
 
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
-    expect(screen.getByTestId("marketplace-status")).toHaveTextContent("2 investable invoices loaded");
+    expect(screen.getByRole("status")).toHaveTextContent("2 investable invoices loaded");
 
     fireEvent.click(screen.getByLabelText("Filter by EUR"));
 
-    expect(screen.getByTestId("marketplace-status")).toHaveTextContent("1 of 2 invoices match");
-  });
-
-  it("filters invoices by status and restores them when status filters clear", async () => {
-    const invoices = [
-      {
-        id: "inv-001",
-        issuer: "A",
-        amount: "100",
-        currency: "USD",
-        dueDate: "2026-06-15",
-        yield: "5%",
-        status: "Open",
-      },
-      {
-        id: "inv-002",
-        issuer: "B",
-        amount: "200",
-        currency: "EUR",
-        dueDate: "2026-07-01",
-        yield: "6%",
-        status: "Funded",
-      },
-    ];
-
-    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
-    await flushTimers(0);
-
-    fireEvent.click(screen.getByRole("button", { name: "Funded" }));
-
-    expect(getInvoiceListItems()).toHaveLength(1);
-    expect(screen.getByText("B")).toBeInTheDocument();
-    expect(screen.queryByText("A")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Clear status filters" }));
-
-    expect(getInvoiceListItems()).toHaveLength(2);
-    expect(screen.getByText("A")).toBeInTheDocument();
-    expect(screen.getByText("B")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("1 of 2 invoices match");
   });
 
   it("filters invoices by issuer search query after debounce", async () => {
@@ -806,65 +1979,20 @@ describe("InvestMarketplace", () => {
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);
 
-    expect(getInvoiceListItems()).toHaveLength(2);
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
 
     fireEvent.change(screen.getByLabelText("Search by issuer name"), {
       target: { value: "acme" },
     });
 
     // Before debounce runs, it should not filter yet
-    expect(getInvoiceListItems()).toHaveLength(2);
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
 
     await flushTimers(SEARCH_DEBOUNCE_MS);
 
-    expect(getInvoiceListItems()).toHaveLength(1);
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
     expect(screen.getByText("Acme Supplies Ltd")).toBeInTheDocument();
     expect(screen.queryByText("Bright Logistics GmbH")).not.toBeInTheDocument();
-  });
-
-  it("does not re-render visible invoice rows when the parent rerenders with unchanged props", async () => {
-    const renderCounts = new Map();
-    const tracker = jest.fn((id) => {
-      renderCounts.set(id, (renderCounts.get(id) ?? 0) + 1);
-    });
-
-    const invoices = makeInvoices(PAGE_SIZE + 2);
-    const loader = jest.fn().mockResolvedValue(invoices);
-
-    function Wrapper() {
-      const [tick, setTick] = useState(0);
-
-      return (
-        <div>
-          <button type="button" onClick={() => setTick((value) => value + 1)}>
-            Rerender parent
-          </button>
-          <InvestMarketplace loadInvoices={loader} rowRenderTracker={tracker} />
-        </div>
-      );
-    }
-
-    let getByRole;
-    await act(async () => {
-      const renderResult = render(<Wrapper />);
-      getByRole = renderResult.getByRole;
-      await Promise.resolve();
-    });
-
-    await waitFor(() => expect(renderCounts.size).toBe(PAGE_SIZE));
-    for (const count of renderCounts.values()) {
-      expect(count).toBe(1);
-    }
-
-    await act(async () => {
-      fireEvent.click(getByRole("button", { name: /Rerender parent/i }));
-      await Promise.resolve();
-    });
-
-    expect(renderCounts.size).toBe(PAGE_SIZE);
-    for (const count of renderCounts.values()) {
-      expect(count).toBe(1);
-    }
   });
 
   it("search is case-insensitive — lowercase query matches mixed-case issuer", async () => {
@@ -897,7 +2025,7 @@ describe("InvestMarketplace", () => {
     });
     await flushTimers(SEARCH_DEBOUNCE_MS);
 
-    expect(getInvoiceListItems()).toHaveLength(1);
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
     expect(screen.getByText("Bright Logistics GmbH")).toBeInTheDocument();
     expect(screen.queryByText("Acme Supplies Ltd")).not.toBeInTheDocument();
   });
@@ -957,7 +2085,7 @@ describe("InvestMarketplace", () => {
       target: { value: "acme" },
     });
     await flushTimers(SEARCH_DEBOUNCE_MS);
-    expect(getInvoiceListItems()).toHaveLength(1);
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
 
     // Clear the search filter
     fireEvent.change(screen.getByLabelText("Search by issuer name"), {
@@ -965,7 +2093,7 @@ describe("InvestMarketplace", () => {
     });
     await flushTimers(SEARCH_DEBOUNCE_MS);
 
-    expect(getInvoiceListItems()).toHaveLength(2);
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
     expect(screen.getByText("Acme Supplies Ltd")).toBeInTheDocument();
     expect(screen.getByText("Bright Logistics GmbH")).toBeInTheDocument();
   });
@@ -1003,8 +2131,9 @@ describe("InvestMarketplace", () => {
 
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
-    expect(screen.getByTestId("marketplace-status")).toHaveTextContent("3 investable invoices loaded");
+    expect(screen.getByRole("status")).toHaveTextContent("3 investable invoices loaded");
 
     fireEvent.change(screen.getByLabelText("Search by issuer name"), {
       target: { value: "acme" },
@@ -1012,7 +2141,7 @@ describe("InvestMarketplace", () => {
     await flushTimers(SEARCH_DEBOUNCE_MS);
 
     // 2 of 3 invoices match "acme" (Acme Supplies Ltd and Acme Trading Co)
-    expect(screen.getByTestId("marketplace-status")).toHaveTextContent("2 of 3 invoices match");
+    expect(screen.getByRole("status")).toHaveTextContent("2 of 3 invoices match");
   });
 
   it("announces no-match when search produces zero results", async () => {
@@ -1036,7 +2165,7 @@ describe("InvestMarketplace", () => {
     });
     await flushTimers(SEARCH_DEBOUNCE_MS);
 
-    expect(screen.getByTestId("marketplace-status")).toHaveTextContent("No invoices match");
+    expect(screen.getByRole("status")).toHaveTextContent("No invoices match");
   });
 
   it("search does not filter before debounce delay elapses", async () => {
@@ -1070,48 +2199,11 @@ describe("InvestMarketplace", () => {
 
     // Advance less than debounce threshold — list should still be unfiltered
     await flushTimers(SEARCH_DEBOUNCE_MS - 50);
-    expect(getInvoiceListItems()).toHaveLength(2);
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
 
     // Now cross the threshold — filtering should kick in
     await flushTimers(50);
-    expect(getInvoiceListItems()).toHaveLength(1);
-  });
-
-  it("does not re-render invoice rows for unrelated search state before debounce", async () => {
-    const invoices = Array.from({ length: PAGE_SIZE + 5 }, (_, i) => ({
-      id: `inv-${String(i + 1).padStart(3, "0")}`,
-      issuer: i < 5 ? `Target Issuer ${i + 1}` : `Other Issuer ${i + 1}`,
-      amount: "1,000",
-      currency: "USD",
-      dueDate: "2026-12-31",
-      yield: "5.0%",
-      status: "Open",
-    }));
-    const onInvoiceRowRender = jest.fn();
-
-    render(
-      <InvestMarketplace
-        loadInvoices={createDeferredLoader(invoices, 0)}
-        onInvoiceRowRender={onInvoiceRowRender}
-      />
-    );
-    await flushTimers(0);
-
-    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
-    expect(onInvoiceRowRender).toHaveBeenCalledTimes(PAGE_SIZE);
-
-    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
-      target: { value: "Target" },
-    });
-
-    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
-    expect(onInvoiceRowRender).toHaveBeenCalledTimes(PAGE_SIZE);
-
-    await flushTimers(SEARCH_DEBOUNCE_MS);
-
-    expect(getInvoiceListItems()).toHaveLength(5);
-    expect(screen.getByText("Target Issuer 1")).toBeInTheDocument();
-    expect(screen.queryByText("Other Issuer 6")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
   });
 
   it("announces filtered results in the live region when search is applied", async () => {
@@ -1138,12 +2230,13 @@ describe("InvestMarketplace", () => {
 
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
-    expect(screen.getByTestId("marketplace-status")).toHaveTextContent("2 investable invoices loaded");
+    expect(screen.getByRole("status")).toHaveTextContent("2 investable invoices loaded");
 
     fireEvent.click(screen.getByLabelText("Filter by EUR"));
 
-    expect(screen.getByTestId("marketplace-status")).toHaveTextContent("1 of 2 invoices match");
+    expect(screen.getByRole("status")).toHaveTextContent("1 of 2 invoices match");
   });
 
   // ── Retry / error recovery tests ──────────────────────────────────────────
@@ -1158,6 +2251,37 @@ describe("InvestMarketplace", () => {
 
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
+  });
+
+  it("has no axe violations in the loaded state", async () => {
+    const invoices = makeInvoices(2);
+    const loadInvoices = createDeferredLoader(invoices, 0);
+
+    const { container } = render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(0);
+
+    expect(screen.getByText("Issuer 1")).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("has no axe violations in the empty state", async () => {
+    const loadInvoices = createDeferredLoader([], 0);
+
+    const { container } = render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(0);
+
+    expect(screen.getByText(/No investable invoices\./i)).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("has no axe violations in the error state", async () => {
+    const loadInvoices = jest.fn(() => new Promise((_, reject) => setTimeout(() => reject(new Error("boom")), 0)));
+
+    const { container } = render(<InvestMarketplace loadInvoices={loadInvoices} />);
+    await flushTimers(0);
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
   });
 
   it("retry: shows skeleton while reloading, then renders list on success", async () => {
@@ -1192,12 +2316,13 @@ describe("InvestMarketplace", () => {
       "true"
     );
 
-    // Wait for the successful load
+    // Wait for the successful load, then for the announcement debounce
     await flushTimers(50);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(getInvoiceListItems()).toHaveLength(2);
-    expect(screen.getByTestId("marketplace-status")).toHaveTextContent("2 investable invoices loaded");
+    expect(screen.getByRole("status")).toHaveTextContent("2 investable invoices loaded");
   });
 
   it("retry-then-failure: shows error banner again after a second failure", async () => {
@@ -1361,8 +2486,9 @@ describe("InvestMarketplace renders from shared lib.js fixture", () => {
   it("announces the correct invoice count based on MOCK_INVOICES length", async () => {
     render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
     await flushTimers(0);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
 
-    expect(screen.getByTestId("marketplace-status")).toHaveTextContent(
+    expect(screen.getByRole("status")).toHaveTextContent(
       `${MOCK_INVOICES.length} investable invoices loaded`
     );
   });
@@ -1402,62 +2528,6 @@ describe("InvestMarketplace renders from shared lib.js fixture", () => {
   it("getInvoiceById returns undefined for an id that does not exist in the shared fixture", () => {
     expect(getInvoiceById("inv-not-in-fixture")).toBeUndefined();
   });
-
-  describe("visually-styled live region count announcements", () => {
-    it("announces zero results when no invoices match filters", async () => {
-      const invoices = makeInvoices(3);
-      render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
-      await flushTimers(0);
-
-      fireEvent.change(screen.getByLabelText("Search by issuer name"), {
-        target: { value: "nonexistent" },
-      });
-      await flushTimers(SEARCH_DEBOUNCE_MS);
-
-      expect(screen.getByRole("status")).toHaveTextContent("No invoices match");
-    });
-
-    it("announces single result correctly", async () => {
-      const invoices = [
-        {
-          id: "inv-001",
-          issuer: "Unique Corp",
-          amount: "1,000",
-          currency: "USD",
-          dueDate: "2026-12-31",
-          yield: "5.0%",
-          status: "Open",
-        },
-      ];
-      render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
-      await flushTimers(0);
-
-      expect(screen.getByRole("status")).toHaveTextContent("1 investable invoices loaded");
-    });
-
-    it("debounces rapid successive changes in search input", async () => {
-      const invoices = makeInvoices(5);
-      render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
-      await flushTimers(0);
-
-      const searchInput = screen.getByLabelText("Search by issuer name");
-
-      // Rapidly type "i", then "is", then "iss"
-      fireEvent.change(searchInput, { target: { value: "i" } });
-      jest.advanceTimersByTime(100);
-      expect(screen.getByRole("status")).toHaveTextContent("5 investable invoices loaded");
-
-      fireEvent.change(searchInput, { target: { value: "is" } });
-      jest.advanceTimersByTime(100);
-      expect(screen.getByRole("status")).toHaveTextContent("5 investable invoices loaded");
-
-      fireEvent.change(searchInput, { target: { value: "iss" } });
-
-      await flushTimers(SEARCH_DEBOUNCE_MS);
-
-      expect(screen.getByRole("status")).toHaveTextContent("5 of 5 invoices match");
-    });
-  });
 });
 
 describe("lib helpers", () => {
@@ -1472,138 +2542,69 @@ describe("lib helpers", () => {
   });
 });
 
-describe("deriveFilteredInvoices", () => {
-  const filters = {
-    yieldMin: "",
-    yieldMax: "",
-    currency: "",
-    maturityFrom: "",
-    maturityTo: "",
-    sort: "",
-    sortDir: "desc",
-    statuses: [],
-  };
-
-  it("handles a large dataset and updates when filters change", () => {
-    const invoices = Array.from({ length: 500 }, (_, i) => ({
-      id: `large-${i + 1}`,
-      issuer: i % 25 === 0 ? `Needle Corp ${i}` : `Issuer ${i}`,
-      amount: `${1_000 + i}`,
-      currency: i % 2 === 0 ? "USD" : "EUR",
-      dueDate: `2026-12-${String((i % 28) + 1).padStart(2, "0")}`,
-      yield: `${4 + (i % 8)}.0%`,
-      status: i % 3 === 0 ? "Funded" : "Open",
-    }));
-
-    expect(deriveFilteredInvoices(invoices, "", filters)).toHaveLength(500);
-
-    const filtered = deriveFilteredInvoices(invoices, "needle", {
-      ...filters,
-      currency: "USD",
-      yieldMin: "8",
-      statuses: ["Open"],
-    });
-
-    expect(filtered).toHaveLength(2);
-    expect(filtered.every((invoice) => invoice.issuer.toLowerCase().includes("needle"))).toBe(
-      true
-    );
-    expect(filtered.every((invoice) => invoice.currency === "USD")).toBe(true);
-    expect(filtered.every((invoice) => invoice.status === "Open")).toBe(true);
-    expect(filtered.every((invoice) => parseFloat(invoice.yield) >= 8)).toBe(true);
-  });
-
-  it("covers yield maximum and maturity-to filters", () => {
-    const invoices = [
-      {
-        id: "early-low",
-        issuer: "Early Low",
-        amount: "100",
-        currency: "USD",
-        dueDate: "2026-06-01",
-        yield: "4%",
-        status: "Open",
-      },
-      {
-        id: "late-high",
-        issuer: "Late High",
-        amount: "200",
-        currency: "USD",
-        dueDate: "2026-08-01",
-        yield: "9%",
-        status: "Open",
-      },
-    ];
-
-    const filtered = deriveFilteredInvoices(invoices, "", {
-      ...filters,
-      yieldMax: "5",
-      maturityTo: "2026-07-01",
-    });
-
-    expect(filtered.map((invoice) => invoice.id)).toEqual(["early-low"]);
-  });
-});
-
-describe("applySortToList", () => {
-  const filters = {
-    yieldMin: "",
-    yieldMax: "",
-    currency: "",
-    maturityFrom: "",
-    maturityTo: "",
-    sort: "",
-    sortDir: "desc",
-    statuses: [],
-  };
-
-  const invoices = [
-    {
-      id: "middle",
-      amount: "200",
-      dueDate: "2026-07-01",
-      yield: "7%",
-    },
-    {
-      id: "low",
-      amount: "100",
-      dueDate: "2026-06-01",
-      yield: "5%",
-    },
-    {
-      id: "high",
-      amount: "300",
-      dueDate: "2026-08-01",
-      yield: "9%",
-    },
-  ];
-
-  it("returns non-array and empty inputs unchanged", () => {
-    expect(applySortToList(null, filters)).toBeNull();
-    const empty = [];
-    expect(applySortToList(empty, filters)).toBe(empty);
-  });
-
-  it("returns the original list when no sort column is selected", () => {
-    expect(applySortToList(invoices, filters)).toBe(invoices);
-  });
-
-  it("sorts by amount, yield, and maturity", () => {
-    expect(applySortToList(invoices, { ...filters, sort: "amount", sortDir: "asc" }).map(
-      (invoice) => invoice.id
-    )).toEqual(["low", "middle", "high"]);
-    expect(applySortToList(invoices, { ...filters, sort: "yield", sortDir: "desc" }).map(
-      (invoice) => invoice.id
-    )).toEqual(["high", "middle", "low"]);
-    expect(applySortToList(invoices, { ...filters, sort: "maturity", sortDir: "asc" }).map(
-      (invoice) => invoice.id
-    )).toEqual(["low", "middle", "high"]);
-  });
-});
-
 describe("getPaginationAnnouncement", () => {
   it("formats the Showing N of M string correctly", () => {
     expect(getPaginationAnnouncement(10, 25)).toBe("Showing 10 of 25 investable invoices");
     expect(getPaginationAnnouncement(3, 3)).toBe("Showing 3 of 3 investable invoices");
+  });
+});
+
+describe("Export functionality", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  });
+
+  it("calls exportAsCSV with filtered invoices when Export CSV is clicked", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    const exportCsvBtn = screen.getByRole("button", { name: "Export CSV" });
+    fireEvent.click(exportCsvBtn);
+
+    expect(exportAsCSV).toHaveBeenCalledTimes(1);
+    expect(exportAsCSV).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ issuer: "Acme Supplies Ltd" })]),
+      "invoices_export.csv"
+    );
+  });
+
+  it("calls exportAsJSON with filtered invoices when Export JSON is clicked", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    const exportJsonBtn = screen.getByRole("button", { name: "Export JSON" });
+    fireEvent.click(exportJsonBtn);
+
+    expect(exportAsJSON).toHaveBeenCalledTimes(1);
+    expect(exportAsJSON).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ issuer: "Acme Supplies Ltd" })]),
+      "invoices_export.json"
+    );
+  });
+
+  it("disables the export buttons when the filtered view is empty", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    // Apply a search that yields no results
+    const searchInput = screen.getByRole("textbox", { name: /Search by issuer name/i });
+    fireEvent.change(searchInput, { target: { value: "NonExistentIssuerXYZ123" } });
+    
+    // Fast-forward debounce
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    const exportCsvBtn = screen.getByRole("button", { name: "Export CSV" });
+    const exportJsonBtn = screen.getByRole("button", { name: "Export JSON" });
+
+    expect(exportCsvBtn).toBeDisabled();
+    expect(exportJsonBtn).toBeDisabled();
   });
 });

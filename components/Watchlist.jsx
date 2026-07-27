@@ -56,6 +56,7 @@ function WatchlistSkeletonRow() {
   return (
     <div
       data-testid="watchlist-skeleton"
+      aria-hidden="true"
       className="flex flex-col gap-4 rounded-xl border border-slate-800 bg-slate-900/40 p-4 animate-pulse sm:flex-row sm:items-center sm:justify-between"
     >
       <div className="space-y-2">
@@ -93,6 +94,8 @@ export default function Watchlist({
   title = "Watchlist",
 }) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkAnnouncement, setBulkAnnouncement] = useState("");
 
   const errorMessage = useMemo(() => {
     if (!error) return "";
@@ -111,6 +114,49 @@ export default function Watchlist({
       return issuerMatch || idMatch || statusMatch;
     });
   }, [items, searchQuery]);
+
+  const allSelected =
+    filteredItems.length > 0 && filteredItems.every((item) => selectedIds.has(item.id));
+  const someSelected = filteredItems.some((item) => selectedIds.has(item.id));
+
+  const handleSelectAll = () => {
+    const next = new Set(selectedIds);
+    if (allSelected) {
+      filteredItems.forEach((item) => next.delete(item.id));
+    } else {
+      filteredItems.forEach((item) => next.add(item.id));
+    }
+    setSelectedIds(next);
+  };
+
+  const handleToggleSelection = (id) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedIds(next);
+  };
+
+  const handleBulkRemove = () => {
+    if (selectedIds.size === 0) return;
+    if (window.confirm(`Are you sure you want to remove ${selectedIds.size} items?`)) {
+      const count = selectedIds.size;
+      selectedIds.forEach((id) => {
+        if (onRemoveItem) onRemoveItem(id);
+      });
+      setSelectedIds(new Set());
+      setBulkAnnouncement(`Removed ${count} items.`);
+    }
+  };
+
+  const handleBulkExport = () => {
+    if (selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    setSelectedIds(new Set());
+    setBulkAnnouncement(`Exported ${count} items.`);
+  };
 
   // 1. Loading State & Loading Exclusivity
   if (loading) {
@@ -215,9 +261,13 @@ export default function Watchlist({
       <p role="status" data-testid="watchlist-status" aria-live="polite" aria-atomic="true" className="sr-only">
         {announcementText}
       </p>
+      {/* Bulk action announcement */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {bulkAnnouncement}
+      </p>
 
       {/* Controls: Search input */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="relative flex-1 max-w-sm">
           <label htmlFor="watchlist-search" className="sr-only">
             Search watchlist
@@ -232,9 +282,45 @@ export default function Watchlist({
             className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-slate-100 placeholder-slate-500 transition-colors focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
           />
         </div>
-        <span className="text-xs text-slate-400 font-mono" aria-hidden="true">
-          {filteredItems.length} / {items.length} items
-        </span>
+        
+        {/* Bulk Action Toolbar */}
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              ref={input => {
+                if (input) input.indeterminate = !allSelected && someSelected;
+              }}
+              onChange={handleSelectAll}
+              aria-label="Select all watchlist items"
+              className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-950"
+            />
+            Select all
+          </label>
+          
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400">{selectedIds.size} selected</span>
+              <button
+                type="button"
+                onClick={handleBulkExport}
+                aria-label={`Export ${selectedIds.size} selected items`}
+                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-950"
+              >
+                Export
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkRemove}
+                aria-label={`Remove ${selectedIds.size} selected items`}
+                className="rounded-lg border border-red-900/50 bg-red-900/20 px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 focus:ring-offset-slate-950"
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Search No Matches Fallback */}
@@ -256,6 +342,8 @@ export default function Watchlist({
         /* Items List */
         <ul aria-label="Watchlist items" className="space-y-3">
           {filteredItems.map((item) => {
+            const isSelected = selectedIds.has(item.id);
+
             const handleToggle = () => {
               if (onToggleStar) {
                 onToggleStar(item.id);
@@ -279,9 +367,20 @@ export default function Watchlist({
             return (
               <li
                 key={item.id}
-                className="group flex flex-col gap-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4 transition-colors hover:border-slate-700 sm:flex-row sm:items-center sm:justify-between"
+                className={`group flex flex-col gap-4 rounded-xl border p-4 transition-colors hover:border-slate-700 sm:flex-row sm:items-center sm:justify-between ${
+                  isSelected ? "border-cyan-800 bg-cyan-950/30" : "border-slate-800 bg-slate-950/60"
+                }`}
               >
                 <div className="flex items-start gap-3">
+                  <div className="flex items-center h-8">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleToggleSelection(item.id)}
+                      aria-label={`Select invoice ${item.id} from ${issuerName}`}
+                      className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-950 cursor-pointer"
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={handleToggle}
@@ -332,3 +431,4 @@ export default function Watchlist({
     </section>
   );
 }
+

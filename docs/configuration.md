@@ -10,11 +10,9 @@ This document is the **single authoritative reference** for every environment va
 
 | Variable | Purpose | Default | Required | Consuming Modules |
 |---|---|---|---|---|
-| `NEXT_PUBLIC_API_URL` | Base URL for the LiquiFact backend REST API. All invoice and data fetch calls are routed through this URL. | `http://localhost:3001` | Optional (recommended for production) | `lib/config/env.js` *(canonical typed loader)*, `lib/api/getApiBaseUrl.js`, `lib/api/invoices.js`, `app/page.js`, `lib/securityHeaders.mjs` |
-| `NEXT_PUBLIC_SITE_URL` | Canonical base URL of the frontend site. Used for SEO metadata, Open Graph tags, sitemap generation, and robots.txt. | `http://localhost:3000` | Optional (required for correct SEO in production) | `lib/config/env.js` *(canonical typed loader)*, `app/layout.js`, `app/sitemap.js`, `app/robots.js` |
-| `NEXT_PUBLIC_STELLAR_NETWORK` | Stellar network identifier for Freighter wallet integration. Accepted values: `testnet`, `public`. | *(undefined — Freighter integration disabled)* | Optional | `lib/config/env.js` *(canonical typed loader)*, `lib/wallet/freighter.js` |
-
-> **Lint enforcement:** An ESLint `no-restricted-syntax` rule bans raw `process.env` access project-wide. The only permitted direct reader is `lib/config/env.js`; all other modules import the validated, frozen `env` singleton. Config files (`*.config.*`), test files, and `jest.setup.*` are also exempt from the restriction.
+| `NEXT_PUBLIC_API_URL` | Base URL for the LiquiFact backend REST API. All invoice and data fetch calls are routed through this URL. | `http://localhost:3001` | Optional (recommended for production) | `lib/config/env.js`, `lib/api/invoices.js`, `app/page.js`, `lib/securityHeaders.mjs` |
+| `NEXT_PUBLIC_SITE_URL` | Canonical base URL of the frontend site. Used for SEO metadata, Open Graph tags, sitemap generation, and robots.txt. | `http://localhost:3000` | Optional (required for correct SEO in production) | `lib/config/env.js`, `app/layout.js`, `app/sitemap.js`, `app/robots.js` |
+| `NEXT_PUBLIC_STELLAR_NETWORK` | Stellar network identifier for Freighter wallet integration. Accepted values: `testnet`, `public`. | *(undefined — Freighter integration disabled)* | Optional | `lib/config/env.js`, `lib/wallet/freighter.js` |
 
 ---
 
@@ -25,7 +23,6 @@ This document is the **single authoritative reference** for every environment va
 - **Type:** URL string
 - **Default:** `http://localhost:3001`
 - **Accepted values:** Any valid absolute URL (e.g. `https://api.liquifact.io`)
-- **Normalization & Fallbacks:** Trims leading/trailing whitespace, strips single or multiple trailing slashes, and falls back to `http://localhost:3001` if unset, empty, or whitespace-only.
 - **Required:** Optional. Without this variable the app falls back to `http://localhost:3001`, which is correct for local development but will fail in production if the API is hosted elsewhere.
 - **Breaking behaviour if missing in production:** Invoice listing, detail pages, and all data-fetching routes return errors or empty states.
 

@@ -1,6 +1,7 @@
 # Wallet Developer Guide
 
-> **See also:** [`WALLET_INTEGRATION_CONTRACT.md`](../WALLET_INTEGRATION_CONTRACT.md) — the integration contract that defines the required wire-up for real Stellar wallet SDKs. For the `WalletStatus` component's props, connection-state table, and accessibility notes, see [`COMPONENTS.md § WalletStatus`](../COMPONENTS.md#walletstatus).
+> **See also:** [`WALLET_INTEGRATION_CONTRACT.md`](../WALLET_INTEGRATION_CONTRACT.md) — the integration contract that defines the required wire-up for real Stellar wallet SDKs.
+
 ## Overview
 
 The Liquifact wallet subsystem is built around a single-source-of-truth React context (`WalletProvider`) that exposes state and actions to any component via the `useWallet()` hook. This guide documents the state machine, the public hook API, and the rules for integrating new wallet providers.

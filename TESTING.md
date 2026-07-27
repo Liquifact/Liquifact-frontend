@@ -22,26 +22,12 @@ npx playwright install --with-deps
 
 ### Run
 
-Jest is split into two projects under `jest.config.js` so the slower
-`jest-axe`-based accessibility audits do not inflate the local unit-test
-feedback loop.
-
 ```bash
-# Run both projects (unit + a11y)
+# Run all Jest suites
 npm test
 
-# Unit only — fast feedback loop (skips dedicated *.a11y.test.* files)
-npm run test:unit
-
-# Accessibility only — runs the dedicated *.a11y.test.* files
-npm run test:a11y
-
-# A single project in CI / debugging
-npm test -- --selectProjects unit
-npm test -- --selectProjects a11y
-
-# Watch mode (unit project — fast)
-npm run test:unit -- --watch
+# Watch mode (re-runs on file change)
+npm test -- --watch
 
 # Specific file
 npm test -- components/__tests__/WalletStatus.a11y.test.jsx
@@ -51,20 +37,8 @@ npm test -- components/__tests__/WalletStatus.a11y.test.jsx
 
 | File             | Purpose                                                                                                                            |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `jest.config.js` | Two Jest projects (`unit` + `a11y`) sharing the same `moduleNameMapper`, babel transform, and `setupFilesAfterEnv` via object spread. |
-| `jest.setup.js`  | Loaded via `setupFilesAfterEnv` on both projects; extends `expect` with `@testing-library/jest-dom` matchers and `jest-axe`'s `toHaveNoViolations`. |
-
-### Project structure
-
-| Project | Display name | What runs                                                                                  |
-| ------- | ------------ | ------------------------------------------------------------------------------------------ |
-| `unit`  | `unit`       | `*.test.{js,jsx,ts,tsx}` under `app/`, `components/`, `lib/`, `scripts/`, `security/`, and `tests/` — except `*.a11y.test.*` and `*.spec.*`. |
-| `a11y`  | `a11y`       | `*.a11y.test.{js,jsx,ts,tsx}` anywhere in the repo (dedicated accessibility audits with `jest-axe`). |
-
-Shared configuration lives in a single `sharedConfig` object inside
-`jest.config.js` and is spread into both projects so it cannot drift
-(module aliases, babel transform, `jest-environment-jsdom`, and
-`jest.setup.js`).
+| `jest.config.js` | Extends `next/jest`; sets `jsdom` environment, aliases, and excludes `./tests/` (Playwright).                                      |
+| `jest.setup.js`  | Loaded via `setupFilesAfterEnv`; extends `expect` with `@testing-library/jest-dom` matchers and `jest-axe`'s `toHaveNoViolations`. |
 
 ### Test locations
 
@@ -73,7 +47,6 @@ Shared configuration lives in a single `sharedConfig` object inside
 | `components/__tests__/`    | Accessibility tests using `jest-axe` (one per component).                                        |
 | `components/*.test.jsx`    | Unit/behaviour tests for individual components.                                                  |
 | `app/invest/page.test.jsx` | Integration tests for the `InvestMarketplace` component and `getInvoiceLoadAnnouncement` helper. |
-| `lib/format/*.test.tsx`    | Unit tests for the `lib/format` helpers (currency, amount, percent, config, date, truncateAddress). |
 
 ### Writing a new Jest test
 
@@ -102,8 +75,6 @@ test("MyComponent has no accessibility violations", async () => {
   expect(results).toHaveNoViolations();
 });
 ```
-
-**Testing `Intl`-based date/number formatting:** pin `timeZone: "UTC"` (or whichever zone the case needs) directly in the `Intl.DateTimeFormat` options passed to the function under test, rather than mutating `process.env.TZ`. That way the expected string in the test doesn't depend on the host machine's or CI runner's local timezone. See `lib/format/date.test.tsx` for the pattern, including a case that runs the same instant through two different explicit zones to prove the option is actually honoured.
 
 > If your component calls `useToast()`, wrap it in `<ToastProvider>`:
 >

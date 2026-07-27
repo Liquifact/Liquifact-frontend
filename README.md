@@ -48,8 +48,8 @@ and where wallet/toast/theme state lives.
 For the exact invoice fixture shape, formatted-versus-raw value rules, and the
 API migration seam, see the [Invoice data contract](docs/invoice-data.md).
 
-For the current invoice-detail route and action-component contract, see the
-[Invoice detail component contract](docs/invoice-detail.md).
+For marketplace component usage, props, and common patterns, see the
+[Marketplace usage guide](docs/marketplace.md).
 
 ---
 
@@ -263,6 +263,8 @@ Tech: **Next.js 16** (App Router), **React 19**, **Tailwind CSS 4**.
 
 ## Accessibility
 
+See the full [Accessibility Statement](docs/accessibility.md) for WCAG commitment, focus-ring audit, live regions, and contributor checklist. Marketplace-specific **roles, keyboard interactions, and focus behaviour** for `/invest` and `/invest/[id]` are documented in [Marketplace accessibility](docs/accessibility.md#marketplace-accessibility-issue-692).
+
 ### Skip-to-content link
 
 A visually-hidden "Skip to content" link is the first focusable element on every page. It becomes visible when focused (first Tab press) and jumps the keyboard user past the navigation header directly to `<main id="main-content">`.
@@ -349,7 +351,7 @@ See COMPONENTS.md for the full component library reference — props, accessibil
   | WRONG_NETWORK  | `warning`       | Amber — user must switch network       |
   | NO_WALLET      | `external`      | Violet — opens install URL             |
 
-- **UploadZone Progress Indicator**: During the upload phase, if a `progress` prop (number between `0` and `100`) is supplied to `UploadZone`, a determinate progress bar (`role="progressbar"`) is displayed. If no `progress` is supplied, it falls back to an indeterminate spinner. Smooth transitions are disabled when `prefers-reduced-motion` is active.
+- **UploadZone Progress Indicator**: During the upload phase, if a `progress` prop (number between `0` and `100`) is supplied to `UploadZone`, a determinate progress bar is displayed via the reusable `ProgressBar` component. If no `progress` is supplied, it falls back to an indeterminate spinner with "Uploading invoice..." text. Features: visible percentage, full ARIA attributes (`role="progressbar"`, `aria-valuemin`, `aria-valuemax`, `aria-valuenow`), `sr-only` text for assistive technologies, and `prefers-reduced-motion` support. Design allows future integration with XHR/fetch progress callbacks.
 - **UploadZone Reset Flow**: After a successful upload (status = `"success"`), an **"Upload another invoice"** button appears below the success message. Clicking it:
   - Clears the file, error, and status back to their initial (idle) values.
   - Clears the hidden file `<input>` so the same file can be re-selected.
@@ -716,6 +718,7 @@ liquifact-frontend/
 │   ├── Pagination.jsx      # Page controls for large result sets
 │   ├── ToastProvider.jsx   # Toast notification system
 │   ├── UploadZone.jsx      # Invoice PDF upload + validation
+│   ├── ProgressBar.jsx     # Reusable accessible progress bar
 │   ├── WalletProvider.jsx  # App-wide wallet state provider
 │   ├── WalletStatus.jsx    # Wallet connection / address display
 │   └── WalletStatusLazy.jsx # next/dynamic wrapper (ssr: false)
@@ -733,6 +736,8 @@ Tech: **Next.js 16** (App Router), **React 19**, **Tailwind CSS 4**.
 ---
 
 ## Accessibility
+
+See the full [Accessibility Statement](docs/accessibility.md) for WCAG commitment, focus-ring audit, live regions, and contributor checklist. Marketplace-specific **roles, keyboard interactions, and focus behaviour** for `/invest` and `/invest/[id]` are documented in [Marketplace accessibility](docs/accessibility.md#marketplace-accessibility-issue-692).
 
 ### Skip-to-content link
 
@@ -793,28 +798,9 @@ As the application handles financial flows and wallet integration, our CI pipeli
 
 ---
 
-## Dependency updates
-
-Dependabot opens weekly PRs on Monday to keep npm packages and GitHub Actions current.
-
-PRs are grouped to limit noise:
-
-- **nextjs-react** — `next`, `react`, `react-dom`, and their `@types` packages together (coordinated bumps).
-- **dev-tooling** — all remaining `devDependencies` in one PR.
-- **github-actions** — action version bumps in a separate PR.
-
-**Reviewing a Dependabot PR**
-
-1. Check the CI run passes (lockfile check + lint + build).
-2. Scan the changelog/release notes linked in the PR description for breaking changes.
-3. For `nextjs-react` bumps, do a quick smoke test (`npm run dev`) locally.
-4. Approve and merge — **do not enable auto-merge**; every dependency bump requires a human reviewer.
-
----
-
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow, branch naming convention, local checks, and accessibility expectations. Also see our [Accessibility Statement](docs/accessibility.md) and our [Component Testing Guide](docs/testing.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow, branch naming convention, local checks, and accessibility expectations. Also see our [Accessibility Statement](docs/accessibility.md).
 
 1. **Fork** the repo and clone your fork.
 2. **Create a branch** from `main`: `git checkout -b feature/your-feature` or `fix/your-fix`.
@@ -832,7 +818,7 @@ We welcome UI improvements, new pages (e.g. invoice upload, marketplace), and St
 
 See [COMPONENTS.md](COMPONENTS.md) for the full component library reference — props, accessibility notes, and usage examples for every shared component (`ErrorBanner`, `Footer`, `InvoiceListSkeleton`, `ToastProvider`, `UploadZone`, `WalletProvider`, `WalletStatus`).
 
-- **UploadZone Progress Indicator**: During the upload phase, if a `progress` prop (number between `0` and `100`) is supplied to `UploadZone`, a determinate progress bar (`role="progressbar"`) is displayed. If no `progress` is supplied, it falls back to an indeterminate spinner. Smooth transitions are disabled when `prefers-reduced-motion` is active.
+- **UploadZone Progress Indicator**: During the upload phase, if a `progress` prop (number between `0` and `100`) is supplied to `UploadZone`, a determinate progress bar is displayed via the reusable `ProgressBar` component. If no `progress` is supplied, it falls back to an indeterminate spinner with "Uploading invoice..." text. Features: visible percentage, full ARIA attributes (`role="progressbar"`, `aria-valuemin`, `aria-valuemax`, `aria-valuenow`), `sr-only` text for assistive technologies, and `prefers-reduced-motion` support. Design allows future integration with XHR/fetch progress callbacks.
 - **UploadZone Reset Flow**: After a successful upload (status = `"success"`), an **"Upload another invoice"** button appears below the success message. Clicking it:
   - Clears the file, error, and status back to their initial (idle) values.
   - Clears the hidden file `<input>` so the same file can be re-selected.
@@ -896,11 +882,14 @@ The provider rehydrates from storage **after mount** (SSR-safe). `disconnect()` 
 
 **Props**
 
-The component currently accepts no props.
+| Prop            | Type       | Default            | Description                                      |
+| --------------- | ---------- | ------------------ | ------------------------------------------------ |
+| `walletLabel`   | `string`   | `'Connect Wallet'` | Label text rendered inside the wallet button     |
+| `onWalletClick` | `function` | `undefined`        | Callback fired when the wallet button is clicked |
 
 **Behaviour**
 
-- **Desktop (≥ `md` breakpoint):** Home, Invoices, and Invest links render inline in the header row alongside the network badge and lazy-loaded wallet UI.
+- **Desktop (≥ `md` breakpoint):** Home, Invoices, and Invest links render inline in the header row alongside the wallet button.
 - **Mobile (< `md` breakpoint):** Nav links are hidden behind a hamburger toggle (☰). Clicking the toggle reveals a dropdown menu below the header bar.
 - The active route is detected automatically via `usePathname` and marked with `aria-current="page"` on the matching link.
 - The menu closes on **Escape** (with focus returned to the toggle button), on any navigation event (pathname change), or when the toggle is clicked again.
@@ -911,6 +900,7 @@ The component currently accepts no props.
 ```jsx
 import NavMenu from "@/components/NavMenu";
 
+// Drop-in replacement for the static <header> on any page
 export default function MyPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -919,9 +909,10 @@ export default function MyPage() {
     </div>
   );
 }
-```
 
-For the full current contract and accessibility notes, see the [Navigation component contract](docs/navigation.md).
+// With Stellar wallet integration
+<NavMenu walletLabel="Freighter" onWalletClick={handleConnectWallet} />;
+```
 
 ## Design Tokens
 

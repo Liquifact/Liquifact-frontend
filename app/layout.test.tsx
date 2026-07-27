@@ -11,6 +11,7 @@ import { render, screen } from "@testing-library/react";
 import { axe } from "jest-axe";
 import Link from "next/link";
 import React from "react";
+import { createShortcutMatcher } from "../lib/shortcuts";
 
 // ── Mock RootLayout's external dependencies ───────────────────────────────────
 
@@ -38,6 +39,12 @@ jest.mock("../components/ShortcutHelpDialog", () => ({
   default: function MockShortcutHelpDialog() {
     return null;
   },
+}));
+
+jest.mock("../lib/shortcuts", () => ({
+  ...jest.requireActual("../lib/shortcuts"),
+  MARKETPLACE_SHORTCUT_KEY: "m",
+  createShortcutMatcher: jest.fn(() => jest.fn()),
 }));
 
 jest.mock("../components/WalletProvider", () => ({
@@ -186,6 +193,16 @@ describe("RootLayout", () => {
     );
 
     expect(allFocusable[0]).toBe(skipLink);
+  });
+
+  it("registers marketplace shortcut on mount", () => {
+    render(
+      <RootLayout>
+        <main id="main-content">Page</main>
+      </RootLayout>
+    );
+
+    expect(createShortcutMatcher).toHaveBeenCalledWith("m", expect.any(Function));
   });
 
   it("has no axe violations", async () => {

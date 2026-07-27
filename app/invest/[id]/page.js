@@ -14,40 +14,101 @@
  *
  * The only interactive piece — Fund / Copy link / Print buttons — is
  * delegated to the small `FundActions` client component which is the sole
- * "use client" boundary under this route segment for actions.  Metadata
- * field rows are rendered via the memoized `InvoiceDetailRows` client leaf
- * so unrelated client state changes (e.g. copy-link busy) cannot force those
- * rows to re-reconcile when their derived descriptors are unchanged.
+ * "use client" boundary under this route segment.
  *
  * Data flow
  * ─────────
  * `params.id` → `getInvoiceById(id)` (sync, mock data for now)
  *             → `notFound()` if the id is unknown
- *             → `deriveInvoiceDetailViewModel(invoice)` for fields + JSON-LD
- *             → RSC renders layout + passes props to <FundActions>
+ *             → RSC renders layout + passes {id, status} to <FundActions>
  */
 
+import Button from "@/components/Button";
+import CopyButton from "@/components/CopyButton";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import NavMenu from "@/components/NavMenu";
-import InvoiceTimeline from "@/components/InvoiceTimeline";
+import StatusPill from "@/components/StatusPill";
+import WalletStatus from "@/components/WalletStatus";
+import { useWallet, WALLET_STATES } from "@/components/WalletContext";
+import { INVALID_VALUE_FALLBACK, formatAmount, formatCurrency } from "@/lib/format/currency";
 import { copy } from "@/app/copy/en";
 import { getInvoiceById } from "../lib";
 import FundActions from "./FundActions";
-import InvoiceDetailRows from "./InvoiceDetailRows";
-import { deriveInvoiceDetailViewModel } from "./invoiceDetailModel";
+import InvoiceDetailClient from "./InvoiceDetailClient";
 
 const detail = copy.invest.detail;
 
-// Re-export pure helpers so existing tests that import from the page module
-// (or that assert the derivation contract) keep a stable surface.
-export {
-  formatYield,
-  sanitizeText,
-  buildInvoiceJsonLd,
-  deriveInvoiceDetailFields,
-  deriveInvoiceDetailViewModel,
-} from "./invoiceDetailModel";
+// ── Pure server-side helpers (not exported to the client bundle) ──────────────
+
+/**
+ * Format a yield value as a percentage string.
+ * Falls back to `INVALID_VALUE_FALLBACK` for unresolvable values.
+ *
+ * @param {string|number|null|undefined} value
+ * @returns {string}
+ */
+function formatYield(value) {
+  const formatted = formatAmount(value);
+  return formatted === INVALID_VALUE_FALLBACK ? formatted : `${formatted}%`;
+}
+
+/**
+ * Sanitize a plain-text value for safe use in JSON-LD.
+ * Removes leading/trailing whitespace and strips characters that could
+ * break out of a JSON string context when embedded in a `<script>`.
+ *
+ * @param {unknown} value
+ * @returns {string}
+ */
+function sanitizeText(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .trim()
+    .replace(/[<>{}"']/g, "");
+}
+
+/**
+ * Build a JSON-LD `Offer` object for the invoice.
+ * Returns `null` when invoice is absent.
+ *
+ * @param {object|null} invoice
+ * @returns {object|null}
+ */
+function buildInvoiceJsonLd(invoice) {
+  if (!invoice) return null;
+
+  const issuer = sanitizeText(invoice.issuer);
+  const amount = sanitizeText(invoice.amount);
+  const currency = sanitizeText(invoice.currency);
+  const dueDate = sanitizeText(invoice.dueDate);
+  const yieldValue = sanitizeText(invoice.yield);
+  const status = sanitizeText(invoice.status);
+
+  const descriptionParts = [
+    issuer ? `Invoice offering from ${issuer}` : "Invoice offering",
+    amount ? `Amount ${amount}` : null,
+    currency ? `Currency ${currency}` : null,
+    dueDate ? `Maturity ${dueDate}` : null,
+    yieldValue ? `Estimated yield ${yieldValue}` : null,
+    status ? `Status ${status}` : null,
+  ].filter(Boolean);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Offer",
+    name: issuer ? `Invoice offering from ${issuer}` : "Invoice offering",
+    description: descriptionParts.join(". "),
+    seller: issuer ? { "@type": "Organization", name: issuer } : undefined,
+    price: amount || undefined,
+    priceCurrency: currency || undefined,
+    availability: status === "Open" ? "https://schema.org/InStock" : undefined,
+    validFrom: dueDate || undefined,
+  };
+}
+
+// ── Server Component ──────────────────────────────────────────────────────────
 
 /**
  * Page-level Server Component.
@@ -68,8 +129,7 @@ export default async function InvoiceDetailPage({ params }) {
     notFound();
   }
 
-  const viewModel = deriveInvoiceDetailViewModel(invoice);
-  const { fields, jsonLd, issuer, status, maxAmount, currency, yieldValue, timestamps } = viewModel;
+  const invoiceJsonLd = buildInvoiceJsonLd(invoice);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 print-page-wrapper">
@@ -87,12 +147,12 @@ export default async function InvoiceDetailPage({ params }) {
 
       <main id="main-content" className="max-w-4xl mx-auto px-6 py-12">
         {/* ── JSON-LD structured data ────────────────────────────────── */}
-        {jsonLd ? (
+        {invoiceJsonLd ? (
           <script
             type="application/ld+json"
             // JSON.stringify is safe here; sanitizeText already stripped
             // characters that could escape the script context.
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(invoiceJsonLd) }}
           />
         ) : null}
 
@@ -109,28 +169,76 @@ export default async function InvoiceDetailPage({ params }) {
         <h1 className="text-2xl font-bold mb-2">{detail.pageTitle}</h1>
         <p className="text-slate-400 mb-8">{detail.pageSub}</p>
 
-        {/* ── Invoice metadata (memoized field rows) ────────────────── */}
-        <section
-          aria-labelledby="invoice-summary-heading"
-          className="print-invoice-section rounded-xl border border-slate-800 bg-slate-900/50 p-6 mb-6"
-        >
-          <h2 id="invoice-summary-heading" className="text-xl font-semibold mb-4">
-            {issuer}
-          </h2>
-
-          <InvoiceDetailRows fields={fields} />
-        </section>
+        {loadError ? (
+          <ErrorBanner
+            variant="error"
+            title="Unable to load invoice details"
+            description={loadError}
+            previewLabel="Invoice detail"
+          />
+        ) : invoice === null ? (
+          <InvoiceListSkeleton rows={1} />
+        ) : (
+          <>
+            <section
+              aria-labelledby="invoice-summary-heading"
+              className="print-invoice-section rounded-xl border border-slate-800 bg-slate-900/50 p-6 mb-6"
+            >
+              <h2 id="invoice-summary-heading" className="text-xl font-semibold mb-4">
+                {invoice.issuer}
+              </h2>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <dt className="text-slate-500">Issuer</dt>
+                  <dd className="text-slate-100">{invoice.issuer}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Amount</dt>
+                  <dd className="text-slate-100">
+                    {formatCurrency(invoice.amount, {
+                      currency: invoice.currency,
+                    })}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Estimated yield</dt>
+                  <dd className="text-slate-100">{formatYield(invoice.yield)}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Maturity date</dt>
+                  <dd className="text-slate-100">{invoice.dueDate}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Status</dt>
+                  <dd className="text-slate-100">
+                    <StatusPill status={invoice.status ?? ""} />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Reference</dt>
+                  <dd className="text-slate-100 flex items-center gap-1.5">
+                    <span className="font-mono">{invoice.id}</span>
+                    <CopyButton
+                      text={invoice.id}
+                      label={copy.invoiceDetail.copyIdLabel}
+                      successMessage={copy.invoiceDetail.copyIdSuccess}
+                      errorMessage={copy.invoiceDetail.copyIdError}
+                    />
+                  </dd>
+                </div>
+              </dl>
+            </section>
 
         {/* ── Lifecycle timeline (server-rendered, status-driven) ───────── */}
-        <InvoiceTimeline status={status} timestamps={timestamps} className="mb-6" />
+        <InvoiceTimeline status={invoice.status} timestamps={invoice.timestamps} className="mb-6" />
 
         {/* ── Interactive controls (client boundary) ────────────────── */}
         <FundActions
           id={invoice.id}
-          status={status}
-          maxAmount={maxAmount}
-          currency={currency}
-          yieldValue={yieldValue}
+          status={invoice.status}
+          maxAmount={invoice.amountValue}
+          currency={invoice.currency}
+          yieldValue={invoice.yieldValue}
         />
       </main>
     </div>

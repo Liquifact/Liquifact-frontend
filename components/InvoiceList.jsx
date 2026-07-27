@@ -1,7 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import Button from "./Button";
+import ConfirmDialog from "./ConfirmDialog";
+import ErrorBanner from "./ErrorBanner";
 import EmptyState, { InvoiceEmptyIllustration } from "./EmptyState";
+import InvoiceListSkeleton from "./InvoiceListSkeleton";
+import { useToast } from "./ToastProvider";
 import { copy } from "../app/copy/en";
 
 const INVOICE_STATUSES = {
@@ -18,6 +23,43 @@ const STATUS_STYLES = {
   [INVOICE_STATUSES.FUNDED]: "bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-400/20",
   [INVOICE_STATUSES.SETTLED]: "bg-slate-800/80 text-slate-200 ring-1 ring-slate-500/20",
 };
+
+const MOCK_INVOICES = [
+  {
+    id: "inv-1001",
+    issuer: "Test Supplier",
+    amount: "12,500",
+    currency: "USD",
+    dueDate: "2026-06-15",
+    yield: "8.2%",
+    status: INVOICE_STATUSES.TOKENIZED,
+  },
+  {
+    id: "inv-1002",
+    issuer: "Another LLC",
+    amount: "7,800",
+    currency: "EUR",
+    dueDate: "2026-07-01",
+    yield: "7.5%",
+    status: INVOICE_STATUSES.SETTLED,
+  },
+];
+
+function loadMockInvoices() {
+  return Promise.resolve(MOCK_INVOICES);
+}
+
+function getInvoiceAnnouncement(items) {
+  if (!Array.isArray(items)) {
+    return "";
+  }
+
+  if (items.length === 0) {
+    return "No invoices are currently available.";
+  }
+
+  return `${items.length} invoice${items.length === 1 ? "" : "s"} available.`;
+}
 
 function mergeInvoices(optimisticInvoices, loadedInvoices) {
   const mergedById = new Map();
@@ -62,43 +104,230 @@ export function getMaturityBadgeProps(days) {
 }
 
 /**
- * InvoiceList Component
- *
- * Presentational component that renders a list of invoices.
- * Merges loaded invoices with optimistic updates from the upload flow.
- * Handles its own empty state display.
- *
- * @param {Object} props
- * @param {Array} [props.invoices=[]] - List of invoices loaded from the API.
- * @param {Array} [props.optimisticInvoices=[]] - List of invoices recently uploaded but not yet in the API.
+ * A single invoice row. Memoized so that unrelated re-renders of the parent
+ * InvoiceList (e.g. loading/error state changes, or a sibling invoice's data
+ * changing) do not force every row to re-render — only a row whose own
+ * `invoice` prop actually changed re-renders.
  */
-export default function InvoiceList({ invoices = [], optimisticInvoices = [] }) {
+export const InvoiceListItem = memo(function InvoiceListItem({ invoice }) {
+  const statusValue =
+    invoice.status in STATUS_STYLES ? invoice.status : INVOICE_STATUSES.PENDING_TOKENIZATION;
+
+  return (
+    <li className="rounded-3xl border border-slate-800 bg-slate-900/50 p-5 shadow-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-500">Invoice</p>
+          <p className="mt-2 text-lg font-semibold text-slate-100">{invoice.issuer}</p>
+        </div>
+        <span
+          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
+            STATUS_STYLES[statusValue]
+          }`}
+        >
+          {statusValue}
+        </span>
+      </div>
+
+      <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Amount</dt>
+          <dd className="mt-2 text-sm text-slate-200">
+            {invoice.currency} {invoice.amount}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Estimated yield</dt>
+          <dd className="mt-2 text-sm text-slate-200">{invoice.yield}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Due date</dt>
+          <dd className="mt-2 text-sm text-slate-200">{invoice.dueDate}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Reference</dt>
+          <dd className="mt-2 text-sm text-slate-200">{invoice.id}</dd>
+        </div>
+      </dl>
+    </li>
+  );
+});
+
+export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisticInvoices = [] }) {
+  const [invoices, setInvoices] = useState(null);
+  const [loadError, setLoadError] = useState("");
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const toast = useToast();
+
   const mergedInvoices = useMemo(
-    () => mergeInvoices(optimisticInvoices, invoices),
+    () => mergeInvoices(optimisticInvoices, invoices ?? []),
     [optimisticInvoices, invoices]
   );
+
+  const allSelected =
+    mergedInvoices.length > 0 && mergedInvoices.every((inv) => selectedIds.has(inv.id));
+  const someSelected = selectedIds.size > 0;
+  const isIndeterminate = someSelected && !allSelected;
+  const selectionCount = selectedIds.size;
+
+  const statusMessage = useMemo(() => {
+    if (loadError) return loadError;
+    if (invoices === null) return "Loading invoices...";
+    return getInvoiceAnnouncement(mergedInvoices);
+  }, [invoices, mergedInvoices, loadError]);
+
+  const selectAllRef = useRef(null);
+  const headerCheckboxId = useId();
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = isIndeterminate;
+    }
+  }, [isIndeterminate]);
+
+  const handleSelectInvoice = useCallback((id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === mergedInvoices.length && mergedInvoices.length > 0) return new Set();
+      return new Set(mergedInvoices.map((inv) => inv.id));
+    });
+  }, [mergedInvoices]);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleRequestDelete = useCallback(() => {
+    setConfirmingDelete(true);
+  }, []);
+
+  const handleCancelDelete = useCallback(() => {
+    setConfirmingDelete(false);
+  }, []);
+
+  const handleConfirmDelete = useCallback(() => {
+    const idsToDelete = Array.from(selectedIds);
+    setInvoices((prev) => (prev ? prev.filter((inv) => !idsToDelete.includes(inv.id)) : prev));
+    setSelectedIds(new Set());
+    setConfirmingDelete(false);
+    const msg = `Deleted ${idsToDelete.length} invoice${idsToDelete.length !== 1 ? "s" : ""}.`;
+    setAnnouncement(msg);
+    toast.success(msg);
+  }, [selectedIds, toast]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function load() {
+      setInvoices(null);
+      setLoadError("");
+      setSelectedIds(new Set());
+      setAnnouncement("");
+
+      try {
+        const result = await loadInvoices();
+        if (!active) return;
+
+        const normalized = Array.isArray(result) ? result : [];
+        setInvoices(normalized);
+      } catch {
+        if (!active) return;
+
+        setLoadError(copy.invoices.errorDescription || "Unable to load invoices.");
+        setInvoices([]);
+      }
+    }
+
+    load();
+    return () => {
+      active = false;
+    };
+  }, [loadInvoices]);
+
+  // Compute status message inline in render
+
+  if (loadError) {
+    return (
+      <div className="space-y-6">
+        <ErrorBanner
+          title={copy.invoices.errorTitle || "Unable to load invoices"}
+          description={loadError}
+          previewLabel="Invoice list status"
+        />
+        <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+          {statusMessage}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <section aria-labelledby="invoice-list-heading" className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 id="invoice-list-heading" className="text-xl font-semibold text-slate-100">
-            Your invoices
-          </h2>
-          <p className="text-sm text-slate-400">
-            Track tokenization progress for uploaded documents.
-          </p>
+        <div className="flex items-center gap-3">
+          {invoices !== null && mergedInvoices.length > 0 && (
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-400">
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                id={headerCheckboxId}
+                checked={allSelected}
+                onChange={handleSelectAll}
+                aria-label={allSelected ? "Deselect all invoices" : "Select all invoices"}
+                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus-ring"
+              />
+              <span className="sr-only">Select all</span>
+            </label>
+          )}
+          <div>
+            <h2 id="invoice-list-heading" className="text-xl font-semibold text-slate-100">
+              Your invoices
+            </h2>
+            <p className="text-sm text-slate-400">
+              Track tokenization progress for uploaded documents.
+            </p>
+          </div>
         </div>
+        <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+          {statusMessage}
+        </p>
       </div>
 
-      {mergedInvoices.length === 0 ? (
+      {someSelected && (
+        <div
+          role="toolbar"
+          aria-label="Bulk actions"
+          className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-700/50 bg-slate-800/50 px-4 py-3"
+        >
+          <span className="text-sm font-medium text-slate-300">{selectionCount} selected</span>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <Button variant="danger" onClick={handleRequestDelete}>
+              Delete selected
+            </Button>
+            <Button variant="secondary" onClick={handleClearSelection}>
+              Clear selection
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {invoices === null && mergedInvoices.length === 0 ? (
+        <InvoiceListSkeleton rows={3} />
+      ) : mergedInvoices.length === 0 ? (
         <EmptyState
           icon={<InvoiceEmptyIllustration />}
           title="No invoices yet"
-          description={
-            copy.invoices.emptyState ||
-            "Upload your first invoice to get started. It will appear here once tokenized."
-          }
+          description="Upload your first invoice to get started. It will appear here once tokenized."
           action={
             <a
               href="#invoice-upload-btn"
@@ -120,51 +349,84 @@ export default function InvoiceList({ invoices = [], optimisticInvoices = [] }) 
                 key={invoice.id}
                 className="rounded-3xl border border-slate-800 bg-slate-900/50 p-5 shadow-sm"
               >
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-500">
-                      Invoice
-                    </p>
-                    <p className="mt-2 text-lg font-semibold text-slate-100">{invoice.issuer}</p>
+                <div className="flex items-start gap-3">
+                  <div className="mt-1.5">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(invoice.id)}
+                      onChange={() => handleSelectInvoice(invoice.id)}
+                      aria-label={`Select invoice ${invoice.id} from ${invoice.issuer}`}
+                      className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus-ring"
+                    />
                   </div>
-                  <span
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
-                      STATUS_STYLES[statusValue]
-                    }`}
-                  >
-                    {statusValue}
-                  </span>
-                </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-500">
+                          Invoice
+                        </p>
+                        <p className="mt-2 text-lg font-semibold text-slate-100">
+                          {invoice.issuer}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
+                          STATUS_STYLES[statusValue]
+                        }`}
+                      >
+                        {statusValue}
+                      </span>
+                    </div>
 
-                <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div>
-                    <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Amount</dt>
-                    <dd className="mt-2 text-sm text-slate-200">
-                      {invoice.currency} {invoice.amount}
-                    </dd>
+                    <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                      <div>
+                        <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">
+                          Amount
+                        </dt>
+                        <dd className="mt-2 text-sm text-slate-200">
+                          {invoice.currency} {invoice.amount}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">
+                          Estimated yield
+                        </dt>
+                        <dd className="mt-2 text-sm text-slate-200">{invoice.yield}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">
+                          Due date
+                        </dt>
+                        <dd className="mt-2 text-sm text-slate-200">{invoice.dueDate}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">
+                          Reference
+                        </dt>
+                        <dd className="mt-2 text-sm text-slate-200">{invoice.id}</dd>
+                      </div>
+                    </dl>
                   </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">
-                      Estimated yield
-                    </dt>
-                    <dd className="mt-2 text-sm text-slate-200">{invoice.yield}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Due date</dt>
-                    <dd className="mt-2 text-sm text-slate-200">{invoice.dueDate}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">
-                      Reference
-                    </dt>
-                    <dd className="mt-2 text-sm text-slate-200">{invoice.id}</dd>
-                  </div>
-                </dl>
+                </div>
               </li>
             );
           })}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={confirmingDelete}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        title={`Delete ${selectionCount} invoice${selectionCount !== 1 ? "s" : ""}?`}
+        message={`Are you sure you want to delete ${selectionCount} selected invoice${selectionCount !== 1 ? "s" : ""}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        confirmVariant="danger"
+      />
+
+      <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {announcement}
+      </p>
     </section>
   );
 }

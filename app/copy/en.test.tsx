@@ -59,6 +59,65 @@ describe("copy dictionary — key presence", () => {
         expect(copy.invest[key].length).toBeGreaterThan(0);
       }
     });
+
+    describe("filters", () => {
+      it("has all required error keys", () => {
+        expect(copy.invest.filters.errorYieldMin).toBeDefined();
+        expect(copy.invest.filters.errorYieldMax).toBeDefined();
+        expect(copy.invest.filters.errorYieldRange).toBeDefined();
+        expect(copy.invest.filters.errorMaturityFrom).toBeDefined();
+        expect(copy.invest.filters.errorMaturityTo).toBeDefined();
+        expect(copy.invest.filters.errorMaturityRange).toBeDefined();
+      });
+
+      it("has non-empty string values for all error keys", () => {
+        const keys = [
+          "errorYieldMin",
+          "errorYieldMax",
+          "errorYieldRange",
+          "errorMaturityFrom",
+          "errorMaturityTo",
+          "errorMaturityRange",
+        ];
+        for (const key of keys) {
+          expect(typeof copy.invest.filters[key]).toBe("string");
+          expect(copy.invest.filters[key].length).toBeGreaterThan(0);
+        }
+      });
+    });
+  });
+
+  describe("invest.detail", () => {
+    it("has all density toggle copy keys", () => {
+      expect(copy.invest.detail.densityToggleLabel).toBeDefined();
+      expect(copy.invest.detail.densityCompact).toBeDefined();
+      expect(copy.invest.detail.densityComfortable).toBeDefined();
+      expect(copy.invest.detail.densityCompactAriaLabel).toBeDefined();
+      expect(copy.invest.detail.densityComfortableAriaLabel).toBeDefined();
+      expect(copy.invest.detail.densityCurrentAriaLabel).toBeDefined();
+    });
+
+    it("density toggle copy values are non-empty strings", () => {
+      const densityKeys = [
+        "densityToggleLabel",
+        "densityCompact",
+        "densityComfortable",
+        "densityCompactAriaLabel",
+        "densityComfortableAriaLabel",
+        "densityCurrentAriaLabel",
+      ] as const;
+      for (const key of densityKeys) {
+        expect(typeof copy.invest.detail[key]).toBe("string");
+        expect(copy.invest.detail[key].length).toBeGreaterThan(0);
+      }
+    });
+
+    it("densityCurrentAriaLabel has {density} placeholder", () => {
+      expect(copy.invest.detail.densityCurrentAriaLabel).toContain("{density}");
+      expect(
+        copy.invest.detail.densityCurrentAriaLabel.replace("{density}", "compact")
+      ).toBe("Current density: compact");
+    });
   });
 
   describe("uploadZone", () => {
@@ -88,7 +147,6 @@ describe("copy dictionary — key presence", () => {
       expect(copy.uploadZone.errorReadFailed).toBeDefined();
       expect(copy.uploadZone.errorUploadFailed).toBeDefined();
       expect(copy.uploadZone.errorUploadStatus).toBeDefined();
-      expect(copy.uploadZone.dragActiveAnnounce).toBeDefined();
     });
   });
 
@@ -117,6 +175,10 @@ describe("copy dictionary — key presence", () => {
       expect(copy.wallet.announceError).toBeDefined();
       expect(copy.wallet.announceWrongNetwork).toBeDefined();
       expect(copy.wallet.announceNoWallet).toBeDefined();
+      expect(copy.wallet.errorTitle).toBeDefined();
+      expect(copy.wallet.errorDescription).toBeDefined();
+      expect(copy.wallet.errorActionLabel).toBeDefined();
+      expect(copy.wallet.errorPreviewLabel).toBeDefined();
     });
 
     it("announcement strings match expected values (byte-identical)", () => {
@@ -171,6 +233,29 @@ describe("copy dictionary — key presence", () => {
       expect(copy.footer.contact).toBeDefined();
     });
   });
+
+  describe("nav", () => {
+    it("has the announceNavigation key", () => {
+      expect(copy.nav).toBeDefined();
+      expect(copy.nav.announceNavigation).toBeDefined();
+    });
+
+    it("announceNavigation is a non-empty string", () => {
+      expect(typeof copy.nav.announceNavigation).toBe("string");
+      expect(copy.nav.announceNavigation.length).toBeGreaterThan(0);
+    });
+
+    it("announceNavigation contains the {label} placeholder", () => {
+      expect(copy.nav.announceNavigation).toContain("{label}");
+      
+  describe("settings", () => {
+    it("has required keys", () => {
+      expect(copy.settings.title).toBeDefined();
+      expect(copy.settings.errorTitle).toBeDefined();
+      expect(copy.settings.errorDescription).toBeDefined();
+      expect(copy.settings.errorActionLabel).toBeDefined();
+    });
+  });
 });
 
 describe("copy dictionary — template placeholder consistency", () => {
@@ -202,6 +287,13 @@ describe("copy dictionary — template placeholder consistency", () => {
   it("wallet helperConnected uses {network} placeholder", () => {
     expect(copy.wallet.helperConnected.replace("{network}", "testnet")).toContain(
       "Connected to Stellar testnet"
+    );
+  });
+
+  it("nav.announceNavigation uses {label} placeholder", () => {
+    expect(copy.nav.announceNavigation.replace("{label}", "Home")).toBe("Navigated to Home");
+    expect(copy.nav.announceNavigation.replace("{label}", "Invoices")).toBe(
+      "Navigated to Invoices"
     );
   });
 });

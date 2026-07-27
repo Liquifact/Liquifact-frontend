@@ -1,12 +1,9 @@
+import NavMenuSkeleton from "../../components/NavMenuSkeleton";
+
 export default function InvoicesLoading() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100" aria-busy="true">
-      <header className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-        <div className="inline-block py-3 text-xl font-semibold tracking-tight text-transparent bg-slate-700 rounded w-28 animate-pulse">
-          ← LiquiFact
-        </div>
-        <div className="h-11 w-36 rounded-full bg-slate-800 animate-pulse" />
-      </header>
+      <NavMenuSkeleton />
 
       <main className="max-w-4xl mx-auto px-6 py-12">
         <div className="h-7 w-28 rounded bg-slate-700 animate-pulse mb-6" />

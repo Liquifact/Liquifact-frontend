@@ -22,6 +22,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { act } from "react-dom/test-utils";
 import "@testing-library/jest-dom";
 
 import InvoiceFilters, { DEFAULT_FILTERS } from "./InvoiceFilters";
@@ -113,8 +114,10 @@ describe("ArrowRight navigation", () => {
     const usd = screen.getByRole("button", { name: "Filter by USD" });
     const eur = screen.getByRole("button", { name: "Filter by EUR" });
 
-    usd.focus();
-    fireEvent.keyDown(toolbar, { key: "ArrowRight" });
+    act(() => {
+      usd.focus();
+      fireEvent.keyDown(toolbar, { key: "ArrowRight" });
+    });
 
     expect(eur).toHaveFocus();
     expect(eur).toHaveAttribute("tabindex", "0");
@@ -126,9 +129,14 @@ describe("ArrowRight navigation", () => {
     const toolbar = getToolbar();
     const buttons = getCurrencyButtons();
 
-    buttons[0].focus();
+    act(() => {
+      buttons[0].focus();
+      for (let i = 1; i < CURRENCIES.length; i++) {
+        fireEvent.keyDown(toolbar, { key: "ArrowRight" });
+      }
+    });
+
     for (let i = 1; i < CURRENCIES.length; i++) {
-      fireEvent.keyDown(toolbar, { key: "ArrowRight" });
       expect(buttons[i]).toHaveFocus();
     }
   });
@@ -140,10 +148,12 @@ describe("ArrowRight navigation", () => {
     const lastBtn = buttons[CURRENCIES.length - 1];
     const firstBtn = buttons[0];
 
-    lastBtn.focus();
-    // Simulate that the last chip is the focused one
-    fireEvent.keyDown(toolbar, { key: "End" }); // move focus to last
-    fireEvent.keyDown(toolbar, { key: "ArrowRight" }); // wrap around
+    act(() => {
+      lastBtn.focus();
+      // Simulate that the last chip is the focused one
+      fireEvent.keyDown(toolbar, { key: "End" }); // move focus to last
+      fireEvent.keyDown(toolbar, { key: "ArrowRight" }); // wrap around
+    });
 
     expect(firstBtn).toHaveFocus();
     expect(firstBtn).toHaveAttribute("tabindex", "0");
@@ -158,10 +168,12 @@ describe("ArrowLeft navigation", () => {
     const toolbar = getToolbar();
     const buttons = getCurrencyButtons();
 
-    // First navigate to EUR (index 1), then press ArrowLeft
-    buttons[0].focus();
-    fireEvent.keyDown(toolbar, { key: "ArrowRight" }); // now at EUR
-    fireEvent.keyDown(toolbar, { key: "ArrowLeft" }); // back to USD
+    act(() => {
+      // First navigate to EUR (index 1), then press ArrowLeft
+      buttons[0].focus();
+      fireEvent.keyDown(toolbar, { key: "ArrowRight" }); // now at EUR
+      fireEvent.keyDown(toolbar, { key: "ArrowLeft" }); // back to USD
+    });
 
     expect(buttons[0]).toHaveFocus();
     expect(buttons[0]).toHaveAttribute("tabindex", "0");
@@ -175,15 +187,17 @@ describe("ArrowLeft navigation", () => {
     const lastBtn = buttons[CURRENCIES.length - 1];
     const firstBtn = buttons[0];
 
-    firstBtn.focus();
-    fireEvent.keyDown(toolbar, { key: "ArrowLeft" }); // wrap to last
+    act(() => {
+      firstBtn.focus();
+      fireEvent.keyDown(toolbar, { key: "ArrowLeft" }); // wrap to last
+    });
 
     expect(lastBtn).toHaveFocus();
     expect(lastBtn).toHaveAttribute("tabindex", "0");
   });
 });
 
-// ─── 5. Home key ──────────────────────────────────────────────────────────────
+// ─── 5. Home key ─────────────────────────────────────��──────────────────��[...]
 
 describe("Home key", () => {
   it("jumps focus to the first chip from any position", () => {
@@ -191,13 +205,17 @@ describe("Home key", () => {
     const toolbar = getToolbar();
     const buttons = getCurrencyButtons();
 
-    // Navigate to the last chip first
-    buttons[0].focus();
-    fireEvent.keyDown(toolbar, { key: "End" });
+    act(() => {
+      // Navigate to the last chip first
+      buttons[0].focus();
+      fireEvent.keyDown(toolbar, { key: "End" });
+    });
     expect(buttons[CURRENCIES.length - 1]).toHaveFocus();
 
-    // Home should jump to first
-    fireEvent.keyDown(toolbar, { key: "Home" });
+    act(() => {
+      // Home should jump to first
+      fireEvent.keyDown(toolbar, { key: "Home" });
+    });
     expect(buttons[0]).toHaveFocus();
     expect(buttons[0]).toHaveAttribute("tabindex", "0");
   });
@@ -206,17 +224,21 @@ describe("Home key", () => {
     setup();
     const toolbar = getToolbar();
     const buttons = getCurrencyButtons();
-    buttons[0].focus();
+    act(() => {
+      buttons[0].focus();
+    });
 
     const event = new KeyboardEvent("keydown", { key: "Home", bubbles: true, cancelable: true });
     const preventDefaultSpy = jest.spyOn(event, "preventDefault");
-    toolbar.dispatchEvent(event);
+    act(() => {
+      toolbar.dispatchEvent(event);
+    });
 
     expect(preventDefaultSpy).toHaveBeenCalled();
   });
 });
 
-// ─── 6. End key ───────────────────────────────────────────────────────────────
+// ─── 6. End key ─────────��───────────────────────────────────────────────[...]
 
 describe("End key", () => {
   it("jumps focus to the last chip from any position", () => {
@@ -224,8 +246,10 @@ describe("End key", () => {
     const toolbar = getToolbar();
     const buttons = getCurrencyButtons();
 
-    buttons[0].focus();
-    fireEvent.keyDown(toolbar, { key: "End" });
+    act(() => {
+      buttons[0].focus();
+      fireEvent.keyDown(toolbar, { key: "End" });
+    });
 
     const lastBtn = buttons[CURRENCIES.length - 1];
     expect(lastBtn).toHaveFocus();
@@ -236,11 +260,15 @@ describe("End key", () => {
     setup();
     const toolbar = getToolbar();
     const buttons = getCurrencyButtons();
-    buttons[0].focus();
+    act(() => {
+      buttons[0].focus();
+    });
 
     const event = new KeyboardEvent("keydown", { key: "End", bubbles: true, cancelable: true });
     const preventDefaultSpy = jest.spyOn(event, "preventDefault");
-    toolbar.dispatchEvent(event);
+    act(() => {
+      toolbar.dispatchEvent(event);
+    });
 
     expect(preventDefaultSpy).toHaveBeenCalled();
   });
@@ -331,8 +359,10 @@ describe("Keyboard focus updates", () => {
     const toolbar = getToolbar();
     const buttons = getCurrencyButtons();
 
-    buttons[0].focus();
-    fireEvent.keyDown(toolbar, { key: "ArrowRight" });
+    act(() => {
+      buttons[0].focus();
+      fireEvent.keyDown(toolbar, { key: "ArrowRight" });
+    });
 
     const withZero = buttons.filter((btn) => btn.getAttribute("tabindex") === "0");
     expect(withZero).toHaveLength(1);
@@ -343,8 +373,10 @@ describe("Keyboard focus updates", () => {
     const toolbar = getToolbar();
     const buttons = getCurrencyButtons();
 
-    buttons[0].focus();
-    fireEvent.keyDown(toolbar, { key: "End" }); // move to last
+    act(() => {
+      buttons[0].focus();
+      fireEvent.keyDown(toolbar, { key: "End" }); // move to last
+    });
 
     const lastIndex = CURRENCIES.length - 1;
     buttons.forEach((btn, i) => {
@@ -361,10 +393,14 @@ describe("Keyboard focus updates", () => {
     const toolbar = getToolbar();
     const buttons = getCurrencyButtons();
 
-    buttons[0].focus();
+    act(() => {
+      buttons[0].focus();
+    });
     expect(buttons[0]).toHaveAttribute("tabindex", "0");
 
-    fireEvent.keyDown(toolbar, { key: "Tab" });
+    act(() => {
+      fireEvent.keyDown(toolbar, { key: "Tab" });
+    });
 
     // tabindex state should be unchanged
     expect(buttons[0]).toHaveAttribute("tabindex", "0");
@@ -397,7 +433,9 @@ describe("focus-ring class compatibility (focus-ring.a11y.test.tsx conventions)"
 
     // Tab into the component until we land on a currency chip
     const usd = screen.getByRole("button", { name: "Filter by USD" });
-    usd.focus();
+    act(() => {
+      usd.focus();
+    });
     expect(usd).toHaveFocus();
   });
 });
@@ -410,11 +448,13 @@ describe("Wrap-around navigation edge cases", () => {
     const toolbar = getToolbar();
     const buttons = getCurrencyButtons();
 
-    buttons[0].focus();
-    // Navigate to last using End key
-    fireEvent.keyDown(toolbar, { key: "End" });
-    // Now wrap around
-    fireEvent.keyDown(toolbar, { key: "ArrowRight" });
+    act(() => {
+      buttons[0].focus();
+      // Navigate to last using End key
+      fireEvent.keyDown(toolbar, { key: "End" });
+      // Now wrap around
+      fireEvent.keyDown(toolbar, { key: "ArrowRight" });
+    });
 
     expect(buttons[0]).toHaveFocus();
     expect(buttons[0]).toHaveAttribute("tabindex", "0");
@@ -426,8 +466,10 @@ describe("Wrap-around navigation edge cases", () => {
     const toolbar = getToolbar();
     const buttons = getCurrencyButtons();
 
-    buttons[0].focus();
-    fireEvent.keyDown(toolbar, { key: "ArrowLeft" }); // wrap to last
+    act(() => {
+      buttons[0].focus();
+      fireEvent.keyDown(toolbar, { key: "ArrowLeft" }); // wrap to last
+    });
 
     const lastBtn = buttons[CURRENCIES.length - 1];
     expect(lastBtn).toHaveFocus();
@@ -440,11 +482,13 @@ describe("Wrap-around navigation edge cases", () => {
     const toolbar = getToolbar();
     const buttons = getCurrencyButtons();
 
-    buttons[0].focus();
-    // Navigate forward through all chips and wrap once more back to start
-    for (let i = 0; i < CURRENCIES.length; i++) {
-      fireEvent.keyDown(toolbar, { key: "ArrowRight" });
-    }
+    act(() => {
+      buttons[0].focus();
+      // Navigate forward through all chips and wrap once more back to start
+      for (let i = 0; i < CURRENCIES.length; i++) {
+        fireEvent.keyDown(toolbar, { key: "ArrowRight" });
+      }
+    });
     // Should be back at index 0 (5 rights from 0 = 5 mod 5 = 0)
     expect(buttons[0]).toHaveFocus();
   });

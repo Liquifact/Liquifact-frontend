@@ -1,7 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { memo, useState } from "react";
 import { axe } from "jest-axe";
-import { ToastProvider, ToastViewport, useToast } from "./ToastProvider";
+import { ToastProvider, useToast } from "./ToastProvider";
 
 const AUTO_DISMISS_MS = 5000;
 
@@ -50,29 +49,6 @@ function toastCardForTitle(title: string) {
   return screen.getByText(new RegExp(`^${title}$`)).closest("div.pointer-events-auto");
 }
 
-const MemoizedToastViewportSpy = memo(function MemoizedToastViewportSpy({
-  toasts,
-  pauseToast,
-  resumeToast,
-  dismissAndReturnFocus,
-  containerRef,
-  preDismissFocusRef,
-  onRender,
-}) {
-  onRender();
-
-  return (
-    <ToastViewport
-      toasts={toasts}
-      pauseToast={pauseToast}
-      resumeToast={resumeToast}
-      dismissAndReturnFocus={dismissAndReturnFocus}
-      containerRef={containerRef}
-      preDismissFocusRef={preDismissFocusRef}
-    />
-  );
-});
-
 describe("ToastProvider", () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -109,100 +85,6 @@ describe("ToastProvider", () => {
     jest.useFakeTimers();
 
     expect(results).toHaveNoViolations();
-  });
-
-  it("memoizes the toast viewport when the incoming toast data is unchanged", () => {
-    const onRender = jest.fn();
-    const toasts = [
-      {
-        id: "toast-1",
-        variant: "info",
-        title: "Saved",
-        message: "Draft preserved",
-        key: "info::Saved::Draft preserved",
-        autoDismiss: true,
-      },
-    ];
-    const pauseToast = jest.fn();
-    const resumeToast = jest.fn();
-    const dismissAndReturnFocus = jest.fn();
-    const containerRef = { current: null };
-    const preDismissFocusRef = { current: null };
-
-    function Harness() {
-      const [tick, setTick] = useState(0);
-
-      return (
-        <div>
-          <button type="button" onClick={() => setTick((value) => value + 1)}>
-            Toggle unrelated state
-          </button>
-          <div>{tick}</div>
-          <MemoizedToastViewportSpy
-            toasts={toasts}
-            pauseToast={pauseToast}
-            resumeToast={resumeToast}
-            dismissAndReturnFocus={dismissAndReturnFocus}
-            containerRef={containerRef}
-            preDismissFocusRef={preDismissFocusRef}
-            onRender={onRender}
-          />
-        </div>
-      );
-    }
-
-    render(<Harness />);
-
-    expect(onRender).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(screen.getByRole("button", { name: "Toggle unrelated state" }));
-
-    expect(onRender).toHaveBeenCalledTimes(1);
-  });
-
-  it("re-renders the toast viewport when the toast data changes", () => {
-    const onRender = jest.fn();
-    const firstToast = {
-      id: "toast-1",
-      variant: "info",
-      title: "Saved",
-      message: "Draft preserved",
-      key: "info::Saved::Draft preserved",
-      autoDismiss: true,
-    };
-    const nextToast = {
-      ...firstToast,
-      id: "toast-2",
-      title: "Updated",
-      key: "info::Updated::Draft preserved",
-    };
-    const pauseToast = jest.fn();
-    const resumeToast = jest.fn();
-    const dismissAndReturnFocus = jest.fn();
-    const containerRef = { current: null };
-    const preDismissFocusRef = { current: null };
-
-    function Harness({ toasts }) {
-      return (
-        <MemoizedToastViewportSpy
-          toasts={toasts}
-          pauseToast={pauseToast}
-          resumeToast={resumeToast}
-          dismissAndReturnFocus={dismissAndReturnFocus}
-          containerRef={containerRef}
-          preDismissFocusRef={preDismissFocusRef}
-          onRender={onRender}
-        />
-      );
-    }
-
-    const { rerender } = render(<Harness toasts={[firstToast]} />);
-
-    expect(onRender).toHaveBeenCalledTimes(1);
-
-    rerender(<Harness toasts={[nextToast]} />);
-
-    expect(onRender).toHaveBeenCalledTimes(2);
   });
 
   it("supports manual dismissal of a toast", () => {
