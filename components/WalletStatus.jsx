@@ -135,7 +135,7 @@ function getStateConfig(currentState, walletData, error) {
 
 export default function WalletStatus() {
   const context = useContext(WalletContext);
-  const { state, walletData, error, connect, disconnect } = context || {
+  const { state, walletData, error, hydrating, connect, disconnect } = context || {
     state: WALLET_STATES.DISCONNECTED,
     walletData: null,
     error: null,
@@ -268,11 +268,11 @@ export default function WalletStatus() {
         {/* Status dot */}
         <div
           className={`h-2 w-2 rounded-full transition-colors duration-200 ${
-            walletState === WALLET_STATES.CONNECTED
+            state === WALLET_STATES.CONNECTED
               ? "bg-green-500"
-              : walletState === WALLET_STATES.CONNECTING
+              : state === WALLET_STATES.CONNECTING
                 ? "bg-yellow-500 animate-pulse"
-                : walletState === WALLET_STATES.ERROR || walletState === WALLET_STATES.WRONG_NETWORK
+                : state === WALLET_STATES.ERROR || state === WALLET_STATES.WRONG_NETWORK
                   ? "bg-red-500"
                   : "bg-slate-600"
           }`}
@@ -280,7 +280,7 @@ export default function WalletStatus() {
         />
 
         {/* Connected state */}
-        {walletState === WALLET_STATES.CONNECTED && walletData ? (
+        {state === WALLET_STATES.CONNECTED && walletData ? (
           config.showAddress ? (
             <div className="flex flex-col">
               <span className="font-mono text-sm text-slate-300">{walletData.address}</span>
@@ -289,19 +289,18 @@ export default function WalletStatus() {
           ) : (
             <span className="text-xs text-slate-400">Wallet connected</span>
           )
-        ) : walletState === WALLET_STATES.CONNECTING ? (
+        ) : state === WALLET_STATES.CONNECTING ? (
           /* Loading state */
           <span className="text-xs text-slate-400" role="status" aria-live="polite">
             Connecting wallet...
           </span>
-        ) : walletState === WALLET_STATES.ERROR || walletState === WALLET_STATES.WRONG_NETWORK ? (
+        ) : state === WALLET_STATES.ERROR || state === WALLET_STATES.WRONG_NETWORK ? (
           /* Error state */
           <div className="flex items-center gap-3" role="alert" aria-live="assertive">
-            <span className="max-w-xs text-xs text-red-400">
-              {error ||
-                (walletState === WALLET_STATES.WRONG_NETWORK
-                  ? "Please switch to the correct network."
-                  : "Failed to connect to your wallet.")}
+            <span id="wallet-helper-text" className="max-w-xs text-xs text-red-400">
+              {config.helperText}
+
+
             </span>
 
             <Button
@@ -329,12 +328,12 @@ export default function WalletStatus() {
       </div>
 
       {/* Wallet action for non-error states */}
-      {walletState !== WALLET_STATES.ERROR && walletState !== WALLET_STATES.WRONG_NETWORK && (
+      {state !== WALLET_STATES.ERROR && state !== WALLET_STATES.WRONG_NETWORK && (
         <Button
           type="button"
           variant={config.buttonVariant}
-          loading={walletState === WALLET_STATES.CONNECTING}
-          disabled={config.disabled || walletState === WALLET_STATES.CONNECTING}
+          loading={state === WALLET_STATES.CONNECTING}
+          disabled={config.disabled || state === WALLET_STATES.CONNECTING}
           onClick={handleClick}
           aria-label={config.buttonText}
           aria-describedby="wallet-helper-text"
@@ -346,21 +345,21 @@ export default function WalletStatus() {
 
       {/* Accessible wallet state announcements */}
       <div className="sr-only">
-        {walletState === WALLET_STATES.CONNECTED && walletData ? (
+        {state === WALLET_STATES.CONNECTED && walletData ? (
           <div role="status" aria-live="polite">
             Wallet connected.
             {walletData.address ? ` Connected as ${walletData.address}.` : ""}
           </div>
-        ) : walletState === WALLET_STATES.CONNECTING ? (
+        ) : state === WALLET_STATES.CONNECTING ? (
           <div role="status" aria-live="polite">
             Connecting wallet. Please wait.
           </div>
-        ) : walletState === WALLET_STATES.ERROR ? (
+        ) : state === WALLET_STATES.ERROR ? (
           <div role="alert">
             Wallet connection failed.
             {error ? ` ${error}` : ""}
           </div>
-        ) : walletState === WALLET_STATES.WRONG_NETWORK ? (
+        ) : state === WALLET_STATES.WRONG_NETWORK ? (
           <div role="alert">Wallet is connected to the wrong network.</div>
         ) : (
           <div role="status" aria-live="polite">
@@ -373,3 +372,5 @@ export default function WalletStatus() {
 }
 
 export { WALLET_STATES };
+
+
