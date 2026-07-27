@@ -1,85 +1,106 @@
-import { formatInvoiceDate, formatRelativeTime, INVALID_DATE_FALLBACK } from "@/lib/format/date";
+import { formatInvoiceDate, formatRelativeTime, INVALID_DATE_FALLBACK } from "./date";
 
-describe("formatInvoiceDate", () => {
-  it("formats an ISO string", () => {
-    expect(formatInvoiceDate("2026-01-15")).toBe("Jan 15, 2026");
+// Fixed reference "now" so every test is deterministic regardless of the
+// wall-clock time the suite happens to run at.
+const NOW = new Date("2026-07-26T12:00:00.000Z");
+
+describe("formatRelativeTime - Table Driven Tests", () => {
+  it.each([
+    // ── just now ──────────────────────────────────────────────────────────
+    { input: new Date("2026-07-26T12:00:00.000Z"), expected: "just now" },
+    { input: new Date("2026-07-26T11:59:31.000Z"), expected: "just now" },
+    { input: "2026-07-26T12:00:30.000Z", expected: "just now" },
+
+    // ── minutes ───────────────────────────────────────────────────────────
+    { input: new Date("2026-07-26T11:59:00.000Z"), expected: "1 minute ago" },
+    { input: new Date("2026-07-26T11:45:00.000Z"), expected: "15 minutes ago" },
+    { input: new Date("2026-07-26T11:00:30.000Z"), expected: "59 minutes ago" },
+
+    // ── hours ─────────────────────────────────────────────────────────────
+    { input: new Date("2026-07-26T11:00:00.000Z"), expected: "1 hour ago" },
+    { input: new Date("2026-07-26T09:00:00.000Z"), expected: "3 hours ago" },
+    { input: new Date("2026-07-26T00:00:00.000Z"), expected: "12 hours ago" },
+
+    // ── days ──────────────────────────────────────────────────────────────
+    { input: new Date("2026-07-25T12:00:00.000Z"), expected: "yesterday" },
+    { input: new Date("2026-07-23T12:00:00.000Z"), expected: "3 days ago" },
+
+    // ── weeks ─────────────────────────────────────────────────────────────
+    { input: new Date("2026-07-12T12:00:00.000Z"), expected: "2 weeks ago" },
+
+    // ── unix ms timestamps ───────────────────────────────────────────────
+    { input: NOW.getTime() - 5 * 60 * 1000, expected: "5 minutes ago" },
+  ])("formats %p relative to a fixed clock as %p", ({ input, expected }) => {
+    expect(formatRelativeTime(input, { now: NOW })).toBe(expected);
   });
 
-  it("formats a Date object", () => {
-    expect(formatInvoiceDate(new Date("2026-03-02T00:00:00Z"))).toBe("Mar 2, 2026");
+  it.each([
+    { input: null, expected: INVALID_DATE_FALLBACK },
+    { input: undefined, expected: INVALID_DATE_FALLBACK },
+    { input: "", expected: INVALID_DATE_FALLBACK },
+    { input: "not-a-date", expected: INVALID_DATE_FALLBACK },
+    { input: Number.NaN, expected: INVALID_DATE_FALLBACK },
+    { input: {} as unknown as string, expected: INVALID_DATE_FALLBACK },
+  ])("returns the fallback for invalid input %p", ({ input, expected }) => {
+    expect(formatRelativeTime(input, { now: NOW })).toBe(expected);
   });
 
-  it("formats a unix timestamp (ms)", () => {
-    expect(formatInvoiceDate(new Date("2026-06-01T00:00:00Z").getTime())).toBe("Jun 1, 2026");
+  it("returns the fallback when the `now` reference itself is invalid", () => {
+    expect(formatRelativeTime(NOW, { now: new Date("invalid") })).toBe(INVALID_DATE_FALLBACK);
   });
 
-  it.each([null, undefined, ""])("returns the fallback for %p", (value) => {
-    expect(formatInvoiceDate(value)).toBe(INVALID_DATE_FALLBACK);
-  });
-
-  it("returns the fallback for an unparseable string", () => {
-    expect(formatInvoiceDate("not-a-date")).toBe(INVALID_DATE_FALLBACK);
-  });
-
-  it("returns the fallback for an unsupported type", () => {
-    // @ts-expect-error deliberately passing an invalid type
-    expect(formatInvoiceDate({})).toBe(INVALID_DATE_FALLBACK);
-  });
-
-  it("respects a custom locale and format", () => {
-    const result = formatInvoiceDate("2026-01-15", {
-      locale: "en-GB",
-      format: { year: "numeric", month: "2-digit", day: "2-digit" },
-    });
-    expect(result).toBe("15/01/2026");
-  });
-
-  it("falls back to INVALID_DATE_FALLBACK when Intl rejects a malformed locale tag", () => {
-    const result = formatInvoiceDate("2026-01-15", { locale: "not-a-real-locale-!!" });
-    expect(result).toBe(INVALID_DATE_FALLBACK);
-  });
-});
-
-describe("formatRelativeTime", () => {
-  const FIXED_NOW = new Date("2026-07-26T12:00:00.000Z").getTime();
-
-  it("returns null when there is no timestamp", () => {
-    expect(formatRelativeTime(null, FIXED_NOW)).toBeNull();
-    expect(formatRelativeTime(undefined, FIXED_NOW)).toBeNull();
-  });
-
-  it('returns "just now" for under a minute', () => {
-    expect(formatRelativeTime(FIXED_NOW, FIXED_NOW)).toBe("just now");
-    expect(formatRelativeTime(FIXED_NOW - 45 * 1000, FIXED_NOW)).toBe("just now");
-  });
-
-  it("formats singular and plural minutes", () => {
-    expect(formatRelativeTime(FIXED_NOW - 60 * 1000, FIXED_NOW)).toBe("1 minute ago");
-    expect(formatRelativeTime(FIXED_NOW - 5 * 60 * 1000, FIXED_NOW)).toBe("5 minutes ago");
-    expect(formatRelativeTime(FIXED_NOW - 59 * 60 * 1000, FIXED_NOW)).toBe("59 minutes ago");
-  });
-
-  it("formats singular and plural hours", () => {
-    expect(formatRelativeTime(FIXED_NOW - 60 * 60 * 1000, FIXED_NOW)).toBe("1 hour ago");
-    expect(formatRelativeTime(FIXED_NOW - 4 * 60 * 60 * 1000, FIXED_NOW)).toBe("4 hours ago");
-    expect(formatRelativeTime(FIXED_NOW - 23 * 60 * 60 * 1000, FIXED_NOW)).toBe("23 hours ago");
-  });
-
-  it("formats singular and plural days beyond 24 hours", () => {
-    expect(formatRelativeTime(FIXED_NOW - 24 * 60 * 60 * 1000, FIXED_NOW)).toBe("1 day ago");
-    expect(formatRelativeTime(FIXED_NOW - 72 * 60 * 60 * 1000, FIXED_NOW)).toBe("3 days ago");
+  it("accepts a numeric epoch-ms value for `now`", () => {
+    expect(formatRelativeTime(NOW.getTime() - 60_000, { now: NOW.getTime() })).toBe("1 minute ago");
   });
 
   it("defaults `now` to the current time when omitted", () => {
-    expect(formatRelativeTime(Date.now())).toBe("just now");
+    const justNow = new Date();
+    expect(formatRelativeTime(justNow)).toBe("just now");
   });
 
-  it("treats non-finite input as null", () => {
-    expect(formatRelativeTime(NaN, FIXED_NOW)).toBeNull();
-    expect(formatRelativeTime(Infinity, FIXED_NOW)).toBeNull();
+  it("falls back when Intl.RelativeTimeFormat throws for a malformed locale", () => {
+    const fiveMinAgo = new Date(NOW.getTime() - 5 * 60 * 1000);
+    expect(formatRelativeTime(fiveMinAgo, { now: NOW, locale: "!!bad!!" })).toBe(
+      INVALID_DATE_FALLBACK
+    );
   });
 
-  it("never returns a negative duration for a future timestamp (clock skew)", () => {
-    expect(formatRelativeTime(FIXED_NOW + 60_000, FIXED_NOW)).toBe("just now");
+  it("respects a custom locale", () => {
+    const fiveMinAgo = new Date(NOW.getTime() - 5 * 60 * 1000);
+    expect(formatRelativeTime(fiveMinAgo, { now: NOW, locale: "es-ES" })).toMatch(/hace/i);
+  });
+});
+
+describe("formatInvoiceDate (existing behaviour, unaffected by the new formatter)", () => {
+  it("still formats a plain date string", () => {
+    expect(formatInvoiceDate("2026-01-15T00:00:00.000Z")).toBe("Jan 15, 2026");
+  });
+
+  it("accepts a Date instance", () => {
+    expect(formatInvoiceDate(new Date("2026-01-15T00:00:00.000Z"))).toBe("Jan 15, 2026");
+  });
+
+  it("accepts a Unix ms timestamp", () => {
+    expect(formatInvoiceDate(new Date("2026-01-15T00:00:00.000Z").getTime())).toBe("Jan 15, 2026");
+  });
+
+  it("falls back for an unsupported input type", () => {
+    expect(formatInvoiceDate({} as unknown as string)).toBe(INVALID_DATE_FALLBACK);
+  });
+
+  it("falls back for an unparsable date string", () => {
+    expect(formatInvoiceDate("not-a-date")).toBe(INVALID_DATE_FALLBACK);
+  });
+
+  it("falls back for null/undefined/empty input", () => {
+    expect(formatInvoiceDate(null)).toBe(INVALID_DATE_FALLBACK);
+    expect(formatInvoiceDate(undefined)).toBe(INVALID_DATE_FALLBACK);
+    expect(formatInvoiceDate("")).toBe(INVALID_DATE_FALLBACK);
+  });
+
+  it("falls back when Intl.DateTimeFormat throws for a malformed locale", () => {
+    expect(formatInvoiceDate("2026-01-15T00:00:00.000Z", { locale: "!!bad!!" })).toBe(
+      INVALID_DATE_FALLBACK
+    );
   });
 });

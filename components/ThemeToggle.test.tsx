@@ -13,11 +13,11 @@ import ThemeToggle, {
   THEMES,
   THEME_IDENTIFIER,
   THEME_STORAGE_KEY,
-  THEME_UPDATED_KEY,
+  THEME_UPDATED_STORAGE_KEY,
+  THEME_UPDATED_TICK_MS,
   resolveTheme,
   readStoredTheme,
-  readStoredUpdatedAt,
-  formatRelativeTime,
+  readStoredThemeUpdatedAt,
   applyTheme,
 } from "./ThemeToggle";
 
@@ -513,126 +513,91 @@ describe("ThemeToggle accessibility (jest-axe)", () => {
   });
 });
 
-// ─── 6. formatRelativeTime — pure formatter, tested with a fixed clock ───────
+// ─── 6. Relative "last updated" timestamp ────────────────────────────────────
 
-describe("formatRelativeTime", () => {
-  const FIXED_NOW = new Date("2026-07-26T12:00:00.000Z").getTime();
+describe("ThemeToggle - last updated timestamp", () => {
+  const FIXED_NOW = new Date("2026-07-26T12:00:00.000Z");
 
-  it("returns null when there is no timestamp", () => {
-    expect(formatRelativeTime(null, FIXED_NOW)).toBeNull();
-  });
-
-  it('returns "just now" for under a minute', () => {
-    expect(formatRelativeTime(FIXED_NOW - 30 * 1000, FIXED_NOW)).toBe("just now");
-    expect(formatRelativeTime(FIXED_NOW, FIXED_NOW)).toBe("just now");
-  });
-
-  it("formats singular and plural minutes", () => {
-    expect(formatRelativeTime(FIXED_NOW - 60 * 1000, FIXED_NOW)).toBe("1 minute ago");
-    expect(formatRelativeTime(FIXED_NOW - 5 * 60 * 1000, FIXED_NOW)).toBe("5 minutes ago");
-    expect(formatRelativeTime(FIXED_NOW - 59 * 60 * 1000, FIXED_NOW)).toBe("59 minutes ago");
-  });
-
-  it("formats singular and plural hours", () => {
-    expect(formatRelativeTime(FIXED_NOW - 60 * 60 * 1000, FIXED_NOW)).toBe("1 hour ago");
-    expect(formatRelativeTime(FIXED_NOW - 3 * 60 * 60 * 1000, FIXED_NOW)).toBe("3 hours ago");
-    expect(formatRelativeTime(FIXED_NOW - 23 * 60 * 60 * 1000, FIXED_NOW)).toBe("23 hours ago");
-  });
-
-  it("formats singular and plural days beyond 24 hours", () => {
-    expect(formatRelativeTime(FIXED_NOW - 24 * 60 * 60 * 1000, FIXED_NOW)).toBe("1 day ago");
-    expect(formatRelativeTime(FIXED_NOW - 50 * 60 * 60 * 1000, FIXED_NOW)).toBe("2 days ago");
-  });
-
-  it("defaults `now` to the current time when omitted", () => {
-    const realNow = Date.now();
-    expect(formatRelativeTime(realNow)).toBe("just now");
-  });
-
-  it("treats invalid input as null", () => {
-    expect(formatRelativeTime(undefined, FIXED_NOW)).toBeNull();
-    expect(formatRelativeTime(NaN, FIXED_NOW)).toBeNull();
-  });
-});
-
-// ─── 7. readStoredUpdatedAt ───────────────────────────────────────────────────
-
-describe("readStoredUpdatedAt", () => {
-  it("returns the stored numeric timestamp", () => {
-    mockLocalStorage({ [THEME_UPDATED_KEY]: "1700000000000" });
-    expect(readStoredUpdatedAt()).toBe(1700000000000);
-  });
-
-  it("returns null when nothing is stored", () => {
-    mockLocalStorage({});
-    expect(readStoredUpdatedAt()).toBeNull();
-  });
-
-  it("returns null when the stored value is not numeric", () => {
-    mockLocalStorage({ [THEME_UPDATED_KEY]: "not-a-number" });
-    expect(readStoredUpdatedAt()).toBeNull();
-  });
-
-  it("returns null when localStorage throws", () => {
-    Object.defineProperty(window, "localStorage", {
-      value: {
-        getItem: () => {
-          throw new Error("blocked");
-        },
-      },
-      writable: true,
-    });
-    expect(readStoredUpdatedAt()).toBeNull();
-  });
-});
-
-// ─── 8. ThemeToggle — relative "last updated" label ──────────────────────────
-
-describe("ThemeToggle last-updated label", () => {
   beforeEach(() => {
     mockMatchMedia(false);
+    cleanupDataTheme();
+    jest.useFakeTimers();
+    jest.setSystemTime(FIXED_NOW);
   });
 
-  it("renders no label when the theme has never been changed", () => {
+  afterEach(() => {
+    cleanupDataTheme();
+    jest.useRealTimers();
+  });
+
+  it('shows "Updated just now" and persists a timestamp on a first-ever visit', async () => {
+    const ls = mockLocalStorage({});
+    render(<ThemeToggle />);
+    await act(async () => {});
+
+    expect(screen.getByText(/updated just now/i)).toBeInTheDocument();
+    expect(ls.setItem).toHaveBeenCalledWith(THEME_UPDATED_STORAGE_KEY, String(FIXED_NOW.getTime()));
+  });
+
+  it("does not overwrite an already-stored timestamp on mount", async () => {
+    const tenMinutesAgo = FIXED_NOW.getTime() - 10 * 60 * 1000;
+    const ls = mockLocalStorage({ [THEME_UPDATED_STORAGE_KEY]: String(tenMinutesAgo) });
+    render(<ThemeToggle />);
+    await act(async () => {});
+
+    expect(screen.getByText(/updated 10 minutes ago/i)).toBeInTheDocument();
+    expect(ls.setItem).not.toHaveBeenCalledWith(THEME_UPDATED_STORAGE_KEY, expect.anything());
+  });
+
+  it("reads a previously-stored timestamp via readStoredThemeUpdatedAt", () => {
+    mockLocalStorage({ [THEME_UPDATED_STORAGE_KEY]: "1000" });
+    expect(readStoredThemeUpdatedAt()).toEqual(new Date(1000));
+  });
+
+  it("readStoredThemeUpdatedAt returns null when nothing is stored", () => {
     mockLocalStorage({});
-    render(<ThemeToggle />);
-    expect(screen.queryByTestId("theme-updated-at")).not.toBeInTheDocument();
+    expect(readStoredThemeUpdatedAt()).toBeNull();
   });
 
-  it('shows "just now" immediately after a click, and persists the timestamp', async () => {
-    const storage = mockLocalStorage({});
-    const fixedNow = new Date("2026-07-26T12:00:00.000Z").getTime();
-    jest.spyOn(Date, "now").mockReturnValue(fixedNow);
-
+  it("bumps the timestamp to now when the user clicks the toggle", async () => {
+    const ls = mockLocalStorage({});
     render(<ThemeToggle />);
+    await act(async () => {});
+    ls.setItem.mockClear();
+
+    jest.setSystemTime(new Date(FIXED_NOW.getTime() + 5 * 60 * 1000));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /theme:/i }));
     });
 
-    expect(screen.getByTestId("theme-updated-at")).toHaveTextContent("just now");
-    expect(storage.setItem).toHaveBeenCalledWith(THEME_UPDATED_KEY, String(fixedNow));
-
-    (Date.now as jest.Mock).mockRestore();
+    expect(ls.setItem).toHaveBeenCalledWith(
+      THEME_UPDATED_STORAGE_KEY,
+      String(FIXED_NOW.getTime() + 5 * 60 * 1000)
+    );
+    expect(screen.getByText(/updated just now/i)).toBeInTheDocument();
   });
 
-  it("shows an accessible absolute-time alternative alongside the relative label", async () => {
-    mockLocalStorage({});
+  it("advances the displayed relative time as the clock ticks forward", async () => {
+    mockLocalStorage({ [THEME_UPDATED_STORAGE_KEY]: String(FIXED_NOW.getTime()) });
     render(<ThemeToggle />);
+    await act(async () => {});
+    expect(screen.getByText(/updated just now/i)).toBeInTheDocument();
+
+    jest.setSystemTime(new Date(FIXED_NOW.getTime() + 90 * 1000));
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /theme:/i }));
+      jest.advanceTimersByTime(THEME_UPDATED_TICK_MS);
     });
 
-    const label = screen.getByTestId("theme-updated-at");
-    expect(label).toHaveAttribute("title", expect.stringContaining("Theme last changed:"));
-    expect(label.querySelector(".sr-only")).toHaveTextContent(/Theme last changed/);
+    expect(screen.getByText(/updated 2 minutes ago/i)).toBeInTheDocument();
   });
 
-  it("reads a previously stored timestamp on mount and renders it as relative time", () => {
-    const oneHourAgo = Date.now() - 60 * 60 * 1000;
-    mockLocalStorage({ [THEME_STORAGE_KEY]: "dark", [THEME_UPDATED_KEY]: String(oneHourAgo) });
-
+  it("exposes an accessible absolute-time alternative alongside the relative text", async () => {
+    mockLocalStorage({ [THEME_UPDATED_STORAGE_KEY]: String(FIXED_NOW.getTime()) });
     render(<ThemeToggle />);
+    await act(async () => {});
 
-    expect(screen.getByTestId("theme-updated-at")).toHaveTextContent("1 hour ago");
+    const container = document.getElementById("theme-updated-at");
+    expect(container).toHaveAttribute("title", expect.stringContaining("Theme last updated"));
+    expect(container?.querySelector(".sr-only")).toHaveTextContent(FIXED_NOW.toLocaleString());
   });
 });

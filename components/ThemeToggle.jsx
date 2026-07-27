@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import CopyButton from "./CopyButton";
+import { formatRelativeTime } from "../lib/format/date";
 
 /**
  * The three theme options the user can cycle through.
@@ -13,14 +13,43 @@ export const THEMES = /** @type {const} */ (["light", "dark", "system"]);
 /** localStorage key where the preference is persisted. */
 export const THEME_STORAGE_KEY = "liquifact-theme";
 
-/** localStorage key where the last-changed timestamp (ms epoch) is persisted. */
-export const THEME_UPDATED_KEY = "liquifact-theme-updated";
+/** localStorage key where the last-changed timestamp (epoch ms) is persisted. */
+export const THEME_UPDATED_STORAGE_KEY = "liquifact-theme-updated-at";
 
-/** Stable identifier for the theme preference setting. */
-export const THEME_IDENTIFIER = THEME_STORAGE_KEY;
+/** How often the displayed "last updated" text re-renders to stay fresh, in ms. */
+export const THEME_UPDATED_TICK_MS = 60_000;
 
-/** How often (ms) the relative label re-renders itself while mounted. */
-const RELATIVE_LABEL_REFRESH_MS = 60_000;
+/**
+ * Read the persisted "theme last changed" timestamp from localStorage.
+ * Safe to call from the browser only.
+ *
+ * @returns {Date|null}  – null when nothing valid is stored
+ */
+export function readStoredThemeUpdatedAt() {
+  try {
+    const stored = localStorage.getItem(THEME_UPDATED_STORAGE_KEY);
+    if (stored !== null) {
+      const ms = Number(stored);
+      if (!Number.isNaN(ms)) return new Date(ms);
+    }
+  } catch {
+    // localStorage unavailable (private browsing, SSR, etc.)
+  }
+  return null;
+}
+
+/**
+ * Persist the "theme last changed" timestamp to localStorage.
+ *
+ * @param {Date} date
+ */
+export function writeThemeUpdatedAt(date) {
+  try {
+    localStorage.setItem(THEME_UPDATED_STORAGE_KEY, String(date.getTime()));
+  } catch {
+    // ignore write failures (private browsing, quota exceeded)
+  }
+}
 
 /**
  * Determine the effective visual theme from a stored preference.
@@ -56,52 +85,6 @@ export function readStoredTheme() {
 }
 
 /**
- * Read the last-changed timestamp from localStorage.
- * Safe to call from the browser only.
- *
- * @returns {number|null} ms since epoch, or null if never recorded / unavailable.
- */
-export function readStoredUpdatedAt() {
-  try {
-    const stored = localStorage.getItem(THEME_UPDATED_KEY);
-    const parsed = stored ? Number(stored) : NaN;
-    return Number.isFinite(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Format a past timestamp as a short relative string ("just now",
- * "5 minutes ago", "3 hours ago", "2 days ago"). Pure function so it can be
- * unit-tested with a fixed clock via the `now` parameter.
- *
- * @param {number|null} updatedAt – ms since epoch, or null
- * @param {number} [now]  – ms since epoch to compare against (defaults to Date.now())
- * @returns {string|null} null when there is nothing to report yet
- */
-export function formatRelativeTime(updatedAt, now = Date.now()) {
-  if (updatedAt == null || !Number.isFinite(updatedAt)) return null;
-
-  const diffSeconds = Math.max(0, Math.floor((now - updatedAt) / 1000));
-
-  if (diffSeconds < 60) return "just now";
-
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes === 1 ? "" : "s"} ago`;
-  }
-
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) {
-    return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
-  }
-
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
-}
-
-/**
  * Apply `data-theme` attribute to the document root.
  * Called both from the pre-paint inline script and from the React component.
  *
@@ -133,22 +116,6 @@ export default function ThemeToggle({ className = "" }) {
     return readStoredTheme();
   });
 
-  // When the preference was last explicitly changed by the user (ms epoch).
-  // Read once on mount; only updated again from handleClick below.
-  const [updatedAt, setUpdatedAt] = useState(() => {
-    if (typeof window === "undefined") return null;
-    return readStoredUpdatedAt();
-  });
-
-  // Forces a re-render every minute so the relative label ("2 minutes ago")
-  // keeps advancing while the toggle stays mounted, without touching
-  // `updatedAt` itself (that only changes when the user picks a new theme).
-  const [, forceRefresh] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => forceRefresh((n) => n + 1), RELATIVE_LABEL_REFRESH_MS);
-    return () => clearInterval(id);
-  }, []);
-
   // Keep data-theme in sync whenever the preference state changes
   useEffect(() => {
     applyTheme(preference);
@@ -170,8 +137,32 @@ export default function ThemeToggle({ className = "" }) {
     return () => mq.removeEventListener("change", handler);
   }, [preference]);
 
-  const cycleTheme = (direction = "next") => {
-    const now = Date.now();
+  // When the preference was last changed. Bootstrapped to "now" on a user's very
+  // first visit (nothing stored yet) so the UI always has a timestamp to show,
+  // then only advanced when the user actually clicks the toggle.
+  const [updatedAt, setUpdatedAt] = useState(() => {
+    if (typeof window === "undefined") return null;
+    return readStoredThemeUpdatedAt() ?? new Date();
+  });
+
+  // Persist a freshly-bootstrapped timestamp so it stays stable across reloads
+  // instead of resetting to "now" every time. Only needs to run once on mount:
+  // click-driven updates already call writeThemeUpdatedAt themselves.
+  useEffect(() => {
+    if (updatedAt !== null && readStoredThemeUpdatedAt() === null) {
+      writeThemeUpdatedAt(updatedAt);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Re-render periodically so "5 minutes ago" keeps advancing without a click.
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => forceTick((n) => n + 1), THEME_UPDATED_TICK_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  const handleClick = () => {
     setPreference((prev) => {
       const idx = THEMES.indexOf(prev);
       if (direction === "next") {
@@ -179,12 +170,9 @@ export default function ThemeToggle({ className = "" }) {
       }
       return THEMES[(idx - 1 + THEMES.length) % THEMES.length];
     });
+    const now = new Date();
     setUpdatedAt(now);
-    try {
-      localStorage.setItem(THEME_UPDATED_KEY, String(now));
-    } catch {
-      // ignore write failures (private browsing, quota exceeded)
-    }
+    writeThemeUpdatedAt(now);
   };
 
   const handleClick = () => cycleTheme("next");
@@ -277,11 +265,10 @@ export default function ThemeToggle({ className = "" }) {
       typeof window !== "undefined" &&
       resolveTheme(preference) === "dark");
 
-  const relativeLabel = formatRelativeTime(updatedAt);
-  const absoluteLabel = updatedAt ? new Date(updatedAt).toLocaleString() : null;
+  const absoluteUpdatedAt = updatedAt ? updatedAt.toLocaleString() : null;
 
   return (
-    <span className="inline-flex items-center gap-1">
+    <span className="inline-flex items-center gap-2">
       <button
         id="theme-toggle"
         type="button"
@@ -304,21 +291,14 @@ export default function ThemeToggle({ className = "" }) {
       >
         {ICONS[preference]}
       </button>
-      <CopyButton
-        text={THEME_IDENTIFIER}
-        label="theme identifier"
-        successMessage="Theme identifier copied to clipboard."
-        errorMessage="Unable to copy theme identifier. Select and copy it manually."
-        className="h-8 w-8 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-cyan-400 dark:text-slate-300 dark:hover:text-cyan-400"
-      />
-      {relativeLabel && (
+      {updatedAt && (
         <span
-          data-testid="theme-updated-at"
-          title={`Theme last changed: ${absoluteLabel}`}
-          className="ml-1 align-middle text-[10px] text-slate-400 dark:text-slate-500"
+          id="theme-updated-at"
+          className="text-xs text-slate-400 dark:text-slate-400"
+          title={`Theme last updated ${absoluteUpdatedAt}`}
         >
-          <span aria-hidden="true">{relativeLabel}</span>
-          <span className="sr-only">{`Theme last changed ${absoluteLabel}`}</span>
+          <span aria-hidden="true">Updated {formatRelativeTime(updatedAt)}</span>
+          <span className="sr-only">Theme last updated {absoluteUpdatedAt}</span>
         </span>
       )}
     </span>
