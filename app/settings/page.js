@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import NavMenu from "@/components/NavMenu";
+import ThemeInputs from "@/components/ThemeInputs";
 import { copy } from "../copy/en";
 import { loadMockSettings, getCategoryList, MOCK_SETTINGS } from "./lib";
 import CopyButton from "@/components/CopyButton";
@@ -331,6 +332,13 @@ export function SettingsPage({ loadSettings = loadMockSettings } = {}) {
             >
               {getSettingsShowingAnnouncement(visibleSettings.length, filteredSettings.length)}
             </p>
+
+            <div className="mb-6">
+              <ThemeInputs
+                initialTheme="system"
+                initialAccentColour="cyan"
+              />
+            </div>
 
             <ul aria-label={copy.settings.listAriaLabel} className="space-y-3">
               {visibleSettings.map((row) => (
