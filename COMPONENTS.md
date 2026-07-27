@@ -9,6 +9,7 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 - [EmptyState](#emptystate)
 - [ErrorBanner](#errorbanner)
 - [Footer](#footer)
+- [Form](#form)
 - [FundAmountInput](#fundamountinput)
 - [Hooks](#hooks)
 - [InvoiceCard](#invoicecard)
