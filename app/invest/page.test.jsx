@@ -250,7 +250,8 @@ describe("InvestMarketplace", () => {
             2 investable invoices loaded
           </div>
           <h1
-            class="text-2xl font-bold mb-2"
+            class="text-2xl font-bold mb-2 outline-none"
+            tabindex="-1"
           >
             Invest
           </h1>
@@ -358,43 +359,49 @@ describe("InvestMarketplace", () => {
               Soon: These filter controls are currently unavailable.
             </div>
             <div
-              class="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none"
+              class="flex flex-wrap gap-4 items-center pointer-events-none opacity-60"
             >
               <div
                 class="flex flex-wrap gap-4 items-center"
               >
-                <fieldset
-                  class="flex items-center gap-2 border-none p-0 m-0"
+                <div
+                  class="flex flex-col gap-1"
                 >
-                  <legend
-                    class="sr-only"
+                  <fieldset
+                    class="flex items-center gap-2 border-none p-0 m-0"
                   >
-                    Yield Range
-                  </legend>
-                  <input
-                    aria-label="Minimum yield percentage"
-                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                    min="0"
-                    placeholder="Min yield"
-                    step="0.1"
-                    type="number"
-                    value=""
-                  />
-                  <span
-                    class="text-slate-500"
-                  >
-                    -
-                  </span>
-                  <input
-                    aria-label="Maximum yield percentage"
-                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                    min="0"
-                    placeholder="Max yield"
-                    step="0.1"
-                    type="number"
-                    value=""
-                  />
-                </fieldset>
+                    <legend
+                      class="sr-only"
+                    >
+                      Yield Range
+                    </legend>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Minimum yield percentage"
+                      class="w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none border-slate-700 focus:border-cyan-500"
+                      min="0"
+                      placeholder="Min yield"
+                      step="0.1"
+                      type="number"
+                      value=""
+                    />
+                    <span
+                      class="text-slate-500"
+                    >
+                      -
+                    </span>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maximum yield percentage"
+                      class="w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none border-slate-700 focus:border-cyan-500"
+                      min="0"
+                      placeholder="Max yield"
+                      step="0.1"
+                      type="number"
+                      value=""
+                    />
+                  </fieldset>
+                </div>
                 <div
                   aria-label="Currency filter"
                   class="flex items-center gap-1"
@@ -446,32 +453,38 @@ describe("InvestMarketplace", () => {
                     CHF
                   </button>
                 </div>
-                <fieldset
-                  class="flex items-center gap-2 border-none p-0 m-0"
+                <div
+                  class="flex flex-col gap-1"
                 >
-                  <legend
-                    class="sr-only"
+                  <fieldset
+                    class="flex items-center gap-2 border-none p-0 m-0"
                   >
-                    Maturity Date Range
-                  </legend>
-                  <input
-                    aria-label="Maturity date from"
-                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-                    type="date"
-                    value=""
-                  />
-                  <span
-                    class="text-slate-500"
-                  >
-                    -
-                  </span>
-                  <input
-                    aria-label="Maturity date to"
-                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-                    type="date"
-                    value=""
-                  />
-                </fieldset>
+                    <legend
+                      class="sr-only"
+                    >
+                      Maturity Date Range
+                    </legend>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maturity date from"
+                      class="rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] border-slate-700 focus:border-cyan-500"
+                      type="date"
+                      value=""
+                    />
+                    <span
+                      class="text-slate-500"
+                    >
+                      -
+                    </span>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maturity date to"
+                      class="rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] border-slate-700 focus:border-cyan-500"
+                      type="date"
+                      value=""
+                    />
+                  </fieldset>
+                </div>
                 <fieldset
                   class="flex items-center gap-2 border-none p-0 m-0"
                 >
@@ -507,7 +520,7 @@ describe("InvestMarketplace", () => {
                   </select>
                   <button
                     aria-label="Sort amount direction"
-                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -515,7 +528,7 @@ describe("InvestMarketplace", () => {
                   </button>
                   <button
                     aria-label="Sort yield direction"
-                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -524,7 +537,7 @@ describe("InvestMarketplace", () => {
                 </fieldset>
                 <button
                   aria-label="Clear all filters"
-                  class="ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                  class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
                   disabled=""
                   type="button"
                 >
@@ -536,19 +549,32 @@ describe("InvestMarketplace", () => {
           <ul
             aria-label="Investable invoices"
             class="space-y-4"
+            data-density="comfortable"
           >
             <li
-              class="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
+              class="rounded-xl border transition-colors p-5 border-slate-800 bg-slate-900/50"
+              data-selected="false"
+              data-testid="invoice-row-inv-001"
             >
               <div
-                class="flex items-center justify-between mb-3"
+                class="flex items-center justify-between mb-3 gap-3"
               >
-                <a
-                  class="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
-                  href="/invest/inv-001"
+                <label
+                  class="inline-flex items-center gap-2 rounded px-1 py-0.5 hover:bg-slate-800/40 focus-within:ring-2 focus-within:ring-cyan-400 cursor-pointer"
                 >
-                  Acme Supplies Ltd
-                </a>
+                  <input
+                    aria-label="Select invoice inv-001 from Acme Supplies Ltd"
+                    class="h-4 w-4 rounded border-slate-500 bg-slate-900 text-cyan-500 accent-cyan-400 focus:ring-cyan-400"
+                    data-testid="invoice-checkbox-inv-001"
+                    type="checkbox"
+                  />
+                  <a
+                    class="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                    href="/invest/inv-001"
+                  >
+                    Acme Supplies Ltd
+                  </a>
+                </label>
                 <span
                   class="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300"
                 >
@@ -574,17 +600,29 @@ describe("InvestMarketplace", () => {
               </div>
             </li>
             <li
-              class="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
+              class="rounded-xl border transition-colors p-5 border-slate-800 bg-slate-900/50"
+              data-selected="false"
+              data-testid="invoice-row-inv-002"
             >
               <div
-                class="flex items-center justify-between mb-3"
+                class="flex items-center justify-between mb-3 gap-3"
               >
-                <a
-                  class="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
-                  href="/invest/inv-002"
+                <label
+                  class="inline-flex items-center gap-2 rounded px-1 py-0.5 hover:bg-slate-800/40 focus-within:ring-2 focus-within:ring-cyan-400 cursor-pointer"
                 >
-                  Bright Logistics GmbH
-                </a>
+                  <input
+                    aria-label="Select invoice inv-002 from Bright Logistics GmbH"
+                    class="h-4 w-4 rounded border-slate-500 bg-slate-900 text-cyan-500 accent-cyan-400 focus:ring-cyan-400"
+                    data-testid="invoice-checkbox-inv-002"
+                    type="checkbox"
+                  />
+                  <a
+                    class="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                    href="/invest/inv-002"
+                  >
+                    Bright Logistics GmbH
+                  </a>
+                </label>
                 <span
                   class="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300"
                 >
@@ -614,6 +652,58 @@ describe("InvestMarketplace", () => {
             class="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400"
           >
             Note: Yield references are educational only and reflect on-chain basis-point assumptions. Invoice contracts settle at maturity.
+          </div>
+          <div
+            class="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/60 pt-4"
+          >
+            <div
+              aria-label="Display density"
+              class="flex items-center gap-2 text-sm"
+              role="group"
+            >
+              <span
+                aria-hidden="true"
+                class="text-slate-400 select-none"
+                id="density-toggle-label"
+              >
+                Display density
+                :
+              </span>
+              <button
+                aria-label="Switch to compact density"
+                aria-pressed="false"
+                class="rounded px-3 py-1 text-xs font-medium transition-colors focus-ring border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500"
+                data-density="compact"
+                type="button"
+              >
+                Compact
+              </button>
+              <button
+                aria-label="Switch to comfortable density"
+                aria-pressed="true"
+                class="rounded px-3 py-1 text-xs font-medium transition-colors focus-ring bg-cyan-500/20 text-cyan-400 border border-cyan-500/40"
+                data-density="comfortable"
+                type="button"
+              >
+                Comfortable
+              </button>
+            </div>
+            <div
+              class="flex gap-2"
+            >
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                type="button"
+              >
+                Export CSV
+              </button>
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                type="button"
+              >
+                Export JSON
+              </button>
+            </div>
           </div>
         </main>
       </div>
@@ -646,7 +736,8 @@ describe("InvestMarketplace", () => {
             No invoices available
           </div>
           <h1
-            class="text-2xl font-bold mb-2"
+            class="text-2xl font-bold mb-2 outline-none"
+            tabindex="-1"
           >
             Invest
           </h1>
@@ -754,43 +845,49 @@ describe("InvestMarketplace", () => {
               Soon: These filter controls are currently unavailable.
             </div>
             <div
-              class="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none"
+              class="flex flex-wrap gap-4 items-center pointer-events-none opacity-60"
             >
               <div
                 class="flex flex-wrap gap-4 items-center"
               >
-                <fieldset
-                  class="flex items-center gap-2 border-none p-0 m-0"
+                <div
+                  class="flex flex-col gap-1"
                 >
-                  <legend
-                    class="sr-only"
+                  <fieldset
+                    class="flex items-center gap-2 border-none p-0 m-0"
                   >
-                    Yield Range
-                  </legend>
-                  <input
-                    aria-label="Minimum yield percentage"
-                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                    min="0"
-                    placeholder="Min yield"
-                    step="0.1"
-                    type="number"
-                    value=""
-                  />
-                  <span
-                    class="text-slate-500"
-                  >
-                    -
-                  </span>
-                  <input
-                    aria-label="Maximum yield percentage"
-                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                    min="0"
-                    placeholder="Max yield"
-                    step="0.1"
-                    type="number"
-                    value=""
-                  />
-                </fieldset>
+                    <legend
+                      class="sr-only"
+                    >
+                      Yield Range
+                    </legend>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Minimum yield percentage"
+                      class="w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none border-slate-700 focus:border-cyan-500"
+                      min="0"
+                      placeholder="Min yield"
+                      step="0.1"
+                      type="number"
+                      value=""
+                    />
+                    <span
+                      class="text-slate-500"
+                    >
+                      -
+                    </span>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maximum yield percentage"
+                      class="w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none border-slate-700 focus:border-cyan-500"
+                      min="0"
+                      placeholder="Max yield"
+                      step="0.1"
+                      type="number"
+                      value=""
+                    />
+                  </fieldset>
+                </div>
                 <div
                   aria-label="Currency filter"
                   class="flex items-center gap-1"
@@ -842,32 +939,38 @@ describe("InvestMarketplace", () => {
                     CHF
                   </button>
                 </div>
-                <fieldset
-                  class="flex items-center gap-2 border-none p-0 m-0"
+                <div
+                  class="flex flex-col gap-1"
                 >
-                  <legend
-                    class="sr-only"
+                  <fieldset
+                    class="flex items-center gap-2 border-none p-0 m-0"
                   >
-                    Maturity Date Range
-                  </legend>
-                  <input
-                    aria-label="Maturity date from"
-                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-                    type="date"
-                    value=""
-                  />
-                  <span
-                    class="text-slate-500"
-                  >
-                    -
-                  </span>
-                  <input
-                    aria-label="Maturity date to"
-                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-                    type="date"
-                    value=""
-                  />
-                </fieldset>
+                    <legend
+                      class="sr-only"
+                    >
+                      Maturity Date Range
+                    </legend>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maturity date from"
+                      class="rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] border-slate-700 focus:border-cyan-500"
+                      type="date"
+                      value=""
+                    />
+                    <span
+                      class="text-slate-500"
+                    >
+                      -
+                    </span>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maturity date to"
+                      class="rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] border-slate-700 focus:border-cyan-500"
+                      type="date"
+                      value=""
+                    />
+                  </fieldset>
+                </div>
                 <fieldset
                   class="flex items-center gap-2 border-none p-0 m-0"
                 >
@@ -903,7 +1006,7 @@ describe("InvestMarketplace", () => {
                   </select>
                   <button
                     aria-label="Sort amount direction"
-                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -911,7 +1014,7 @@ describe("InvestMarketplace", () => {
                   </button>
                   <button
                     aria-label="Sort yield direction"
-                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -920,7 +1023,7 @@ describe("InvestMarketplace", () => {
                 </fieldset>
                 <button
                   aria-label="Clear all filters"
-                  class="ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                  class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
                   disabled=""
                   type="button"
                 >
@@ -933,6 +1036,60 @@ describe("InvestMarketplace", () => {
             class="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
           >
             No investable invoices. Connect wallet to see the marketplace.
+          </div>
+          <div
+            class="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/60 pt-4"
+          >
+            <div
+              aria-label="Display density"
+              class="flex items-center gap-2 text-sm"
+              role="group"
+            >
+              <span
+                aria-hidden="true"
+                class="text-slate-400 select-none"
+                id="density-toggle-label"
+              >
+                Display density
+                :
+              </span>
+              <button
+                aria-label="Switch to compact density"
+                aria-pressed="false"
+                class="rounded px-3 py-1 text-xs font-medium transition-colors focus-ring border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500"
+                data-density="compact"
+                type="button"
+              >
+                Compact
+              </button>
+              <button
+                aria-label="Switch to comfortable density"
+                aria-pressed="true"
+                class="rounded px-3 py-1 text-xs font-medium transition-colors focus-ring bg-cyan-500/20 text-cyan-400 border border-cyan-500/40"
+                data-density="comfortable"
+                type="button"
+              >
+                Comfortable
+              </button>
+            </div>
+            <div
+              class="flex gap-2"
+            >
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled=""
+                type="button"
+              >
+                Export CSV
+              </button>
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled=""
+                type="button"
+              >
+                Export JSON
+              </button>
+            </div>
           </div>
         </main>
       </div>
@@ -972,7 +1129,8 @@ describe("InvestMarketplace", () => {
             Unable to load investable invoices.
           </div>
           <h1
-            class="text-2xl font-bold mb-2"
+            class="text-2xl font-bold mb-2 outline-none"
+            tabindex="-1"
           >
             Invest
           </h1>
@@ -1080,43 +1238,49 @@ describe("InvestMarketplace", () => {
               Soon: These filter controls are currently unavailable.
             </div>
             <div
-              class="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none"
+              class="flex flex-wrap gap-4 items-center pointer-events-none opacity-60"
             >
               <div
                 class="flex flex-wrap gap-4 items-center"
               >
-                <fieldset
-                  class="flex items-center gap-2 border-none p-0 m-0"
+                <div
+                  class="flex flex-col gap-1"
                 >
-                  <legend
-                    class="sr-only"
+                  <fieldset
+                    class="flex items-center gap-2 border-none p-0 m-0"
                   >
-                    Yield Range
-                  </legend>
-                  <input
-                    aria-label="Minimum yield percentage"
-                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                    min="0"
-                    placeholder="Min yield"
-                    step="0.1"
-                    type="number"
-                    value=""
-                  />
-                  <span
-                    class="text-slate-500"
-                  >
-                    -
-                  </span>
-                  <input
-                    aria-label="Maximum yield percentage"
-                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                    min="0"
-                    placeholder="Max yield"
-                    step="0.1"
-                    type="number"
-                    value=""
-                  />
-                </fieldset>
+                    <legend
+                      class="sr-only"
+                    >
+                      Yield Range
+                    </legend>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Minimum yield percentage"
+                      class="w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none border-slate-700 focus:border-cyan-500"
+                      min="0"
+                      placeholder="Min yield"
+                      step="0.1"
+                      type="number"
+                      value=""
+                    />
+                    <span
+                      class="text-slate-500"
+                    >
+                      -
+                    </span>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maximum yield percentage"
+                      class="w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none border-slate-700 focus:border-cyan-500"
+                      min="0"
+                      placeholder="Max yield"
+                      step="0.1"
+                      type="number"
+                      value=""
+                    />
+                  </fieldset>
+                </div>
                 <div
                   aria-label="Currency filter"
                   class="flex items-center gap-1"
@@ -1168,32 +1332,38 @@ describe("InvestMarketplace", () => {
                     CHF
                   </button>
                 </div>
-                <fieldset
-                  class="flex items-center gap-2 border-none p-0 m-0"
+                <div
+                  class="flex flex-col gap-1"
                 >
-                  <legend
-                    class="sr-only"
+                  <fieldset
+                    class="flex items-center gap-2 border-none p-0 m-0"
                   >
-                    Maturity Date Range
-                  </legend>
-                  <input
-                    aria-label="Maturity date from"
-                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-                    type="date"
-                    value=""
-                  />
-                  <span
-                    class="text-slate-500"
-                  >
-                    -
-                  </span>
-                  <input
-                    aria-label="Maturity date to"
-                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-                    type="date"
-                    value=""
-                  />
-                </fieldset>
+                    <legend
+                      class="sr-only"
+                    >
+                      Maturity Date Range
+                    </legend>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maturity date from"
+                      class="rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] border-slate-700 focus:border-cyan-500"
+                      type="date"
+                      value=""
+                    />
+                    <span
+                      class="text-slate-500"
+                    >
+                      -
+                    </span>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maturity date to"
+                      class="rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] border-slate-700 focus:border-cyan-500"
+                      type="date"
+                      value=""
+                    />
+                  </fieldset>
+                </div>
                 <fieldset
                   class="flex items-center gap-2 border-none p-0 m-0"
                 >
@@ -1229,7 +1399,7 @@ describe("InvestMarketplace", () => {
                   </select>
                   <button
                     aria-label="Sort amount direction"
-                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -1237,7 +1407,7 @@ describe("InvestMarketplace", () => {
                   </button>
                   <button
                     aria-label="Sort yield direction"
-                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -1246,7 +1416,7 @@ describe("InvestMarketplace", () => {
                 </fieldset>
                 <button
                   aria-label="Clear all filters"
-                  class="ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                  class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
                   disabled=""
                   type="button"
                 >
@@ -1307,10 +1477,64 @@ describe("InvestMarketplace", () => {
             >
               <button
                 aria-busy="false"
-                class="inline-flex items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-medium transition-all duration-200 focus-ring disabled:opacity-50 disabled:cursor-not-allowed bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 active:bg-cyan-500/40"
+                class="inline-flex items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-medium transition-all duration-200 focus-ring disabled:opacity-50 disabled:cursor-not-allowed bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 active:bg-cyan-500/40   cursor-pointer"
                 type="button"
               >
                 Try again
+              </button>
+            </div>
+          </div>
+          <div
+            class="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/60 pt-4"
+          >
+            <div
+              aria-label="Display density"
+              class="flex items-center gap-2 text-sm"
+              role="group"
+            >
+              <span
+                aria-hidden="true"
+                class="text-slate-400 select-none"
+                id="density-toggle-label"
+              >
+                Display density
+                :
+              </span>
+              <button
+                aria-label="Switch to compact density"
+                aria-pressed="false"
+                class="rounded px-3 py-1 text-xs font-medium transition-colors focus-ring border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500"
+                data-density="compact"
+                type="button"
+              >
+                Compact
+              </button>
+              <button
+                aria-label="Switch to comfortable density"
+                aria-pressed="true"
+                class="rounded px-3 py-1 text-xs font-medium transition-colors focus-ring bg-cyan-500/20 text-cyan-400 border border-cyan-500/40"
+                data-density="comfortable"
+                type="button"
+              >
+                Comfortable
+              </button>
+            </div>
+            <div
+              class="flex gap-2"
+            >
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled=""
+                type="button"
+              >
+                Export CSV
+              </button>
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled=""
+                type="button"
+              >
+                Export JSON
               </button>
             </div>
           </div>
@@ -2275,7 +2499,9 @@ describe("InvestMarketplace", () => {
   });
 
   it("has no axe violations in the error state", async () => {
-    const loadInvoices = jest.fn(() => new Promise((_, reject) => setTimeout(() => reject(new Error("boom")), 0)));
+    const loadInvoices = jest.fn(
+      () => new Promise((_, reject) => setTimeout(() => reject(new Error("boom")), 0))
+    );
 
     const { container } = render(<InvestMarketplace loadInvoices={loadInvoices} />);
     await flushTimers(0);
@@ -2597,7 +2823,7 @@ describe("Export functionality", () => {
     // Apply a search that yields no results
     const searchInput = screen.getByRole("textbox", { name: /Search by issuer name/i });
     fireEvent.change(searchInput, { target: { value: "NonExistentIssuerXYZ123" } });
-    
+
     // Fast-forward debounce
     await flushTimers(SEARCH_DEBOUNCE_MS);
 

@@ -406,7 +406,7 @@ function DirectionToggle({ column, filters, onFilterChange }) {
       onClick={handleToggle}
       disabled={!isActive}
       aria-label={ariaLabel}
-      className={`focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none ${
+      className={`focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 rounded px-2 py-1 text-xs font-mono transition-colors select-none ${
         isActive
           ? "bg-cyan-900/40 text-cyan-300 hover:bg-cyan-800/60 border border-cyan-700"
           : "bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
@@ -606,17 +606,12 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
             {effYieldMaxError}
           </p>
         )}
+        {effMaturityToError && (
+          <p id={maturityToErrorId} role="alert" aria-live="polite" className="text-xs text-red-400">
+            {effMaturityToError}
+          </p>
+        )}
       </div>
-
-      <label className="flex items-center gap-2 text-sm text-slate-300">
-        <input
-          type="checkbox"
-          checked={filters.watchlistOnly || false}
-          onChange={(e) => handleChange("watchlistOnly", e.target.checked)}
-          className="rounded border-slate-700 bg-slate-800/50 text-cyan-500 focus:ring-cyan-500"
-        />
-        Watchlist Only
-      </label>
 
       <div
         role="toolbar"
@@ -750,7 +745,7 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
         type="button"
         onClick={onClearFilters}
         disabled={!active}
-        className={`focus-ring ml-auto rounded-lg border px-4 py-2 text-sm transition-colors ${
+        className={`focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 ml-auto rounded-lg border px-4 py-2 text-sm transition-colors ${
           active
             ? "border-slate-600 bg-slate-800/50 text-cyan-400 hover:bg-slate-700"
             : "border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"

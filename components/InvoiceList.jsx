@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Button from "./Button";
 import ConfirmDialog from "./ConfirmDialog";
 import ErrorBanner from "./ErrorBanner";

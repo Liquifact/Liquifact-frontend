@@ -340,7 +340,7 @@ export const copy = {
       fundButton: "Fund this invoice",
       fundButtonLabel: "Fund this invoice",
       copyLinkButton: "Copy link",
-      copyLinkButtonLabel: "Copy invoice link to clipboard",
+      copyLinkButtonLabel: "Copy link",
       printButton: "Print / Save PDF",
       printButtonLabel: "Print or save this invoice as PDF",
       disclaimerNote:
@@ -570,5 +570,8 @@ export const copy = {
       displayNameTooShort: "Display name must be at least 2 characters.",
       invalidEmail: "Enter a valid email address.",
     },
+  },
+  nav: {
+    announceNavigation: "Navigated to {label}",
   },
 };

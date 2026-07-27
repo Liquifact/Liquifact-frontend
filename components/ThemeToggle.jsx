@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatRelativeTime } from "../lib/format/date";
+import CopyButton from "./CopyButton";
 
 /**
  * The three theme options the user can cycle through.
@@ -12,6 +13,9 @@ export const THEMES = /** @type {const} */ (["light", "dark", "system"]);
 
 /** localStorage key where the preference is persisted. */
 export const THEME_STORAGE_KEY = "liquifact-theme";
+
+/** Stable identifier for the theme preference setting. */
+export const THEME_IDENTIFIER = THEME_STORAGE_KEY;
 
 /** localStorage key where the last-changed timestamp (epoch ms) is persisted. */
 export const THEME_UPDATED_STORAGE_KEY = "liquifact-theme-updated-at";
@@ -162,7 +166,7 @@ export default function ThemeToggle({ className = "" }) {
     return () => clearInterval(id);
   }, []);
 
-  const handleClick = () => {
+  const cycleTheme = (direction = "next") => {
     setPreference((prev) => {
       const idx = THEMES.indexOf(prev);
       if (direction === "next") {
@@ -274,8 +278,9 @@ export default function ThemeToggle({ className = "" }) {
         type="button"
         role="button"
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
         aria-label={LABELS[preference]}
-        aria-pressed={preference !== "system"}
+        aria-pressed={isDarkActive}
         title={`Current theme: ${capitalise(preference)}`}
         data-theme-pref={preference}
         data-theme-next={nextPref}
@@ -291,6 +296,13 @@ export default function ThemeToggle({ className = "" }) {
       >
         {ICONS[preference]}
       </button>
+      <CopyButton
+        text={THEME_IDENTIFIER}
+        label="theme identifier"
+        successMessage="Theme identifier copied to clipboard."
+        errorMessage="Unable to copy theme identifier. Select and copy it manually."
+        className="h-8 w-8 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-cyan-400 dark:text-slate-300 dark:hover:text-cyan-400"
+      />
       {updatedAt && (
         <span
           id="theme-updated-at"

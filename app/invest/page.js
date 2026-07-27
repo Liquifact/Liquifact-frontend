@@ -21,6 +21,14 @@ import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
 import { exportAsCSV, exportAsJSON } from "@/utils/export";
+import { INVOICE_STATUSES } from "@/lib/types/invoice";
+import useBulkSelection from "@/lib/hooks/useBulkSelection";
+import DensityToggle from "@/components/DensityToggle";
+import { useDensity } from "@/lib/hooks/useDensity";
+import { useSettingsAnnouncer } from "@/components/useSettingsAnnouncer";
+import { useToast } from "@/components/ToastProvider";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import MarketplaceErrorBoundary from "@/components/MarketplaceErrorBoundary";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
@@ -269,18 +277,42 @@ export function defaultBulkExport(selectedInvoices) {
  * Default bulk-delete implementation: optimistically updates the supplied\n * list with a no-op filter (parent owns the actual mutation so the data\n * source of truth stays outside the export helper). The handler is a\n * documented opt-in behaviour: callers that already expose a delete API\n * inject their own `onBulkDelete`.\n * @param {Set<string>|Array<string>} ids
  * @returns {Promise<{count: number}>}
  */
-export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
-  const router = useRouter();
+export function InvestMarketplace({
+  loadInvoices = loadMockInvoices,
+  onBulkExport = defaultBulkExport,
+  onBulkDelete = async () => {},
+  toast: propToast,
+}) {
+  let router;
+  try {
+    router = useRouter();
+  } catch {
+    router = null;
+  }
   const searchParams = useSearchParams();
   const searchParamsValue = searchParams ?? new URLSearchParams();
   const searchParamsString = searchParamsValue.toString();
 
+  const initialUrlState = parseFiltersFromSearchParams(searchParamsValue, DEFAULT_FILTERS);
+
   const { watchlists } = useWatchlist();
   
+  const [density, setDensity] = useDensity();
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const [pendingDeleteIds, setPendingDeleteIds] = useState(null);
+  const [bulkRunning, setBulkRunning] = useState({ export: false, delete: false });
+  let contextToast;
+  try {
+    contextToast = useToast();
+  } catch {
+    contextToast = null;
+  }
+  const toastApi = propToast || contextToast;
+  const bulkLabels = copy.invest.bulkActions ?? {};
   // Filter state
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialUrlState.searchQuery);
   const [loadError, setLoadError] = useState("");
   const [filters, setFilters] = useState(initialUrlState.filters);
   const [debouncedSearch, setDebouncedSearch] = useState(initialUrlState.searchQuery);
@@ -406,7 +438,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     clearTimeout(urlUpdateTimerRef.current);
     urlUpdateTimerRef.current = setTimeout(() => {
       committedSearchRef.current = next;
-      router.replace(`?${next}`, { scroll: false });
+      router?.replace(`?${next}`, { scroll: false });
     }, URL_SYNC_DEBOUNCE_MS);
     return () => clearTimeout(urlUpdateTimerRef.current);
   }, [filters, debouncedSearch, router]);
@@ -612,14 +644,16 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
       });
 
       const plural = idsToDelete.size === 1 ? "" : "s";
-      const successMsg = bulkLabels.deleteSuccessMsg
+      const successMsg = (bulkLabels.deleteSuccessMsg || "Removed {count} invoice{plural}.")
         .replace("{count}", String(idsToDelete.size))
         .replace("{plural}", plural);
-      toastApi?.success(successMsg, bulkLabels.deleteSuccessTitle);
+      toastApi?.success(successMsg, bulkLabels.deleteSuccessTitle || "Invoices removed");
 
       setPendingDeleteIds(null);
     } catch {
-      toastApi?.error(bulkLabels.deleteErrorMsg, bulkLabels.deleteErrorTitle);
+      const errorMsg = (bulkLabels.deleteErrorMsg || "Failed to remove selected invoices.")
+        .replace("{count}", String(idsToDelete.size));
+      toastApi?.error(errorMsg, bulkLabels.deleteErrorTitle || "Delete failed");
     } finally {
       setBulkRunning((prev) => ({ ...prev, delete: false }));
     }
@@ -627,7 +661,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
 
   const handleExport = useCallback(() => {
     if (selectedIds.size === 0) {
-      toastApi?.info(bulkLabels.exportEmptyMsg, bulkLabels.exportSuccessTitle);
+      toastApi?.info(bulkLabels.exportEmptyMsg || "No invoices selected", bulkLabels.exportSuccessTitle || "Export");
       return;
     }
     setBulkRunning((prev) => ({ ...prev, export: true }));
@@ -638,10 +672,10 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
       const result = onBulkExport(selectedSlice) || { count: selectedSlice.length };
       const exportCount = result.count ?? selectedSlice.length;
       const plural = exportCount === 1 ? "" : "s";
-      const msg = bulkLabels.exportSuccessMsg
+      const msg = (bulkLabels.exportSuccessMsg || "Exported {count} invoice{plural}.")
         .replace("{count}", String(exportCount))
         .replace("{plural}", plural);
-      toastApi?.success(msg, bulkLabels.exportSuccessTitle);
+      toastApi?.success(msg, bulkLabels.exportSuccessTitle || "Export complete");
     } finally {
       setBulkRunning((prev) => ({ ...prev, export: false }));
     }
@@ -674,41 +708,13 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
         </h1>
         <p className="text-slate-400 mb-8">{copy.invest.subtext}</p>
 
-        {/*
-          ACCESSIBILITY DESIGN (Issue #91):
-          - We wrap the filter group in a <fieldset> with `aria-disabled="true"` to announce the preview/disabled
-            state to screen readers while keeping all controls discoverable in the tab order (unlike native `disabled`).
-          - `aria-describedby` programmatically links the fieldset to the visible "Soon" badge, ensuring that
-            assistive technologies announce the "coming soon" status when users navigate to the filters.
-          - We use a no-op handler structure (passing empty handlers) and CSS `pointer-events-none` to prevent
-            interaction while keeping the controls focusable.
-          - `opacity-60` is applied only to the inner controls container to ensure the "Soon" label itself stays
-            fully opaque for maximum contrast (WCAG AA compliant).
-        */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+        {/* Search input */}
+        <div className="mb-4">
           <InvoiceSearch
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             aria-label={copy.invest.searchPlaceholder}
           />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => exportAsCSV(filteredInvoices, "invoices_export.csv")}
-              disabled={filteredInvoices.length === 0}
-              className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Export CSV
-            </button>
-            <button
-              type="button"
-              onClick={() => exportAsJSON(filteredInvoices, "invoices_export.json")}
-              disabled={filteredInvoices.length === 0}
-              className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Export JSON
-            </button>
-          </div>
         </div>
 
         {/* Status legend filter chip row */}
@@ -730,8 +736,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           >
             {copy.invest.filterSoonLabel}
           </div>
-          <div          className="flex flex-wrap gap-4 items-center pointer-events-none opacity-60">
-            {/* InvoiceFilters only — search moved above */}
+          <div className="flex flex-wrap gap-4 items-center pointer-events-none opacity-60">
             <InvoiceFilters
               filters={filters}
               onFilterChange={setFilters}
@@ -756,24 +761,20 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
 
         {/* Error state – retryable */}
         {loadError ? (
-         <div role="alert" aria-live="assertive">
           <ErrorBanner
             title={copy.invest.errorTitle}
             description={loadError}
             actionLabel={copy.invest.retryAction}
             onAction={reload}
           />
-         </div>
         ) : invoices === null ? (
-          <div role="status" aria-live="polite" aria-label="Loading marketplace invoices">
-            <InvoiceListSkeleton rows={3} />
-          </div>
+          <InvoiceListSkeleton rows={3} />
         ) : invoices.length === 0 ? (
-          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
             {copy.invest.emptyState}
           </div>
         ) : filteredInvoices.length === 0 ? (
-          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
             {copy.invest.noMatchFilter}
           </div>
         ) : (
@@ -784,35 +785,65 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
             retryLabel="Retry loading watchlist"
           >
             <>
-              <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
-                {filteredInvoices.slice(0, visibleCount).map((inv) => (
-                  <li key={inv.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <Link
-                        href={`/invest/${inv.id}`}
-                        className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
-                      >
-                        {inv.issuer}
-                      </Link>
-                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
-                        {inv.status}
-                      </span>
-                    </div>
-                    <div className="flex gap-6 text-sm text-slate-400">
-                      <span>
-                        {inv.currency}&nbsp;{inv.amount}
-                      </span>
-                      <span>
-                        {copy.invest.labelYield}
-                        {inv.yield}
-                      </span>
-                      <span>
-                        {copy.invest.labelMaturity}
-                        {inv.dueDate}
-                      </span>
-                    </div>
-                  </li>
-                ))}
+              <ul
+                aria-label={copy.invest.listAriaLabel}
+                data-density={density}
+                className={density === "compact" ? "space-y-2" : "space-y-4"}
+              >
+                {filteredInvoices.slice(0, visibleCount).map((inv) => {
+                  const checked = isSelected(inv.id);
+                  return (
+                    <li
+                      key={inv.id}
+                      data-testid={`invoice-row-${inv.id}`}
+                      data-selected={checked ? "true" : "false"}
+                      className={`rounded-xl border transition-colors ${
+                        density === "compact" ? "p-3" : "p-5"
+                      } ${
+                        checked
+                          ? "border-cyan-500/70 bg-cyan-950/40 ring-1 ring-cyan-700/40"
+                          : "border-slate-800 bg-slate-900/50"
+                      }`}
+                    >
+                      <div className={`flex items-center justify-between ${density === "compact" ? "mb-1.5" : "mb-3"} gap-3`}>
+                        <label className="inline-flex items-center gap-2 rounded px-1 py-0.5 hover:bg-slate-800/40 focus-within:ring-2 focus-within:ring-cyan-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleSelection(inv.id)}
+                            aria-label={(bulkLabels.rowCheckboxAria || "Select invoice {id} from {issuer}")
+                              .replace("{id}", inv.id)
+                              .replace("{issuer}", inv.issuer || "")}
+                            data-testid={`invoice-checkbox-${inv.id}`}
+                            className="h-4 w-4 rounded border-slate-500 bg-slate-900 text-cyan-500 accent-cyan-400 focus:ring-cyan-400"
+                          />
+                          <Link
+                            href={`/invest/${inv.id}`}
+                            className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                          >
+                            {inv.issuer}
+                          </Link>
+                        </label>
+                        <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
+                          {inv.status}
+                        </span>
+                      </div>
+                      <div className="flex gap-6 text-sm text-slate-400">
+                        <span>
+                          {inv.currency}&nbsp;{inv.amount}
+                        </span>
+                        <span>
+                          {copy.invest.labelYield}
+                          {inv.yield}
+                        </span>
+                        <span>
+                          {copy.invest.labelMaturity}
+                          {inv.dueDate}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
               {visibleCount < filteredInvoices.length && (
                 <button
@@ -820,7 +851,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
                   type="button"
                   onClick={handleLoadMore}
                   aria-label={copy.invest.loadMoreAriaLabel}
-                  className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50"
+                  className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50 focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500"
                 >
                   {copy.invest.loadMore}
                 </button>
@@ -831,6 +862,28 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
             </>
           </ErrorBoundary>
         )}
+
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/60 pt-4">
+          <DensityToggle density={density} onDensityChange={setDensity} />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => exportAsCSV(filteredInvoices, "invoices_export.csv")}
+              disabled={filteredInvoices.length === 0}
+              className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => exportAsJSON(filteredInvoices, "invoices_export.json")}
+              disabled={filteredInvoices.length === 0}
+              className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Export JSON
+            </button>
+          </div>
+        </div>
       </main>
 
       {/* Confirmation dialog for destructive bulk action */}
@@ -838,22 +891,22 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
         open={deleteDialogOpen}
         onClose={handleCancelDelete}
         onConfirm={handleConfirmDelete}
-        title={bulkLabels.deleteConfirmTitle}
+        title={bulkLabels.deleteConfirmTitle || "Delete selected invoices?"}
         description={
           pendingDeleteIds
-            ? bulkLabels.deleteConfirmBody
+            ? (bulkLabels.deleteConfirmBody || "You are about to permanently delete {count} invoice{plural}.")
                 .replace("{count}", String(pendingDeleteIds.size))
                 .replace("{plural}", pendingDeleteIds.size === 1 ? "" : "s")
             : ""
         }
         confirmLabel={
           pendingDeleteIds
-            ? bulkLabels.deleteConfirmConfirmLabel
+            ? (bulkLabels.deleteConfirmConfirmLabel || "Delete {count} invoice{plural}")
                 .replace("{count}", String(pendingDeleteIds.size))
                 .replace("{plural}", pendingDeleteIds.size === 1 ? "" : "s")
             : "Delete"
         }
-        cancelLabel={bulkLabels.deleteConfirmCancelLabel}
+        cancelLabel={bulkLabels.deleteConfirmCancelLabel || "Cancel"}
         variant="danger"
         confirmLoading={bulkRunning.delete}
       />

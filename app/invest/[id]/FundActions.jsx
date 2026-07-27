@@ -250,6 +250,7 @@ export default function FundActions({
           disabled={isFundingDisabled}
           className="invoice-detail-action-btn focus-ring rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label={detail.fundButtonLabel}
+          aria-busy={isFundingPending ? "true" : "false"}
         >
           {isFundingPending ? "Funding…" : detail.fundButton}
         </button>

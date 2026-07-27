@@ -4,6 +4,14 @@ import "@testing-library/jest-dom";
 import ThemeToggle from "./ThemeToggle";
 import { THEME_STORAGE_KEY } from "./ThemeToggle";
 
+jest.mock("./ToastProvider", () => ({
+  useToast: () => ({
+    success: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+  }),
+}));
+
 // This file explicitly covers the theme loading, empty, error, and success state transitions
 // as requested by issue #795. The "system" theme is the fallback for loading/empty/error states.
 
@@ -36,7 +44,7 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
     delete global.window;
 
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button");
+    const btn = screen.getByRole("button", { name: /theme:/i });
     
     // During loading (SSR), it falls back to 'system'
     expect(btn).toHaveAttribute("data-theme-pref", "system");
@@ -48,7 +56,7 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
   it("renders the right UI for empty state", () => {
     // Local storage is empty
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button");
+    const btn = screen.getByRole("button", { name: /theme:/i });
     
     // With empty preferences, it falls back to 'system'
     expect(btn).toHaveAttribute("data-theme-pref", "system");
@@ -66,7 +74,7 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
     });
 
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button");
+    const btn = screen.getByRole("button", { name: /theme:/i });
     
     // Error state falls back to 'system' safely
     expect(btn).toHaveAttribute("data-theme-pref", "system");
@@ -88,7 +96,7 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
     render(<ThemeToggle />);
     
     // Initial success state from localStorage
-    let btn = screen.getByRole("button");
+    let btn = screen.getByRole("button", { name: /theme:/i });
     expect(btn).toHaveAttribute("data-theme-pref", "light");
     
     // Verify UI transition
