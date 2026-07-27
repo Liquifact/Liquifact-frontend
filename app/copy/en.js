@@ -159,6 +159,11 @@
  * @property {string} wallet.errorDescription
  * @property {string} wallet.errorActionLabel
  * @property {string} wallet.errorPreviewLabel
+ * @property {Object} nav - Site navigation copy
+ * @property {string} nav.errorTitle
+ * @property {string} nav.errorDescription
+ * @property {string} nav.errorActionLabel
+ * @property {string} nav.announceNavigation - Template: "Navigated to {label}"
  * @property {Object} error - Error page copy
  * @property {string} error.title
  * @property {string} error.description
@@ -455,6 +460,9 @@ export const copy = {
     errorDescription:
       "The site navigation ran into an unexpected error. You can retry, or reload the page.",
     errorActionLabel: "Retry",
+    /** Announced politely by NavMenu when the user navigates to a new route.
+     *  Replace {label} with the matching NAV_LINKS label (e.g. "Home"). */
+    announceNavigation: "Navigated to {label}",
   },
   notFound: {
     heading: "Page not found",
@@ -479,37 +487,33 @@ export const copy = {
     statusCurrent: "Current",
     statusPending: "Pending",
   },
-  nav: {
-    /** Announced politely by NavMenu when the user navigates to a new route.
-     *  Replace {label} with the matching NAV_LINKS label (e.g. "Home"). */
-    announceNavigation: "Navigated to {label}",
-    settings: {
-      title: "Settings",
-      subtext:
-        "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
-      emptyState: "No preferences available. Connect your wallet to unlock settings.",
-      errorTitle: "Unable to load settings",
-      errorDescription: "Unable to load settings right now.",
-      errorStatus: "Unable to load settings.",
-      retryAction: "Try again",
-      searchPlaceholder: "Search preferences…",
-      filterLegend: "Settings filters",
-      filterHelp:
-        "Use the category selector or the search box to narrow the list. Paging is reset whenever a filter changes.",
-      filterCategory: "Category:",
-      filterSearch: "Search:",
-      allCategories: "All categories",
-      clearFilters: "Reset filters",
-      noMatchFilter: "No preferences match the active filters.",
-      listAriaLabel: "Settings list",
-      loadingAriaLabel: "Loading settings",
-      loadMore: "Load more",
-      loadMoreAriaLabel: "Load more preferences",
-      endOfList: "You have reached the end of the list.",
-      announceNoSettings: "No settings available",
-      announceLoaded: "{count} preferences loaded",
-      announceFiltered: "{matched} of {total} preferences match",
-      announceNoMatch: "No preferences match",
-      announceShowing: "Showing {shown} of {total} preferences",
-    },
+  settings: {
+    title: "Settings",
+    subtext:
+      "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
+    emptyState: "No preferences available. Connect your wallet to unlock settings.",
+    errorTitle: "Unable to load settings",
+    errorDescription: "Unable to load settings right now.",
+    errorStatus: "Unable to load settings.",
+    retryAction: "Try again",
+    searchPlaceholder: "Search preferences…",
+    filterLegend: "Settings filters",
+    filterHelp:
+      "Use the category selector or the search box to narrow the list. Paging is reset whenever a filter changes.",
+    filterCategory: "Category:",
+    filterSearch: "Search:",
+    allCategories: "All categories",
+    clearFilters: "Reset filters",
+    noMatchFilter: "No preferences match the active filters.",
+    listAriaLabel: "Settings list",
+    loadingAriaLabel: "Loading settings",
+    loadMore: "Load more",
+    loadMoreAriaLabel: "Load more preferences",
+    endOfList: "You have reached the end of the list.",
+    announceNoSettings: "No settings available",
+    announceLoaded: "{count} preferences loaded",
+    announceFiltered: "{matched} of {total} preferences match",
+    announceNoMatch: "No preferences match",
+    announceShowing: "Showing {shown} of {total} preferences",
+  },
 };
