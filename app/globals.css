@@ -27,6 +27,14 @@
   --color-border: #1e293b; /* slate-800 */
   --color-primary: #22d3ee; /* cyan-400  */
   --color-focus-ring: #22d3ee; /* cyan-400 — 10:1 against slate-950 */
+  --market-card-padding: 1.25rem;
+  --market-card-gap: 1rem;
+  --market-card-title-font-size: 0.95rem;
+  --market-card-title-font-weight: 600;
+  --market-card-title-line-height: 1.4;
+  --market-card-meta-font-size: 0.875rem;
+  --market-card-meta-line-height: 1.5;
+  --market-card-meta-letter-spacing: 0.01em;
 }
 
 /* ── Light theme ───────────────────────────────────────────────────────────── */
@@ -38,6 +46,14 @@
   --color-border: #e2e8f0; /* slate-200 */
   --color-primary: #0891b2; /* cyan-600  — stays legible on white */
   --color-focus-ring: #0891b2; /* cyan-600 — 3.5:1 against slate-50 */
+  --market-card-padding: 1.25rem;
+  --market-card-gap: 1rem;
+  --market-card-title-font-size: 0.95rem;
+  --market-card-title-font-weight: 600;
+  --market-card-title-line-height: 1.4;
+  --market-card-meta-font-size: 0.875rem;
+  --market-card-meta-line-height: 1.5;
+  --market-card-meta-letter-spacing: 0.01em;
 }
 
 @theme inline {
