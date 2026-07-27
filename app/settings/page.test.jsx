@@ -69,6 +69,22 @@ jest.mock("@/components/NavMenu", () => {
   return { __esModule: true, default: MockNavMenu };
 });
 
+const mockToastSuccess = jest.fn();
+const mockToastError = jest.fn();
+jest.mock("@/components/ToastProvider", () => ({
+  useToast: () => ({ success: mockToastSuccess, error: mockToastError }),
+}));
+
+jest.mock("@/components/CopyButton", () => {
+  const actual = jest.requireActual("@/components/CopyButton");
+  return {
+    __esModule: true,
+    default: actual.default,
+    copyToClipboard: jest.fn(),
+  };
+});
+import { copyToClipboard } from "@/components/CopyButton";
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function createDeferredLoader(rows, delayMs = 0) {
@@ -958,3 +974,58 @@ describe("SettingsRoute default export", () => {
     expect(getRenderedRows()).toHaveLength(rows.length);
   });
 });
+
+describe("SettingsPage - Copy identifier affordance", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  });
+
+  it("copies the row identifier and surfaces a success toast", async () => {
+    copyToClipboard.mockResolvedValueOnce();
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
+    await flushTimers(0);
+
+    const copyBtn = screen.getByRole("button", { name: `Copy ${copy.settings.copyIdentifier}` });
+    
+    await act(async () => {
+      fireEvent.click(copyBtn);
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
+    expect(copyToClipboard).toHaveBeenCalledWith("row-001");
+    expect(mockToastSuccess).toHaveBeenCalledWith(
+      copy.settings.toastCopySuccessMsg,
+      copy.settings.toastCopySuccessTitle
+    );
+  });
+
+  it("surfaces an error toast when copying fails (fallback)", async () => {
+    copyToClipboard.mockRejectedValueOnce(new Error("fallback"));
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
+    await flushTimers(0);
+
+    const copyBtn = screen.getByRole("button", { name: `Copy ${copy.settings.copyIdentifier}` });
+    
+    await act(async () => {
+      fireEvent.click(copyBtn);
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
+    expect(copyToClipboard).toHaveBeenCalledWith("row-001");
+    expect(mockToastError).toHaveBeenCalledWith(
+      copy.settings.toastCopyErrorMsg,
+      copy.settings.toastCopyErrorTitle
+    );
+  });
+});
+
