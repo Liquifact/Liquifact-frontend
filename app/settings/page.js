@@ -18,6 +18,12 @@ const DEFAULT_SETTINGS = {
   email: "",
 };
 
+// Keep the client-side limits explicit and shared with the validators. These
+// are conservative storage/API-safe limits: display names fit common profile
+// schemas and 254 is the maximum length of an email address.
+const DISPLAY_NAME_MAX_LENGTH = 100;
+const EMAIL_MAX_LENGTH = 254;
+
 /**
  * Normalise a stored settings object so callers always get a complete shape.
  * Legacy payloads (e.g. a previous schema with fewer fields) are filled in
@@ -44,6 +50,9 @@ const validateDisplayName = (value) => {
   if (trimmed.length < 2) {
     return copy.settings.errors.displayNameTooShort;
   }
+  if (trimmed.length > DISPLAY_NAME_MAX_LENGTH) {
+    return copy.settings.errors.displayNameTooLong;
+  }
   return null;
 };
 
@@ -51,6 +60,9 @@ const validateEmail = (value) => {
   const trimmed = (value ?? "").trim();
   if (trimmed.length === 0) {
     return copy.settings.errors.required;
+  }
+  if (trimmed.length > EMAIL_MAX_LENGTH) {
+    return copy.settings.errors.emailTooLong;
   }
   // Conservative email check — local@domain.tld with no spaces, one '@',
   // and a TLD with at least 2 characters. Good enough for client-side
@@ -153,4 +165,12 @@ export default function SettingsPage() {
 }
 
 /** Exported for tests to assert normalisation shape without rendering. */
-export { normalizeSettings, DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY };
+export {
+  normalizeSettings,
+  DEFAULT_SETTINGS,
+  SETTINGS_STORAGE_KEY,
+  DISPLAY_NAME_MAX_LENGTH,
+  EMAIL_MAX_LENGTH,
+  validateDisplayName,
+  validateEmail,
+};

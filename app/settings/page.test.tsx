@@ -20,6 +20,10 @@ import SettingsPage, {
   normalizeSettings,
   DEFAULT_SETTINGS,
   SETTINGS_STORAGE_KEY,
+  DISPLAY_NAME_MAX_LENGTH,
+  EMAIL_MAX_LENGTH,
+  validateDisplayName,
+  validateEmail,
 } from "./page";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
@@ -74,6 +78,25 @@ describe("normalizeSettings", () => {
     expect(
       normalizeSettings({ displayName: "Sam", email: "sam@x.com" })
     ).toEqual({ displayName: "Sam", email: "sam@x.com" });
+  });
+});
+
+describe("settings validators", () => {
+  it("rejects empty and out-of-range display names", () => {
+    expect(validateDisplayName("  ")).toMatch(/cannot be empty/i);
+    expect(validateDisplayName("x".repeat(DISPLAY_NAME_MAX_LENGTH + 1))).toMatch(/100 characters/i);
+  });
+
+  it("rejects empty, malformed, and out-of-range email addresses", () => {
+    expect(validateEmail("  ")).toMatch(/cannot be empty/i);
+    expect(validateEmail("not-an-email")).toMatch(/valid email/i);
+    expect(validateEmail(`${"a".repeat(EMAIL_MAX_LENGTH)}@x.co`)).toMatch(/254 characters/i);
+  });
+
+  it("accepts values at the supported limits", () => {
+    expect(validateDisplayName("x".repeat(DISPLAY_NAME_MAX_LENGTH))).toBeNull();
+    const localPart = "a".repeat(EMAIL_MAX_LENGTH - "@x.co".length);
+    expect(validateEmail(`${localPart}@x.co`)).toBeNull();
   });
 });
 
@@ -132,6 +155,22 @@ describe("SettingsPage", () => {
     const saveBtn = screen.getByRole("button", { name: /save email/i });
     expect(saveBtn).toBeDisabled();
     expect(screen.getByTestId("settings-email-error")).toBeInTheDocument();
+  });
+
+  it("links an inline out-of-range error to its input and blocks saving", async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    await user.click(screen.getByRole("button", { name: /edit display name/i }));
+    const input = screen.getByTestId("settings-display-name-input");
+    await user.type(input, "x".repeat(DISPLAY_NAME_MAX_LENGTH + 1));
+
+    const error = screen.getByTestId("settings-display-name-error");
+    expect(error).toHaveTextContent(/100 characters/i);
+    expect(error).toHaveAttribute("role", "alert");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input.getAttribute("aria-describedby")).toContain(error.id);
+    expect(screen.getByRole("button", { name: /save display name/i })).toBeDisabled();
   });
 
   it("valid email saves and persists", async () => {
