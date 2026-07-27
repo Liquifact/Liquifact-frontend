@@ -13,7 +13,7 @@
     "size-limit": "size-limit"
   },
   "dependencies": {
-    "@next/swc-wasm-nodejs": "^16.2.10",
+    "@next/swc-wasm-nodejs": "^16.2.12",
     "@stellar/freighter-api": "^6.0.1",
     "@tailwindcss/oxide": "^4.3.3",
     "enhanced-resolve": "^5.24.3",
