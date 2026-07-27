@@ -7,6 +7,7 @@ import { WalletContext, WALLET_STATES, truncateAddress } from "./WalletProvider"
 import { useToast } from "./ToastProvider";
 import { copyToClipboard } from "../lib/clipboard";
 import WalletSkeleton from "./WalletSkeleton";
+import { formatWalletBalance } from "../lib/format/currency";
 
 /**
  * Returns a concise, non-sensitive announcement string for a wallet state
@@ -283,15 +284,57 @@ export default function WalletStatus() {
         {state === WALLET_STATES.CONNECTED && walletData ? (
           config.showAddress ? (
             <div className="flex flex-col">
-              <span className="font-mono text-sm text-slate-300">{walletData.address}</span>
-              <span className="text-xs text-slate-500">{walletData.balance}</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-sm text-slate-300">
+                  {truncateAddress(walletData.address)}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyAddress}
+                  aria-label={copy.wallet.copyAddressButton}
+                  title={copy.wallet.copyAddressButton}
+                  className="text-slate-400 hover:text-slate-200 transition-colors focus-ring cursor-pointer focus-visible:outline-2 focus-visible:outline-cyan-400"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 002-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
+                  </svg>
+                </button>
+              </div>
+              {(() => {
+                const { compact, full } = formatWalletBalance(walletData.balance);
+                return (
+                  <span
+                    className="text-xs text-slate-500"
+                    title={full}
+                    aria-label={`Wallet balance: ${full}`}
+                  >
+                    {compact}
+                  </span>
+                );
+              })()}
             </div>
           ) : (
             <span className="text-xs text-slate-400">Wallet connected</span>
           )
         ) : state === WALLET_STATES.CONNECTING ? (
           /* Loading state */
-          <span className="text-xs text-slate-400" role="status" aria-live="polite">
+          <span
+            id="wallet-helper-text"
+            className="text-xs text-slate-400"
+            role="status"
+            aria-live="polite"
+          >
             Connecting wallet...
           </span>
         ) : state === WALLET_STATES.ERROR || state === WALLET_STATES.WRONG_NETWORK ? (
@@ -325,24 +368,8 @@ export default function WalletStatus() {
         )}
       </div>
 
-      {/* Wallet action for non-error states */}
-      {state !== WALLET_STATES.ERROR && state !== WALLET_STATES.WRONG_NETWORK && (
-        <Button
-          type="button"
-          variant={config.buttonVariant}
-          loading={state === WALLET_STATES.CONNECTING}
-          disabled={config.disabled || state === WALLET_STATES.CONNECTING}
-          onClick={handleClick}
-          aria-label={config.buttonText}
-          aria-describedby="wallet-helper-text"
-          className="cursor-pointer focus-visible:outline-2 focus-visible:outline-cyan-400 focus-visible:outline-offset-2"
-        >
-          {config.buttonText}
-        </Button>
-      )}
-
       {/* Accessible wallet state announcements */}
-      <div className="sr-only">
+      <div className="sr-only" role="status" aria-live="polite" data-testid="wallet-live-region">
         {state === WALLET_STATES.CONNECTED && walletData ? (
           <div role="status" aria-live="polite">
             Wallet connected.
