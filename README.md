@@ -51,6 +51,9 @@ API migration seam, see the [Invoice data contract](docs/invoice-data.md).
 For marketplace component usage, props, and common patterns, see the
 [Marketplace usage guide](docs/marketplace.md).
 
+For `UploadZone` props, named exports, validation rules, and usage examples, see the
+[UploadZone API reference](docs/upload-api.md).
+
 ---
 
 ## API Integration
