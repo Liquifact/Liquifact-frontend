@@ -82,6 +82,14 @@
  * @property {string} invest.detail.densityCompactAriaLabel
  * @property {string} invest.detail.densityComfortableAriaLabel
  * @property {string} invest.detail.densityCurrentAriaLabel
+ * @property {Object} invest.detail.inlineEdit - Inline edit mode copy for invoice-detail metadata rows
+ * @property {string} invest.detail.inlineEdit.editButton
+ * @property {string} invest.detail.inlineEdit.saveButton
+ * @property {string} invest.detail.inlineEdit.cancelButton
+ * @property {string} invest.detail.inlineEdit.errorRequired
+ * @property {string} invest.detail.inlineEdit.errorAmount
+ * @property {string} invest.detail.inlineEdit.announceSaved
+ * @property {string} invest.detail.inlineEdit.announceCancelled
  * @property {Object} invest.detail.bulk - Bulk-select toolbar copy for invoice detail documents
  * @property {Object} invoices - Invoices page copy
  * @property {string} invoices.title
@@ -353,6 +361,15 @@ export const copy = {
       densityCompactAriaLabel: "Switch to compact density",
       densityComfortableAriaLabel: "Switch to comfortable density",
       densityCurrentAriaLabel: "Current density: {density}",
+      inlineEdit: {
+        editButton: "Edit {field}",
+        saveButton: "Save",
+        cancelButton: "Cancel",
+        errorRequired: "{field} is required.",
+        errorAmount: "Amount must be a positive number.",
+        announceSaved: "{field} updated successfully.",
+        announceCancelled: "Edit cancelled.",
+      },
       bulk: {
         sectionHeading: "Invoice documents",
         sectionSub: "Select documents to export or remove from this invoice.",
