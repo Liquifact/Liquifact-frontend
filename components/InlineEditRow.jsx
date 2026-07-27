@@ -101,8 +101,8 @@ export default function InlineEditRow({
   const errorId = useId();
   const messageId = useId();
 
-const editButtonRef = useRef(null);
-const inputRef = useRef(null);
+  const editButtonRef = useRef(null);
+  const inputRef = useRef(null);
 
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(() => value);
@@ -161,8 +161,7 @@ const inputRef = useRef(null);
     (announceWhenChanged = true) => {
       const trimmedDraft = (draft ?? "").trim();
       const trimmedValue = (value ?? "").trim();
-      const changed =
-        isInvalid || trimmedDraft !== trimmedValue;
+      const changed = isInvalid || trimmedDraft !== trimmedValue;
       setIsEditing(false);
       setDraft(value);
       if (announceWhenChanged && changed) {
@@ -227,7 +226,9 @@ const inputRef = useRef(null);
 
   const displayValue =
     typeof value === "string" && value.length > 0
-      ? (typeof formatDisplay === "function" ? formatDisplay(value) : value)
+      ? typeof formatDisplay === "function"
+        ? formatDisplay(value)
+        : value
       : emptyText;
 
   const editButtonAccessible = editLabel ?? `Edit ${label}`;
@@ -245,10 +246,7 @@ const inputRef = useRef(null);
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-3 flex-wrap">
-            <span
-              id={`${id}-label`}
-              className="text-sm font-medium text-slate-300"
-            >
+            <span id={`${id}-label`} className="text-sm font-medium text-slate-300">
               {label}
             </span>
           </div>
@@ -260,10 +258,7 @@ const inputRef = useRef(null);
             {displayValue}
           </p>
           {renderDescription && (
-            <p
-              id={descriptionId}
-              className="mt-1 text-xs text-slate-500"
-            >
+            <p id={descriptionId} className="mt-1 text-xs text-slate-500">
               {renderDescription}
             </p>
           )}
@@ -330,9 +325,8 @@ const inputRef = useRef(null);
           onChange={(e) => setDraft(e.target.value)}
           placeholder={placeholder}
           aria-describedby={
-            [description && descriptionId, isInvalid && errorId]
-              .filter(Boolean)
-              .join(" ") || undefined
+            [description && descriptionId, isInvalid && errorId].filter(Boolean).join(" ") ||
+            undefined
           }
           aria-invalid={isInvalid ? "true" : "false"}
           data-testid={`${id}-input`}

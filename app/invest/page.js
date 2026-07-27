@@ -276,7 +276,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   const searchParamsString = searchParamsValue.toString();
 
   const { watchlists } = useWatchlist();
-  
+
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   // Filter state
@@ -368,15 +368,18 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   }, [setInvoices, setLoadError, setRetryKey]);
 
   /** Toggle a status chip: add if absent, remove if present. */
-  const handleStatusToggle = useCallback((status) => {
-    setFilters((prev) => {
-      const current = Array.isArray(prev.statuses) ? prev.statuses : [];
-      const next = current.includes(status)
-        ? current.filter((s) => s !== status)
-        : [...current, status];
-      return { ...prev, statuses: next };
-    });
-  }, [setFilters]);
+  const handleStatusToggle = useCallback(
+    (status) => {
+      setFilters((prev) => {
+        const current = Array.isArray(prev.statuses) ? prev.statuses : [];
+        const next = current.includes(status)
+          ? current.filter((s) => s !== status)
+          : [...current, status];
+        return { ...prev, statuses: next };
+      });
+    },
+    [setFilters]
+  );
 
   /** Clear all status chips. */
   const handleClearStatuses = useCallback(() => {
@@ -454,7 +457,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
       list = list.filter((inv) => filters.statuses.includes(inv.status));
     }
     if (filters.watchlistOnly) {
-      const allStarredIds = new Set(watchlists.flatMap(wl => wl.invoiceIds));
+      const allStarredIds = new Set(watchlists.flatMap((wl) => wl.invoiceIds));
       list = list.filter((inv) => allStarredIds.has(inv.id));
     }
     return applySortToList(list, filters);
@@ -645,13 +648,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     } finally {
       setBulkRunning((prev) => ({ ...prev, export: false }));
     }
-  }, [
-    selectedIds,
-    filteredInvoices,
-    onBulkExport,
-    bulkLabels,
-    toastApi,
-  ]);
+  }, [selectedIds, filteredInvoices, onBulkExport, bulkLabels, toastApi]);
 
   // const visibleInvoices = filteredInvoices.slice(0, visibleCount);
 
@@ -730,7 +727,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           >
             {copy.invest.filterSoonLabel}
           </div>
-          <div          className="flex flex-wrap gap-4 items-center pointer-events-none opacity-60">
+          <div className="flex flex-wrap gap-4 items-center pointer-events-none opacity-60">
             {/* InvoiceFilters only — search moved above */}
             <InvoiceFilters
               filters={filters}
@@ -756,24 +753,32 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
 
         {/* Error state – retryable */}
         {loadError ? (
-         <div role="alert" aria-live="assertive">
-          <ErrorBanner
-            title={copy.invest.errorTitle}
-            description={loadError}
-            actionLabel={copy.invest.retryAction}
-            onAction={reload}
-          />
-         </div>
+          <div role="alert" aria-live="assertive">
+            <ErrorBanner
+              title={copy.invest.errorTitle}
+              description={loadError}
+              actionLabel={copy.invest.retryAction}
+              onAction={reload}
+            />
+          </div>
         ) : invoices === null ? (
           <div role="status" aria-live="polite" aria-label="Loading marketplace invoices">
             <InvoiceListSkeleton rows={3} />
           </div>
         ) : invoices.length === 0 ? (
-          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
+          >
             {copy.invest.emptyState}
           </div>
         ) : filteredInvoices.length === 0 ? (
-          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
+          >
             {copy.invest.noMatchFilter}
           </div>
         ) : (
@@ -786,7 +791,10 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
             <>
               <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
                 {filteredInvoices.slice(0, visibleCount).map((inv) => (
-                  <li key={inv.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+                  <li
+                    key={inv.id}
+                    className="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
+                  >
                     <div className="flex items-center justify-between mb-3">
                       <Link
                         href={`/invest/${inv.id}`}

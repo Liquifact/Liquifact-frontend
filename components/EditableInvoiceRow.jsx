@@ -32,11 +32,11 @@ export default function EditableInvoiceRow({ invoice, onSave }) {
       setAnnouncement("Save failed: Amount must be a positive number.");
       return;
     }
-    
+
     setIsEditing(false);
     setError("");
     setAnnouncement("Invoice updated successfully");
-    
+
     onSave({ ...draft, amount: String(draft.amount) });
   };
 
@@ -67,7 +67,12 @@ export default function EditableInvoiceRow({ invoice, onSave }) {
 
           <div className="flex flex-wrap gap-4 items-start">
             <div className="flex-1 min-w-[200px]">
-              <label htmlFor={`edit-issuer-${invoice.id}`} className="block text-xs text-slate-400 mb-1">Issuer</label>
+              <label
+                htmlFor={`edit-issuer-${invoice.id}`}
+                className="block text-xs text-slate-400 mb-1"
+              >
+                Issuer
+              </label>
               <input
                 id={`edit-issuer-${invoice.id}`}
                 name="issuer"
@@ -78,7 +83,12 @@ export default function EditableInvoiceRow({ invoice, onSave }) {
               />
             </div>
             <div className="w-32">
-              <label htmlFor={`edit-status-${invoice.id}`} className="block text-xs text-slate-400 mb-1">Status</label>
+              <label
+                htmlFor={`edit-status-${invoice.id}`}
+                className="block text-xs text-slate-400 mb-1"
+              >
+                Status
+              </label>
               <select
                 id={`edit-status-${invoice.id}`}
                 name="status"
@@ -96,7 +106,12 @@ export default function EditableInvoiceRow({ invoice, onSave }) {
 
           <div className="flex flex-wrap gap-4 items-start">
             <div className="w-24">
-              <label htmlFor={`edit-currency-${invoice.id}`} className="block text-xs text-slate-400 mb-1">Currency</label>
+              <label
+                htmlFor={`edit-currency-${invoice.id}`}
+                className="block text-xs text-slate-400 mb-1"
+              >
+                Currency
+              </label>
               <input
                 id={`edit-currency-${invoice.id}`}
                 name="currency"
@@ -106,7 +121,12 @@ export default function EditableInvoiceRow({ invoice, onSave }) {
               />
             </div>
             <div className="w-32">
-              <label htmlFor={`edit-amount-${invoice.id}`} className="block text-xs text-slate-400 mb-1">Amount</label>
+              <label
+                htmlFor={`edit-amount-${invoice.id}`}
+                className="block text-xs text-slate-400 mb-1"
+              >
+                Amount
+              </label>
               <input
                 id={`edit-amount-${invoice.id}`}
                 name="amount"
@@ -116,7 +136,12 @@ export default function EditableInvoiceRow({ invoice, onSave }) {
               />
             </div>
             <div className="w-24">
-              <label htmlFor={`edit-yield-${invoice.id}`} className="block text-xs text-slate-400 mb-1">Yield</label>
+              <label
+                htmlFor={`edit-yield-${invoice.id}`}
+                className="block text-xs text-slate-400 mb-1"
+              >
+                Yield
+              </label>
               <input
                 id={`edit-yield-${invoice.id}`}
                 name="yield"
@@ -126,7 +151,12 @@ export default function EditableInvoiceRow({ invoice, onSave }) {
               />
             </div>
             <div className="w-40">
-              <label htmlFor={`edit-due-${invoice.id}`} className="block text-xs text-slate-400 mb-1">Maturity</label>
+              <label
+                htmlFor={`edit-due-${invoice.id}`}
+                className="block text-xs text-slate-400 mb-1"
+              >
+                Maturity
+              </label>
               <input
                 id={`edit-due-${invoice.id}`}
                 name="dueDate"

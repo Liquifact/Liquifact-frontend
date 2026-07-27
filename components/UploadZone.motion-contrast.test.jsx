@@ -34,7 +34,7 @@ describe("globals.css — reduced-motion and high-contrast rules exist", () => {
 
   it("suppresses animation and transition duration inside the reduced-motion block", () => {
     const match = /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*{([\s\S]*?)}\s*}/.exec(
-      cssSource,
+      cssSource
     );
     expect(match).toBeTruthy();
     expect(match[1]).toMatch(/animation-duration/);

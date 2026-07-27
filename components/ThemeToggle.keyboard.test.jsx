@@ -1,7 +1,12 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import ThemeToggle, { THEMES, THEME_STORAGE_KEY, resolveTheme, readStoredTheme } from "./ThemeToggle";
+import ThemeToggle, {
+  THEMES,
+  THEME_STORAGE_KEY,
+  resolveTheme,
+  readStoredTheme,
+} from "./ThemeToggle";
 
 jest.mock("./ToastProvider", () => ({
   useToast: () => ({

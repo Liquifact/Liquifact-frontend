@@ -207,9 +207,7 @@ describe("first-page boundary: what is rendered before the user clicks anything"
 
   it("shows exactly PAGE_SIZE items with Load-more visible when total is PAGE_SIZE + 1", async () => {
     render(
-      <InvestMarketplace
-        loadInvoices={createDeferredLoader(makeInvoices(PAGE_SIZE + 1), 30)}
-      />
+      <InvestMarketplace loadInvoices={createDeferredLoader(makeInvoices(PAGE_SIZE + 1), 30)} />
     );
     await flushTimers(30);
 
@@ -677,9 +675,33 @@ describe("helper coverage for impact-module threshold", () => {
 
   it("applySortToList sorts by amount ascending", () => {
     const list = [
-      { id: "a", issuer: "high", amount: "3,000", currency: "USD", dueDate: "2026-01-01", yield: "5%", status: "Open" },
-      { id: "b", issuer: "low",  amount: "1,000", currency: "USD", dueDate: "2026-01-01", yield: "5%", status: "Open" },
-      { id: "c", issuer: "mid",  amount: "2,000", currency: "USD", dueDate: "2026-01-01", yield: "5%", status: "Open" },
+      {
+        id: "a",
+        issuer: "high",
+        amount: "3,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "b",
+        issuer: "low",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "c",
+        issuer: "mid",
+        amount: "2,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "5%",
+        status: "Open",
+      },
     ];
     const sorted = applySortToList(list, { sort: "amount", sortDir: "asc" });
     expect(sorted.map((i) => i.id)).toEqual(["b", "c", "a"]);
@@ -687,9 +709,33 @@ describe("helper coverage for impact-module threshold", () => {
 
   it("applySortToList sorts by amount descending", () => {
     const list = [
-      { id: "a", issuer: "high", amount: "3,000", currency: "USD", dueDate: "2026-01-01", yield: "5%", status: "Open" },
-      { id: "b", issuer: "low",  amount: "1,000", currency: "USD", dueDate: "2026-01-01", yield: "5%", status: "Open" },
-      { id: "c", issuer: "mid",  amount: "2,000", currency: "USD", dueDate: "2026-01-01", yield: "5%", status: "Open" },
+      {
+        id: "a",
+        issuer: "high",
+        amount: "3,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "b",
+        issuer: "low",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "c",
+        issuer: "mid",
+        amount: "2,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "5%",
+        status: "Open",
+      },
     ];
     const sorted = applySortToList(list, { sort: "amount", sortDir: "desc" });
     expect(sorted.map((i) => i.id)).toEqual(["a", "c", "b"]);
@@ -697,9 +743,33 @@ describe("helper coverage for impact-module threshold", () => {
 
   it("applySortToList sorts by yield ascending", () => {
     const list = [
-      { id: "a", issuer: "A", amount: "1,000", currency: "USD", dueDate: "2026-01-01", yield: "9%", status: "Open" },
-      { id: "b", issuer: "B", amount: "1,000", currency: "USD", dueDate: "2026-01-01", yield: "5%", status: "Open" },
-      { id: "c", issuer: "C", amount: "1,000", currency: "USD", dueDate: "2026-01-01", yield: "7%", status: "Open" },
+      {
+        id: "a",
+        issuer: "A",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "9%",
+        status: "Open",
+      },
+      {
+        id: "b",
+        issuer: "B",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "c",
+        issuer: "C",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "7%",
+        status: "Open",
+      },
     ];
     const sorted = applySortToList(list, { sort: "yield", sortDir: "asc" });
     expect(sorted.map((i) => i.id)).toEqual(["b", "c", "a"]);
@@ -707,9 +777,33 @@ describe("helper coverage for impact-module threshold", () => {
 
   it("applySortToList sorts by maturity (dueDate) ascending", () => {
     const list = [
-      { id: "late", issuer: "A", amount: "1,000", currency: "USD", dueDate: "2026-09-01", yield: "5%", status: "Open" },
-      { id: "early", issuer: "B", amount: "1,000", currency: "USD", dueDate: "2026-03-01", yield: "5%", status: "Open" },
-      { id: "mid", issuer: "C", amount: "1,000", currency: "USD", dueDate: "2026-06-01", yield: "5%", status: "Open" },
+      {
+        id: "late",
+        issuer: "A",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-09-01",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "early",
+        issuer: "B",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-03-01",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "mid",
+        issuer: "C",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-06-01",
+        yield: "5%",
+        status: "Open",
+      },
     ];
     const sorted = applySortToList(list, { sort: "maturity", sortDir: "asc" });
     expect(sorted.map((i) => i.id)).toEqual(["early", "mid", "late"]);
@@ -717,9 +811,33 @@ describe("helper coverage for impact-module threshold", () => {
 
   it("applySortToList sorts by maturity descending", () => {
     const list = [
-      { id: "late", issuer: "A", amount: "1,000", currency: "USD", dueDate: "2026-09-01", yield: "5%", status: "Open" },
-      { id: "early", issuer: "B", amount: "1,000", currency: "USD", dueDate: "2026-03-01", yield: "5%", status: "Open" },
-      { id: "mid", issuer: "C", amount: "1,000", currency: "USD", dueDate: "2026-06-01", yield: "5%", status: "Open" },
+      {
+        id: "late",
+        issuer: "A",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-09-01",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "early",
+        issuer: "B",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-03-01",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "mid",
+        issuer: "C",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-06-01",
+        yield: "5%",
+        status: "Open",
+      },
     ];
     const sorted = applySortToList(list, { sort: "maturity", sortDir: "desc" });
     expect(sorted.map((i) => i.id)).toEqual(["late", "mid", "early"]);
@@ -744,9 +862,33 @@ describe("helper coverage for impact-module threshold", () => {
 
   it("filters invoices by maximum yield (drives the yieldMax parseYield branch)", async () => {
     const invoices = [
-      { id: "a", issuer: "High", amount: "1,000", currency: "USD", dueDate: "2026-06-15", yield: "9.5%", status: "Open" },
-      { id: "b", issuer: "Mid",  amount: "1,000", currency: "USD", dueDate: "2026-07-01", yield: "6.0%", status: "Open" },
-      { id: "c", issuer: "Low",  amount: "1,000", currency: "USD", dueDate: "2026-05-30", yield: "3.2%", status: "Open" },
+      {
+        id: "a",
+        issuer: "High",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "9.5%",
+        status: "Open",
+      },
+      {
+        id: "b",
+        issuer: "Mid",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-07-01",
+        yield: "6.0%",
+        status: "Open",
+      },
+      {
+        id: "c",
+        issuer: "Low",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-05-30",
+        yield: "3.2%",
+        status: "Open",
+      },
     ];
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);
@@ -767,9 +909,33 @@ describe("helper coverage for impact-module threshold", () => {
   it("applySortToList honours the legacy compound sort form (yield_asc)", () => {
     // parseSortState matches `column_dir` strings and returns column + dir.
     const list = [
-      { id: "a", issuer: "A", amount: "1,000", currency: "USD", dueDate: "2026-01-01", yield: "9%", status: "Open" },
-      { id: "b", issuer: "B", amount: "1,000", currency: "USD", dueDate: "2026-01-01", yield: "5%", status: "Open" },
-      { id: "c", issuer: "C", amount: "1,000", currency: "USD", dueDate: "2026-01-01", yield: "7%", status: "Open" },
+      {
+        id: "a",
+        issuer: "A",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "9%",
+        status: "Open",
+      },
+      {
+        id: "b",
+        issuer: "B",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "c",
+        issuer: "C",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "7%",
+        status: "Open",
+      },
     ];
     const sorted = applySortToList(list, { sort: "yield_asc" });
     expect(sorted.map((i) => i.id)).toEqual(["b", "c", "a"]);
@@ -777,9 +943,33 @@ describe("helper coverage for impact-module threshold", () => {
 
   it("applySortToList honours the legacy compound sort form (amount_desc)", () => {
     const list = [
-      { id: "a", issuer: "A", amount: "1,000", currency: "USD", dueDate: "2026-01-01", yield: "5%", status: "Open" },
-      { id: "b", issuer: "B", amount: "9,000", currency: "USD", dueDate: "2026-01-01", yield: "5%", status: "Open" },
-      { id: "c", issuer: "C", amount: "4,000", currency: "USD", dueDate: "2026-01-01", yield: "5%", status: "Open" },
+      {
+        id: "a",
+        issuer: "A",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "b",
+        issuer: "B",
+        amount: "9,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "c",
+        issuer: "C",
+        amount: "4,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "5%",
+        status: "Open",
+      },
     ];
     const sorted = applySortToList(list, { sort: "amount_desc" });
     expect(sorted.map((i) => i.id)).toEqual(["b", "c", "a"]);
@@ -787,9 +977,33 @@ describe("helper coverage for impact-module threshold", () => {
 
   it("applySortToList default sortDir is 'desc' when sortDir is missing (matches DEFAULT_FILTERS)", () => {
     const list = [
-      { id: "a", issuer: "A", amount: "1,000", currency: "USD", dueDate: "2026-01-01", yield: "5%", status: "Open" },
-      { id: "b", issuer: "B", amount: "9,000", currency: "USD", dueDate: "2026-01-01", yield: "5%", status: "Open" },
-      { id: "c", issuer: "C", amount: "4,000", currency: "USD", dueDate: "2026-01-01", yield: "5%", status: "Open" },
+      {
+        id: "a",
+        issuer: "A",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "b",
+        issuer: "B",
+        amount: "9,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "c",
+        issuer: "C",
+        amount: "4,000",
+        currency: "USD",
+        dueDate: "2026-01-01",
+        yield: "5%",
+        status: "Open",
+      },
     ];
     // Default sortDir: 'desc' -> 9000, 4000, 1000.
     const sorted = applySortToList(list, { sort: "amount" });
@@ -804,9 +1018,7 @@ describe("helper coverage for impact-module threshold", () => {
     const loadInvoices = jest.fn(() => {
       callCount += 1;
       if (callCount === 1) {
-        return new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("first fail")), 50)
-        );
+        return new Promise((_, reject) => setTimeout(() => reject(new Error("first fail")), 50));
       }
       return new Promise((resolve) => setTimeout(() => resolve(invoices), 50));
     });
@@ -834,9 +1046,7 @@ describe("helper coverage for impact-module threshold", () => {
     const loadInvoices = jest.fn(() => {
       callCount += 1;
       if (callCount === 1) {
-        return new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("first fail")), 50)
-        );
+        return new Promise((_, reject) => setTimeout(() => reject(new Error("first fail")), 50));
       }
       return new Promise((resolve) => setTimeout(() => resolve(invoices), 50));
     });
@@ -860,8 +1070,24 @@ describe("helper coverage for impact-module threshold", () => {
 
   it("search filter that prunes the list to zero matches shows the no-match state", async () => {
     const invoices = [
-      { id: "a", issuer: "Acme", amount: "1,000", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
-      { id: "b", issuer: "Bright", amount: "1,000", currency: "USD", dueDate: "2026-07-01", yield: "5%", status: "Open" },
+      {
+        id: "a",
+        issuer: "Acme",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "b",
+        issuer: "Bright",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-07-01",
+        yield: "5%",
+        status: "Open",
+      },
     ];
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);
@@ -879,8 +1105,24 @@ describe("helper coverage for impact-module threshold", () => {
 
   it("filters invoices by maturity date upper bound (drives the maturityTo branch)", async () => {
     const invoices = [
-      { id: "a", issuer: "A", amount: "1,000", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
-      { id: "b", issuer: "B", amount: "1,000", currency: "USD", dueDate: "2026-12-15", yield: "5%", status: "Open" },
+      {
+        id: "a",
+        issuer: "A",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "b",
+        issuer: "B",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-12-15",
+        yield: "5%",
+        status: "Open",
+      },
     ];
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);
@@ -896,12 +1138,19 @@ describe("helper coverage for impact-module threshold", () => {
 
   // ── Helpers via integration: getResultsSummaryText ───────────────────────
 
-
   // ── Filter integration: status legend chip → filters.statuses branch ───
 
   it("renders the no-match copy when a yield filter eliminates every invoice", async () => {
     const invoices = [
-      { id: "a", issuer: "A", amount: "1,000", currency: "USD", dueDate: "2026-06-15", yield: "5%", status: "Open" },
+      {
+        id: "a",
+        issuer: "A",
+        amount: "1,000",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
     ];
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);

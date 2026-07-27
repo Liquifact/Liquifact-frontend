@@ -310,8 +310,7 @@ export const copy = {
     bulk: {
       toolbarLabel: "Bulk actions toolbar",
       selectAllLabel: "Select {selected} of {total}",
-      selectAllAria:
-        "Select all invoices. Currently {selected} of {total} selected.",
+      selectAllAria: "Select all invoices. Currently {selected} of {total} selected.",
       rowCheckboxAria: "Select invoice {id} from {issuer}",
       selectedCount: "{selected} of {total} invoices selected.",
       clearButton: "Clear selection",
@@ -389,8 +388,7 @@ export const copy = {
         listAriaLabel: "Invoice detail documents",
         toolbarLabel: "Invoice detail bulk actions",
         selectAllLabel: "Select {selected} of {total}",
-        selectAllAria:
-          "Select all invoice documents. Currently {selected} of {total} selected.",
+        selectAllAria: "Select all invoice documents. Currently {selected} of {total} selected.",
         rowCheckboxAria: "Select document {name} ({id})",
         selectedCount: "{selected} of {total} documents selected.",
         clearButton: "Clear selection",
@@ -615,13 +613,6 @@ export const copy = {
         description: "Used for invoice notifications only. Never displayed publicly.",
         placeholder: "name@example.com",
       },
-    },
-    errors: {
-      required: "This field cannot be empty.",
-      displayNameTooShort: "Display name must be at least 2 characters.",
-      displayNameTooLong: "Display name must be 100 characters or fewer.",
-      invalidEmail: "Enter a valid email address.",
-      emailTooLong: "Email address must be 254 characters or fewer.",
     },
   },
 };

@@ -7,9 +7,7 @@ expect.extend(toHaveNoViolations);
 
 describe("FormsView a11y", () => {
   it("has no accessibility violations in loaded state", async () => {
-    const { container } = render(
-      <FormsView status="loaded" data={[{ title: "Form 1" }]} />
-    );
+    const { container } = render(<FormsView status="loaded" data={[{ title: "Form 1" }]} />);
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });

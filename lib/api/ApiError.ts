@@ -84,8 +84,7 @@ export class ApiError extends Error {
     requestId?: string
   ): ApiError {
     const msg =
-      message ??
-      `HTTP ${response.status}${response.statusText ? " " + response.statusText : ""}`;
+      message ?? `HTTP ${response.status}${response.statusText ? " " + response.statusText : ""}`;
     return new ApiError(msg, response.status, code ?? String(response.status), requestId);
   }
 }

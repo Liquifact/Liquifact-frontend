@@ -109,10 +109,9 @@ export default function BulkActionsToolbar({
           className="h-4 w-4 rounded border-slate-500 bg-slate-900 text-cyan-500 accent-cyan-400 focus:ring-cyan-400"
         />
         <span className="font-medium">
-          {labels.selectAllLabel.replace("{selected}", String(selectedCount)).replace(
-            "{total}",
-            String(visibleCount)
-          )}
+          {labels.selectAllLabel
+            .replace("{selected}", String(selectedCount))
+            .replace("{total}", String(visibleCount))}
         </span>
       </label>
 
@@ -155,10 +154,7 @@ export default function BulkActionsToolbar({
           variant="danger"
           onClick={onRequestDelete}
           loading={deleting}
-          aria-label={labels.deleteButtonAria.replace(
-            "{count}",
-            String(selectedCount)
-          )}
+          aria-label={labels.deleteButtonAria.replace("{count}", String(selectedCount))}
           data-testid="bulk-delete"
         >
           {labels.deleteButton.replace("{count}", String(selectedCount))}

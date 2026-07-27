@@ -293,9 +293,7 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
         await Promise.resolve();
       });
 
-      await waitFor(() =>
-        expect(screen.getByRole("status")).toHaveTextContent(/tokenization/i)
-      );
+      await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/tokenization/i));
 
       // Success state
       await act(async () => {

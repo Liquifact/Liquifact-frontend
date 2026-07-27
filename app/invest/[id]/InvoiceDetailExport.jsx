@@ -58,11 +58,7 @@ export default function InvoiceDetailExport({ invoice }) {
   }, [invoice]);
 
   return (
-    <div
-      className="no-print flex gap-3"
-      role="group"
-      aria-label={detail.exportGroupLabel}
-    >
+    <div className="no-print flex gap-3" role="group" aria-label={detail.exportGroupLabel}>
       <button
         type="button"
         onClick={handleExportCSV}

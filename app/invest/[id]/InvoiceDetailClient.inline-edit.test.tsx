@@ -40,14 +40,7 @@
  */
 
 import React, { useState } from "react";
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  act,
-  within,
-} from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { axe, toHaveNoViolations } from "jest-axe";
@@ -388,9 +381,7 @@ describe("InvoiceDetailClient — validation", () => {
     await user.clear(editInput("issuer"));
     fireEvent.click(saveBtn("issuer"));
     expect(screen.getByTestId("inline-edit-error-issuer")).toBeInTheDocument();
-    expect(screen.getByTestId("inline-edit-error-issuer")).toHaveTextContent(
-      /Issuer is required/i
-    );
+    expect(screen.getByTestId("inline-edit-error-issuer")).toHaveTextContent(/Issuer is required/i);
     // 25. onSave NOT called on failed validation
     expect(onSave).not.toHaveBeenCalled();
   });
@@ -404,9 +395,7 @@ describe("InvoiceDetailClient — validation", () => {
     await user.clear(editInput("amount"));
     await user.type(editInput("amount"), "-500");
     fireEvent.click(saveBtn("amount"));
-    expect(screen.getByTestId("inline-edit-error-amount")).toHaveTextContent(
-      /positive number/i
-    );
+    expect(screen.getByTestId("inline-edit-error-amount")).toHaveTextContent(/positive number/i);
     expect(onSave).not.toHaveBeenCalled();
   });
 
@@ -419,9 +408,7 @@ describe("InvoiceDetailClient — validation", () => {
     await user.clear(editInput("amount"));
     await user.type(editInput("amount"), "abc");
     fireEvent.click(saveBtn("amount"));
-    expect(screen.getByTestId("inline-edit-error-amount")).toHaveTextContent(
-      /positive number/i
-    );
+    expect(screen.getByTestId("inline-edit-error-amount")).toHaveTextContent(/positive number/i);
     expect(onSave).not.toHaveBeenCalled();
   });
 
@@ -433,9 +420,7 @@ describe("InvoiceDetailClient — validation", () => {
     await user.clear(editInput("amount"));
     await user.type(editInput("amount"), "0");
     fireEvent.click(saveBtn("amount"));
-    expect(screen.getByTestId("inline-edit-error-amount")).toHaveTextContent(
-      /positive number/i
-    );
+    expect(screen.getByTestId("inline-edit-error-amount")).toHaveTextContent(/positive number/i);
     expect(onSave).not.toHaveBeenCalled();
   });
 
@@ -602,12 +587,7 @@ describe("InvoiceDetailClient — non-editable rows", () => {
 describe("InvoiceDetailClient — onSave callback", () => {
   it("does not throw when onSave is not provided", () => {
     expect(() => {
-      render(
-        <InvoiceDetailClient
-          {...defaultProps}
-          onSave={undefined}
-        />
-      );
+      render(<InvoiceDetailClient {...defaultProps} onSave={undefined} />);
       fireEvent.click(screen.getByTestId("inline-edit-btn-issuer"));
       fireEvent.click(screen.getByTestId("inline-edit-save-issuer"));
     }).not.toThrow();

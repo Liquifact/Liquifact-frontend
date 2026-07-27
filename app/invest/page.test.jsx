@@ -2275,7 +2275,9 @@ describe("InvestMarketplace", () => {
   });
 
   it("has no axe violations in the error state", async () => {
-    const loadInvoices = jest.fn(() => new Promise((_, reject) => setTimeout(() => reject(new Error("boom")), 0)));
+    const loadInvoices = jest.fn(
+      () => new Promise((_, reject) => setTimeout(() => reject(new Error("boom")), 0))
+    );
 
     const { container } = render(<InvestMarketplace loadInvoices={loadInvoices} />);
     await flushTimers(0);
@@ -2597,7 +2599,7 @@ describe("Export functionality", () => {
     // Apply a search that yields no results
     const searchInput = screen.getByRole("textbox", { name: /Search by issuer name/i });
     fireEvent.change(searchInput, { target: { value: "NonExistentIssuerXYZ123" } });
-    
+
     // Fast-forward debounce
     await flushTimers(SEARCH_DEBOUNCE_MS);
 

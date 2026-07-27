@@ -31,9 +31,7 @@ export default function ProgressBar({ value, max = 100, label, className = "" })
           style={{ width: `${percentage}%` }}
         />
       </div>
-      <span className="sr-only">
-        {percentage}% uploaded
-      </span>
+      <span className="sr-only">{percentage}% uploaded</span>
     </div>
   );
 }

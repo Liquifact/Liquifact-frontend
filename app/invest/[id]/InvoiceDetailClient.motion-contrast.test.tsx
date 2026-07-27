@@ -353,8 +353,7 @@ const fundActionProps = { id: "inv-001", status: "Open" };
 describe("FundActions — motion-reduce:transition-none on action buttons", () => {
   it("Fund button carries motion-reduce:transition-none to suppress hover transition", () => {
     render(<FundActions {...fundActionProps} />);
-    const buttons = document
-      .querySelectorAll("button.invoice-detail-action-btn");
+    const buttons = document.querySelectorAll("button.invoice-detail-action-btn");
     // At minimum the three action buttons must be present
     expect(buttons.length).toBeGreaterThanOrEqual(3);
     buttons.forEach((btn) => {

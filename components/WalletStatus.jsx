@@ -299,8 +299,6 @@ export default function WalletStatus() {
           <div className="flex items-center gap-3" role="alert" aria-live="assertive">
             <span id="wallet-helper-text" className="max-w-xs text-xs text-red-400">
               {config.helperText}
-
-
             </span>
 
             <Button
@@ -372,5 +370,3 @@ export default function WalletStatus() {
 }
 
 export { WALLET_STATES };
-
-

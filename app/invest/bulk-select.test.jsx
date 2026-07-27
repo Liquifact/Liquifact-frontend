@@ -62,9 +62,7 @@ async function renderLoaded(props = {}) {
   };
   const result = render(<InvestMarketplace {...userProps} />);
   await waitFor(() =>
-    expect(
-      screen.getByRole("list", { name: /investable invoices/i })
-    ).toBeInTheDocument()
+    expect(screen.getByRole("list", { name: /investable invoices/i })).toBeInTheDocument()
   );
   return result;
 }
@@ -147,7 +145,6 @@ describe("InvestMarketplace — bulk select toolbar", () => {
     expect(selectAll.indeterminate).toBe(false);
   });
 
-
   it("select-all in 'all' state deselects every visible row", async () => {
     await renderLoaded();
     // Build up to the 'all' state in two stages so the toolbar is visible
@@ -198,9 +195,7 @@ describe("InvestMarketplace — bulk select toolbar", () => {
       target: { value: "" },
     });
     await waitFor(() =>
-      expect(
-        screen.getByRole("list", { name: /investable invoices/i })
-      ).toBeInTheDocument()
+      expect(screen.getByRole("list", { name: /investable invoices/i })).toBeInTheDocument()
     );
     expect(screen.queryByTestId("bulk-actions-toolbar")).not.toBeInTheDocument();
     expect(getCheckbox("inv-001")).not.toBeChecked();
@@ -241,7 +236,9 @@ describe("InvestMarketplace — bulk select toolbar", () => {
     expect(
       within(dialog).getByRole("heading", { name: /Delete selected invoices\?/i })
     ).toBeInTheDocument();
-    expect(within(dialog).getByText(/You are about to permanently delete 1 invoice/i)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/You are about to permanently delete 1 invoice/i)
+    ).toBeInTheDocument();
   });
 
   it("Cancelling the dialog closes it without deleting anything", async () => {
@@ -265,9 +262,7 @@ describe("InvestMarketplace — bulk select toolbar", () => {
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: /Delete 1 invoice/i }));
 
-    await waitFor(() =>
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
-    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(onBulkDelete).toHaveBeenCalledTimes(1);
     // inv-002 should be removed from the list
     expect(screen.queryByTestId("invoice-row-inv-002")).not.toBeInTheDocument();

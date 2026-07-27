@@ -140,9 +140,7 @@ describe("MarketplaceErrorBoundary", () => {
     );
 
     expect(screen.getByText("Unable to load investable invoices")).toBeInTheDocument();
-    expect(
-      screen.getByText("Unable to load investable invoices right now.")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Unable to load investable invoices right now.")).toBeInTheDocument();
     expect(screen.getByText("Try again")).toBeInTheDocument();
 
     consoleErrorSpy.mockRestore();

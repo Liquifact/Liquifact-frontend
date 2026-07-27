@@ -21,7 +21,10 @@ export default function InvoiceDetailSkeleton() {
         <div className="h-4 w-36 rounded bg-slate-700 animate-pulse mb-6" aria-hidden="true" />
 
         <div className="h-8 w-48 rounded bg-slate-700 animate-pulse mb-2" aria-hidden="true" />
-        <div className="h-4 w-full max-w-xl rounded bg-slate-800 animate-pulse mb-8" aria-hidden="true" />
+        <div
+          className="h-4 w-full max-w-xl rounded bg-slate-800 animate-pulse mb-8"
+          aria-hidden="true"
+        />
 
         <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 mb-6">
           <div className="h-7 w-40 rounded bg-slate-700 animate-pulse mb-4" aria-hidden="true" />
@@ -42,7 +45,10 @@ export default function InvoiceDetailSkeleton() {
           <div className="flex flex-col gap-0">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="relative flex items-start gap-4 pb-6 last:pb-0">
-                <div className="h-6 w-6 rounded-full bg-slate-700 animate-pulse flex-shrink-0" aria-hidden="true" />
+                <div
+                  className="h-6 w-6 rounded-full bg-slate-700 animate-pulse flex-shrink-0"
+                  aria-hidden="true"
+                />
                 <div className="flex flex-col min-w-0 gap-1">
                   <div className="h-4 w-24 rounded bg-slate-700 animate-pulse" aria-hidden="true" />
                   <div className="h-3 w-32 rounded bg-slate-800 animate-pulse" aria-hidden="true" />

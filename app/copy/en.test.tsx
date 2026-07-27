@@ -114,9 +114,9 @@ describe("copy dictionary — key presence", () => {
 
     it("densityCurrentAriaLabel has {density} placeholder", () => {
       expect(copy.invest.detail.densityCurrentAriaLabel).toContain("{density}");
-      expect(
-        copy.invest.detail.densityCurrentAriaLabel.replace("{density}", "compact")
-      ).toBe("Current density: compact");
+      expect(copy.invest.detail.densityCurrentAriaLabel.replace("{density}", "compact")).toBe(
+        "Current density: compact"
+      );
     });
   });
 

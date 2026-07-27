@@ -233,19 +233,25 @@ describe("ThemeToggle", () => {
 
   it("exposes a descriptive accessible name for the system icon state", () => {
     render(<ThemeToggle />);
-    expect(screen.getByRole("button", { name: "Theme: System (click for Light)" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Theme: System (click for Light)" })
+    ).toBeInTheDocument();
   });
 
   it("exposes a descriptive accessible name for the light icon state", () => {
     mockLocalStorage({ [THEME_STORAGE_KEY]: "light" });
     render(<ThemeToggle />);
-    expect(screen.getByRole("button", { name: "Theme: Light (click for Dark)" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Theme: Light (click for Dark)" })
+    ).toBeInTheDocument();
   });
 
   it("exposes a descriptive accessible name for the dark icon state", () => {
     mockLocalStorage({ [THEME_STORAGE_KEY]: "dark" });
     render(<ThemeToggle />);
-    expect(screen.getByRole("button", { name: "Theme: Dark (click for System)" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Theme: Dark (click for System)" })
+    ).toBeInTheDocument();
   });
 
   it("aria-label mentions the current theme preference", () => {
@@ -338,7 +344,10 @@ describe("ThemeToggle", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /theme:/i }));
     });
-    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
   });
 
   it("aria-pressed is true when the active theme is dark", async () => {
@@ -357,7 +366,10 @@ describe("ThemeToggle", () => {
     mockMatchMedia(true);
     render(<ThemeToggle />);
     await act(async () => {});
-    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
   });
 
   // ── 5f. data attributes stay in sync ─────────────────────────────────────
@@ -376,7 +388,10 @@ describe("ThemeToggle", () => {
       fireEvent.click(screen.getByRole("button", { name: /theme:/i }));
     });
     // now at 'light', next is 'dark'
-    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute("data-theme-next", "dark");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute(
+      "data-theme-next",
+      "dark"
+    );
   });
 
   // ── 5g. className forwarding ──────────────────────────────────────────────

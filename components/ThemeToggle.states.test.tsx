@@ -17,7 +17,7 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
       },
       writable: true,
     });
-    
+
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: jest.fn().mockImplementation(() => ({
@@ -26,7 +26,7 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
         removeEventListener: jest.fn(),
       })),
     });
-    
+
     document.documentElement.removeAttribute("data-theme");
   });
 
@@ -37,10 +37,10 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
 
     render(<ThemeToggle />);
     const btn = screen.getByRole("button");
-    
+
     // During loading (SSR), it falls back to 'system'
     expect(btn).toHaveAttribute("data-theme-pref", "system");
-    
+
     // Restore window
     global.window = originalWindow;
   });
@@ -49,7 +49,7 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
     // Local storage is empty
     render(<ThemeToggle />);
     const btn = screen.getByRole("button");
-    
+
     // With empty preferences, it falls back to 'system'
     expect(btn).toHaveAttribute("data-theme-pref", "system");
   });
@@ -67,7 +67,7 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
 
     render(<ThemeToggle />);
     const btn = screen.getByRole("button");
-    
+
     // Error state falls back to 'system' safely
     expect(btn).toHaveAttribute("data-theme-pref", "system");
   });
@@ -86,16 +86,16 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
     });
 
     render(<ThemeToggle />);
-    
+
     // Initial success state from localStorage
     let btn = screen.getByRole("button");
     expect(btn).toHaveAttribute("data-theme-pref", "light");
-    
+
     // Verify UI transition
     await act(async () => {
       btn.click();
     });
-    
+
     // Transitions correctly to the next state
     expect(btn).toHaveAttribute("data-theme-pref", "dark");
   });

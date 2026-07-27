@@ -30,12 +30,8 @@ export default class UploadErrorBoundary extends Component {
           aria-live="assertive"
           className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center"
         >
-          <h2 className="mb-2 text-lg font-semibold text-red-400">
-            {copy.error.title}
-          </h2>
-          <p className="mb-6 text-sm text-red-300/80">
-            {copy.error.description}
-          </p>
+          <h2 className="mb-2 text-lg font-semibold text-red-400">{copy.error.title}</h2>
+          <p className="mb-6 text-sm text-red-300/80">{copy.error.description}</p>
           <button
             type="button"
             onClick={this.handleRetry}

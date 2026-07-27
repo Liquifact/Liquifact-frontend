@@ -312,12 +312,7 @@ export default function InvoiceDetailClient({
         <DensityToggle density={density} onDensityChange={setDensity} />
       </div>
 
-      <dl
-        className={[
-          "grid grid-cols-1 sm:grid-cols-2 text-sm",
-          spacing.gap,
-        ].join(" ")}
-      >
+      <dl className={["grid grid-cols-1 sm:grid-cols-2 text-sm", spacing.gap].join(" ")}>
         <EditableRow
           field="issuer"
           label={labelIssuer}

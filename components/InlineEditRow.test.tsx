@@ -227,10 +227,16 @@ describe("InlineEditRow — validation", () => {
     function RequiredRow() {
       const [v, setV] = useState("");
       return (
-        <InlineEditRow id="row" label="Display name" value={v} required onSave={(n) => {
-          onSave(n);
-          setV(n);
-        }} />
+        <InlineEditRow
+          id="row"
+          label="Display name"
+          value={v}
+          required
+          onSave={(n) => {
+            onSave(n);
+            setV(n);
+          }}
+        />
       );
     }
     const user = userEvent.setup();
@@ -274,12 +280,7 @@ describe("InlineEditRow — save", () => {
 
   it("announces the save via the live region", async () => {
     const user = userEvent.setup();
-    render(
-      <Harness
-        initial=""
-        validate={(v) => (v.trim() === "" ? "required" : null)}
-      />
-    );
+    render(<Harness initial="" validate={(v) => (v.trim() === "" ? "required" : null)} />);
     await user.click(screen.getByRole("button", { name: /edit display name/i }));
     await user.type(screen.getByTestId("row-input"), "Alex");
 
@@ -287,9 +288,7 @@ describe("InlineEditRow — save", () => {
 
     await waitFor(() => {
       const statuses = screen.getAllByRole("status");
-      expect(
-        statuses.some((el) => /display name/i.test(el.textContent || ""))
-      ).toBe(true);
+      expect(statuses.some((el) => /display name/i.test(el.textContent || ""))).toBe(true);
     });
   });
 
@@ -310,9 +309,7 @@ describe("InlineEditRow — save", () => {
 
   it("saves on Enter (form submit)", async () => {
     const user = userEvent.setup();
-    render(
-      <Harness initial="" validate={(v) => (v.trim() === "" ? "required" : null)} />
-    );
+    render(<Harness initial="" validate={(v) => (v.trim() === "" ? "required" : null)} />);
 
     await user.click(screen.getByRole("button", { name: /edit display name/i }));
     const input = screen.getByTestId("row-input");
@@ -382,9 +379,7 @@ describe("InlineEditRow — cancel", () => {
 
     await waitFor(() => {
       const statuses = screen.getAllByRole("status");
-      expect(
-        statuses.some((el) => /cancelled|unchanged/i.test(el.textContent || ""))
-      ).toBe(true);
+      expect(statuses.some((el) => /cancelled|unchanged/i.test(el.textContent || ""))).toBe(true);
     });
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /edit display name/i })).toHaveFocus()
@@ -517,15 +512,7 @@ describe("InlineEditRow — keyboard interactions via fireEvent", () => {
 
   it("fireEvent.submit on the form triggers save", () => {
     const onSave = jest.fn();
-    render(
-      <InlineEditRow
-        id="row"
-        label="Field"
-        value=""
-        onSave={onSave}
-        validate={() => null}
-      />
-    );
+    render(<InlineEditRow id="row" label="Field" value="" onSave={onSave} validate={() => null} />);
     fireEvent.click(screen.getByTestId("row-edit"));
     const input = screen.getByTestId("row-input");
     fireEvent.change(input, { target: { value: "Submitted" } });
@@ -556,13 +543,7 @@ describe("InlineEditRow — optional props", () => {
 
   it("falls back to the raw value when formatDisplay is undefined", () => {
     render(
-      <InlineEditRow
-        id="row"
-        label="Amount"
-        value="100"
-        onSave={() => {}}
-        validate={() => null}
-      />
+      <InlineEditRow id="row" label="Amount" value="100" onSave={() => {}} validate={() => null} />
     );
     expect(screen.getByTestId("row-display")).toHaveTextContent("100");
   });
@@ -583,31 +564,19 @@ describe("InlineEditRow — optional props", () => {
         cancelledAnnouncement="Edit cancelled."
       />
     );
-    expect(
-      screen.getByRole("button", { name: "Modify amount" })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Modify amount" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /modify amount/i }));
     await user.type(screen.getByTestId("row-input"), "42");
 
-    expect(
-      screen.getByRole("button", { name: "Confirm amount" })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Discard amount" })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm amount" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Discard amount" })).toBeInTheDocument();
   });
 
   it("omit description cleanly (no <p> rendered, no aria-describedby)", async () => {
     const user = userEvent.setup();
     render(
-      <InlineEditRow
-        id="row"
-        label="Field"
-        value=""
-        onSave={() => {}}
-        validate={() => null}
-      />
+      <InlineEditRow id="row" label="Field" value="" onSave={() => {}} validate={() => null} />
     );
     // View mode only contains the label, the value, the Edit button, and the live region.
     expect(screen.queryByText(/[Dd]escription/)).not.toBeInTheDocument();
@@ -620,13 +589,7 @@ describe("InlineEditRow — optional props", () => {
   it("defaults the input type to 'text' when type is omitted", async () => {
     const user = userEvent.setup();
     render(
-      <InlineEditRow
-        id="row"
-        label="Token"
-        value=""
-        onSave={() => {}}
-        validate={() => null}
-      />
+      <InlineEditRow id="row" label="Token" value="" onSave={() => {}} validate={() => null} />
     );
     await user.click(screen.getByRole("button", { name: /edit token/i }));
     expect(screen.getByTestId("row-input")).toHaveAttribute("type", "text");

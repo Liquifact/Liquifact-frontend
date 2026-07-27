@@ -101,14 +101,7 @@ export async function copyInvoiceUrl(id) {
  *   Receives `(invoiceId, amount)` and should throw on failure.
  *   Defaults to a mock that resolves immediately (placeholder until Stellar lands).
  */
-export default function FundActions({
-  id,
-  status,
-  maxAmount,
-  currency,
-  yieldValue,
-  performFund,
-}) {
+export default function FundActions({ id, status, maxAmount, currency, yieldValue, performFund }) {
   const { state: walletState, connect } = useWallet();
   const toast = useToast();
   const [isCopying, setIsCopying] = useState(false);

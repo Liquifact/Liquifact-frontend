@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 /**
  * A generic form wrapper component that applies consistent styling
@@ -10,13 +10,7 @@ import React from 'react';
  * @param {string} [props.className] - Additional Tailwind classes
  * @param {boolean} [props.noValidate=true] - Defaults to true to allow custom validation
  */
-export default function Form({
-  onSubmit,
-  children,
-  className = '',
-  noValidate = true,
-  ...props
-}) {
+export default function Form({ onSubmit, children, className = "", noValidate = true, ...props }) {
   return (
     <form
       onSubmit={onSubmit}

@@ -71,10 +71,12 @@ describe("isValidDensity", () => {
     expect(isValidDensity(v)).toBe(true);
   });
 
-  it.each([null, undefined, "", "dense", "COMPACT", 0, {}, []])
-    ("returns false for invalid value: %s", (v) => {
-    expect(isValidDensity(v)).toBe(false);
-  });
+  it.each([null, undefined, "", "dense", "COMPACT", 0, {}, []])(
+    "returns false for invalid value: %s",
+    (v) => {
+      expect(isValidDensity(v)).toBe(false);
+    }
+  );
 });
 
 // ── 3. readStoredDensity ────────────────────────────────────────────────
@@ -112,11 +114,9 @@ describe("readStoredDensity", () => {
   });
 
   it("returns default when localStorage.getItem throws", () => {
-    const spy = jest
-      .spyOn(window.localStorage.__proto__, "getItem")
-      .mockImplementation(() => {
-        throw new Error("SecurityError");
-      });
+    const spy = jest.spyOn(window.localStorage.__proto__, "getItem").mockImplementation(() => {
+      throw new Error("SecurityError");
+    });
     expect(readStoredDensity()).toBe(DENSITY_DEFAULT);
     spy.mockRestore();
   });
@@ -138,11 +138,9 @@ describe("writeStoredDensity", () => {
   });
 
   it("swallows localStorage.setItem errors (QuotaExceededError)", () => {
-    const spy = jest
-      .spyOn(window.localStorage.__proto__, "setItem")
-      .mockImplementation(() => {
-        throw new Error("QuotaExceededError");
-      });
+    const spy = jest.spyOn(window.localStorage.__proto__, "setItem").mockImplementation(() => {
+      throw new Error("QuotaExceededError");
+    });
     expect(() => writeStoredDensity("compact")).not.toThrow();
     spy.mockRestore();
   });
@@ -266,11 +264,9 @@ describe("useDensity", () => {
 
   // 5h. localStorage.getItem error is swallowed
   it("swallows localStorage.getItem error during rehydration", async () => {
-    const spy = jest
-      .spyOn(window.localStorage.__proto__, "getItem")
-      .mockImplementation(() => {
-        throw new Error("SecurityError");
-      });
+    const spy = jest.spyOn(window.localStorage.__proto__, "getItem").mockImplementation(() => {
+      throw new Error("SecurityError");
+    });
     const { result } = renderHook(() => useDensity());
     // Should not throw and should stay at default
     await waitFor(() => expect(result.current[0]).toBe(DENSITY_DEFAULT));
@@ -279,11 +275,9 @@ describe("useDensity", () => {
 
   // 5i. localStorage.setItem error is swallowed
   it("swallows localStorage.setItem error when persisting", async () => {
-    const spy = jest
-      .spyOn(window.localStorage.__proto__, "setItem")
-      .mockImplementation(() => {
-        throw new Error("QuotaExceededError");
-      });
+    const spy = jest.spyOn(window.localStorage.__proto__, "setItem").mockImplementation(() => {
+      throw new Error("QuotaExceededError");
+    });
     const { result } = renderHook(() => useDensity());
     // setDensity should still update React state even if storage fails
     act(() => {

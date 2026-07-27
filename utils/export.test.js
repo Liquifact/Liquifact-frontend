@@ -22,22 +22,22 @@ describe("export utilities", () => {
     jest.clearAllMocks();
     originalCreateObjectURL = URL.createObjectURL;
     originalRevokeObjectURL = URL.revokeObjectURL;
-    
+
     mockCreateObjectURL = jest.fn(() => "mock-url");
     mockRevokeObjectURL = jest.fn();
     URL.createObjectURL = mockCreateObjectURL;
     URL.revokeObjectURL = mockRevokeObjectURL;
 
     mockClick = jest.fn();
-    mockAppendChild = jest.spyOn(document.body, 'appendChild').mockImplementation(() => {});
-    mockRemoveChild = jest.spyOn(document.body, 'removeChild').mockImplementation(() => {});
+    mockAppendChild = jest.spyOn(document.body, "appendChild").mockImplementation(() => {});
+    mockRemoveChild = jest.spyOn(document.body, "removeChild").mockImplementation(() => {});
 
-    jest.spyOn(document, 'createElement').mockImplementation((tagName) => {
-      if (tagName === 'a') {
+    jest.spyOn(document, "createElement").mockImplementation((tagName) => {
+      if (tagName === "a") {
         return {
           click: mockClick,
-          href: '',
-          download: ''
+          href: "",
+          download: "",
         };
       }
       return document.createElement(tagName);

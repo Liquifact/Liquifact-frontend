@@ -9,7 +9,6 @@ import { formatRelativeTime } from "../lib/format/date";
  */
 export const THEMES = /** @type {const} */ (["light", "dark", "system"]);
 
-
 /** localStorage key where the preference is persisted. */
 export const THEME_STORAGE_KEY = "liquifact-theme";
 
