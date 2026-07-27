@@ -35,6 +35,7 @@ import { getInvoiceById } from "../lib";
 import FundActions from "./FundActions";
 import InvoiceDetailClient from "./InvoiceDetailClient";
 import InvoiceDetailItems, { buildInvoiceDetailItems } from "./InvoiceDetailItems";
+import InvoiceDetailExport from "./InvoiceDetailExport";
 
 const detail = copy.invest.detail;
 
@@ -186,6 +187,9 @@ export default async function InvoiceDetailPage({ params }) {
 
         {/* ── Detail documents with bulk-select toolbar ─────────────── */}
         <InvoiceDetailItems initialItems={detailItems} />
+
+        {/* ── CSV / JSON export ────────────────────────────────────── */}
+        <InvoiceDetailExport invoice={invoice} />
 
         {/* ── Lifecycle timeline (server-rendered, status-driven) ───────── */}
         <InvoiceTimeline status={invoice.status} timestamps={invoice.timestamps} className="mb-6" />

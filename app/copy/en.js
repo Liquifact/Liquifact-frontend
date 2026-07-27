@@ -76,6 +76,11 @@
  * @property {string} invest.detail.loadErrorTitle
  * @property {string} invest.detail.actionGroupLabel
  * @property {string} invest.detail.labelReference
+ * @property {string} invest.detail.exportGroupLabel
+ * @property {string} invest.detail.exportCSVButton
+ * @property {string} invest.detail.exportCSVLabel
+ * @property {string} invest.detail.exportJSONButton
+ * @property {string} invest.detail.exportJSONLabel
  * @property {string} invest.detail.densityToggleLabel
  * @property {string} invest.detail.densityCompact
  * @property {string} invest.detail.densityComfortable
@@ -353,6 +358,11 @@ export const copy = {
       loadErrorTitle: "Unable to load invoice details",
       actionGroupLabel: "Invoice actions",
       labelReference: "Reference",
+      exportGroupLabel: "Invoice data export",
+      exportCSVButton: "Export CSV",
+      exportCSVLabel: "Export invoice data as CSV",
+      exportJSONButton: "Export JSON",
+      exportJSONLabel: "Export invoice data as JSON",
       densityToggleLabel: "Display density",
       densityCompact: "Compact",
       densityComfortable: "Comfortable",
