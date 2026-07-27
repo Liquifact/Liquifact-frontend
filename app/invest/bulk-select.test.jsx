@@ -290,16 +290,27 @@ describe("InvestMarketplace — bulk select toolbar", () => {
     );
   });
 
-  it("A failing delete handler surfaces an error toast and keeps the rows", async () => {
+  it("A failing delete handler surfaces an error toast and rolls back", async () => {
     const toast = { success: jest.fn(), error: jest.fn(), info: jest.fn() };
     const onBulkDelete = jest.fn(async () => {
+      // Simulate slow failure
+      await new Promise((resolve) => setTimeout(resolve, 50));
       throw new Error("backend down");
     });
     await renderLoaded({ toast, onBulkDelete });
+    
+    // Select inv-001
     fireEvent.click(getCheckbox("inv-001"));
+    
+    // Click Delete
     fireEvent.click(screen.getByTestId("bulk-delete"));
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: /Delete 1 invoice/i }));
+    
+    // Assert Optimistic Update: row should be gone
+    await waitFor(() => expect(screen.queryByTestId("invoice-row-inv-001")).not.toBeInTheDocument());
+    
+    // Assert Rollback after failure
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
     expect(screen.getByTestId("invoice-row-inv-001")).toBeInTheDocument();
   });

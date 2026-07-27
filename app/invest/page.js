@@ -600,16 +600,20 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
       return;
     }
     setBulkRunning((prev) => ({ ...prev, delete: true }));
+
+    // Snapshot the current list for rollback
+    const snapshot = invoices;
+
+    // Optimistically remove from the visible list so the UI stays in sync
+    // with the (mock) backend. The selection hook will prune selection
+    // immediately because the row ids are no longer in the list.
+    setInvoices((currentList) => {
+      if (!Array.isArray(currentList)) return currentList;
+      return currentList.filter((inv) => !idsToDelete.has(inv.id));
+    });
+
     try {
       await onBulkDelete(idsToDelete);
-
-      // Optimistically remove from the visible list so the UI stays in sync
-      // with the (mock) backend. The selection hook will prune selection
-      // immediately because the row ids are no longer in the list.
-      setInvoices((currentList) => {
-        if (!Array.isArray(currentList)) return currentList;
-        return currentList.filter((inv) => !idsToDelete.has(inv.id));
-      });
 
       const plural = idsToDelete.size === 1 ? "" : "s";
       const successMsg = bulkLabels.deleteSuccessMsg
@@ -619,11 +623,13 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
 
       setPendingDeleteIds(null);
     } catch {
+      // Rollback
+      setInvoices(snapshot);
       toastApi?.error(bulkLabels.deleteErrorMsg, bulkLabels.deleteErrorTitle);
     } finally {
       setBulkRunning((prev) => ({ ...prev, delete: false }));
     }
-  }, [pendingDeleteIds, onBulkDelete, bulkLabels, toastApi]);
+  }, [pendingDeleteIds, onBulkDelete, bulkLabels, toastApi, invoices]);
 
   const handleExport = useCallback(() => {
     if (selectedIds.size === 0) {
