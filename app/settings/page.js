@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import NavMenu from "@/components/NavMenu";
+import DensityToggle from "@/components/DensityToggle";
+import { useDensity } from "@/lib/hooks/useDensity";
 import { copy } from "../copy/en";
 import NavMenu from "../../components/NavMenu";
 import { formatRelativeTime } from "../../lib/format/date";
@@ -32,9 +35,53 @@ export default function SettingsPage() {
   });
   const [hydrated] = useState(() => typeof window !== "undefined");
 
-  // Forces a re-render every minute so the relative label ("2 minutes ago")
-  // keeps advancing while the page stays open.
-  const [, forceRefresh] = useState(0);
+/**
+ * `SettingsPage` — settings list with category filter and "Load more"
+ * pagination (issue #743).  Mock data is loaded via the injectable
+ * `loadSettings` so tests can swap it deterministically.  Paging is
+ * declared state — not an effect — using the React-recommended
+ * "adjust state during render" pattern so filter changes never reset
+ * paging via a cascading effect.
+ *
+ * @param {object}   props
+ * @param {Function} [props.loadSettings] - Async loader; defaults to the
+ *   mock loader.  Tests pass their own deterministic loader.
+ * @returns {JSX.Element}
+ */
+export function SettingsPage({ loadSettings = loadMockSettings } = {}) {
+  const [settings, setSettings] = useState(null); // null = loading
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [loadError, setLoadError] = useState("");
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [density, setDensity] = useDensity();
+
+  const [retryKey, setRetryKey] = useState(0);
+
+  // Reset paging when a different list of settings arrives (fetch, retry,
+  // or test fixture swap).  Compared during render so no effect is needed.
+  const [pagingResetFor, setPagingResetFor] = useState(settings);
+  if (settings !== pagingResetFor) {
+    setPagingResetFor(settings);
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  // Reset paging every time the filter signature changes so the user
+  // always starts at the first page after a filtering decision.
+  const filterSignature = JSON.stringify([filters.category, debouncedQuery]);
+  const [prevFilterSignature, setPrevFilterSignature] = useState(filterSignature);
+  if (filterSignature !== prevFilterSignature) {
+    setPrevFilterSignature(filterSignature);
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  const filtersWithDebounced = useMemo(
+    () => ({ category: filters.category, query: debouncedQuery }),
+    [filters.category, debouncedQuery]
+  );
+
+  // Debounce the free-text query so a flurry of keystrokes does not
+  // reset paging back to page 1 on every character.
   useEffect(() => {
     const id = setInterval(() => forceRefresh((n) => n + 1), RELATIVE_LABEL_REFRESH_MS);
     return () => clearInterval(id);
@@ -55,7 +102,7 @@ export default function SettingsPage() {
   const absoluteLabel = updatedAt ? new Date(updatedAt).toLocaleString() : null;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
+    <div data-density={density} className="min-h-screen bg-slate-950 text-slate-100">
       <NavMenu />
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
@@ -81,10 +128,56 @@ export default function SettingsPage() {
           )}
         </div>
 
-        <div className="space-y-6 rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-          <div className="flex flex-col gap-2">
-            <label htmlFor="settings-currency" className="text-sm font-medium text-slate-200">
-              {copy.settings.currencyLabel}
+        <h1 className="mb-2 text-2xl font-bold">{copy.settings.title}</h1>
+        <p className="mb-8 text-slate-400">{copy.settings.subtext}</p>
+
+        {/* Density toggle */}
+        <section
+          data-testid="settings-density-section"
+          className="mb-6 rounded-xl border border-slate-800 bg-slate-900/30"
+          style={{ padding: "var(--settings-section-padding)" }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-slate-100">{copy.settings.densityLabel}</p>
+              <p className="mt-1 text-sm text-slate-400">{copy.settings.densityDescription}</p>
+            </div>
+              <DensityToggle density={density} onDensityChange={setDensity} />
+          </div>
+        </section>
+
+        {/* Filters */}
+        <fieldset
+          aria-label={copy.settings.filterLegend}
+          aria-describedby="settings-filters-help"
+          className="mb-6 rounded-xl border border-slate-800 bg-slate-900/30"
+          style={{ padding: "var(--settings-section-padding)", marginBottom: "var(--settings-section-gap)" }}
+        >
+          <legend className="sr-only">{copy.settings.filterLegend}</legend>
+          <p
+            id="settings-filters-help"
+            className="mb-4 text-xs text-slate-400"
+          >
+            {copy.settings.filterHelp}
+          </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <span>{copy.settings.filterCategory}</span>
+              <select
+                data-testid="settings-category-filter"
+                value={filters.category}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, category: e.target.value }))
+                }
+                aria-label={copy.settings.filterCategory}
+                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              >
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c === "all" ? copy.settings.allCategories : c}
+                  </option>
+                ))}
+              </select>
             </label>
             <select
               id="settings-currency"
@@ -92,10 +185,87 @@ export default function SettingsPage() {
               onChange={(e) => applyChange({ currency: e.target.value })}
               className="focus-ring w-full max-w-xs rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
             >
-              {CURRENCY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
+              {copy.settings.clearFilters}
+            </button>
+          </div>
+        </fieldset>
+
+        {/* Error state — retryable */}
+        {loadError ? (
+          <div
+            role="alert"
+            className="rounded-xl border border-red-500/40 bg-red-500/10 p-6 text-red-200"
+          >
+            <p className="font-semibold">{copy.settings.errorTitle}</p>
+            <p className="mt-2 text-sm">{loadError}</p>
+            <button
+              type="button"
+              onClick={reload}
+              className="mt-4 rounded-lg border border-red-400/60 px-3 py-1.5 text-xs font-medium text-red-100 hover:border-red-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-400"
+            >
+              {copy.settings.retryAction}
+            </button>
+          </div>
+        ) : !Array.isArray(settings) ? (
+          // Loading skeleton — component-agnostic so tests can swap if needed.
+          <ul
+            data-testid="settings-loading"
+            aria-busy="true"
+            aria-label={copy.settings.loadingAriaLabel}
+            className="space-y-3"
+          >
+            {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+              <li
+                key={i}
+                className="h-16 animate-pulse rounded-xl border border-slate-800 bg-slate-900/30"
+              />
+            ))}
+          </ul>
+        ) : settings.length === 0 ? (
+          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+            {copy.settings.emptyState}
+          </div>
+        ) : filteredSettings.length === 0 ? (
+          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+            {copy.settings.noMatchFilter}
+          </div>
+        ) : (
+          <>
+            {/* Visible count, for sighted users */}
+            <p
+              id="settings-count"
+              data-testid="settings-count"
+              className="mb-4 text-sm text-slate-400"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {getSettingsShowingAnnouncement(visibleSettings.length, filteredSettings.length)}
+            </p>
+
+            <ul aria-label={copy.settings.listAriaLabel} style={{ gap: "var(--settings-list-gap)" }} className="flex flex-col">
+              {visibleSettings.map((row) => (
+                <li
+                  key={row.id}
+                  className="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-slate-100">{row.label}</p>
+                      <p className="mt-1 text-sm text-slate-400">{row.description}</p>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="rounded-md bg-slate-800 px-2 py-1 font-mono text-slate-300">
+                        {row.category}
+                      </span>
+                      <span className="rounded-md bg-cyan-900/40 px-2 py-1 font-mono text-cyan-300">
+                        {row.type}
+                      </span>
+                      <span className="rounded-md border border-slate-700 px-2 py-1 text-slate-300">
+                        {row.value}
+                      </span>
+                    </div>
+                  </div>
+                </li>
               ))}
             </select>
           </div>
