@@ -179,6 +179,30 @@
  * @property {string} invoiceTimeline.statusCompleted
  * @property {string} invoiceTimeline.statusCurrent
  * @property {string} invoiceTimeline.statusPending
+ * @property {Object} settings - Settings page copy
+ * @property {string} settings.pageTitle
+ * @property {string} settings.pageSub
+ * @property {string} settings.editAction
+ * @property {string} settings.editActionLabel
+ * @property {string} settings.saveAction
+ * @property {string} settings.saveActionLabel
+ * @property {string} settings.cancelAction
+ * @property {string} settings.cancelActionLabel
+ * @property {string} settings.emptyValue
+ * @property {string} settings.savedAnnouncement
+ * @property {string} settings.cancelledAnnouncement
+ * @property {string} settings.invalidAnnouncement
+ * @property {Object} settings.fields - Field-level copy
+ * @property {string} settings.fields.displayName.label
+ * @property {string} settings.fields.displayName.description
+ * @property {string} settings.fields.displayName.placeholder
+ * @property {string} settings.fields.email.label
+ * @property {string} settings.fields.email.description
+ * @property {string} settings.fields.email.placeholder
+ * @property {Object} settings.errors - Validation error messages
+ * @property {string} settings.errors.required
+ * @property {string} settings.errors.displayNameTooShort
+ * @property {string} settings.errors.invalidEmail
  */
 
 /** @type {CopyDictionary} */
@@ -386,5 +410,37 @@ export const copy = {
     statusCompleted: "Completed",
     statusCurrent: "Current",
     statusPending: "Pending",
+  },
+  settings: {
+    pageTitle: "Settings",
+    pageSub:
+      "Manage your profile preferences. Updates are saved locally to this browser and apply to this device only.",
+    editAction: "Edit",
+    editActionLabel: "Edit {field}",
+    saveAction: "Save",
+    saveActionLabel: "Save {field}",
+    cancelAction: "Cancel",
+    cancelActionLabel: "Cancel editing {field}",
+    emptyValue: "Not set",
+    savedAnnouncement: "{label} saved.",
+    cancelledAnnouncement: "Edit cancelled. {label} unchanged.",
+    invalidAnnouncement: "{label} not saved: {error}",
+    fields: {
+      displayName: {
+        label: "Display name",
+        description: "Shown next to your activity across LiquiFact.",
+        placeholder: "e.g. Acme Treasury",
+      },
+      email: {
+        label: "Email",
+        description: "Used for invoice notifications only. Never displayed publicly.",
+        placeholder: "name@example.com",
+      },
+    },
+    errors: {
+      required: "This field cannot be empty.",
+      displayNameTooShort: "Display name must be at least 2 characters.",
+      invalidEmail: "Enter a valid email address.",
+    },
   },
 };
