@@ -249,7 +249,7 @@ export default function InvoiceDetailItems({
                   onChange={() => toggle(item.id)}
                   aria-label={checkboxAria}
                   data-testid={`detail-item-checkbox-${item.id}`}
-                  className="h-4 w-4 flex-shrink-0 rounded border-slate-600 bg-slate-900 text-cyan-500 accent-cyan-400 focus:ring-cyan-400"
+                  className="h-4 w-4 flex-shrink-0 rounded border-slate-600 bg-slate-900 text-cyan-500 accent-cyan-400 focus-ring"
                 />
                 <span className="min-w-0">
                   <span className="block text-sm font-medium text-slate-100 truncate">

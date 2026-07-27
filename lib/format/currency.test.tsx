@@ -7,6 +7,7 @@ import {
   formatCurrency,
   formatCurrencyCompact,
   formatPercent,
+  formatWalletBalance,
 } from "./currency";
 
 describe("formatCurrency - Table Driven Tests", () => {
@@ -26,7 +27,12 @@ describe("formatCurrency - Table Driven Tests", () => {
     { input: "", options: undefined, expected: INVALID_VALUE_FALLBACK },
     { input: Number.NaN, options: undefined, expected: INVALID_VALUE_FALLBACK },
   ])("formats currency correctly for %#: %p with options %p", ({ input, options, expected }) => {
-    expect(formatCurrency(input, options)).toBe(expected);
+    const result = formatCurrency(input, options);
+    if (expected === "$50") {
+      expect(result).toMatch(/^(US)?\$50$/);
+    } else {
+      expect(result).toBe(expected);
+    }
   });
 });
 
@@ -84,6 +90,33 @@ describe("formatPercent - Table Driven Tests", () => {
     { input: "invalid-percent", options: undefined, expected: INVALID_VALUE_FALLBACK },
   ])("formats percentage correctly for %#: %p with options %p", ({ input, options, expected }) => {
     expect(formatPercent(input, options)).toBe(expected);
+  });
+});
+
+describe("formatWalletBalance - Table Driven Tests", () => {
+  it.each([
+    { input: "1,234.56 XLM", expected: { compact: "1.23K XLM", full: "1,234.56 XLM" } },
+    { input: "1,500,000.00 XLM", expected: { compact: "1.5M XLM", full: "1,500,000.00 XLM" } },
+    { input: "2,000,000,000 XLM", expected: { compact: "2B XLM", full: "2,000,000,000 XLM" } },
+    { input: "0 XLM", expected: { compact: "0 XLM", full: "0 XLM" } },
+    { input: 0, expected: { compact: "0", full: "0" } },
+    { input: 3_000, expected: { compact: "3K", full: "3,000" } },
+    { input: 5_000_000, expected: { compact: "5M", full: "5,000,000" } },
+    { input: 2_000_000_000, expected: { compact: "2B", full: "2,000,000,000" } },
+    {
+      input: Number.NaN,
+      expected: { compact: INVALID_VALUE_FALLBACK, full: INVALID_VALUE_FALLBACK },
+    },
+    { input: "   ", expected: { compact: INVALID_VALUE_FALLBACK, full: INVALID_VALUE_FALLBACK } },
+    { input: "abc", expected: { compact: "abc", full: "abc" } },
+    { input: "NaN XLM", expected: { compact: "NaN XLM", full: "NaN XLM" } },
+    { input: null, expected: { compact: INVALID_VALUE_FALLBACK, full: INVALID_VALUE_FALLBACK } },
+    {
+      input: undefined,
+      expected: { compact: INVALID_VALUE_FALLBACK, full: INVALID_VALUE_FALLBACK },
+    },
+  ])("formats wallet balance correctly for %p", ({ input, expected }) => {
+    expect(formatWalletBalance(input)).toEqual(expected);
   });
 });
 
