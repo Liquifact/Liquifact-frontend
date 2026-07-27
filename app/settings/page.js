@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import NavMenu from "@/components/NavMenu";
 import { copy } from "../copy/en";
 import { loadMockSettings, getCategoryList, MOCK_SETTINGS } from "./lib";
+import CopyButton from "@/components/CopyButton";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 200;
@@ -339,7 +340,15 @@ export function SettingsPage({ loadSettings = loadMockSettings } = {}) {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-slate-100">{row.label}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-slate-100">{row.label}</p>
+                        <CopyButton
+                          text={row.id}
+                          label={copy.settings.copyIdentifier}
+                          successMessage={copy.settings.toastCopySuccessMsg}
+                          errorMessage={copy.settings.toastCopyErrorMsg}
+                        />
+                      </div>
                       <p className="mt-1 text-sm text-slate-400">{row.description}</p>
                     </div>
                     <div className="flex items-center gap-3 text-xs">
