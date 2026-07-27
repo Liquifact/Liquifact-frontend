@@ -32,6 +32,14 @@ jest.mock("./Button", () => function MockButton({ children, onClick, isLoading }
   );
 });
 
+jest.mock("./CopyButton", () => function MockCopyButton({ label }) {
+  return (
+    <button type="button" data-testid="copy-button-mock" aria-label={`Copy ${label}`}>
+      Copy {label}
+    </button>
+  );
+});
+
 describe("InvoiceDetail", () => {
   const mockInvoice = {
     id: "inv-123",
@@ -73,10 +81,11 @@ describe("InvoiceDetail", () => {
     expect(screen.getByText("Invoice #inv-123")).toBeInTheDocument();
     
     // Check formatting
-    expect(screen.getByText(formatCurrency(1000, "USD"))).toBeInTheDocument();
+    expect(screen.getByText(formatCurrency(1000, { currency: "USD" }))).toBeInTheDocument();
     expect(screen.getByText(formatPercent(5))).toBeInTheDocument();
     expect(screen.getByText(formatDate("2024-12-31"))).toBeInTheDocument();
-    
+    expect(screen.getByText("Reference")).toBeInTheDocument();
+    expect(screen.getByTestId("copy-button-mock")).toBeInTheDocument();
     expect(screen.getByTestId("status-pill")).toHaveTextContent("pending");
   });
 

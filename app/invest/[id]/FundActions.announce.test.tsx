@@ -38,6 +38,15 @@ jest.mock("@/components/WalletContext", () => ({
   useWallet: jest.fn(() => ({ state: "connected", connect: jest.fn() })),
 }));
 
+jest.mock("@/app/invest/MarketplaceContext", () => ({
+  useMarketplace: () => ({
+    invoices: [],
+    setInvoices: jest.fn(),
+    pendingIds: new Set(),
+    fundInvoice: jest.fn().mockResolvedValue(true),
+  }),
+}));
+
 import FundActions from "./FundActions";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import { copy } from "@/app/copy/en";

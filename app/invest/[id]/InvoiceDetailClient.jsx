@@ -18,28 +18,18 @@
  *      to `DensityToggle` as controlled props so both components react to the
  *      same state without prop-drilling through multiple layers.
  *   3. Applies spacing variants to the metadata `<dl>` based on density.
+ *   4. Renders the Reference row with CopyButton when `referenceId` is set.
  *
  * Spacing variants
  * ─────────────────
  * • compact     → `gap-2 p-4`   (tighter grid, smaller section padding)
  * • comfortable → `gap-4 p-6`   (default spacing, matches original design)
- *
- * @param {object} props
- * @param {string} props.labelIssuer
- * @param {string} props.labelAmount
- * @param {string} props.labelYield
- * @param {string} props.labelMaturity
- * @param {string} props.labelStatus
- * @param {string} props.issuer
- * @param {string} props.formattedAmount
- * @param {string} props.formattedYield
- * @param {string} props.dueDate
- * @param {React.ReactNode} props.statusPill   Pre-rendered <StatusPill> node
- * @param {string}          props.summaryHeading  Section <h2> text
  */
 
+import CopyButton from "@/components/CopyButton";
 import DensityToggle from "@/components/DensityToggle";
 import { useDensity } from "@/lib/hooks/useDensity";
+import { copy } from "@/app/copy/en";
 
 /** @type {Record<string, {gap: string, padding: string}>} */
 const SPACING = {
@@ -53,10 +43,12 @@ export default function InvoiceDetailClient({
   labelYield,
   labelMaturity,
   labelStatus,
+  labelReference,
   issuer,
   formattedAmount,
   formattedYield,
   dueDate,
+  referenceId,
   statusPill,
   summaryHeading,
 }) {
@@ -116,6 +108,20 @@ export default function InvoiceDetailClient({
           <dt className="invoice-detail-dt text-slate-500">{labelStatus}</dt>
           <dd className="invoice-detail-dd text-slate-100">{statusPill}</dd>
         </div>
+        {referenceId ? (
+          <div>
+            <dt className="text-slate-500">{labelReference || "Reference"}</dt>
+            <dd className="text-slate-100 flex items-center gap-1.5">
+              <span className="font-mono">{referenceId}</span>
+              <CopyButton
+                text={referenceId}
+                label={copy.invoiceDetail.copyIdLabel}
+                successMessage={copy.invoiceDetail.copyIdSuccess}
+                errorMessage={copy.invoiceDetail.copyIdError}
+              />
+            </dd>
+          </div>
+        ) : null}
       </dl>
     </section>
   );

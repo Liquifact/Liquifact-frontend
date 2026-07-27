@@ -2,8 +2,10 @@ import React, { useState, useEffect } from "react";
 import StatusPill from "./StatusPill";
 import ErrorBanner from "./ErrorBanner";
 import Button from "./Button";
+import CopyButton from "./CopyButton";
 import { formatCurrency, formatPercent } from "../lib/format/currency";
 import { formatInvoiceDate as formatDate } from "../lib/format/date";
+import { copy } from "@/app/copy/en";
 
 /**
  * InvoiceDetail
@@ -43,6 +45,8 @@ export default function InvoiceDetail({
   };
 
   useEffect(() => {
+    // Load invoice whenever the route id changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async load triggers setState by design
     fetchInvoice();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -99,23 +103,48 @@ export default function InvoiceDetail({
 
           <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
             <div>
+              <dt className="text-sm font-medium text-gray-500">Issuer</dt>
+              <dd className="mt-1 text-lg font-semibold text-gray-900">{invoice.issuer}</dd>
+            </div>
+
+            <div>
               <dt className="text-sm font-medium text-gray-500">Amount</dt>
               <dd className="mt-1 text-lg font-semibold text-gray-900">
-                {formatCurrency(invoice.amountValue, invoice.currency)}
+                {formatCurrency(
+                  invoice.amountValue ?? invoice.amount,
+                  typeof invoice.currency === "string"
+                    ? { currency: invoice.currency }
+                    : invoice.currency
+                )}
               </dd>
             </div>
 
             <div>
-              <dt className="text-sm font-medium text-gray-500">Yield</dt>
+              <dt className="text-sm font-medium text-gray-500">Estimated yield</dt>
               <dd className="mt-1 text-lg font-semibold text-gray-900">
-                {formatPercent(invoice.yieldValue)}
+                {invoice.yieldValue != null
+                  ? formatPercent(invoice.yieldValue)
+                  : invoice.yield}
               </dd>
             </div>
 
             <div>
-              <dt className="text-sm font-medium text-gray-500">Maturity Date</dt>
+              <dt className="text-sm font-medium text-gray-500">Maturity date</dt>
               <dd className="mt-1 text-lg font-semibold text-gray-900">
                 {formatDate(invoice.dueDate)}
+              </dd>
+            </div>
+
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Reference</dt>
+              <dd className="mt-1 text-lg font-semibold text-gray-900 flex items-center gap-1.5">
+                <span className="font-mono">{invoice.id}</span>
+                <CopyButton
+                  text={invoice.id}
+                  label={copy.invoiceDetail.copyIdLabel}
+                  successMessage={copy.invoiceDetail.copyIdSuccess}
+                  errorMessage={copy.invoiceDetail.copyIdError}
+                />
               </dd>
             </div>
           </dl>
