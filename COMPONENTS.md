@@ -190,6 +190,11 @@ Marketplace invoice card for the Invest list. The entire card is a single naviga
 - Nested `StatusPill` exposes `role="status"` and `aria-label="Status: …"` (text + tone; not colour-only).
 - Focus indicator: `focus-visible:ring-2` cyan outline (see Known Limitations in `docs/accessibility.md` for `.focus-ring` alignment).
 
+### Design tokens
+
+- Card spacing and typography now follow the shared marketplace-card tokens defined in `app/globals.css` (`--market-card-padding`, `--market-card-gap`, and the title/meta typography tokens).
+- These values keep the marketplace card layout consistent across the shared `InvoiceCard` component and the `/invest` list experience.
+
 > **Note:** `/invest` currently renders inline list rows rather than mounting `InvoiceCard`. Prefer this component when consolidating list markup so a11y and layout stay in sync with `InvoiceListSkeleton`.
 
 ### Example
