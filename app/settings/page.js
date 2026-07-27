@@ -15,11 +15,121 @@ import {
   writeStoredSettingsUpdatedAt,
 } from "../../lib/settingsStore";
 
-const CURRENCY_OPTIONS = [
-  { value: "USD", label: "US Dollar (USD)" },
-  { value: "EUR", label: "Euro (EUR)" },
-  { value: "NGN", label: "Nigerian Naira (NGN)" },
-];
+export function SettingsRow({ row, onSave }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(row.value);
+  const [error, setError] = useState("");
+  const [announcement, setAnnouncement] = useState("");
+
+  const isWallet = row.category === "wallet";
+
+  const handleEdit = () => {
+    setIsEditing(true);
+    setEditValue(row.value);
+    setError("");
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditValue(row.value);
+    setError("");
+    setAnnouncement("Edit cancelled");
+  };
+
+  const handleSave = () => {
+    if (!editValue || editValue.trim() === "") {
+      setError("Value cannot be empty");
+      setAnnouncement("Validation failed: Value cannot be empty");
+      return;
+    }
+    onSave(row.id, editValue);
+    setIsEditing(false);
+    setError("");
+    setAnnouncement("Saved successfully");
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Escape") {
+      handleCancel();
+    } else if (e.key === "Enter") {
+      handleSave();
+    }
+  };
+
+  return (
+    <li className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+      <div className="sr-only" aria-live="polite">{announcement}</div>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="font-medium text-slate-100">{row.label}</p>
+          <p className="mt-1 text-sm text-slate-400">{row.description}</p>
+        </div>
+        <div className="flex items-center gap-3 text-xs">
+          <span className="rounded-md bg-slate-800 px-2 py-1 font-mono text-slate-300">
+            {row.category}
+          </span>
+          <span className="rounded-md bg-cyan-900/40 px-2 py-1 font-mono text-cyan-300">
+            {row.type}
+          </span>
+          
+          {isEditing ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-slate-100"
+                aria-label={`Edit ${row.label}`}
+                aria-invalid={!!error}
+                aria-describedby={error ? `error-${row.id}` : undefined}
+                autoFocus
+              />
+              <button
+                onClick={handleSave}
+                className="rounded bg-cyan-600 px-2 py-1 text-white hover:bg-cyan-500"
+              >
+                Save
+              </button>
+              <button
+                onClick={handleCancel}
+                className="rounded bg-slate-700 px-2 py-1 text-white hover:bg-slate-600"
+              >
+                Cancel
+              </button>
+              {error && (
+                <span id={`error-${row.id}`} className="text-red-400 sr-only">
+                  {error}
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="rounded-md border border-slate-700 px-2 py-1 text-slate-300">
+                {row.value}
+              </span>
+              {isWallet && (
+                <button
+                  onClick={handleEdit}
+                  className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-slate-300 hover:text-white"
+                  aria-label={`Edit ${row.label}`}
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      {isEditing && error && (
+        <p className="mt-2 text-xs text-red-400">{error}</p>
+      )}
+    </li>
+  );
+}
+
+export const PAGE_SIZE = 10;
+export const SEARCH_DEBOUNCE_MS = 200;
 
 /** How often (ms) the relative label re-renders itself while mounted. */
 const RELATIVE_LABEL_REFRESH_MS = 60_000;
@@ -87,12 +197,43 @@ export function SettingsPage({ loadSettings = loadMockSettings } = {}) {
     return () => clearInterval(id);
   }, []);
 
-  const applyChange = (partial) => {
-    const now = Date.now();
-    setSettings((prev) => {
-      const next = { ...prev, ...partial };
-      writeStoredSettings(next);
-      return next;
+  const handleSaveSetting = useCallback((id, newValue) => {
+    setSettings((prev) => 
+      prev ? prev.map(row => row.id === id ? { ...row, value: newValue } : row) : prev
+    );
+  }, []);
+
+  // Polite live-region message derived from reactive state.
+  const statusMessage = useMemo(() => {
+    if (!Array.isArray(settings)) return loadError ? copy.settings.errorStatus : "";
+    if (filterActive) {
+      return getSettingsLoadAnnouncement(settings, {
+        filterActive: true,
+        filteredCount: filteredSettings.length,
+      });
+    }
+    if (visibleCount < filteredSettings.length) {
+      return getSettingsShowingAnnouncement(visibleCount, filteredSettings.length);
+    }
+    if (visibleCount > PAGE_SIZE) {
+      // After Load more reached the last page we keep the "Showing N
+      // of M" format so the announcement remains consistent regardless
+      // of how the user advanced.
+      return getSettingsShowingAnnouncement(filteredSettings.length, filteredSettings.length);
+    }
+    return getSettingsLoadAnnouncement(settings);
+  }, [settings, filterActive, filteredSettings.length, visibleCount, loadError]);
+
+  const loadMoreRef = useRef(null);
+
+  /**
+   * Append the next PAGE_SIZE items.  Focus is restored to the
+   * "Load more" button via a microtask so keyboard users do not lose
+   * their place after each load.
+   */
+  const handleLoadMore = useCallback(() => {
+    setVisibleCount((prev) => {
+      return Math.min(prev + PAGE_SIZE, filteredSettings.length);
     });
     setUpdatedAt(now);
     writeStoredSettingsUpdatedAt(now);
@@ -244,28 +385,7 @@ export function SettingsPage({ loadSettings = loadMockSettings } = {}) {
 
             <ul aria-label={copy.settings.listAriaLabel} style={{ gap: "var(--settings-list-gap)" }} className="flex flex-col">
               {visibleSettings.map((row) => (
-                <li
-                  key={row.id}
-                  className="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-slate-100">{row.label}</p>
-                      <p className="mt-1 text-sm text-slate-400">{row.description}</p>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="rounded-md bg-slate-800 px-2 py-1 font-mono text-slate-300">
-                        {row.category}
-                      </span>
-                      <span className="rounded-md bg-cyan-900/40 px-2 py-1 font-mono text-cyan-300">
-                        {row.type}
-                      </span>
-                      <span className="rounded-md border border-slate-700 px-2 py-1 text-slate-300">
-                        {row.value}
-                      </span>
-                    </div>
-                  </div>
-                </li>
+                <SettingsRow key={row.id} row={row} onSave={handleSaveSetting} />
               ))}
             </select>
           </div>

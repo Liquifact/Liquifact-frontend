@@ -939,6 +939,94 @@ describe("SettingsPage – a11y live region semantics", () => {
   });
 });
 
+describe("SettingsPage – inline editing", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  });
+
+  it("renders Edit button only for wallet category rows", async () => {
+    const rows = [
+      { id: "r1", category: "wallet", label: "Wallet Setting", type: "text", value: "A", description: "Desc A" },
+      { id: "r2", category: "display", label: "Display Setting", type: "text", value: "B", description: "Desc B" },
+    ];
+    render(<SettingsPage loadSettings={createDeferredLoader(rows, 0)} />);
+    await flushTimers(0);
+
+    const editButtons = screen.queryAllByRole("button", { name: /^Edit/i });
+    expect(editButtons).toHaveLength(1);
+    expect(editButtons[0]).toHaveAttribute("aria-label", "Edit Wallet Setting");
+  });
+
+  it("can edit, save and announce the result", async () => {
+    const rows = [
+      { id: "r1", category: "wallet", label: "Wallet Setting", type: "text", value: "A", description: "Desc A" },
+    ];
+    render(<SettingsPage loadSettings={createDeferredLoader(rows, 0)} />);
+    await flushTimers(0);
+
+    // Enter edit mode
+    fireEvent.click(screen.getByRole("button", { name: "Edit Wallet Setting" }));
+
+    // Verify input is shown
+    const input = screen.getByRole("textbox", { name: "Edit Wallet Setting" });
+    expect(input).toHaveValue("A");
+
+    // Change value and save via Enter
+    fireEvent.change(input, { target: { value: "B" } });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+    // Verify view mode is restored with new value
+    expect(screen.queryByRole("textbox", { name: "Edit Wallet Setting" })).not.toBeInTheDocument();
+    // The value span is now "B"
+    expect(screen.getByText("B")).toBeInTheDocument();
+  });
+
+  it("can cancel editing with Escape", async () => {
+    const rows = [
+      { id: "r1", category: "wallet", label: "Wallet Setting", type: "text", value: "A", description: "Desc A" },
+    ];
+    render(<SettingsPage loadSettings={createDeferredLoader(rows, 0)} />);
+    await flushTimers(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit Wallet Setting" }));
+    const input = screen.getByRole("textbox", { name: "Edit Wallet Setting" });
+    fireEvent.change(input, { target: { value: "B" } });
+    
+    // Cancel
+    fireEvent.keyDown(input, { key: "Escape", code: "Escape" });
+
+    expect(screen.queryByRole("textbox", { name: "Edit Wallet Setting" })).not.toBeInTheDocument();
+    expect(screen.getByText("A")).toBeInTheDocument();
+  });
+
+  it("validates empty value before saving", async () => {
+    const rows = [
+      { id: "r1", category: "wallet", label: "Wallet Setting", type: "text", value: "A", description: "Desc A" },
+    ];
+    render(<SettingsPage loadSettings={createDeferredLoader(rows, 0)} />);
+    await flushTimers(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit Wallet Setting" }));
+    const input = screen.getByRole("textbox", { name: "Edit Wallet Setting" });
+    fireEvent.change(input, { target: { value: "   " } });
+    
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    // Still in edit mode
+    expect(screen.getByRole("textbox", { name: "Edit Wallet Setting" })).toBeInTheDocument();
+    
+    // Error is shown
+    expect(screen.getByText("Value cannot be empty")).toBeInTheDocument();
+  });
+});
+
 describe("SettingsRoute default export", () => {
   beforeEach(() => {
     jest.useFakeTimers();
