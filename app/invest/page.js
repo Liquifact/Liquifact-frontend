@@ -792,19 +792,39 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
             <>
               <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
                 {filteredInvoices.slice(0, visibleCount).map((inv) => (
-                  <li key={inv.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
-                    <div className="flex items-center justify-between mb-3">
+                  <li
+                    key={inv.id}
+                    className="rounded-xl border border-slate-800 bg-slate-900/50"
+                    style={{ padding: "var(--market-card-padding)" }}
+                  >
+                    <div
+                      className="flex items-center justify-between"
+                      style={{ marginBottom: "var(--market-card-gap)", gap: "var(--market-card-gap)" }}
+                    >
                       <Link
                         href={`/invest/${inv.id}`}
-                        className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                        className="rounded font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+                        style={{
+                          fontSize: "var(--market-card-title-font-size)",
+                          fontWeight: "var(--market-card-title-font-weight)",
+                          lineHeight: "var(--market-card-title-line-height)",
+                        }}
                       >
                         {inv.issuer}
                       </Link>
-                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
+                      <span className="rounded-full bg-cyan-900/60 px-2 py-1 text-xs font-semibold text-cyan-300">
                         {inv.status}
                       </span>
                     </div>
-                    <div className="flex gap-6 text-sm text-slate-400">
+                    <div
+                      className="flex flex-wrap items-center text-slate-400"
+                      style={{
+                        gap: "var(--market-card-gap)",
+                        fontSize: "var(--market-card-meta-font-size)",
+                        lineHeight: "var(--market-card-meta-line-height)",
+                        letterSpacing: "var(--market-card-meta-letter-spacing)",
+                      }}
+                    >
                       <span>
                         {inv.currency}&nbsp;{inv.amount}
                       </span>

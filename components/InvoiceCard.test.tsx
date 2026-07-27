@@ -212,6 +212,29 @@ describe("InvoiceCard — long issuer names", () => {
   });
 });
 
+describe("InvoiceCard — design tokens", () => {
+  it("uses the shared marketplace card tokens for spacing and typography", () => {
+    renderCard();
+
+    const link = screen.getByRole("link");
+    expect(link).toHaveStyle({ padding: "var(--market-card-padding)" });
+
+    const issuer = screen.getByText("Acme Corp");
+    expect(issuer).toHaveStyle({
+      fontSize: "var(--market-card-title-font-size)",
+      fontWeight: "var(--market-card-title-font-weight)",
+      lineHeight: "var(--market-card-title-line-height)",
+    });
+
+    const amountBlock = screen.getByText("$50,000").closest("div");
+    expect(amountBlock).toHaveStyle({
+      fontSize: "var(--market-card-meta-font-size)",
+      lineHeight: "var(--market-card-meta-line-height)",
+      letterSpacing: "var(--market-card-meta-letter-spacing)",
+    });
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Accessibility
 // ---------------------------------------------------------------------------

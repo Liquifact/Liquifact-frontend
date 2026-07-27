@@ -203,6 +203,40 @@ describe("InvestMarketplace", () => {
     expect(listItems[1]).toHaveTextContent("Bright Logistics GmbH");
   });
 
+  it("applies design-token spacing and typography to marketplace cards", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "12,500",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "8.2%",
+        status: "Open",
+      },
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    const card = getInvoiceListItems()[0];
+    expect(card).toHaveStyle({ padding: "var(--market-card-padding)" });
+
+    const titleLink = within(card).getByRole("link", { name: /acme supplies ltd/i });
+    expect(titleLink).toHaveStyle({
+      fontSize: "var(--market-card-title-font-size)",
+      fontWeight: "var(--market-card-title-font-weight)",
+      lineHeight: "var(--market-card-title-line-height)",
+    });
+
+    const metaRow = within(card).getByText(/USD/i).closest("div");
+    expect(metaRow).toHaveStyle({
+      fontSize: "var(--market-card-meta-font-size)",
+      lineHeight: "var(--market-card-meta-line-height)",
+      letterSpacing: "var(--market-card-meta-letter-spacing)",
+    });
+  });
+
   it("renders a stable structure for the loaded marketplace state", async () => {
     const invoices = [
       {
