@@ -19,8 +19,8 @@
     "enhanced-resolve": "^5.24.3",
     "eslint-scope": "^9.1.2",
     "next": "^16.2.11",
-    "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",
