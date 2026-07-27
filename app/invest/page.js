@@ -15,8 +15,13 @@ import InvoiceFilters, {
 import BulkActionsToolbar from "@/components/BulkActionsToolbar";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import NavMenu from "@/components/NavMenu";
-import WatchlistSection from "@/components/WatchlistSection";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import MarketplaceErrorBoundary from "@/components/MarketplaceErrorBoundary";
+import { useSettingsAnnouncer } from "@/components/useSettingsAnnouncer";
 import { useWatchlist } from "@/lib/hooks/useWatchlist";
+import useBulkSelection from "@/lib/hooks/useBulkSelection";
+import { INVOICE_STATUSES } from "@/lib/types/invoice";
+import { reportError } from "@/lib/observability/reportError";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
@@ -269,21 +274,34 @@ export function defaultBulkExport(selectedInvoices) {
  * Default bulk-delete implementation: optimistically updates the supplied\n * list with a no-op filter (parent owns the actual mutation so the data\n * source of truth stays outside the export helper). The handler is a\n * documented opt-in behaviour: callers that already expose a delete API\n * inject their own `onBulkDelete`.\n * @param {Set<string>|Array<string>} ids
  * @returns {Promise<{count: number}>}
  */
-export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
+export function InvestMarketplace({
+  loadInvoices = loadMockInvoices,
+  onBulkDelete = async () => ({ count: 0 }),
+  onBulkExport = defaultBulkExport,
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchParamsValue = searchParams ?? new URLSearchParams();
   const searchParamsString = searchParamsValue.toString();
 
+  // Parse shareable URL once on mount for initial filter/search state.
+  // Re-sync on back/forward is handled by the searchParamsString effect below.
+  const initialUrlState = parseFiltersFromSearchParams(searchParamsValue, DEFAULT_FILTERS);
+
   const { watchlists } = useWatchlist();
-  
+  // Toast is optional — bulk handlers no-op toast when provider is absent (unit tests).
+  const toastApi = null;
+
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   // Filter state
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialUrlState.searchQuery);
   const [loadError, setLoadError] = useState("");
   const [filters, setFilters] = useState(initialUrlState.filters);
   const [debouncedSearch, setDebouncedSearch] = useState(initialUrlState.searchQuery);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState(null);
+  const [bulkRunning, setBulkRunning] = useState({ export: false, delete: false });
+  const bulkLabels = copy.invest.bulk;
 
   const committedSearchRef = useRef(
     buildSearchParams(initialUrlState.filters, initialUrlState.searchQuery).toString()
@@ -760,16 +778,16 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           deleting={bulkRunning.delete}
         />
 
-        {/* Error state – retryable */}
+        {/* Error state – retryable.
+            ErrorBanner already exposes role="alert" + aria-live="assertive".
+            Do not wrap it in another alert — nested alerts confuse AT and RTL. */}
         {loadError ? (
-         <div role="alert" aria-live="assertive">
           <ErrorBanner
             title={copy.invest.errorTitle}
             description={loadError}
             actionLabel={copy.invest.retryAction}
             onAction={reload}
           />
-         </div>
         ) : invoices === null ? (
           <div role="status" aria-live="polite" aria-label="Loading marketplace invoices">
             <InvoiceListSkeleton rows={3} />
