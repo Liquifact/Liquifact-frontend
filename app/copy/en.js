@@ -349,6 +349,14 @@ export const copy = {
     backToHome: "\u2190 LiquiFact",
     connectWallet: "Connect Wallet",
   },
+  settings: {
+    title: "Settings",
+    description: "Manage your display and notification preferences.",
+    lastUpdatedPrefix: "Last updated",
+    currencyLabel: "Display currency",
+    emailNotificationsLabel: "Email notifications",
+    emailNotificationsHint: "Receive email updates about your invoices and investments.",
+  },
   layout: {
     backToHome: "\u2190 LiquiFact",
     connectWallet: "Connect Wallet",
@@ -481,39 +489,5 @@ export const copy = {
     statusCompleted: "Completed",
     statusCurrent: "Current",
     statusPending: "Pending",
-  },
-  nav: {
-    /** Announced politely by NavMenu when the user navigates to a new route.
-     *  Replace {label} with the matching NAV_LINKS label (e.g. "Home"). */
-    announceNavigation: "Navigated to {label}",
-    settings: {
-      title: "Settings",
-      subtext:
-        "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
-      emptyState: "No preferences available. Connect your wallet to unlock settings.",
-      errorTitle: "Unable to load settings",
-      errorDescription: "Unable to load settings right now.",
-      errorStatus: "Unable to load settings.",
-      retryAction: "Try again",
-      searchPlaceholder: "Search preferences…",
-      filterLegend: "Settings filters",
-      filterHelp:
-        "Use the category selector or the search box to narrow the list. Paging is reset whenever a filter changes.",
-      filterCategory: "Category:",
-      filterSearch: "Search:",
-      allCategories: "All categories",
-      clearFilters: "Reset filters",
-      noMatchFilter: "No preferences match the active filters.",
-      listAriaLabel: "Settings list",
-      loadingAriaLabel: "Loading settings",
-      loadMore: "Load more",
-      loadMoreAriaLabel: "Load more preferences",
-      endOfList: "You have reached the end of the list.",
-      announceNoSettings: "No settings available",
-      announceLoaded: "{count} preferences loaded",
-      announceFiltered: "{matched} of {total} preferences match",
-      announceNoMatch: "No preferences match",
-      announceShowing: "Showing {shown} of {total} preferences",
-    },
   },
 };
