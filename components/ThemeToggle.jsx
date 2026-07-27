@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatRelativeTime } from "../lib/format/date";
 
 /**
  * The three theme options the user can cycle through.
@@ -8,8 +9,47 @@ import { useEffect, useState } from "react";
  */
 export const THEMES = /** @type {const} */ (["light", "dark", "system"]);
 
+
 /** localStorage key where the preference is persisted. */
 export const THEME_STORAGE_KEY = "liquifact-theme";
+
+/** localStorage key where the last-changed timestamp (epoch ms) is persisted. */
+export const THEME_UPDATED_STORAGE_KEY = "liquifact-theme-updated-at";
+
+/** How often the displayed "last updated" text re-renders to stay fresh, in ms. */
+export const THEME_UPDATED_TICK_MS = 60_000;
+
+/**
+ * Read the persisted "theme last changed" timestamp from localStorage.
+ * Safe to call from the browser only.
+ *
+ * @returns {Date|null}  – null when nothing valid is stored
+ */
+export function readStoredThemeUpdatedAt() {
+  try {
+    const stored = localStorage.getItem(THEME_UPDATED_STORAGE_KEY);
+    if (stored !== null) {
+      const ms = Number(stored);
+      if (!Number.isNaN(ms)) return new Date(ms);
+    }
+  } catch {
+    // localStorage unavailable (private browsing, SSR, etc.)
+  }
+  return null;
+}
+
+/**
+ * Persist the "theme last changed" timestamp to localStorage.
+ *
+ * @param {Date} date
+ */
+export function writeThemeUpdatedAt(date) {
+  try {
+    localStorage.setItem(THEME_UPDATED_STORAGE_KEY, String(date.getTime()));
+  } catch {
+    // ignore write failures (private browsing, quota exceeded)
+  }
+}
 
 /**
  * Determine the effective visual theme from a stored preference.
@@ -97,7 +137,32 @@ export default function ThemeToggle({ className = "" }) {
     return () => mq.removeEventListener("change", handler);
   }, [preference]);
 
-  const cycleTheme = (direction) => {
+  // When the preference was last changed. Bootstrapped to "now" on a user's very
+  // first visit (nothing stored yet) so the UI always has a timestamp to show,
+  // then only advanced when the user actually clicks the toggle.
+  const [updatedAt, setUpdatedAt] = useState(() => {
+    if (typeof window === "undefined") return null;
+    return readStoredThemeUpdatedAt() ?? new Date();
+  });
+
+  // Persist a freshly-bootstrapped timestamp so it stays stable across reloads
+  // instead of resetting to "now" every time. Only needs to run once on mount:
+  // click-driven updates already call writeThemeUpdatedAt themselves.
+  useEffect(() => {
+    if (updatedAt !== null && readStoredThemeUpdatedAt() === null) {
+      writeThemeUpdatedAt(updatedAt);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Re-render periodically so "5 minutes ago" keeps advancing without a click.
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => forceTick((n) => n + 1), THEME_UPDATED_TICK_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  const handleClick = () => {
     setPreference((prev) => {
       const idx = THEMES.indexOf(prev);
       if (direction === "next") {
@@ -105,6 +170,9 @@ export default function ThemeToggle({ className = "" }) {
       }
       return THEMES[(idx - 1 + THEMES.length) % THEMES.length];
     });
+    const now = new Date();
+    setUpdatedAt(now);
+    writeThemeUpdatedAt(now);
   };
 
   const handleClick = () => cycleTheme("next");
@@ -197,28 +265,42 @@ export default function ThemeToggle({ className = "" }) {
       typeof window !== "undefined" &&
       resolveTheme(preference) === "dark");
 
+  const absoluteUpdatedAt = updatedAt ? updatedAt.toLocaleString() : null;
+
   return (
-    <button
-      id="theme-toggle"
-      type="button"
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      aria-label={LABELS[preference]}
-      aria-pressed={isDarkActive}
-      title={`Current theme: ${capitalise(preference)}`}
-      data-theme-pref={preference}
-      data-theme-next={nextPref}
-      className={[
-        "rounded-lg p-2 transition-colors",
-        "text-slate-300 hover:text-cyan-400 hover:bg-slate-800",
-        "dark:text-slate-300 dark:hover:text-cyan-400",
-        "focus-ring",
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      {ICONS[preference]}
-    </button>
+    <span className="inline-flex items-center gap-2">
+      <button
+        id="theme-toggle"
+        type="button"
+        role="button"
+        onClick={handleClick}
+        aria-label={LABELS[preference]}
+        aria-pressed={preference !== "system"}
+        title={`Current theme: ${capitalise(preference)}`}
+        data-theme-pref={preference}
+        data-theme-next={nextPref}
+        className={[
+          "rounded-lg p-2 transition-colors",
+          "text-slate-300 hover:text-cyan-400 hover:bg-slate-800",
+          "dark:text-slate-300 dark:hover:text-cyan-400",
+          "focus-ring",
+          className,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {ICONS[preference]}
+      </button>
+      {updatedAt && (
+        <span
+          id="theme-updated-at"
+          className="text-xs text-slate-400 dark:text-slate-400"
+          title={`Theme last updated ${absoluteUpdatedAt}`}
+        >
+          <span aria-hidden="true">Updated {formatRelativeTime(updatedAt)}</span>
+          <span className="sr-only">Theme last updated {absoluteUpdatedAt}</span>
+        </span>
+      )}
+    </span>
   );
 }

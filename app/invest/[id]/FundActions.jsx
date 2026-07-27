@@ -37,7 +37,6 @@ import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import FundAmountInput from "@/components/FundAmountInput";
 import { useMarketplace } from "@/app/invest/MarketplaceContext";
 import { copy } from "@/app/copy/en";
-import { useOptimisticFund, FUNDING_STATES } from "@/lib/hooks/useOptimisticFund";
 
 const detail = copy.invest.detail;
 
@@ -113,9 +112,25 @@ export default function FundActions({
   const { state: walletState, connect } = useWallet();
   const toast = useToast();
   const [isCopying, setIsCopying] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const debounceTimeoutRef = useRef(null);
   const { pendingIds, fundInvoice } = useMarketplace();
 
   const isFundingPending = pendingIds.has(id);
+
+  // Debounced polite announcement so rapid-fire results settle into one update.
+  const announce = useCallback((message) => {
+    if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+    debounceTimeoutRef.current = setTimeout(() => {
+      setAnnouncement(message);
+    }, ANNOUNCE_DEBOUNCE_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+    };
+  }, []);
 
   // Fund button is disabled while wallet is connecting or unavailable,
   // while an optimistic action is in-flight, or if the invoice is not Open.
@@ -181,63 +196,36 @@ export default function FundActions({
 
       try {
         await fundInvoice(id, amount, action);
-        toast.success(
-          `Funding request for ${amount} ${currency ?? ""} submitted. Awaiting wallet approval.`.trim(),
-          "Funding submitted"
-        );
+        const successMsg =
+          `Funding request for ${amount} ${currency ?? ""} submitted. Awaiting wallet approval.`.trim();
+        toast.success(successMsg, "Funding submitted");
+        announce(successMsg);
       } catch {
-        toast.error(
-          `Funding request for ${amount} ${currency ?? ""} failed. Please try again.`.trim(),
-          "Funding failed"
-        );
+        const errorMsg =
+          `Funding request for ${amount} ${currency ?? ""} failed. Please try again.`.trim();
+        toast.error(errorMsg, "Funding failed");
+        announce(errorMsg);
       }
     },
-    [walletState, connect, fundInvoice, id, currency, performFund, toast]
+    [walletState, connect, fundInvoice, id, currency, performFund, toast, announce]
   );
 
   return (
     <>
-      {/* Inline status mirror — shows the optimistic state when it differs from
-          the server-confirmed status so the user sees immediate feedback without
-          relying solely on the toast system. */}
-      {optimisticStatus !== status && (
-        <div
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          data-testid="optimistic-status-banner"
-          className="no-print mb-4 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-300"
-        >
-          {detail.fundOptimisticMsg}
-        </div>
-      )}
-
-      {/* Rollback banner — shown when the server rejected the funding attempt. */}
-      {showRollbackBanner && (
-        <div
-          role="alert"
-          aria-live="assertive"
-          data-testid="rollback-banner"
-          className="no-print mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300"
-        >
-          {detail.fundRolledBackMsg}
-        </div>
-      )}
-
-      {/* Optimistic status pill — always reflects the current in-UI status. */}
-      {optimisticStatus !== status && (
-        <div
-          className="no-print mb-4 flex items-center gap-2 text-sm text-slate-400"
-          aria-label="Optimistic invoice status"
-        >
-          <span>Status:</span>
-          <StatusPill status={optimisticStatus} />
-        </div>
-      )}
+      {/* Hidden polite status region announcing invoice-detail async action
+          results (copy link, funding submission) to screen readers. */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+        data-testid="invoice-detail-announce"
+      >
+        {announcement}
+      </div>
 
       {/* Partial-funding amount input — only when an amount ceiling is known
-          (real detail page) and the invoice is Open (use server-confirmed status
-          to decide whether to render; optimistic feedback is in the button). */}
+          (real detail page) and the invoice is Open. */}
       {status === "Open" && maxAmount != null && (
         <div className="no-print mb-6">
           <FundAmountInput
@@ -260,7 +248,7 @@ export default function FundActions({
           type="button"
           onClick={handleFund}
           disabled={isFundingDisabled}
-          className="focus-ring rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="invoice-detail-action-btn focus-ring rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label={detail.fundButtonLabel}
         >
           {isFundingPending ? "Funding…" : detail.fundButton}
@@ -270,7 +258,7 @@ export default function FundActions({
           type="button"
           onClick={handleCopyLink}
           disabled={isCopying}
-          className="focus-ring rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800/50 transition-colors disabled:opacity-50"
+          className="invoice-detail-action-btn focus-ring rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800/50 transition-colors motion-reduce:transition-none disabled:opacity-50"
           aria-label={detail.copyLinkButtonLabel}
         >
           {detail.copyLinkButton}
@@ -279,7 +267,7 @@ export default function FundActions({
         <button
           type="button"
           onClick={handlePrint}
-          className="focus-ring rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800 transition-colors"
+          className="invoice-detail-action-btn focus-ring rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800 transition-colors motion-reduce:transition-none"
           aria-label={detail.printButtonLabel}
         >
           {detail.printButton}
@@ -287,7 +275,7 @@ export default function FundActions({
       </div>
 
       {/* Disclaimer */}
-      <div className="no-print mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-300">
+      <div className="invoice-detail-disclaimer no-print mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-300">
         {detail.disclaimerNote}
       </div>
     </>

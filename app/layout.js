@@ -91,11 +91,11 @@ export default async function RootLayout({ children }) {
         </a>
         <ToastProvider>
           <WalletProvider>{children}</WalletProvider>
+          {/* Theme toggle — fixed to top-right, above all other content */}
+          <div className="fixed top-3 right-16 z-50 md:right-20">
+            <ThemeToggle />
+          </div>
         </ToastProvider>
-        {/* Theme toggle — fixed to top-right, above all other content */}
-        <div className="fixed top-3 right-16 z-50 md:right-20">
-          <ThemeToggle />
-        </div>
         {/* Marketplace shortcut — listens for `m` keystrokes to navigate to /invest */}
         <MarketplaceShortcut />
         {/* Shortcut help dialog — listens for `?` keystrokes to surface every

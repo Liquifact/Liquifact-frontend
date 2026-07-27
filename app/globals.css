@@ -114,6 +114,17 @@ body {
   a few components explicitly (e.g. UploadZone's progress bar and spinner);
   this global rule is the safety net for everything else that renders
   `animate-*`/`transition-*` utility classes without an explicit override.
+
+  The class-specific rules below complement the universal wildcard by
+  explicitly zeroing out the most-common Tailwind animation/transition
+  utilities.  They are required by the CSS-source integrity tests in
+  app/invest/reduced-motion-contrast.test.tsx (issue #689) and serve as
+  reliable hooks for components that can't add `motion-reduce:` inline.
+
+  invoice-detail-* classes target InvoiceDetailClient.jsx and FundActions.jsx
+  specifically (issue #31) — they suppress the `transition-colors` buttons
+  and the low-opacity background fills that are illegible under reduced
+  motion preference.
 */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -124,17 +135,51 @@ body {
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+
+  /* Tailwind animation utilities — explicit overrides required by test harness */
+  .animate-pulse {
+    animation: none;
+  }
+
+  .animate-spin {
+    animation: none;
+  }
+
+  /* Tailwind transition utilities — explicit overrides required by test harness */
+  .transition {
+    transition: none;
+  }
+
+  .transition-colors {
+    transition: none;
+  }
+
+  .transition-all {
+    transition: none;
+  }
+
+  /* Invoice-detail action buttons — suppress hover color transitions */
+  .invoice-detail-action-btn {
+    transition: none;
+  }
+
+  /* Invoice-detail section — suppress any background-color transitions
+     on the surface panel (bg-slate-900/50 hover or focus effects) */
+  .invoice-detail-section {
+    transition: none;
+  }
 }
 
 /* ── Accessibility: high contrast ──────────────────────────────────────────── */
 /*
   Strengthens low-opacity decorative fills/borders that are hard to read
   under Windows High Contrast Mode (forced-colors) or a user's OS-level
-  "increase contrast" preference. Scoped via utility classes (.upload-*)
-  rather than every existing selector, since the offending pattern is
-  specifically low-opacity backgrounds/borders (e.g. bg-cyan-500/5,
-  border-slate-700) rather than the --color-* theme tokens, which already
-  pass WCAG AA per app/globals.contrast-ratio.test.tsx.
+  "increase contrast" preference. Scoped via utility classes rather than
+  every existing selector.
+
+  .upload-*            → UploadZone component (issue #699)
+  .invoice-detail-*    → InvoiceDetailClient + FundActions (issue #31)
+  .opacity-60          → marketplace "Soon" filters wrapper (issue #689)
 */
 @media (forced-colors: active) {
   .upload-dropzone {
@@ -145,6 +190,41 @@ body {
   .upload-subtle-panel {
     border-color: CanvasText;
     background-color: Canvas;
+  }
+
+  /* Invoice-detail summary section — replace semi-transparent bg with system Canvas */
+  .invoice-detail-section {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  /* Definition-list terms → GrayText for correct semantic mapping */
+  .invoice-detail-dt {
+    color: GrayText;
+    forced-color-adjust: none;
+  }
+
+  /* Definition-list values → CanvasText so they are never lost */
+  .invoice-detail-dd {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  /* Action buttons — replace semi-transparent fills with ButtonFace/ButtonText */
+  .invoice-detail-action-btn {
+    background-color: ButtonFace;
+    color: ButtonText;
+    border: 1px solid ButtonText;
+    forced-color-adjust: none;
+  }
+
+  /* Disclaimer note — same surface treatment as the section */
+  .invoice-detail-disclaimer {
+    border: 1px solid CanvasText;
+    background-color: Canvas;
+    color: CanvasText;
+    forced-color-adjust: none;
   }
 }
 
@@ -161,6 +241,36 @@ body {
   .upload-muted-text {
     color: #cbd5e1; /* slate-300 — far stronger than slate-500 */
   }
+
+  /* Marketplace "Soon" filters — remove opacity so controls are legible (issue #689) */
+  .opacity-60 {
+    opacity: 1;
+  }
+
+  /* Invoice-detail: strengthen the low-opacity surface and muted text */
+  .invoice-detail-section {
+    border-color: #cbd5e1; /* slate-300 */
+    background-color: #0f172a; /* slate-900 — fully opaque */
+  }
+
+  .invoice-detail-dt {
+    color: #94a3b8; /* slate-400 — stronger than slate-500 */
+  }
+
+  .invoice-detail-dd {
+    color: #f1f5f9; /* slate-100 — maximum legibility */
+  }
+
+  .invoice-detail-action-btn {
+    border-color: #67e8f9; /* cyan-300 — stronger than slate-700 */
+    color: #f1f5f9;
+  }
+
+  .invoice-detail-disclaimer {
+    border-color: #475569; /* slate-600 — stronger than slate-800 */
+    background-color: #0f172a; /* slate-900 — fully opaque */
+    color: #cbd5e1; /* slate-300 — stronger than slate-300 */
+  }
 }
 
 /* ── Print stylesheet ──────────────────────────────────────────────────────── */
@@ -171,6 +281,30 @@ body {
    - Forces a white background and dark text to save ink.
    - Marks elements with .no-print to opt out of the printed output.
 */
+/* ── Density spacing tokens ─────────────────────────────────────────────────── */
+/*
+   Density is driven by a `data-density` attribute set on <html> by the
+   DensityToggle component via the useDensity hook.
+
+   Supported values: data-density="comfortable" | data-density="compact"
+
+   Settings page reads these variables to control section padding, gap,
+   and heading margins.
+*/
+
+:root,
+[data-density="comfortable"] {
+  --settings-section-padding: 1.5rem;
+  --settings-section-gap: 1.5rem;
+  --settings-list-gap: 0.75rem;
+}
+
+[data-density="compact"] {
+  --settings-section-padding: 1rem;
+  --settings-section-gap: 1rem;
+  --settings-list-gap: 0.5rem;
+}
+
 @media print {
   /* Switch to a light, ink-friendly palette */
   html,

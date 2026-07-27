@@ -247,7 +247,9 @@ describe("copy dictionary — key presence", () => {
 
     it("announceNavigation contains the {label} placeholder", () => {
       expect(copy.nav.announceNavigation).toContain("{label}");
-      
+    });
+  });
+
   describe("settings", () => {
     it("has required keys", () => {
       expect(copy.settings.title).toBeDefined();
