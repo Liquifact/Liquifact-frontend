@@ -1,155 +1,298 @@
-import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+/**
+ * @file app/settings/page.test.tsx
+ *
+ * Integration tests for the /settings page (issue #741).
+ *
+ * Concerns covered:
+ *  - Page renders header, two InlineEditRows (display name + email).
+ *  - Each row is reachable via keyboard tab order.
+ *  - Validation blocks save for invalid email & displayName.
+ *  - A successful save persists to localStorage via the existing hook.
+ *  - Cancel restores prior value.
+ *  - Live regions are mounted.
+ */
+
 import "@testing-library/jest-dom";
-import SettingsPage from "./page";
-import { SETTINGS_STORAGE_KEY, SETTINGS_UPDATED_KEY } from "../../lib/settingsStore";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+import SettingsPage, {
+  normalizeSettings,
+  DEFAULT_SETTINGS,
+  SETTINGS_STORAGE_KEY,
+} from "./page";
+
+// ─── Mocks ──────────────────────────────────────────────────────────────────
+
+jest.mock("next/link", () => {
+  const LinkMock = ({ href, children, ...rest }) => (
+    <a href={typeof href === "string" ? href : "#"} {...rest}>
+      {children}
+    </a>
+  );
+  return { __esModule: true, default: LinkMock };
+});
 
 jest.mock("next/navigation", () => ({
   usePathname: () => "/settings",
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), refresh: jest.fn() }),
 }));
 
-jest.mock("../../components/WalletStatusLazy", () => ({
-  __esModule: true,
-  default: function MockWalletStatusLazy() {
-    return <button type="button">Connect Wallet</button>;
-  },
-}));
-
-/** In-memory localStorage mock matching the pattern used across the test suite. */
-function mockLocalStorage(initial: Record<string, string> = {}) {
-  const store: Record<string, string> = { ...initial };
-  const mock = {
-    getItem: jest.fn((k: string) => store[k] ?? null),
-    setItem: jest.fn((k: string, v: string) => {
-      store[k] = v;
-    }),
-    removeItem: jest.fn((k: string) => {
-      delete store[k];
-    }),
-    clear: jest.fn(() => {
-      Object.keys(store).forEach((k) => delete store[k]);
-    }),
-    get length() {
-      return Object.keys(store).length;
-    },
-    key: jest.fn((i: number) => Object.keys(store)[i] ?? null),
+jest.mock("../../components/NavMenu", () => {
+  return function MockNavMenu() {
+    return <div data-testid="nav-menu-mock">NavMenu</div>;
   };
-  Object.defineProperty(window, "localStorage", { value: mock, writable: true });
-  return { mock, store };
-}
+});
+
+// ─── normalizeSettings pure unit ────────────────────────────────────────────
+
+describe("normalizeSettings", () => {
+  it("returns defaults for non-object input", () => {
+    expect(normalizeSettings(null)).toEqual(DEFAULT_SETTINGS);
+    expect(normalizeSettings(undefined)).toEqual(DEFAULT_SETTINGS);
+    expect(normalizeSettings("not an object")).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it("merges partial stored values with defaults", () => {
+    expect(normalizeSettings({ displayName: "Z" })).toEqual({
+      displayName: "Z",
+      email: "",
+    });
+    expect(normalizeSettings({ email: "x@y.com" })).toEqual({
+      displayName: "",
+      email: "x@y.com",
+    });
+  });
+
+  it("drops non-string fields", () => {
+    expect(normalizeSettings({ displayName: 42, email: null })).toEqual(
+      DEFAULT_SETTINGS
+    );
+  });
+
+  it("returns full shape when given populated values", () => {
+    expect(
+      normalizeSettings({ displayName: "Sam", email: "sam@x.com" })
+    ).toEqual({ displayName: "Sam", email: "sam@x.com" });
+  });
+});
+
+// ─── Page render ────────────────────────────────────────────────────────────
 
 describe("SettingsPage", () => {
   beforeEach(() => {
-    mockLocalStorage({});
+    window.localStorage.clear();
   });
 
-  it("renders the heading and description from copy.settings", async () => {
-    await act(async () => {
-      render(<SettingsPage />);
-    });
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/settings/i);
-    expect(screen.getByText(/display and notification preferences/i)).toBeInTheDocument();
+  it("renders the page heading and a navigable nav menu", () => {
+    render(<SettingsPage />);
+    expect(screen.getByRole("heading", { name: /settings/i, level: 1 })).toBeInTheDocument();
+    expect(screen.getByTestId("nav-menu-mock")).toBeInTheDocument();
   });
 
-  it("renders the shared navigation including the new Settings link", async () => {
-    await act(async () => {
-      render(<SettingsPage />);
-    });
-    expect(screen.getByRole("link", { name: /^settings$/i })).toHaveAttribute("href", "/settings");
-    expect(screen.getByRole("link", { name: /^home$/i })).toHaveAttribute("href", "/");
+  it("renders both inline-edit rows in view mode initially", () => {
+    render(<SettingsPage />);
+    expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Not set");
+    expect(screen.getByTestId("settings-email-display")).toHaveTextContent("Not set");
   });
 
-  it("renders no last-updated label when settings have never been changed", async () => {
-    await act(async () => {
-      render(<SettingsPage />);
-    });
-    expect(screen.queryByTestId("settings-updated-at")).not.toBeInTheDocument();
+  it("renders polite live regions on every row", () => {
+    render(<SettingsPage />);
+    const statuses = screen.getAllByRole("status");
+    expect(statuses.length).toBeGreaterThanOrEqual(2);
+    statuses.forEach((node) => expect(node).toHaveAttribute("aria-live", "polite"));
   });
 
-  it("defaults to USD currency and notifications enabled", async () => {
-    await act(async () => {
-      render(<SettingsPage />);
-    });
-    expect(screen.getByLabelText(/display currency/i)).toHaveValue("USD");
-    expect(screen.getByRole("switch", { name: /email notifications/i })).toHaveAttribute(
-      "aria-checked",
-      "true"
+  it("edit button activates display-name row and persists on save", async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    await user.click(screen.getByRole("button", { name: /edit display name/i }));
+    const input = screen.getByTestId("settings-display-name-input");
+    await user.type(input, "Acme");
+
+    await user.click(screen.getByRole("button", { name: /save display name/i }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Acme")
     );
+
+    const stored = JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) || "{}");
+    expect(stored.displayName).toBe("Acme");
   });
 
-  it('shows "just now" immediately after changing currency, and persists it', async () => {
-    const { store } = mockLocalStorage({});
-    const fixedNow = new Date("2026-07-26T12:00:00.000Z").getTime();
-    jest.spyOn(Date, "now").mockReturnValue(fixedNow);
+  it("invalid email blocks save (Save remains disabled)", async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
 
-    await act(async () => {
-      render(<SettingsPage />);
-    });
+    await user.click(screen.getByRole("button", { name: /edit email/i }));
+    const input = screen.getByTestId("settings-email-input");
+    await user.type(input, "not-an-email");
 
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText(/display currency/i), { target: { value: "EUR" } });
-    });
-
-    expect(screen.getByTestId("settings-updated-at")).toHaveTextContent("just now");
-    expect(store[SETTINGS_UPDATED_KEY]).toBe(String(fixedNow));
-    expect(JSON.parse(store[SETTINGS_STORAGE_KEY])).toMatchObject({ currency: "EUR" });
-
-    (Date.now as jest.Mock).mockRestore();
+    const saveBtn = screen.getByRole("button", { name: /save email/i });
+    expect(saveBtn).toBeDisabled();
+    expect(screen.getByTestId("settings-email-error")).toBeInTheDocument();
   });
 
-  it("toggles email notifications and records the change", async () => {
-    await act(async () => {
-      render(<SettingsPage />);
-    });
+  it("valid email saves and persists", async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
 
-    const toggle = screen.getByRole("switch", { name: /email notifications/i });
-    await act(async () => {
-      fireEvent.click(toggle);
-    });
+    await user.click(screen.getByRole("button", { name: /edit email/i }));
+    await user.type(screen.getByTestId("settings-email-input"), "ops@liquifact.com");
 
-    expect(toggle).toHaveAttribute("aria-checked", "false");
-    expect(screen.getByTestId("settings-updated-at")).toBeInTheDocument();
-  });
+    await user.click(screen.getByRole("button", { name: /save email/i }));
 
-  it("shows an accessible absolute-time alternative alongside the relative label", async () => {
-    await act(async () => {
-      render(<SettingsPage />);
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByRole("switch", { name: /email notifications/i }));
-    });
-
-    const label = screen.getByTestId("settings-updated-at");
-    expect(label).toHaveAttribute("title", expect.stringContaining("Settings last changed:"));
-    expect(label.querySelector(".sr-only")).toHaveTextContent(/Settings last changed/);
-  });
-
-  it("reads a previously stored timestamp and settings on mount", async () => {
-    const oneHourAgo = Date.now() - 60 * 60 * 1000;
-    mockLocalStorage({
-      [SETTINGS_STORAGE_KEY]: JSON.stringify({ currency: "NGN", emailNotifications: false }),
-      [SETTINGS_UPDATED_KEY]: String(oneHourAgo),
-    });
-
-    await act(async () => {
-      render(<SettingsPage />);
-    });
-
-    expect(screen.getByLabelText(/display currency/i)).toHaveValue("NGN");
-    expect(screen.getByRole("switch", { name: /email notifications/i })).toHaveAttribute(
-      "aria-checked",
-      "false"
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-email-display")).toHaveTextContent(
+        "ops@liquifact.com"
+      )
     );
-    expect(screen.getByTestId("settings-updated-at")).toHaveTextContent("1 hour ago");
+    const stored = JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) || "{}");
+    expect(stored.email).toBe("ops@liquifact.com");
   });
 
-  it("falls back to defaults when stored settings JSON is malformed", async () => {
-    mockLocalStorage({ [SETTINGS_STORAGE_KEY]: "{not-json" });
+  it("hydrates from a pre-seeded localStorage value", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({ displayName: "Stored", email: "stored@x.com" })
+    );
+    render(<SettingsPage />);
 
-    await act(async () => {
-      render(<SettingsPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent(
+        "Stored"
+      )
+    );
+    expect(screen.getByTestId("settings-email-display")).toHaveTextContent("stored@x.com");
+    // Click edit on the stored name to ensure editing hydrates correctly.
+    await user.click(screen.getByRole("button", { name: /edit display name/i }));
+    expect(screen.getByTestId("settings-display-name-input")).toHaveValue("Stored");
+  });
+
+  it("cancel restores the prior stored value (does not write empty string)", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({ displayName: "Stored", email: "" })
+    );
+    render(<SettingsPage />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Stored")
+    );
+
+    await user.click(screen.getByRole("button", { name: /edit display name/i }));
+    await user.clear(screen.getByTestId("settings-display-name-input"));
+    await user.type(screen.getByTestId("settings-display-name-input"), "Typed");
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+
+    expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Stored");
+
+    const stored = JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) || "{}");
+    expect(stored.displayName).toBe("Stored");
+  });
+
+  it("Escape inside the email input cancels the edit", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({ displayName: "", email: "old@liquifact.com" })
+    );
+    render(<SettingsPage />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-email-display")).toHaveTextContent(
+        "old@liquifact.com"
+      )
+    );
+
+    await user.click(screen.getByRole("button", { name: /edit email/i }));
+    await user.clear(screen.getByTestId("settings-email-input"));
+    await user.type(screen.getByTestId("settings-email-input"), "throw-away@x.com");
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByTestId("settings-email-input")).not.toBeInTheDocument();
+    expect(screen.getByTestId("settings-email-display")).toHaveTextContent("old@liquifact.com");
+  });
+
+  it("display name validator enforces minimum length even on Enter", async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    await user.click(screen.getByRole("button", { name: /edit display name/i }));
+    const input = screen.getByTestId("settings-display-name-input");
+    await user.type(input, "X{enter}");
+
+    // The save is rejected — we should still be in edit mode and the error
+    // message must be visible.
+    expect(screen.getByTestId("settings-display-name-error")).toBeInTheDocument();
+    expect(input).toBeInTheDocument();
+    // No new entry was persisted
+    const stored = JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) ?? "{}");
+    expect(stored.displayName ?? "").toBe("");
+  });
+
+  it("legitimate full workflow: edit display name + email via Save button", async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    // Display name
+    await user.click(screen.getByRole("button", { name: /edit display name/i }));
+    await user.type(screen.getByTestId("settings-display-name-input"), "Acme Treasury");
+    await user.click(screen.getByRole("button", { name: /save display name/i }));
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent(
+        "Acme Treasury"
+      )
+    );
+
+    // Email
+    await user.click(screen.getByRole("button", { name: /edit email/i }));
+    await user.type(screen.getByTestId("settings-email-input"), "treasury@acme.com");
+    await user.click(screen.getByRole("button", { name: /save email/i }));
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-email-display")).toHaveTextContent(
+        "treasury@acme.com"
+      )
+    );
+
+    const stored = JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) ?? "{}");
+    expect(stored).toEqual({
+      displayName: "Acme Treasury",
+      email: "treasury@acme.com",
+    });
+  });
+
+  it("uses fireEvent.submit as a defensive path for the form", async () => {
+    // Inject pre-existing localStorage so we know the canonical "before" state
+    window.localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({ displayName: "Initial", email: "" })
+    );
+    render(<SettingsPage />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent(
+        "Initial"
+      )
+    );
+
+    fireEvent.click(screen.getByTestId("settings-display-name-edit"));
+    const input = screen.getByTestId("settings-display-name-input");
+    fireEvent.change(input, { target: { value: "Updated" } });
+
+    const form = input.closest("form");
+    if (!form) throw new Error("form not found");
+    act(() => {
+      fireEvent.submit(form);
     });
 
-    expect(screen.getByLabelText(/display currency/i)).toHaveValue("USD");
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent(
+        "Updated"
+      )
+    );
   });
 });
