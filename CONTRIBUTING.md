@@ -44,6 +44,29 @@ npm run build
 
 CI currently runs `npm ci`, `npm run lint`, and `npm test --silent` on pull requests to `main`. Run `npm run build` locally for UI or routing changes because the build command is part of the documented workflow even when a PR only changes a small surface.
 
+## Code Review Assignment (CODEOWNERS)
+
+[.github/CODEOWNERS](.github/CODEOWNERS) maps file paths to reviewers so GitHub can automatically request review on pull requests that touch a given area:
+
+| Path | Area |
+| --- | --- |
+| `/app/` | Application routes and pages |
+| `/components/` | Shared UI components |
+| `/lib/wallet/` | Wallet integration (Freighter, signing, connection flows) |
+| `/lib/api/` | API client layer |
+| `/lib/securityHeaders.mjs` | Security headers configuration |
+| `/docs/`, `CONTRIBUTING.md` | Documentation |
+| `/.github/` | CI/CD workflows and repo automation |
+| everything else | Falls back to the catch-all (`*`) owner |
+
+What this means for review turnaround, especially for external contributors:
+
+- A pull request is automatically routed to the owner(s) of every area it touches. A PR that only edits `components/` gets a different (usually faster) reviewer path than one that also touches `lib/wallet/` or `.github/workflows/`.
+- **Sensitive areas take longer.** Changes under `/lib/wallet/`, `/lib/securityHeaders.mjs`, and `/.github/` require sign-off from that area's owner before merge, since these directories affect fund safety, security posture, or CI trust. Expect a longer review cycle than for `components/` or `docs/` changes.
+- Scoping a PR to a single area (per the branch-naming convention above) keeps it mapped to one reviewer group and avoids waiting on multiple owners.
+- If your PR spans multiple owned areas (e.g. a `components/` change plus a `lib/wallet/` change), all relevant owners are requested — plan for the slowest area to set the review timeline.
+- The mapping in `.github/CODEOWNERS` currently uses placeholder owner handles (`@OWNER-*`). Repo maintainers are responsible for keeping these pointed at real, active GitHub users or teams; if a PR sits without a review request, flag it in the campaign Discord rather than assuming no one owns the area.
+
 ## Formatting
 
 The project uses **Prettier** to enforce a consistent code style.
