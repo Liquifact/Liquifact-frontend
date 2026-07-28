@@ -2,13 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { formatRelativeTime } from "../lib/format/date";
+import { useLocalStorage } from "../lib/hooks/useLocalStorage";
+import { useToast } from "./ToastProvider";
 
 /**
  * The three theme options the user can cycle through.
+ *
+ * - "light"  – always renders the light palette
+ * - "dark"   – always renders the dark palette
+ * - "auto"   – follows the OS `prefers-color-scheme` media query and updates
+ *              live when the OS preference changes
+ *
  * @type {readonly string[]}
  */
-export const THEMES = /** @type {const} */ (["light", "dark", "system"]);
-
+export const THEMES = /** @type {const} */ (["light", "dark", "auto"]);
 
 /** localStorage key where the preference is persisted. */
 export const THEME_STORAGE_KEY = "liquifact-theme";
@@ -18,6 +25,12 @@ export const THEME_UPDATED_STORAGE_KEY = "liquifact-theme-updated-at";
 
 /** How often the displayed "last updated" text re-renders to stay fresh, in ms. */
 export const THEME_UPDATED_TICK_MS = 60_000;
+
+/**
+ * Stable identifier string used by the "Copy theme identifier" button.
+ * Consumers (e.g. tests) can import this to assert the clipboard payload.
+ */
+export const THEME_IDENTIFIER = "liquifact-theme-identifier";
 
 /**
  * Read the persisted "theme last changed" timestamp from localStorage.
@@ -53,7 +66,7 @@ export function writeThemeUpdatedAt(date) {
 
 /**
  * Determine the effective visual theme from a stored preference.
- * 'system' resolves to whatever the OS prefers at that moment.
+ * 'auto' resolves to whatever the OS prefers at that moment.
  *
  * @param {string} pref  – one of THEMES
  * @returns {'light'|'dark'}
@@ -61,15 +74,17 @@ export function writeThemeUpdatedAt(date) {
 export function resolveTheme(pref) {
   if (pref === "light") return "light";
   if (pref === "dark") return "dark";
-  // 'system' – query the OS preference; default to 'dark' in SSR/test env
+  // 'auto' – query the OS preference; default to 'dark' in SSR/test env
   if (typeof window !== "undefined" && window.matchMedia) {
-    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    return window.matchMedia("(prefers-color-scheme: light)").matches
+      ? "light"
+      : "dark";
   }
   return "dark";
 }
 
 /**
- * Read the stored preference from localStorage, falling back to 'system'.
+ * Read the stored preference from localStorage, falling back to 'auto'.
  * Safe to call from the browser only.
  *
  * @returns {string}
@@ -81,7 +96,7 @@ export function readStoredTheme() {
   } catch {
     // localStorage unavailable (private browsing, SSR, etc.)
   }
-  return "system";
+  return "auto";
 }
 
 /**
@@ -98,56 +113,54 @@ export function applyTheme(pref) {
 /**
  * ThemeToggle
  *
- * A button that cycles through light → dark → system preference.
- * The current preference is persisted to localStorage and applied via
- * `data-theme` on `<html>`. An inline pre-paint script in `app/layout.js`
- * reads localStorage before React hydrates to prevent the flash of
- * incorrect theme.
+ * A button that cycles through light → dark → auto (system preference).
+ * The current preference is persisted to localStorage via `useLocalStorage`
+ * and applied via `data-theme` on `<html>`. An inline pre-paint script in
+ * `app/layout.js` reads localStorage before React hydrates to prevent the
+ * flash of incorrect theme.
+ *
+ * While in "auto" mode the component subscribes to the OS
+ * `prefers-color-scheme` media query change event so the applied theme
+ * updates live without a page reload. The listener is removed on unmount.
  *
  * @param {object}  [props]
  * @param {string}  [props.className]  – Extra classes on the root button
  */
 export default function ThemeToggle({ className = "" }) {
-  // Initialise from localStorage only on the client (avoids SSR mismatch).
-  // Using a lazy initializer avoids calling setState synchronously inside an
-  // effect, which would trigger a cascading render warning.
-  const [preference, setPreference] = useState(() => {
-    if (typeof window === "undefined") return "system";
-    return readStoredTheme();
-  });
+  // useLocalStorage is SSR-safe: it returns the default on the first render
+  // and reads from storage inside a useEffect after mount, preventing hydration
+  // mismatches. The setter is referentially stable (safe for dep-arrays).
+  const [preference, setPreference] = useLocalStorage(THEME_STORAGE_KEY, "auto");
 
-  // Keep data-theme in sync whenever the preference state changes
+  // Keep data-theme in sync whenever the preference state changes.
   useEffect(() => {
     applyTheme(preference);
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, preference);
-    } catch {
-      // ignore write failures (private browsing, quota exceeded)
-    }
   }, [preference]);
 
-  // Also re-resolve when the OS preference changes while 'system' is active
+  // While in "auto" mode, subscribe to the OS prefers-color-scheme change
+  // event so the rendered theme follows the OS in real-time. The listener
+  // is cleaned up on unmount or whenever the preference leaves "auto".
   useEffect(() => {
-    if (preference !== "system") return;
+    if (preference !== "auto") return;
     if (typeof window === "undefined" || !window.matchMedia) return;
 
     const mq = window.matchMedia("(prefers-color-scheme: light)");
-    const handler = () => applyTheme("system");
+    const handler = () => applyTheme("auto");
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, [preference]);
 
-  // When the preference was last changed. Bootstrapped to "now" on a user's very
-  // first visit (nothing stored yet) so the UI always has a timestamp to show,
-  // then only advanced when the user actually clicks the toggle.
+  // When the preference was last changed. Bootstrapped to "now" on a user's
+  // very first visit (nothing stored yet) so the UI always has a timestamp
+  // to show, then only advanced when the user actually clicks the toggle.
   const [updatedAt, setUpdatedAt] = useState(() => {
     if (typeof window === "undefined") return null;
     return readStoredThemeUpdatedAt() ?? new Date();
   });
 
-  // Persist a freshly-bootstrapped timestamp so it stays stable across reloads
-  // instead of resetting to "now" every time. Only needs to run once on mount:
-  // click-driven updates already call writeThemeUpdatedAt themselves.
+  // Persist a freshly-bootstrapped timestamp so it stays stable across
+  // reloads instead of resetting to "now" every time. Only needs to run
+  // once on mount; click-driven updates already call writeThemeUpdatedAt.
   useEffect(() => {
     if (updatedAt !== null && readStoredThemeUpdatedAt() === null) {
       writeThemeUpdatedAt(updatedAt);
@@ -162,7 +175,13 @@ export default function ThemeToggle({ className = "" }) {
     return () => clearInterval(id);
   }, []);
 
-  const handleClick = () => {
+  /**
+   * Advance the preference one step forward ("next") or backward ("prev")
+   * through the THEMES cycle and update the last-changed timestamp.
+   *
+   * @param {"next"|"prev"} direction
+   */
+  const cycleTheme = (direction) => {
     setPreference((prev) => {
       const idx = THEMES.indexOf(prev);
       if (direction === "next") {
@@ -230,8 +249,8 @@ export default function ThemeToggle({ className = "" }) {
         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
       </svg>
     ),
-    system: (
-      // Monitor
+    auto: (
+      // Monitor – signals "follow the system"
       <svg
         width="18"
         height="18"
@@ -251,21 +270,54 @@ export default function ThemeToggle({ className = "" }) {
     ),
   };
 
-  const LABELS = {
-    light: "Theme: Light (click for Dark)",
-    dark: "Theme: Dark (click for System)",
-    system: "Theme: System (click for Light)",
-  };
+  // Resolved visual theme (only relevant for "auto" mode).
+  const resolvedTheme = resolveTheme(preference);
 
+  /**
+   * Build the accessible label.  When in "auto" mode we also surface the
+   * *resolved* visual theme so screen-reader users know which palette is
+   * currently active (e.g. "Theme: Auto (resolved: Dark) – click for Light").
+   */
   const nextPref = THEMES[(THEMES.indexOf(preference) + 1) % THEMES.length];
   const capitalise = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  const LABELS = {
+    light: `Theme: Light (click for Dark)`,
+    dark: `Theme: Dark (click for Auto)`,
+    auto: `Theme: Auto (resolved: ${capitalise(resolvedTheme)}) – click for Light`,
+  };
+
   const isDarkActive =
     preference === "dark" ||
-    (preference === "system" &&
+    (preference === "auto" &&
       typeof window !== "undefined" &&
-      resolveTheme(preference) === "dark");
+      resolvedTheme === "dark");
 
   const absoluteUpdatedAt = updatedAt ? updatedAt.toLocaleString() : null;
+
+  // ── Copy-theme-identifier handler ─────────────────────────────────────────
+  const toast = useToast();
+
+  const handleCopyIdentifier = async () => {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(THEME_IDENTIFIER);
+      } else {
+        // Fallback for environments without the Clipboard API
+        const textarea = document.createElement("textarea");
+        textarea.value = THEME_IDENTIFIER;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      toast.success("Theme identifier copied to clipboard.", "Copied!");
+    } catch {
+      toast.error("Failed to copy theme identifier.", "Error");
+    }
+  };
 
   return (
     <span className="inline-flex items-center gap-2">
@@ -274,8 +326,9 @@ export default function ThemeToggle({ className = "" }) {
         type="button"
         role="button"
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
         aria-label={LABELS[preference]}
-        aria-pressed={preference !== "system"}
+        aria-pressed={isDarkActive}
         title={`Current theme: ${capitalise(preference)}`}
         data-theme-pref={preference}
         data-theme-next={nextPref}
@@ -290,6 +343,32 @@ export default function ThemeToggle({ className = "" }) {
           .join(" ")}
       >
         {ICONS[preference]}
+      </button>
+      <button
+        type="button"
+        aria-label="Copy theme identifier"
+        onClick={handleCopyIdentifier}
+        className={[
+          "rounded-lg p-2 transition-colors text-xs",
+          "text-slate-400 hover:text-cyan-400 hover:bg-slate-800",
+          "focus-ring",
+        ].join(" ")}
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
       </button>
       {updatedAt && (
         <span
