@@ -75,6 +75,26 @@
  * @property {string} invest.detail.loadErrorMsg
  * @property {string} invest.detail.loadErrorTitle
  * @property {string} invest.detail.actionGroupLabel
+ * @property {string} invest.detail.labelReference
+ * @property {string} invest.detail.exportGroupLabel
+ * @property {string} invest.detail.exportCSVButton
+ * @property {string} invest.detail.exportCSVLabel
+ * @property {string} invest.detail.exportJSONButton
+ * @property {string} invest.detail.exportJSONLabel
+ * @property {string} invest.detail.densityToggleLabel
+ * @property {string} invest.detail.densityCompact
+ * @property {string} invest.detail.densityComfortable
+ * @property {string} invest.detail.densityCompactAriaLabel
+ * @property {string} invest.detail.densityComfortableAriaLabel
+ * @property {string} invest.detail.densityCurrentAriaLabel
+ * @property {Object} invest.detail.inlineEdit - Inline edit mode copy for invoice-detail metadata rows
+ * @property {string} invest.detail.inlineEdit.editButton
+ * @property {string} invest.detail.inlineEdit.saveButton
+ * @property {string} invest.detail.inlineEdit.cancelButton
+ * @property {string} invest.detail.inlineEdit.errorRequired
+ * @property {string} invest.detail.inlineEdit.announceSaved
+ * @property {string} invest.detail.inlineEdit.announceCancelled
+ * @property {Object} invest.detail.bulk - Bulk-select toolbar copy for invoice detail documents
  * @property {Object} invoices - Invoices page copy
  * @property {string} invoices.title
  * @property {string} invoices.subtext
@@ -83,6 +103,24 @@
  * @property {string} invoices.errorDescription
  * @property {string} invoices.backToHome
  * @property {string} invoices.connectWallet
+ * @property {string} invoices.editRowAction
+ * @property {string} invoices.editRowAriaLabel
+ * @property {string} invoices.saveEditAction
+ * @property {string} invoices.saveEditAriaLabel
+ * @property {string} invoices.cancelEditAction
+ * @property {string} invoices.cancelEditAriaLabel
+ * @property {string} invoices.issuerLabel
+ * @property {string} invoices.amountLabel
+ * @property {string} invoices.currencyLabel
+ * @property {string} invoices.dueDateLabel
+ * @property {string} invoices.yieldLabel
+ * @property {string} invoices.errorIssuerRequired
+ * @property {string} invoices.errorAmountRequired
+ * @property {string} invoices.errorDueDateRequired
+ * @property {string} invoices.errorCurrencyRequired
+ * @property {string} invoices.announceEditStarted
+ * @property {string} invoices.announceEditSuccess
+ * @property {string} invoices.announceEditCancelled
  * @property {Object} layout - Layout copy
  * @property {string} layout.backToHome
  * @property {string} layout.connectWallet
@@ -159,11 +197,20 @@
  * @property {string} wallet.errorDescription
  * @property {string} wallet.errorActionLabel
  * @property {string} wallet.errorPreviewLabel
+ * @property {Object} nav - Site navigation copy
+ * @property {string} nav.errorTitle
+ * @property {string} nav.errorDescription
+ * @property {string} nav.errorActionLabel
+ * @property {string} nav.announceNavigation - Template: "Navigated to {label}"
  * @property {Object} error - Error page copy
  * @property {string} error.title
  * @property {string} error.description
  * @property {string} error.actionLabel
  * @property {string} error.previewLabel
+ * @property {Object} network - Network status copy
+ * @property {string} network.offlineBanner
+ * @property {string} network.reconnectedTitle
+ * @property {string} network.reconnectedMsg
  * @property {Object} notFound - Not found page copy
  * @property {string} notFound.heading
  * @property {string} notFound.description
@@ -184,32 +231,30 @@
  * @property {string} invoiceTimeline.statusCompleted
  * @property {string} invoiceTimeline.statusCurrent
  * @property {string} invoiceTimeline.statusPending
- * @property {Object} settings - Settings page copy (issue #743)
- * @property {string} settings.title
- * @property {string} settings.subtext
- * @property {string} settings.emptyState
- * @property {string} settings.errorTitle
- * @property {string} settings.errorDescription
- * @property {string} settings.errorStatus
- * @property {string} settings.retryAction
- * @property {string} settings.searchPlaceholder
- * @property {string} settings.filterLegend
- * @property {string} settings.filterHelp
- * @property {string} settings.filterCategory
- * @property {string} settings.filterSearch
- * @property {string} settings.allCategories
- * @property {string} settings.clearFilters
- * @property {string} settings.noMatchFilter
- * @property {string} settings.listAriaLabel
- * @property {string} settings.loadingAriaLabel
- * @property {string} settings.loadMore
- * @property {string} settings.loadMoreAriaLabel
- * @property {string} settings.endOfList
- * @property {string} settings.announceNoSettings
- * @property {string} settings.announceLoaded
- * @property {string} settings.announceFiltered
- * @property {string} settings.announceNoMatch
- * @property {string} settings.announceShowing
+ * @property {Object} settings - Settings page copy
+ * @property {string} settings.pageTitle
+ * @property {string} settings.pageSub
+ * @property {string} settings.editAction
+ * @property {string} settings.editActionLabel
+ * @property {string} settings.saveAction
+ * @property {string} settings.saveActionLabel
+ * @property {string} settings.cancelAction
+ * @property {string} settings.cancelActionLabel
+ * @property {string} settings.emptyValue
+ * @property {string} settings.savedAnnouncement
+ * @property {string} settings.cancelledAnnouncement
+ * @property {string} settings.invalidAnnouncement
+ * @property {Object} settings.fields - Field-level copy
+ * @property {string} settings.fields.displayName.label
+ * @property {string} settings.fields.displayName.description
+ * @property {string} settings.fields.displayName.placeholder
+ * @property {string} settings.fields.email.label
+ * @property {string} settings.fields.email.description
+ * @property {string} settings.fields.email.placeholder
+ * @property {Object} settings.errors - Validation error messages
+ * @property {string} settings.errors.required
+ * @property {string} settings.errors.displayNameTooShort
+ * @property {string} settings.errors.invalidEmail
  */
 
 /** @type {CopyDictionary} */
@@ -338,6 +383,54 @@ export const copy = {
       loadErrorMsg: "Unable to load invoice details right now.",
       loadErrorTitle: "Unable to load invoice details",
       actionGroupLabel: "Invoice actions",
+      labelReference: "Reference",
+      exportGroupLabel: "Invoice data export",
+      exportCSVButton: "Export CSV",
+      exportCSVLabel: "Export invoice data as CSV",
+      exportJSONButton: "Export JSON",
+      exportJSONLabel: "Export invoice data as JSON",
+      densityToggleLabel: "Display density",
+      densityCompact: "Compact",
+      densityComfortable: "Comfortable",
+      densityCompactAriaLabel: "Switch to compact density",
+      densityComfortableAriaLabel: "Switch to comfortable density",
+      densityCurrentAriaLabel: "Current density: {density}",
+      inlineEdit: {
+        editButton: "Edit {field}",
+        saveButton: "Save",
+        cancelButton: "Cancel",
+        errorRequired: "{field} is required.",
+        announceSaved: "{field} updated successfully.",
+        announceCancelled: "Edit cancelled.",
+      },
+      bulk: {
+        sectionHeading: "Invoice documents",
+        sectionSub: "Select documents to export or remove from this invoice.",
+        listAriaLabel: "Invoice detail documents",
+        toolbarLabel: "Invoice detail bulk actions",
+        selectAllLabel: "Select {selected} of {total}",
+        selectAllAria:
+          "Select all invoice documents. Currently {selected} of {total} selected.",
+        rowCheckboxAria: "Select document {name} ({id})",
+        selectedCount: "{selected} of {total} documents selected.",
+        clearButton: "Clear selection",
+        exportButton: "Export",
+        exportButtonAria: "Export selected documents as a JSON download",
+        deleteButton: "Delete",
+        deleteButtonAria: "Delete {count} selected documents after confirmation",
+        exportSuccessTitle: "Export ready",
+        exportSuccessMsg: "Exported {count} document{plural}.",
+        exportEmptyMsg: "No documents selected to export.",
+        deleteConfirmTitle: "Delete selected documents?",
+        deleteConfirmBody:
+          "You are about to permanently delete {count} document{plural} from this invoice. This cannot be undone.",
+        deleteConfirmConfirmLabel: "Delete {count} document{plural}",
+        deleteConfirmCancelLabel: "Cancel",
+        deleteSuccessTitle: "Documents deleted",
+        deleteSuccessMsg: "Removed {count} document{plural} from this invoice.",
+        deleteErrorTitle: "Delete failed",
+        deleteErrorMsg: "Could not delete the selected documents. Please try again.",
+      },
     },
   },
   invoices: {
@@ -348,6 +441,32 @@ export const copy = {
     errorDescription: "There was a problem loading your invoices. Please try again later.",
     backToHome: "\u2190 LiquiFact",
     connectWallet: "Connect Wallet",
+    editRowAction: "Edit",
+    editRowAriaLabel: "Edit invoice {id}",
+    saveEditAction: "Save",
+    saveEditAriaLabel: "Save edits for invoice {id}",
+    cancelEditAction: "Cancel",
+    cancelEditAriaLabel: "Cancel editing invoice {id}",
+    issuerLabel: "Issuer",
+    amountLabel: "Amount",
+    currencyLabel: "Currency",
+    dueDateLabel: "Due date",
+    yieldLabel: "Estimated yield",
+    errorIssuerRequired: "Issuer name is required.",
+    errorAmountRequired: "Amount is required and must be valid.",
+    errorDueDateRequired: "Due date is required.",
+    errorCurrencyRequired: "Currency is required.",
+    announceEditStarted: "Editing invoice {id}.",
+    announceEditSuccess: "Invoice {id} updated successfully.",
+    announceEditCancelled: "Editing cancelled for invoice {id}.",
+  },
+  settings: {
+    title: "Settings",
+    description: "Manage your display and notification preferences.",
+    lastUpdatedPrefix: "Last updated",
+    currencyLabel: "Display currency",
+    emailNotificationsLabel: "Email notifications",
+    emailNotificationsHint: "Receive email updates about your invoices and investments.",
   },
   layout: {
     backToHome: "\u2190 LiquiFact",
@@ -430,6 +549,11 @@ export const copy = {
     announceError: "Wallet connection failed.",
     announceWrongNetwork: "Wallet connected to wrong network.",
     announceNoWallet: "No wallet detected.",
+    densityToggleLabel: "Wallet density",
+    densityCompact: "Compact",
+    densityComfortable: "Comfortable",
+    densityCompactAriaLabel: "Switch wallet view to compact density",
+    densityComfortableAriaLabel: "Switch wallet view to comfortable density",
     // Wallet error-boundary fallback (see components/WalletErrorBoundary.jsx)
     errorTitle: "Wallet unavailable",
     errorDescription:
@@ -455,6 +579,14 @@ export const copy = {
     errorDescription:
       "The site navigation ran into an unexpected error. You can retry, or reload the page.",
     errorActionLabel: "Retry",
+    /** Announced politely by NavMenu when the user navigates to a new route.
+     *  Replace {label} with the matching NAV_LINKS label (e.g. "Home"). */
+    announceNavigation: "Navigated to {label}",
+  },
+  network: {
+    offlineBanner: "You are offline — some features may be unavailable.",
+    reconnectedTitle: "Back online",
+    reconnectedMsg: "Your network connection has been restored.",
   },
   notFound: {
     heading: "Page not found",
@@ -479,37 +611,65 @@ export const copy = {
     statusCurrent: "Current",
     statusPending: "Pending",
   },
-  nav: {
-    /** Announced politely by NavMenu when the user navigates to a new route.
-     *  Replace {label} with the matching NAV_LINKS label (e.g. "Home"). */
-    announceNavigation: "Navigated to {label}",
-    settings: {
-      title: "Settings",
-      subtext:
-        "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
-      emptyState: "No preferences available. Connect your wallet to unlock settings.",
-      errorTitle: "Unable to load settings",
-      errorDescription: "Unable to load settings right now.",
-      errorStatus: "Unable to load settings.",
-      retryAction: "Try again",
-      searchPlaceholder: "Search preferences…",
-      filterLegend: "Settings filters",
-      filterHelp:
-        "Use the category selector or the search box to narrow the list. Paging is reset whenever a filter changes.",
-      filterCategory: "Category:",
-      filterSearch: "Search:",
-      allCategories: "All categories",
-      clearFilters: "Reset filters",
-      noMatchFilter: "No preferences match the active filters.",
-      listAriaLabel: "Settings list",
-      loadingAriaLabel: "Loading settings",
-      loadMore: "Load more",
-      loadMoreAriaLabel: "Load more preferences",
-      endOfList: "You have reached the end of the list.",
-      announceNoSettings: "No settings available",
-      announceLoaded: "{count} preferences loaded",
-      announceFiltered: "{matched} of {total} preferences match",
-      announceNoMatch: "No preferences match",
-      announceShowing: "Showing {shown} of {total} preferences",
+  settings: {
+    title: "Settings",
+    subtext:
+      "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
+    emptyState: "No preferences available. Connect your wallet to unlock settings.",
+    errorTitle: "Unable to load settings",
+    errorDescription: "Unable to load settings right now.",
+    errorStatus: "Unable to load settings.",
+    retryAction: "Try again",
+    searchPlaceholder: "Search preferences…",
+    filterLegend: "Settings filters",
+    filterHelp:
+      "Use the category selector or the search box to narrow the list. Paging is reset whenever a filter changes.",
+    filterCategory: "Category:",
+    filterSearch: "Search:",
+    allCategories: "All categories",
+    clearFilters: "Reset filters",
+    noMatchFilter: "No preferences match the active filters.",
+    listAriaLabel: "Settings list",
+    loadingAriaLabel: "Loading settings",
+    loadMore: "Load more",
+    loadMoreAriaLabel: "Load more preferences",
+    endOfList: "You have reached the end of the list.",
+    announceNoSettings: "No settings available",
+    announceLoaded: "{count} preferences loaded",
+    announceFiltered: "{matched} of {total} preferences match",
+    announceNoMatch: "No preferences match",
+    announceShowing: "Showing {shown} of {total} preferences",
+    pageTitle: "Settings",
+    pageSub:
+      "Manage your profile preferences. Updates are saved locally to this browser and apply to this device only.",
+    editAction: "Edit",
+    editActionLabel: "Edit {field}",
+    saveAction: "Save",
+    saveActionLabel: "Save {field}",
+    cancelAction: "Cancel",
+    cancelActionLabel: "Cancel editing {field}",
+    emptyValue: "Not set",
+    savedAnnouncement: "{label} saved.",
+    cancelledAnnouncement: "Edit cancelled. {label} unchanged.",
+    invalidAnnouncement: "{label} not saved: {error}",
+    fields: {
+      displayName: {
+        label: "Display name",
+        description: "Shown next to your activity across LiquiFact.",
+        placeholder: "e.g. Acme Treasury",
+      },
+      email: {
+        label: "Email",
+        description: "Used for invoice notifications only. Never displayed publicly.",
+        placeholder: "name@example.com",
+      },
     },
+    errors: {
+      required: "This field cannot be empty.",
+      displayNameTooShort: "Display name must be at least 2 characters.",
+      displayNameTooLong: "Display name must be 100 characters or fewer.",
+      invalidEmail: "Enter a valid email address.",
+      emailTooLong: "Email address must be 254 characters or fewer.",
+    },
+  },
 };

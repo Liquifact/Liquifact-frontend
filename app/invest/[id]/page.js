@@ -12,31 +12,30 @@
  * table, and JSON-LD script are streamed as HTML and never appear in the JS
  * bundle.
  *
- * The only interactive piece — Fund / Copy link / Print buttons — is
- * delegated to the small `FundActions` client component which is the sole
- * "use client" boundary under this route segment.
+ * Interactive pieces are delegated to small client boundaries:
+ *   - `InvoiceDetailClient` — density toggle + metadata
+ *   - `InvoiceDetailItems` — bulk-select toolbar over detail documents
+ *   - `FundActions` — fund / copy link / print
  *
  * Data flow
  * ─────────
  * `params.id` → `getInvoiceById(id)` (sync, mock data for now)
  *             → `notFound()` if the id is unknown
- *             → RSC renders layout + passes {id, status} to <FundActions>
+ *             → RSC renders layout + passes props to client islands
  */
 
-import Button from "@/components/Button";
-import CopyButton from "@/components/CopyButton";
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import NavMenu from "@/components/NavMenu";
 import StatusPill from "@/components/StatusPill";
-import WalletStatus from "@/components/WalletStatus";
-import { useWallet, WALLET_STATES } from "@/components/WalletContext";
-import { INVALID_VALUE_FALLBACK, formatAmount, formatCurrency } from "@/lib/format/currency";
+import InvoiceTimeline from "@/components/InvoiceTimeline";
 import { copy } from "@/app/copy/en";
+import { INVALID_VALUE_FALLBACK, formatCurrency, formatAmount } from "@/lib/format/currency";
 import { getInvoiceById } from "../lib";
 import FundActions from "./FundActions";
 import InvoiceDetailClient from "./InvoiceDetailClient";
+import InvoiceDetailItems, { buildInvoiceDetailItems } from "./InvoiceDetailItems";
+import InvoiceDetailExport from "./InvoiceDetailExport";
 
 const detail = copy.invest.detail;
 
@@ -130,6 +129,7 @@ export default async function InvoiceDetailPage({ params }) {
   }
 
   const invoiceJsonLd = buildInvoiceJsonLd(invoice);
+  const detailItems = buildInvoiceDetailItems(invoice);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 print-page-wrapper">
@@ -141,7 +141,6 @@ export default async function InvoiceDetailPage({ params }) {
         >
           {detail.backToHome}
         </Link>
-        {/* WalletStatus is a "use client" component — RSC can compose it */}
         <NavMenu />
       </header>
 
@@ -169,65 +168,28 @@ export default async function InvoiceDetailPage({ params }) {
         <h1 className="text-2xl font-bold mb-2">{detail.pageTitle}</h1>
         <p className="text-slate-400 mb-8">{detail.pageSub}</p>
 
-        {loadError ? (
-          <ErrorBanner
-            variant="error"
-            title="Unable to load invoice details"
-            description={loadError}
-            previewLabel="Invoice detail"
-          />
-        ) : invoice === null ? (
-          <InvoiceListSkeleton rows={1} />
-        ) : (
-          <>
-            <section
-              aria-labelledby="invoice-summary-heading"
-              className="print-invoice-section rounded-xl border border-slate-800 bg-slate-900/50 p-6 mb-6"
-            >
-              <h2 id="invoice-summary-heading" className="text-xl font-semibold mb-4">
-                {invoice.issuer}
-              </h2>
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <dt className="text-slate-500">Issuer</dt>
-                  <dd className="text-slate-100">{invoice.issuer}</dd>
-                </div>
-                <div>
-                  <dt className="text-slate-500">Amount</dt>
-                  <dd className="text-slate-100">
-                    {formatCurrency(invoice.amount, {
-                      currency: invoice.currency,
-                    })}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-slate-500">Estimated yield</dt>
-                  <dd className="text-slate-100">{formatYield(invoice.yield)}</dd>
-                </div>
-                <div>
-                  <dt className="text-slate-500">Maturity date</dt>
-                  <dd className="text-slate-100">{invoice.dueDate}</dd>
-                </div>
-                <div>
-                  <dt className="text-slate-500">Status</dt>
-                  <dd className="text-slate-100">
-                    <StatusPill status={invoice.status ?? ""} />
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-slate-500">Reference</dt>
-                  <dd className="text-slate-100 flex items-center gap-1.5">
-                    <span className="font-mono">{invoice.id}</span>
-                    <CopyButton
-                      text={invoice.id}
-                      label={copy.invoiceDetail.copyIdLabel}
-                      successMessage={copy.invoiceDetail.copyIdSuccess}
-                      errorMessage={copy.invoiceDetail.copyIdError}
-                    />
-                  </dd>
-                </div>
-              </dl>
-            </section>
+        {/* ── Invoice metadata (density-aware, client-rendered) ─────── */}
+        <InvoiceDetailClient
+          summaryHeading={invoice.issuer}
+          labelIssuer={detail.labelIssuer}
+          labelAmount={detail.labelAmount}
+          labelYield={detail.labelYield}
+          labelMaturity={detail.labelMaturity}
+          labelStatus={detail.labelStatus}
+          labelReference={detail.labelReference}
+          issuer={invoice.issuer}
+          formattedAmount={formatCurrency(invoice.amount, { currency: invoice.currency })}
+          formattedYield={formatYield(invoice.yield)}
+          dueDate={invoice.dueDate}
+          referenceId={invoice.id}
+          statusPill={<StatusPill status={invoice.status ?? ""} />}
+        />
+
+        {/* ── Detail documents with bulk-select toolbar ─────────────── */}
+        <InvoiceDetailItems initialItems={detailItems} />
+
+        {/* ── CSV / JSON export ────────────────────────────────────── */}
+        <InvoiceDetailExport invoice={invoice} />
 
         {/* ── Lifecycle timeline (server-rendered, status-driven) ───────── */}
         <InvoiceTimeline status={invoice.status} timestamps={invoice.timestamps} className="mb-6" />

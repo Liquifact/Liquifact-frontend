@@ -30,6 +30,16 @@ import { DENSITY_STORAGE_KEY } from "@/lib/hooks/useDensity";
 
 expect.extend(toHaveNoViolations);
 
+jest.mock("@/components/CopyButton", () => {
+  return function CopyButtonMock({ label }: { label: string }) {
+    return (
+      <button type="button" aria-label={`Copy ${label}`}>
+        Copy
+      </button>
+    );
+  };
+});
+
 // ── Shared props ───────────────────────────────────────────────────────────
 
 const defaultProps = {
@@ -83,6 +93,24 @@ describe("InvoiceDetailClient — metadata rendering", () => {
     render(<InvoiceDetailClient {...defaultProps} />);
     expect(screen.getByText("Status")).toBeInTheDocument();
     expect(screen.getByTestId("status-pill")).toBeInTheDocument();
+  });
+
+  it("renders the Reference row with CopyButton when referenceId is provided", () => {
+    render(
+      <InvoiceDetailClient
+        {...defaultProps}
+        labelReference="Reference"
+        referenceId="inv-001"
+      />
+    );
+    expect(screen.getByText("Reference")).toBeInTheDocument();
+    expect(screen.getByText("inv-001")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /copy reference id/i })).toBeInTheDocument();
+  });
+
+  it("omits the Reference row when referenceId is absent", () => {
+    render(<InvoiceDetailClient {...defaultProps} />);
+    expect(screen.queryByText("Reference")).not.toBeInTheDocument();
   });
 });
 

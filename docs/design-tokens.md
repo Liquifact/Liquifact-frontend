@@ -103,3 +103,51 @@ Typography is handled via Next.js `next/font/google` configuration (Geist Sans a
 | `text-2xl`     | `1.5rem`   | `24px`        | Secondary section headers.                     |
 | `text-3xl`     | `1.875rem` | `30px`        | Main page title headings.                      |
 | `text-4xl`     | `2.25rem`  | `36px`        | Large hero page titles.                        |
+
+---
+
+## Theme Toggle – Auto Mode
+
+The `ThemeToggle` component (see [`components/ThemeToggle.jsx`](../components/ThemeToggle.jsx)) allows users to cycle through three explicit preference states stored under the `liquifact-theme` localStorage key.
+
+### States and Cycle Order
+
+| State    | Icon    | Behaviour                                                         |
+| :------- | :------ | :---------------------------------------------------------------- |
+| `auto`   | Monitor | Follows the OS `prefers-color-scheme` media query live.          |
+| `light`  | Sun     | Always renders the light colour palette regardless of OS setting. |
+| `dark`   | Moon    | Always renders the dark colour palette regardless of OS setting.  |
+
+Clicking the toggle advances through the cycle: **`auto` → `light` → `dark` → `auto`**.  
+Pressing **ArrowRight** / **ArrowDown** also advances; **ArrowLeft** / **ArrowUp** reverses.
+
+### Persistence
+
+- **Storage key**: `liquifact-theme`  
+- **First-time visitors** receive the `"auto"` default (nothing written until the user explicitly clicks).
+- The preference is persisted via `useLocalStorage` (`lib/hooks/useLocalStorage.js`), which is SSR-safe — no read occurs during render, preventing Next.js hydration mismatches.
+
+### Live OS Preference Subscription (`auto` mode only)
+
+While the preference is `"auto"` the component subscribes to:
+
+```js
+window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", handler);
+```
+
+The handler calls `applyTheme("auto")` to update `data-theme` on `<html>` in real time. The listener is automatically **removed** on component unmount or when the user selects an explicit preference (`"light"` or `"dark"`), preventing memory leaks.
+
+### Accessible Labels
+
+The `aria-label` on the toggle button must always describe **both** the stored preference and, when in `auto` mode, the currently resolved visual theme:
+
+| Stored Preference | OS Preference | `aria-label` value |
+| :---------------- | :------------ | :----------------- |
+| `auto`            | dark          | `Theme: Auto (resolved: Dark) – click for Light` |
+| `auto`            | light         | `Theme: Auto (resolved: Light) – click for Light` |
+| `light`           | any           | `Theme: Light (click for Dark)` |
+| `dark`            | any           | `Theme: Dark (click for Auto)` |
+
+### Pre-paint Bootstrap
+
+An inline script in `app/layout.js` reads `localStorage` before React hydrates and applies `data-theme` to `<html>`. The same `resolveTheme` and `applyTheme` helpers exported from `ThemeToggle.jsx` are used so the logic stays consistent between the pre-paint script and the React component.

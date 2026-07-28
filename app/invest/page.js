@@ -15,8 +15,13 @@ import InvoiceFilters, {
 import BulkActionsToolbar from "@/components/BulkActionsToolbar";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import NavMenu from "@/components/NavMenu";
-import WatchlistSection from "@/components/WatchlistSection";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import MarketplaceErrorBoundary from "@/components/MarketplaceErrorBoundary";
+import { useSettingsAnnouncer } from "@/components/useSettingsAnnouncer";
 import { useWatchlist } from "@/lib/hooks/useWatchlist";
+import useBulkSelection from "@/lib/hooks/useBulkSelection";
+import { INVOICE_STATUSES } from "@/lib/types/invoice";
+import { reportError } from "@/lib/observability/reportError";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
@@ -269,21 +274,34 @@ export function defaultBulkExport(selectedInvoices) {
  * Default bulk-delete implementation: optimistically updates the supplied\n * list with a no-op filter (parent owns the actual mutation so the data\n * source of truth stays outside the export helper). The handler is a\n * documented opt-in behaviour: callers that already expose a delete API\n * inject their own `onBulkDelete`.\n * @param {Set<string>|Array<string>} ids
  * @returns {Promise<{count: number}>}
  */
-export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
+export function InvestMarketplace({
+  loadInvoices = loadMockInvoices,
+  onBulkDelete = async () => ({ count: 0 }),
+  onBulkExport = defaultBulkExport,
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchParamsValue = searchParams ?? new URLSearchParams();
   const searchParamsString = searchParamsValue.toString();
 
+  // Parse shareable URL once on mount for initial filter/search state.
+  // Re-sync on back/forward is handled by the searchParamsString effect below.
+  const initialUrlState = parseFiltersFromSearchParams(searchParamsValue, DEFAULT_FILTERS);
+
   const { watchlists } = useWatchlist();
-  
+  // Toast is optional — bulk handlers no-op toast when provider is absent (unit tests).
+  const toastApi = null;
+
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   // Filter state
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialUrlState.searchQuery);
   const [loadError, setLoadError] = useState("");
   const [filters, setFilters] = useState(initialUrlState.filters);
   const [debouncedSearch, setDebouncedSearch] = useState(initialUrlState.searchQuery);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState(null);
+  const [bulkRunning, setBulkRunning] = useState({ export: false, delete: false });
+  const bulkLabels = copy.invest.bulk;
 
   const committedSearchRef = useRef(
     buildSearchParams(initialUrlState.filters, initialUrlState.searchQuery).toString()
@@ -600,16 +618,20 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
       return;
     }
     setBulkRunning((prev) => ({ ...prev, delete: true }));
+
+    // Snapshot the current list for rollback
+    const snapshot = invoices;
+
+    // Optimistically remove from the visible list so the UI stays in sync
+    // with the (mock) backend. The selection hook will prune selection
+    // immediately because the row ids are no longer in the list.
+    setInvoices((currentList) => {
+      if (!Array.isArray(currentList)) return currentList;
+      return currentList.filter((inv) => !idsToDelete.has(inv.id));
+    });
+
     try {
       await onBulkDelete(idsToDelete);
-
-      // Optimistically remove from the visible list so the UI stays in sync
-      // with the (mock) backend. The selection hook will prune selection
-      // immediately because the row ids are no longer in the list.
-      setInvoices((currentList) => {
-        if (!Array.isArray(currentList)) return currentList;
-        return currentList.filter((inv) => !idsToDelete.has(inv.id));
-      });
 
       const plural = idsToDelete.size === 1 ? "" : "s";
       const successMsg = bulkLabels.deleteSuccessMsg
@@ -619,11 +641,13 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
 
       setPendingDeleteIds(null);
     } catch {
+      // Rollback
+      setInvoices(snapshot);
       toastApi?.error(bulkLabels.deleteErrorMsg, bulkLabels.deleteErrorTitle);
     } finally {
       setBulkRunning((prev) => ({ ...prev, delete: false }));
     }
-  }, [pendingDeleteIds, onBulkDelete, bulkLabels, toastApi]);
+  }, [pendingDeleteIds, onBulkDelete, bulkLabels, toastApi, invoices]);
 
   const handleExport = useCallback(() => {
     if (selectedIds.size === 0) {
@@ -754,26 +778,26 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           deleting={bulkRunning.delete}
         />
 
-        {/* Error state – retryable */}
+        {/* Error state – retryable.
+            ErrorBanner already exposes role="alert" + aria-live="assertive".
+            Do not wrap it in another alert — nested alerts confuse AT and RTL. */}
         {loadError ? (
-         <div role="alert" aria-live="assertive">
           <ErrorBanner
             title={copy.invest.errorTitle}
             description={loadError}
             actionLabel={copy.invest.retryAction}
             onAction={reload}
           />
-         </div>
         ) : invoices === null ? (
-          <div role="status" aria-live="polite" aria-label="Loading marketplace invoices">
+          <div aria-label="Loading marketplace invoices" className="contents">
             <InvoiceListSkeleton rows={3} />
           </div>
         ) : invoices.length === 0 ? (
-          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
             {copy.invest.emptyState}
           </div>
         ) : filteredInvoices.length === 0 ? (
-          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
             {copy.invest.noMatchFilter}
           </div>
         ) : (
@@ -786,19 +810,39 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
             <>
               <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
                 {filteredInvoices.slice(0, visibleCount).map((inv) => (
-                  <li key={inv.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
-                    <div className="flex items-center justify-between mb-3">
+                  <li
+                    key={inv.id}
+                    className="rounded-xl border border-slate-800 bg-slate-900/50"
+                    style={{ padding: "var(--market-card-padding)" }}
+                  >
+                    <div
+                      className="flex items-center justify-between"
+                      style={{ marginBottom: "var(--market-card-gap)", gap: "var(--market-card-gap)" }}
+                    >
                       <Link
                         href={`/invest/${inv.id}`}
-                        className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                        className="rounded font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+                        style={{
+                          fontSize: "var(--market-card-title-font-size)",
+                          fontWeight: "var(--market-card-title-font-weight)",
+                          lineHeight: "var(--market-card-title-line-height)",
+                        }}
                       >
                         {inv.issuer}
                       </Link>
-                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
+                      <span className="rounded-full bg-cyan-900/60 px-2 py-1 text-xs font-semibold text-cyan-300">
                         {inv.status}
                       </span>
                     </div>
-                    <div className="flex gap-6 text-sm text-slate-400">
+                    <div
+                      className="flex flex-wrap items-center text-slate-400"
+                      style={{
+                        gap: "var(--market-card-gap)",
+                        fontSize: "var(--market-card-meta-font-size)",
+                        lineHeight: "var(--market-card-meta-line-height)",
+                        letterSpacing: "var(--market-card-meta-letter-spacing)",
+                      }}
+                    >
                       <span>
                         {inv.currency}&nbsp;{inv.amount}
                       </span>

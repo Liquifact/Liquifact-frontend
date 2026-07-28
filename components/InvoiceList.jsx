@@ -175,8 +175,8 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
   const statusMessage = useMemo(() => {
     if (loadError) return loadError;
     if (invoices === null) return "Loading invoices...";
-    return getInvoiceAnnouncement(mergedInvoices);
-  }, [invoices, mergedInvoices, loadError]);
+    return getInvoiceAnnouncement(displayInvoices);
+  }, [invoices, displayInvoices, loadError]);
 
   const selectAllRef = useRef(null);
   const headerCheckboxId = useId();
@@ -254,7 +254,101 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
     };
   }, [loadInvoices]);
 
-  // Compute status message inline in render
+  const handleStartEdit = (invoice) => {
+    setEditingId(invoice.id);
+    setEditForm({
+      issuer: invoice.issuer ?? "",
+      amount: invoice.amount ?? "",
+      currency: invoice.currency ?? "",
+      dueDate: invoice.dueDate ?? "",
+      yield: invoice.yield ?? "",
+    });
+    setValidationError(null);
+    const msg =
+      copy.invoices.announceEditStarted?.replace("{id}", invoice.id) ||
+      `Editing invoice ${invoice.id}.`;
+    setAnnouncement(msg);
+  };
+
+  const handleCancelEdit = (id) => {
+    const targetId = id || editingId;
+    setEditingId(null);
+    setValidationError(null);
+    const msg =
+      copy.invoices.announceEditCancelled?.replace("{id}", targetId) ||
+      `Editing cancelled for invoice ${targetId}.`;
+    setAnnouncement(msg);
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+    if (validationError) {
+      setValidationError(null);
+    }
+  };
+
+  const handleSaveEdit = (e, invoice) => {
+    e.preventDefault();
+    const issuer = editForm.issuer.trim();
+    const amount = editForm.amount.trim();
+    const currency = editForm.currency.trim();
+    const dueDate = editForm.dueDate.trim();
+    const yieldVal = editForm.yield.trim();
+
+    if (!issuer) {
+      const err = copy.invoices.errorIssuerRequired || "Issuer name is required.";
+      setValidationError(err);
+      setAnnouncement(err);
+      return;
+    }
+    if (!amount) {
+      const err = copy.invoices.errorAmountRequired || "Amount is required and must be valid.";
+      setValidationError(err);
+      setAnnouncement(err);
+      return;
+    }
+    if (!currency) {
+      const err = copy.invoices.errorCurrencyRequired || "Currency is required.";
+      setValidationError(err);
+      setAnnouncement(err);
+      return;
+    }
+    if (!dueDate) {
+      const err = copy.invoices.errorDueDateRequired || "Due date is required.";
+      setValidationError(err);
+      setAnnouncement(err);
+      return;
+    }
+
+    const updated = {
+      ...invoice,
+      issuer,
+      amount,
+      currency,
+      dueDate,
+      yield: yieldVal,
+    };
+
+    setEditedInvoices((prev) => ({ ...prev, [invoice.id]: updated }));
+    if (typeof onUpdateInvoice === "function") {
+      onUpdateInvoice(updated);
+    }
+
+    setEditingId(null);
+    setValidationError(null);
+    const msg =
+      copy.invoices.announceEditSuccess?.replace("{id}", invoice.id) ||
+      `Invoice ${invoice.id} updated successfully.`;
+    setAnnouncement(msg);
+  };
+
+  const handleKeyDown = (e, id) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      handleCancelEdit(id);
+    }
+  };
 
   if (loadError) {
     return (
@@ -265,7 +359,7 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
           previewLabel="Invoice list status"
         />
         <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-          {statusMessage}
+          {announcement || statusMessage}
         </p>
       </div>
     );
@@ -299,7 +393,7 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
           </div>
         </div>
         <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-          {statusMessage}
+          {announcement || statusMessage}
         </p>
       </div>
 
@@ -323,7 +417,7 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
 
       {invoices === null && mergedInvoices.length === 0 ? (
         <InvoiceListSkeleton rows={3} />
-      ) : mergedInvoices.length === 0 ? (
+      ) : displayInvoices.length === 0 ? (
         <EmptyState
           icon={<InvoiceEmptyIllustration />}
           title="No invoices yet"
@@ -339,11 +433,153 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
         />
       ) : (
         <ul className="space-y-4">
-          {mergedInvoices.map((invoice) => {
+          {displayInvoices.map((invoice) => {
             const statusValue =
               invoice.status in STATUS_STYLES
                 ? invoice.status
                 : INVOICE_STATUSES.PENDING_TOKENIZATION;
+            const isEditing = editingId === invoice.id;
+
+            if (isEditing) {
+              return (
+                <li
+                  key={invoice.id}
+                  className="rounded-3xl border border-cyan-500/50 bg-slate-900/80 p-5 shadow-md transition-all"
+                >
+                  <form
+                    onSubmit={(e) => handleSaveEdit(e, invoice)}
+                    onKeyDown={(e) => handleKeyDown(e, invoice.id)}
+                    aria-label={`Edit invoice ${invoice.id}`}
+                    noValidate
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex-1">
+                        <label
+                          htmlFor={`edit-issuer-${invoice.id}`}
+                          className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 block mb-1"
+                        >
+                          {copy.invoices.issuerLabel || "Issuer"}
+                        </label>
+                        <input
+                          id={`edit-issuer-${invoice.id}`}
+                          type="text"
+                          name="issuer"
+                          value={editForm.issuer}
+                          onChange={handleEditChange}
+                          autoFocus
+                          aria-label="Issuer"
+                          className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-1.5 text-base font-semibold text-slate-100 focus-ring"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 pt-2 sm:pt-0">
+                        <button
+                          type="submit"
+                          aria-label={
+                            copy.invoices.saveEditAriaLabel?.replace("{id}", invoice.id) ||
+                            `Save edits for invoice ${invoice.id}`
+                          }
+                          className="rounded-xl bg-cyan-500 px-4 py-2 text-xs font-semibold text-slate-950 transition-all hover:bg-cyan-400 focus-ring"
+                        >
+                          {copy.invoices.saveEditAction || "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCancelEdit(invoice.id)}
+                          aria-label={
+                            copy.invoices.cancelEditAriaLabel?.replace("{id}", invoice.id) ||
+                            `Cancel editing invoice ${invoice.id}`
+                          }
+                          className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 transition-all hover:bg-slate-700 focus-ring"
+                        >
+                          {copy.invoices.cancelEditAction || "Cancel"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                      <div>
+                        <label
+                          htmlFor={`edit-amount-${invoice.id}`}
+                          className="text-xs uppercase tracking-[0.24em] text-slate-400 block mb-1"
+                        >
+                          {copy.invoices.amountLabel || "Amount"}
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            id={`edit-currency-${invoice.id}`}
+                            type="text"
+                            name="currency"
+                            value={editForm.currency}
+                            onChange={handleEditChange}
+                            aria-label="Currency"
+                            className="w-20 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1 text-sm text-slate-200 focus-ring"
+                          />
+                          <input
+                            id={`edit-amount-${invoice.id}`}
+                            type="text"
+                            name="amount"
+                            value={editForm.amount}
+                            onChange={handleEditChange}
+                            aria-label="Amount"
+                            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1 text-sm text-slate-200 focus-ring"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label
+                          htmlFor={`edit-yield-${invoice.id}`}
+                          className="text-xs uppercase tracking-[0.24em] text-slate-400 block mb-1"
+                        >
+                          {copy.invoices.yieldLabel || "Estimated yield"}
+                        </label>
+                        <input
+                          id={`edit-yield-${invoice.id}`}
+                          type="text"
+                          name="yield"
+                          value={editForm.yield}
+                          onChange={handleEditChange}
+                          aria-label="Estimated yield"
+                          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1 text-sm text-slate-200 focus-ring"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor={`edit-dueDate-${invoice.id}`}
+                          className="text-xs uppercase tracking-[0.24em] text-slate-400 block mb-1"
+                        >
+                          {copy.invoices.dueDateLabel || "Due date"}
+                        </label>
+                        <input
+                          id={`edit-dueDate-${invoice.id}`}
+                          type="text"
+                          name="dueDate"
+                          value={editForm.dueDate}
+                          onChange={handleEditChange}
+                          aria-label="Due date"
+                          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1 text-sm text-slate-200 focus-ring"
+                        />
+                      </div>
+                      <div>
+                        <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">
+                          Reference
+                        </dt>
+                        <dd className="mt-2 text-sm text-slate-400">{invoice.id}</dd>
+                      </div>
+                    </dl>
+
+                    {validationError && (
+                      <p
+                        role="alert"
+                        className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400"
+                      >
+                        ⚠️ {validationError}
+                      </p>
+                    )}
+                  </form>
+                </li>
+              );
+            }
+
             return (
               <li
                 key={invoice.id}

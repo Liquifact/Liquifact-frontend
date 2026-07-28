@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import "./globals.css";
 import Footer from "../components/Footer";
 import { ToastProvider } from "../components/ToastProvider";
+import OfflineBanner from "../components/OfflineBanner";
 import { WalletProvider } from "../components/WalletProvider";
 import ThemeToggle, { THEME_STORAGE_KEY, THEMES } from "../components/ThemeToggle";
 import ShortcutHelpDialog from "../components/ShortcutHelpDialog";
@@ -90,12 +91,13 @@ export default async function RootLayout({ children }) {
           Skip to content
         </a>
         <ToastProvider>
+          <OfflineBanner />
           <WalletProvider>{children}</WalletProvider>
+          {/* Theme toggle — fixed to top-right, above all other content */}
+          <div className="fixed top-3 right-16 z-50 md:right-20">
+            <ThemeToggle />
+          </div>
         </ToastProvider>
-        {/* Theme toggle — fixed to top-right, above all other content */}
-        <div className="fixed top-3 right-16 z-50 md:right-20">
-          <ThemeToggle />
-        </div>
         {/* Marketplace shortcut — listens for `m` keystrokes to navigate to /invest */}
         <MarketplaceShortcut />
         {/* Shortcut help dialog — listens for `?` keystrokes to surface every

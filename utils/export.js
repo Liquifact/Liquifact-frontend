@@ -9,8 +9,10 @@
 export function escapeCSVValue(val) {
   if (val === null || val === undefined) return "";
   const str = String(val);
-  if (/[",\n\r]/.test(str)) {
-    return `"${str.replace(/"/g, '""')}"`;
+  if (/[",\n\r]/.test(str) || /^[=+\-@]/.test(str)) {
+    const escaped = str.replace(/"/g, '""');
+    const safe = /^[=+\-@]/.test(escaped) ? `'${escaped}` : escaped;
+    return `"${safe}"`;
   }
   return str;
 }

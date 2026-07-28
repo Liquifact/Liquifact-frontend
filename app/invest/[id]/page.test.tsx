@@ -156,11 +156,25 @@ import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import { useOptimisticFund, FUNDING_STATES } from "@/lib/hooks/useOptimisticFund";
 import InvoiceDetailPage from "./page";
 import FundActions, { copyInvoiceUrl, copyToClipboardFallback } from "./FundActions";
+import InvoiceDetail from "@/components/InvoiceDetail";
 import { copy } from "@/app/copy/en";
 
 const mockGetInvoiceById = getInvoiceById as jest.MockedFunction<typeof getInvoiceById>;
 const mockUseWallet = useWallet as jest.MockedFunction<typeof useWallet>;
 const mockUseOptimisticFund = useOptimisticFund as jest.MockedFunction<typeof useOptimisticFund>;
+
+/** Canonical fixture used by the server-shell tests (Acme / inv-001). */
+const MOCK_INVOICE = {
+  id: "inv-001",
+  issuer: "Acme Supplies Ltd",
+  amount: "12,500",
+  amountValue: 12500,
+  currency: "USD",
+  dueDate: "2026-06-15",
+  yield: "8.2%",
+  yieldValue: 8.2,
+  status: "Open",
+};
 
 // Default hook return for "idle, Open" scenario — used by most FundActions tests
 function makeOptimisticHook(overrides: Partial<ReturnType<typeof useOptimisticFund>> = {}) {
@@ -628,6 +642,121 @@ describe("FundActions", () => {
       const { container } = render(<FundActions {...defaultProps} />);
       const noPrintEls = container.querySelectorAll(".no-print");
       expect(noPrintEls.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe("duplicate submission protection", () => {
+    it("blocks rapid double-click on fund amount submit", async () => {
+      const user = userEvent.setup();
+
+      // Deferred promise so the guard stays active during both click dispatch
+      let resolveFund: (value: unknown) => void;
+      const fundPromise = new Promise((resolve) => {
+        resolveFund = resolve;
+      });
+      const mockFund = jest.fn().mockReturnValue(fundPromise);
+
+      jest.spyOn(require("@/app/invest/MarketplaceContext"), "useMarketplace").mockReturnValue({
+        invoices: [],
+        setInvoices: jest.fn(),
+        pendingIds: new Set(),
+        fundInvoice: mockFund,
+      });
+
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={1000} currency="USD" yieldValue={8.2} />
+      );
+
+      const amountInput = screen.getByRole("spinbutton", { name: /funding amount/i });
+      await user.type(amountInput, "500");
+
+      const submitBtn = screen.getByRole("button", { name: /fund this invoice/i });
+
+      // Dispatch both clicks without awaiting — second should be guarded while first in-flight
+      const firstClick = user.click(submitBtn);
+      const secondClick = user.click(submitBtn);
+
+      // Only the first call should have gone through
+      expect(mockFund).toHaveBeenCalledTimes(1);
+
+      resolveFund!(true);
+      await firstClick;
+      await secondClick;
+    });
+
+    it("allows funding different amounts as sequential intents", async () => {
+      const user = userEvent.setup();
+      const mockFund = jest.fn().mockResolvedValue(true);
+
+      jest.spyOn(require("@/app/invest/MarketplaceContext"), "useMarketplace").mockReturnValue({
+        invoices: [],
+        setInvoices: jest.fn(),
+        pendingIds: new Set(),
+        fundInvoice: mockFund,
+      });
+
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={1000} currency="USD" yieldValue={8.2} />
+      );
+
+      // First amount — $500
+      const input = screen.getByRole("spinbutton", { name: /funding amount/i });
+      await user.type(input, "500");
+      await user.click(screen.getByRole("button", { name: /fund this invoice/i }));
+
+      await waitFor(() => {
+        expect(mockFund).toHaveBeenCalledTimes(1);
+      });
+
+      // Different amount — $700 (sequential, after first completes)
+      await user.clear(input);
+      await user.type(input, "700");
+      await user.click(screen.getByRole("button", { name: /fund this invoice/i }));
+
+      await waitFor(() => {
+        expect(mockFund).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it("resets submission guard after funding completes", async () => {
+      const user = userEvent.setup();
+      const mockFund = jest.fn().mockResolvedValue(true);
+
+      jest.spyOn(require("@/app/invest/MarketplaceContext"), "useMarketplace").mockReturnValue({
+        invoices: [],
+        setInvoices: jest.fn(),
+        pendingIds: new Set(),
+        fundInvoice: mockFund,
+      });
+
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={1000} currency="USD" yieldValue={8.2} />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: /funding amount/i });
+      await user.type(input, "500");
+      const submitBtn = screen.getByRole("button", { name: /fund this invoice/i });
+
+      // First fund
+      await user.click(submitBtn);
+      await waitFor(() => {
+        expect(mockFund).toHaveBeenCalledTimes(1);
+      });
+
+      // Second fund — same amount, after first completed — should be allowed
+      await user.click(submitBtn);
+      await waitFor(() => {
+        expect(mockFund).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it("cleans up submission guard on unmount", () => {
+      const { unmount } = render(
+        <FundActions id="inv-001" status="Open" maxAmount={1000} currency="USD" yieldValue={8.2} />
+      );
+
+      // Unmount — should not throw
+      expect(() => unmount()).not.toThrow();
     });
   });
 });
