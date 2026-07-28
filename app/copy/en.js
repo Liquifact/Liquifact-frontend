@@ -92,7 +92,6 @@
  * @property {string} invest.detail.inlineEdit.saveButton
  * @property {string} invest.detail.inlineEdit.cancelButton
  * @property {string} invest.detail.inlineEdit.errorRequired
- * @property {string} invest.detail.inlineEdit.errorAmount
  * @property {string} invest.detail.inlineEdit.announceSaved
  * @property {string} invest.detail.inlineEdit.announceCancelled
  * @property {Object} invest.detail.bulk - Bulk-select toolbar copy for invoice detail documents
@@ -383,7 +382,6 @@ export const copy = {
         saveButton: "Save",
         cancelButton: "Cancel",
         errorRequired: "{field} is required.",
-        errorAmount: "Amount must be a positive number.",
         announceSaved: "{field} updated successfully.",
         announceCancelled: "Edit cancelled.",
       },
