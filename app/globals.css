@@ -313,12 +313,22 @@ body {
   --settings-section-padding: 1.5rem;
   --settings-section-gap: 1.5rem;
   --settings-list-gap: 0.75rem;
+  /* Wallet view density tokens */
+  --wallet-panel-padding: 1rem;
+  --wallet-panel-gap: 0.75rem;
+  --wallet-meta-font-size: 0.75rem;
+  --wallet-address-font-size: 0.875rem;
 }
 
 [data-density="compact"] {
   --settings-section-padding: 1rem;
   --settings-section-gap: 1rem;
   --settings-list-gap: 0.5rem;
+  /* Wallet view density tokens */
+  --wallet-panel-padding: 0.5rem;
+  --wallet-panel-gap: 0.375rem;
+  --wallet-meta-font-size: 0.6875rem;
+  --wallet-address-font-size: 0.75rem;
 }
 
 @media print {

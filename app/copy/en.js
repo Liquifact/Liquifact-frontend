@@ -92,7 +92,6 @@
  * @property {string} invest.detail.inlineEdit.saveButton
  * @property {string} invest.detail.inlineEdit.cancelButton
  * @property {string} invest.detail.inlineEdit.errorRequired
- * @property {string} invest.detail.inlineEdit.errorAmount
  * @property {string} invest.detail.inlineEdit.announceSaved
  * @property {string} invest.detail.inlineEdit.announceCancelled
  * @property {Object} invest.detail.bulk - Bulk-select toolbar copy for invoice detail documents
@@ -104,6 +103,24 @@
  * @property {string} invoices.errorDescription
  * @property {string} invoices.backToHome
  * @property {string} invoices.connectWallet
+ * @property {string} invoices.editRowAction
+ * @property {string} invoices.editRowAriaLabel
+ * @property {string} invoices.saveEditAction
+ * @property {string} invoices.saveEditAriaLabel
+ * @property {string} invoices.cancelEditAction
+ * @property {string} invoices.cancelEditAriaLabel
+ * @property {string} invoices.issuerLabel
+ * @property {string} invoices.amountLabel
+ * @property {string} invoices.currencyLabel
+ * @property {string} invoices.dueDateLabel
+ * @property {string} invoices.yieldLabel
+ * @property {string} invoices.errorIssuerRequired
+ * @property {string} invoices.errorAmountRequired
+ * @property {string} invoices.errorDueDateRequired
+ * @property {string} invoices.errorCurrencyRequired
+ * @property {string} invoices.announceEditStarted
+ * @property {string} invoices.announceEditSuccess
+ * @property {string} invoices.announceEditCancelled
  * @property {Object} layout - Layout copy
  * @property {string} layout.backToHome
  * @property {string} layout.connectWallet
@@ -383,7 +400,6 @@ export const copy = {
         saveButton: "Save",
         cancelButton: "Cancel",
         errorRequired: "{field} is required.",
-        errorAmount: "Amount must be a positive number.",
         announceSaved: "{field} updated successfully.",
         announceCancelled: "Edit cancelled.",
       },
@@ -425,6 +441,24 @@ export const copy = {
     errorDescription: "There was a problem loading your invoices. Please try again later.",
     backToHome: "\u2190 LiquiFact",
     connectWallet: "Connect Wallet",
+    editRowAction: "Edit",
+    editRowAriaLabel: "Edit invoice {id}",
+    saveEditAction: "Save",
+    saveEditAriaLabel: "Save edits for invoice {id}",
+    cancelEditAction: "Cancel",
+    cancelEditAriaLabel: "Cancel editing invoice {id}",
+    issuerLabel: "Issuer",
+    amountLabel: "Amount",
+    currencyLabel: "Currency",
+    dueDateLabel: "Due date",
+    yieldLabel: "Estimated yield",
+    errorIssuerRequired: "Issuer name is required.",
+    errorAmountRequired: "Amount is required and must be valid.",
+    errorDueDateRequired: "Due date is required.",
+    errorCurrencyRequired: "Currency is required.",
+    announceEditStarted: "Editing invoice {id}.",
+    announceEditSuccess: "Invoice {id} updated successfully.",
+    announceEditCancelled: "Editing cancelled for invoice {id}.",
   },
   settings: {
     title: "Settings",
@@ -515,6 +549,11 @@ export const copy = {
     announceError: "Wallet connection failed.",
     announceWrongNetwork: "Wallet connected to wrong network.",
     announceNoWallet: "No wallet detected.",
+    densityToggleLabel: "Wallet density",
+    densityCompact: "Compact",
+    densityComfortable: "Comfortable",
+    densityCompactAriaLabel: "Switch wallet view to compact density",
+    densityComfortableAriaLabel: "Switch wallet view to comfortable density",
     // Wallet error-boundary fallback (see components/WalletErrorBoundary.jsx)
     errorTitle: "Wallet unavailable",
     errorDescription:

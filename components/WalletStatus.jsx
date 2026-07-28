@@ -8,6 +8,14 @@ import { useToast } from "./ToastProvider";
 import { copyToClipboard } from "../lib/clipboard";
 import WalletSkeleton from "./WalletSkeleton";
 import { formatWalletBalance } from "../lib/format/currency";
+import DensityToggle from "./DensityToggle";
+import { useDensity } from "../lib/hooks/useDensity";
+
+/** Spacing variants driven by the density preference. */
+const WALLET_SPACING = {
+  compact: { gap: "gap-1", padding: "p-2" },
+  comfortable: { gap: "gap-3", padding: "p-4" },
+};
 
 /**
  * Returns a concise, non-sensitive announcement string for a wallet state
@@ -144,6 +152,8 @@ export default function WalletStatus() {
     disconnect: () => {},
   };
   const toast = useToast();
+  const [density, setDensity] = useDensity();
+  const spacing = WALLET_SPACING[density] ?? WALLET_SPACING.comfortable;
 
   /**
    * Derive the Button props from the current wallet state.
@@ -283,9 +293,27 @@ export default function WalletStatus() {
         {/* Connected state */}
         {state === WALLET_STATES.CONNECTED && walletData ? (
           config.showAddress ? (
-            <div className="flex flex-col">
+            <div
+              className={`flex flex-col ${spacing.gap}`}
+              data-density={density}
+              style={{
+                padding: "var(--wallet-panel-padding)",
+                gap: "var(--wallet-panel-gap)",
+              }}
+            >
+              {/* Density toggle — only shown when wallet is connected */}
+              <DensityToggle
+                density={density}
+                onDensityChange={setDensity}
+                className="no-print"
+              />
+
+              {/* Address row */}
               <div className="flex items-center gap-2">
-                <span className="font-mono text-sm text-slate-300">
+                <span
+                  className="font-mono text-slate-300"
+                  style={{ fontSize: "var(--wallet-address-font-size)" }}
+                >
                   {truncateAddress(walletData.address)}
                 </span>
                 <button
@@ -311,11 +339,14 @@ export default function WalletStatus() {
                   </svg>
                 </button>
               </div>
+
+              {/* Balance row */}
               {(() => {
                 const { compact, full } = formatWalletBalance(walletData.balance);
                 return (
                   <span
-                    className="text-xs text-slate-500"
+                    className="text-slate-500"
+                    style={{ fontSize: "var(--wallet-meta-font-size)" }}
                     title={full}
                     aria-label={`Wallet balance: ${full}`}
                   >
