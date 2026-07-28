@@ -51,13 +51,17 @@ API migration seam, see the [Invoice data contract](docs/invoice-data.md).
 For marketplace component usage, props, and common patterns, see the
 [Marketplace usage guide](docs/marketplace.md).
 
+For the wallet subsystem — `WalletProvider`, `useWallet`, `WalletStatus`,
+`WalletStatusLazy`, `WALLET_STATES`, and all utility exports — see the
+[Wallet Component API Reference](docs/wallet-api-reference.md).
+
 ---
 
 ## API Integration
 
 For frontend/backend contract details see:
 
-docs/api-integration.md
+[docs/api-integration.md](docs/api-integration.md)
 
 ---
 
