@@ -47,10 +47,7 @@ export default function WatchlistInput({ onSubmit, disabled = false }) {
   const yieldErrorId = useId();
   const helperId = useId();
 
-  const errors = useMemo(
-    () => validateWatchlistInputs(name, targetYield),
-    [name, targetYield]
-  );
+  const errors = useMemo(() => validateWatchlistInputs(name, targetYield), [name, targetYield]);
 
   const visibleNameError = touchedName ? errors.name : null;
   const visibleYieldError = touchedYield ? errors.targetYield : null;
@@ -58,31 +55,41 @@ export default function WatchlistInput({ onSubmit, disabled = false }) {
   const isInvalid = errors.name !== null || errors.targetYield !== null;
   const isSubmitDisabled = disabled || submitting || isInvalid;
 
-  const handleSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    setTouchedName(true);
-    setTouchedYield(true);
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      setTouchedName(true);
+      setTouchedYield(true);
 
-    if (errors.name !== null || errors.targetYield !== null) return;
+      if (errors.name !== null || errors.targetYield !== null) return;
 
-    if (onSubmit) {
-      setSubmitting(true);
-      try {
-        await onSubmit({ name: name.trim(), targetYield: targetYield.trim() ? Number(targetYield) : null });
-        setName("");
-        setTargetYield("");
-        setTouchedName(false);
-        setTouchedYield(false);
-      } finally {
-        setSubmitting(false);
+      if (onSubmit) {
+        setSubmitting(true);
+        try {
+          await onSubmit({
+            name: name.trim(),
+            targetYield: targetYield.trim() ? Number(targetYield) : null,
+          });
+          setName("");
+          setTargetYield("");
+          setTouchedName(false);
+          setTouchedYield(false);
+        } finally {
+          setSubmitting(false);
+        }
       }
-    }
-  }, [errors, onSubmit, name, targetYield]);
+    },
+    [errors, onSubmit, name, targetYield]
+  );
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+    <form
+      onSubmit={handleSubmit}
+      noValidate
+      className="rounded-xl border border-slate-800 bg-slate-900/50 p-6"
+    >
       <h3 className="text-lg font-semibold text-slate-100 mb-4">Create New Watchlist</h3>
-      
+
       <div className="mb-4">
         <label htmlFor={nameId} className="block text-sm font-medium text-slate-300 mb-1">
           Watchlist Name
@@ -100,7 +107,9 @@ export default function WatchlistInput({ onSubmit, disabled = false }) {
           className={[
             "w-full rounded-lg border bg-slate-950 px-4 py-2 text-sm text-slate-100",
             "focus:outline-none focus:ring-2",
-            visibleNameError ? "border-red-500 focus:ring-red-500" : "border-slate-700 focus:ring-cyan-500"
+            visibleNameError
+              ? "border-red-500 focus:ring-red-500"
+              : "border-slate-700 focus:ring-cyan-500",
           ].join(" ")}
         />
         {visibleNameError && (
@@ -128,7 +137,9 @@ export default function WatchlistInput({ onSubmit, disabled = false }) {
           className={[
             "w-full rounded-lg border bg-slate-950 px-4 py-2 text-sm text-slate-100",
             "focus:outline-none focus:ring-2",
-            visibleYieldError ? "border-red-500 focus:ring-red-500" : "border-slate-700 focus:ring-cyan-500"
+            visibleYieldError
+              ? "border-red-500 focus:ring-red-500"
+              : "border-slate-700 focus:ring-cyan-500",
           ].join(" ")}
         />
         {visibleYieldError && (
@@ -138,7 +149,9 @@ export default function WatchlistInput({ onSubmit, disabled = false }) {
         )}
       </div>
 
-      <p id={helperId} className="sr-only">Enter a unique name for your watchlist.</p>
+      <p id={helperId} className="sr-only">
+        Enter a unique name for your watchlist.
+      </p>
 
       <Button
         type="submit"

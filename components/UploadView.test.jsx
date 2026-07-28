@@ -9,9 +9,7 @@ jest.mock("./UploadZone", () => {
     return (
       <div data-testid="upload-zone">
         <button
-          onClick={() =>
-            onUploadSuccess({ id: "inv-opt-1", issuer: "Optimistic", amount: "100" })
-          }
+          onClick={() => onUploadSuccess({ id: "inv-opt-1", issuer: "Optimistic", amount: "100" })}
         >
           Mock Upload Success
         </button>
@@ -55,7 +53,7 @@ describe("UploadView state transitions", () => {
 
     // Check loading skeleton
     expect(screen.getByTestId("invoice-list-skeleton")).toBeInTheDocument();
-    
+
     // Check aria-live region for loading text
     expect(screen.getByRole("status")).toHaveTextContent(/Loading invoices/i);
   });
@@ -86,9 +84,7 @@ describe("UploadView state transitions", () => {
   });
 
   it("transitions to success state with populated list", async () => {
-    const loadInvoices = jest.fn(() =>
-      Promise.resolve([{ id: "1", issuer: "A" }])
-    );
+    const loadInvoices = jest.fn(() => Promise.resolve([{ id: "1", issuer: "A" }]));
     render(<UploadView loadInvoices={loadInvoices} />);
 
     await waitFor(() => {
@@ -126,7 +122,7 @@ describe("UploadView state transitions", () => {
     await waitFor(() => {
       expect(screen.getByTestId("invoice-list")).toBeInTheDocument();
     });
-    
+
     expect(screen.getByText("Invoices: 1")).toBeInTheDocument();
     expect(loadInvoices).toHaveBeenCalledTimes(2);
   });
@@ -134,9 +130,9 @@ describe("UploadView state transitions", () => {
   it("aborts in-flight request on unmount", async () => {
     const loadInvoices = jest.fn(() => new Promise(() => {}));
     const { unmount } = render(<UploadView loadInvoices={loadInvoices} />);
-    
+
     unmount();
-    
+
     // The abort signal should have been called
     expect(loadInvoices).toHaveBeenCalled();
     const callArg = loadInvoices.mock.calls[0][0];

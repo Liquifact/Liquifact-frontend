@@ -47,22 +47,34 @@ function wrapperFactory(initialInvoices) {
     );
   }
 
-  return { Wrapper: Wrapper, getCapturedSetInvoices: function () { return capturedSetInvoices; } };
+  return {
+    Wrapper: Wrapper,
+    getCapturedSetInvoices: function () {
+      return capturedSetInvoices;
+    },
+  };
 }
 
 describe("MarketplaceContext", function () {
   describe("useMarketplace", function () {
     it("throws when used outside a MarketplaceProvider", function () {
       var spy = jest.spyOn(console, "error").mockImplementation(function () {});
-      expect(function () { renderHook(function () { return useMarketplace(); }); }).toThrow(
-        "useMarketplace must be used within a MarketplaceProvider",
-      );
+      expect(function () {
+        renderHook(function () {
+          return useMarketplace();
+        });
+      }).toThrow("useMarketplace must be used within a MarketplaceProvider");
       spy.mockRestore();
     });
 
     it("returns context value inside a provider", function () {
       var wrapper = wrapperFactory();
-      var result = renderHook(function () { return useMarketplace(); }, { wrapper: wrapper.Wrapper }).result;
+      var result = renderHook(
+        function () {
+          return useMarketplace();
+        },
+        { wrapper: wrapper.Wrapper }
+      ).result;
 
       expect(result.current.invoices).toEqual(INVOICES);
       expect(typeof result.current.setInvoices).toBe("function");
@@ -75,16 +87,31 @@ describe("MarketplaceContext", function () {
     it("marks the invoice as 'Funded' immediately before the action resolves", async function () {
       var wrapper = wrapperFactory();
       var d = deferred();
-      var action = jest.fn(function () { return d.promise; });
+      var action = jest.fn(function () {
+        return d.promise;
+      });
 
-      var result = renderHook(function () { return useMarketplace(); }, { wrapper: wrapper.Wrapper }).result;
+      var result = renderHook(
+        function () {
+          return useMarketplace();
+        },
+        { wrapper: wrapper.Wrapper }
+      ).result;
 
       act(function () {
         result.current.fundInvoice("inv-001", 500, action);
       });
 
-      expect(result.current.invoices.find(function (i) { return i.id === "inv-001"; }).status).toBe("Funded");
-      expect(result.current.invoices.find(function (i) { return i.id === "inv-002"; }).status).toBe("Open");
+      expect(
+        result.current.invoices.find(function (i) {
+          return i.id === "inv-001";
+        }).status
+      ).toBe("Funded");
+      expect(
+        result.current.invoices.find(function (i) {
+          return i.id === "inv-002";
+        }).status
+      ).toBe("Open");
       expect(result.current.pendingIds.has("inv-001")).toBe(true);
 
       await act(async function () {
@@ -98,7 +125,12 @@ describe("MarketplaceContext", function () {
     it("returns true on success", async function () {
       var wrapper = wrapperFactory();
       var action = jest.fn().mockResolvedValue(undefined);
-      var result = renderHook(function () { return useMarketplace(); }, { wrapper: wrapper.Wrapper }).result;
+      var result = renderHook(
+        function () {
+          return useMarketplace();
+        },
+        { wrapper: wrapper.Wrapper }
+      ).result;
 
       var returned;
       await act(async function () {
@@ -111,7 +143,12 @@ describe("MarketplaceContext", function () {
     it("calls the performAction with invoiceId and amount", async function () {
       var wrapper = wrapperFactory();
       var action = jest.fn().mockResolvedValue(undefined);
-      var result = renderHook(function () { return useMarketplace(); }, { wrapper: wrapper.Wrapper }).result;
+      var result = renderHook(
+        function () {
+          return useMarketplace();
+        },
+        { wrapper: wrapper.Wrapper }
+      ).result;
 
       await act(async function () {
         await result.current.fundInvoice("inv-002", 1200, action);
@@ -125,13 +162,22 @@ describe("MarketplaceContext", function () {
     it("restores the original status after the action rejects", async function () {
       var wrapper = wrapperFactory();
       var action = jest.fn().mockRejectedValue(new Error("server error"));
-      var result = renderHook(function () { return useMarketplace(); }, { wrapper: wrapper.Wrapper }).result;
+      var result = renderHook(
+        function () {
+          return useMarketplace();
+        },
+        { wrapper: wrapper.Wrapper }
+      ).result;
 
       await act(async function () {
         await result.current.fundInvoice("inv-001", 500, action).catch(function () {});
       });
 
-      expect(result.current.invoices.find(function (i) { return i.id === "inv-001"; }).status).toBe("Open");
+      expect(
+        result.current.invoices.find(function (i) {
+          return i.id === "inv-001";
+        }).status
+      ).toBe("Open");
       expect(result.current.pendingIds.has("inv-001")).toBe(false);
     });
 
@@ -139,7 +185,12 @@ describe("MarketplaceContext", function () {
       var wrapper = wrapperFactory();
       var boom = new Error("network failure");
       var action = jest.fn().mockRejectedValue(boom);
-      var result = renderHook(function () { return useMarketplace(); }, { wrapper: wrapper.Wrapper }).result;
+      var result = renderHook(
+        function () {
+          return useMarketplace();
+        },
+        { wrapper: wrapper.Wrapper }
+      ).result;
 
       var caught;
       await act(async function () {
@@ -156,14 +207,27 @@ describe("MarketplaceContext", function () {
     it("does not alter other invoices on rollback", async function () {
       var wrapper = wrapperFactory();
       var action = jest.fn().mockRejectedValue(new Error("fail"));
-      var result = renderHook(function () { return useMarketplace(); }, { wrapper: wrapper.Wrapper }).result;
+      var result = renderHook(
+        function () {
+          return useMarketplace();
+        },
+        { wrapper: wrapper.Wrapper }
+      ).result;
 
       await act(async function () {
         await result.current.fundInvoice("inv-001", 500, action).catch(function () {});
       });
 
-      expect(result.current.invoices.find(function (i) { return i.id === "inv-002"; }).status).toBe("Open");
-      expect(result.current.invoices.find(function (i) { return i.id === "inv-003"; }).status).toBe("Funded");
+      expect(
+        result.current.invoices.find(function (i) {
+          return i.id === "inv-002";
+        }).status
+      ).toBe("Open");
+      expect(
+        result.current.invoices.find(function (i) {
+          return i.id === "inv-003";
+        }).status
+      ).toBe("Funded");
     });
   });
 
@@ -173,20 +237,37 @@ describe("MarketplaceContext", function () {
       var d1 = deferred();
       var d2 = deferred();
 
-      var result = renderHook(function () { return useMarketplace(); }, { wrapper: wrapper.Wrapper }).result;
+      var result = renderHook(
+        function () {
+          return useMarketplace();
+        },
+        { wrapper: wrapper.Wrapper }
+      ).result;
 
       var fp1;
       var fp2;
 
       act(function () {
-        fp1 = result.current.fundInvoice("inv-001", 500, function () { return d1.promise; });
-        fp2 = result.current.fundInvoice("inv-002", 300, function () { return d2.promise; });
+        fp1 = result.current.fundInvoice("inv-001", 500, function () {
+          return d1.promise;
+        });
+        fp2 = result.current.fundInvoice("inv-002", 300, function () {
+          return d2.promise;
+        });
       });
 
       expect(result.current.pendingIds.has("inv-001")).toBe(true);
       expect(result.current.pendingIds.has("inv-002")).toBe(true);
-      expect(result.current.invoices.find(function (i) { return i.id === "inv-001"; }).status).toBe("Funded");
-      expect(result.current.invoices.find(function (i) { return i.id === "inv-002"; }).status).toBe("Funded");
+      expect(
+        result.current.invoices.find(function (i) {
+          return i.id === "inv-001";
+        }).status
+      ).toBe("Funded");
+      expect(
+        result.current.invoices.find(function (i) {
+          return i.id === "inv-002";
+        }).status
+      ).toBe("Funded");
 
       await act(async function () {
         d1.resolve();
@@ -209,14 +290,23 @@ describe("MarketplaceContext", function () {
       var d1 = deferred();
       var d2 = deferred();
 
-      var result = renderHook(function () { return useMarketplace(); }, { wrapper: wrapper.Wrapper }).result;
+      var result = renderHook(
+        function () {
+          return useMarketplace();
+        },
+        { wrapper: wrapper.Wrapper }
+      ).result;
 
       var fp1;
       var fp2;
 
       act(function () {
-        fp1 = result.current.fundInvoice("inv-001", 500, function () { return d1.promise; });
-        fp2 = result.current.fundInvoice("inv-002", 300, function () { return d2.promise; });
+        fp1 = result.current.fundInvoice("inv-001", 500, function () {
+          return d1.promise;
+        });
+        fp2 = result.current.fundInvoice("inv-002", 300, function () {
+          return d2.promise;
+        });
       });
 
       await act(async function () {
@@ -224,8 +314,16 @@ describe("MarketplaceContext", function () {
         await fp1.catch(function () {});
       });
 
-      expect(result.current.invoices.find(function (i) { return i.id === "inv-001"; }).status).toBe("Open");
-      expect(result.current.invoices.find(function (i) { return i.id === "inv-002"; }).status).toBe("Funded");
+      expect(
+        result.current.invoices.find(function (i) {
+          return i.id === "inv-001";
+        }).status
+      ).toBe("Open");
+      expect(
+        result.current.invoices.find(function (i) {
+          return i.id === "inv-002";
+        }).status
+      ).toBe("Funded");
       expect(result.current.pendingIds.has("inv-002")).toBe(true);
 
       await act(async function () {
@@ -239,9 +337,16 @@ describe("MarketplaceContext", function () {
     it("blocks duplicate fund calls on the same invoice", async function () {
       var wrapper = wrapperFactory();
       var d = deferred();
-      var action = jest.fn(function () { return d.promise; });
+      var action = jest.fn(function () {
+        return d.promise;
+      });
 
-      var result = renderHook(function () { return useMarketplace(); }, { wrapper: wrapper.Wrapper }).result;
+      var result = renderHook(
+        function () {
+          return useMarketplace();
+        },
+        { wrapper: wrapper.Wrapper }
+      ).result;
 
       act(function () {
         result.current.fundInvoice("inv-001", 500, action);

@@ -70,26 +70,20 @@ afterEach(clearDensity);
 describe("Settings page — density toggle", () => {
   it("renders the density section with a group label", async () => {
     jest.useFakeTimers();
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
     await act(async () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();
     });
 
     expect(screen.getByTestId("settings-density-section")).toBeInTheDocument();
-    expect(
-      screen.getByRole("group", { name: /density/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /density/i })).toBeInTheDocument();
     jest.useRealTimers();
   });
 
   it("displays the density label text from copy", async () => {
     jest.useFakeTimers();
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
     await act(async () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();
@@ -102,17 +96,19 @@ describe("Settings page — density toggle", () => {
 
   it("renders both Compact and Comfortable buttons", async () => {
     jest.useFakeTimers();
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
     await act(async () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();
     });
 
     const detail = copy.invest.detail;
-    expect(screen.getByRole("button", { name: detail.densityCompactAriaLabel })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: detail.densityComfortableAriaLabel })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: detail.densityCompactAriaLabel })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: detail.densityComfortableAriaLabel })
+    ).toBeInTheDocument();
     jest.useRealTimers();
   });
 });
@@ -122,9 +118,7 @@ describe("Settings page — density toggle", () => {
 describe("Settings page — data-density attribute", () => {
   it("applies data-density to the page root on mount", async () => {
     jest.useFakeTimers();
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
     await act(async () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();
@@ -137,9 +131,7 @@ describe("Settings page — data-density attribute", () => {
 
   it("updates data-density when the toggle is clicked", async () => {
     jest.useFakeTimers();
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
     await act(async () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();
@@ -159,9 +151,7 @@ describe("Settings page — data-density attribute", () => {
 describe("Settings page — density CSS variables", () => {
   it("the density section uses CSS variable padding", async () => {
     jest.useFakeTimers();
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
     await act(async () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();
@@ -175,9 +165,7 @@ describe("Settings page — density CSS variables", () => {
   it("the settings list uses CSS variable gap", async () => {
     jest.useFakeTimers();
     const rows = makeRows(3);
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(rows, 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(rows, 0)} />);
     await act(async () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();
@@ -195,9 +183,7 @@ describe("Settings page — density persistence", () => {
   it("restores compact density from localStorage on mount", async () => {
     window.localStorage.setItem(DENSITY_STORAGE_KEY, "compact");
     jest.useFakeTimers();
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
     await act(async () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();
@@ -210,9 +196,7 @@ describe("Settings page — density persistence", () => {
 
   it("clicking compact persists to localStorage", async () => {
     jest.useFakeTimers();
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
     await act(async () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();
@@ -228,9 +212,7 @@ describe("Settings page — density persistence", () => {
   it("clicking comfortable persists to localStorage", async () => {
     window.localStorage.setItem(DENSITY_STORAGE_KEY, "compact");
     jest.useFakeTimers();
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
     await act(async () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();
@@ -250,9 +232,7 @@ describe("Settings page — invalid density fallback", () => {
   it("falls back to comfortable when localStorage has an invalid value", async () => {
     window.localStorage.setItem(DENSITY_STORAGE_KEY, "invalid-density");
     jest.useFakeTimers();
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
     await act(async () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();
@@ -265,9 +245,7 @@ describe("Settings page — invalid density fallback", () => {
 
   it("falls back to comfortable when localStorage is empty", async () => {
     jest.useFakeTimers();
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
     await act(async () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();
@@ -284,16 +262,16 @@ describe("Settings page — invalid density fallback", () => {
 describe("Settings page — density accessibility", () => {
   it("density section has a group role with accessible label", async () => {
     jest.useFakeTimers();
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
     await act(async () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();
     });
 
     const groups = screen.getAllByRole("group");
-    const group = groups.find((g) => g.getAttribute("aria-label")?.toLowerCase().includes("density"));
+    const group = groups.find((g) =>
+      g.getAttribute("aria-label")?.toLowerCase().includes("density")
+    );
     expect(group).toBeDefined();
     expect(group).toHaveAttribute("aria-label");
     jest.useRealTimers();
@@ -301,9 +279,7 @@ describe("Settings page — density accessibility", () => {
 
   it("density buttons have aria-pressed attributes", async () => {
     jest.useFakeTimers();
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
     await act(async () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();

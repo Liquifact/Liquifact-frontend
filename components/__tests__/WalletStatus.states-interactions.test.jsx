@@ -154,9 +154,7 @@ describe("WalletStatus — success / connected state", () => {
     expect(buttons[0]).not.toBeDisabled();
     expect(buttons[0]).toHaveAttribute("aria-busy", "false");
 
-    expect(
-      screen.getByText("GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCD")
-    ).toBeInTheDocument();
+    expect(screen.getByText("GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCD")).toBeInTheDocument();
     expect(screen.getByText("1,234.56 XLM")).toBeInTheDocument();
   });
 
@@ -196,9 +194,7 @@ describe("WalletStatus — error state", () => {
     ).toBeInTheDocument();
 
     // Primary retry uses copy.wallet.retryButton aria-label; inline "Try again" also present
-    expect(
-      screen.getByRole("button", { name: copy.wallet.retryButton })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: copy.wallet.retryButton })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /try connecting your wallet again/i })
     ).toBeInTheDocument();

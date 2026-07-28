@@ -33,7 +33,11 @@ import { copy } from "@/app/copy/en";
 
 const detail = copy.invest.detail;
 
-export default function DensityToggle({ className = "", density: controlledDensity, onDensityChange }) {
+export default function DensityToggle({
+  className = "",
+  density: controlledDensity,
+  onDensityChange,
+}) {
   const [internalDensity, setInternalDensity] = useDensity();
 
   // When controlled props are provided, use them; otherwise use the internal hook state.
@@ -48,11 +52,7 @@ export default function DensityToggle({ className = "", density: controlledDensi
       className={["flex items-center gap-2 text-sm", className].filter(Boolean).join(" ")}
     >
       {/* Visible label for sighted users */}
-      <span
-        id="density-toggle-label"
-        className="text-slate-400 select-none"
-        aria-hidden="true"
-      >
+      <span id="density-toggle-label" className="text-slate-400 select-none" aria-hidden="true">
         {detail.densityToggleLabel}:
       </span>
 

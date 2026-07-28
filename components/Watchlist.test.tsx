@@ -44,7 +44,11 @@ jest.mock("next/link", () => {
 // Mock StatusPill
 jest.mock("./StatusPill", () => {
   return function MockStatusPill({ status }: { status: string }) {
-    return <span role="status" data-testid="status-pill">{status}</span>;
+    return (
+      <span role="status" data-testid="status-pill">
+        {status}
+      </span>
+    );
   };
 });
 
@@ -185,8 +189,12 @@ describe("Watchlist Component — States and Interactions", () => {
       const itemsList = screen.getByRole("list", { name: "Watchlist items" });
       expect(itemsList).toBeInTheDocument();
 
-      expect(screen.getByRole("link", { name: "View details for invoice inv-101 from Acme Corp" })).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "View details for invoice inv-102 from Global Logistics" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "View details for invoice inv-101 from Acme Corp" })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "View details for invoice inv-102 from Global Logistics" })
+      ).toBeInTheDocument();
 
       const liveStatus = screen.getByTestId("watchlist-status");
       expect(liveStatus).toHaveTextContent("2 invoices in watchlist");
@@ -286,11 +294,7 @@ describe("Watchlist Component — States and Interactions", () => {
       const onRemoveItemMock = jest.fn();
 
       render(
-        <Watchlist
-          items={MOCK_ITEMS}
-          onClearAll={onClearAllMock}
-          onRemoveItem={onRemoveItemMock}
-        />
+        <Watchlist items={MOCK_ITEMS} onClearAll={onClearAllMock} onRemoveItem={onRemoveItemMock} />
       );
 
       const clearBtn = screen.getByRole("button", { name: "Clear all watchlist items" });

@@ -146,7 +146,7 @@ describe("Issue #689 — Marketplace reduced-motion support (CSS source)", () =>
   });
 
   it("the reduced-motion block sits in globals.css below the Tailwind import", () => {
-    const tailwindIndex = cssSource.indexOf("@import \"tailwindcss\"");
+    const tailwindIndex = cssSource.indexOf('@import "tailwindcss"');
     const reducedMotionIndex = cssSource.search(
       /@media\s*\(\s*prefers-reduced-motion:\s*reduce\s*\)/
     );

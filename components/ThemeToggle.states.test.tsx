@@ -1,8 +1,7 @@
 import React from "react";
 import { render, screen, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import ThemeToggle from "./ThemeToggle";
-import { THEME_STORAGE_KEY } from "./ThemeToggle";
+import ThemeToggle, { THEME_STORAGE_KEY } from "./ThemeToggle";
 
 jest.mock("./ToastProvider", () => ({
   useToast: () => ({
@@ -25,7 +24,7 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
       },
       writable: true,
     });
-    
+
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: jest.fn().mockImplementation(() => ({
@@ -34,7 +33,7 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
         removeEventListener: jest.fn(),
       })),
     });
-    
+
     document.documentElement.removeAttribute("data-theme");
   });
 
@@ -46,10 +45,10 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
     render(<ThemeToggle />);
     // Use the specific accessible name to avoid ambiguity with the copy button
     const btn = screen.getByRole("button", { name: /theme:/i });
-    
+
     // During loading (SSR), it falls back to 'auto'
     expect(btn).toHaveAttribute("data-theme-pref", "auto");
-    
+
     // Restore window
     global.window = originalWindow;
   });
@@ -58,7 +57,7 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
     // Local storage is empty
     render(<ThemeToggle />);
     const btn = screen.getByRole("button", { name: /theme:/i });
-    
+
     // With empty preferences, it falls back to 'auto'
     expect(btn).toHaveAttribute("data-theme-pref", "auto");
   });
@@ -76,7 +75,7 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
 
     render(<ThemeToggle />);
     const btn = screen.getByRole("button", { name: /theme:/i });
-    
+
     // Error state falls back to 'auto' safely
     expect(btn).toHaveAttribute("data-theme-pref", "auto");
   });
@@ -96,18 +95,18 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
     });
 
     render(<ThemeToggle />);
-    
+
     // Wait for useLocalStorage to hydrate from storage
     await act(async () => {});
 
     const btn = screen.getByRole("button", { name: /theme:/i });
     expect(btn).toHaveAttribute("data-theme-pref", "light");
-    
+
     // Verify UI transition
     await act(async () => {
       btn.click();
     });
-    
+
     // Transitions correctly to the next state
     expect(btn).toHaveAttribute("data-theme-pref", "dark");
   });

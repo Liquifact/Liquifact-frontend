@@ -16,7 +16,6 @@
     "@next/swc-wasm-nodejs": "^16.2.10",
     "@stellar/freighter-api": "^6.0.1",
     "@tailwindcss/oxide": "^4.3.3",
-    "@unrs/resolver-binding-win32-x64-msvc": "^1.12.2",
     "enhanced-resolve": "^5.24.3",
     "eslint-scope": "^9.1.2",
     "next": "^16.2.11",
@@ -49,10 +48,10 @@
     "prettier": "^3.9.5",
     "size-limit": "^12.1.0",
     "tailwindcss": "^4",
-    "typescript": "^5.8.3"
+"typescript": "^6.0.3"
   },
   "overrides": {
-    "postcss": "^8.5.21",
+    "postcss": "^8.5.24",
     "sharp": "^0.35.3"
   }
 }

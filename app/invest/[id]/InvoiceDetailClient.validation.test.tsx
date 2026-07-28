@@ -279,18 +279,15 @@ describe("InvoiceDetailClient — validation: live keystroke validation", () => 
 });
 
 describe("InvoiceDetailClient — validation: amount specifics", () => {
-  it.each(["", "0", "-1", "abc", "1,2,3"])(
-    "rejects invalid amount %p",
-    async (value) => {
-      const user = userEvent.setup();
-      render(<TestWrapper rawAmount="" />);
-      fireEvent.click(editBtn("amount"));
-      await user.clear(input("amount"));
-      if (value !== "") await user.type(input("amount"), value);
-      expect(errorEl("amount")).toBeInTheDocument();
-      expect(saveBtn("amount")).toBeDisabled();
-    }
-  );
+  it.each(["", "0", "-1", "abc", "1,2,3"])("rejects invalid amount %p", async (value) => {
+    const user = userEvent.setup();
+    render(<TestWrapper rawAmount="" />);
+    fireEvent.click(editBtn("amount"));
+    await user.clear(input("amount"));
+    if (value !== "") await user.type(input("amount"), value);
+    expect(errorEl("amount")).toBeInTheDocument();
+    expect(saveBtn("amount")).toBeDisabled();
+  });
 
   it("accepts comma-separated amount like '12,500'", async () => {
     const user = userEvent.setup();

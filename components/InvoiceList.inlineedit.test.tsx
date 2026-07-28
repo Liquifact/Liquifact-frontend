@@ -54,8 +54,12 @@ describe("InvoiceList — Inline Edit Mode", () => {
     expect(screen.getByLabelText("Due date")).toHaveValue("2026-08-01");
     expect(screen.getByLabelText("Estimated yield")).toHaveValue("5.0%");
 
-    expect(screen.getByRole("button", { name: "Save edits for invoice inv-1001" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cancel editing invoice inv-1001" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Save edits for invoice inv-1001" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Cancel editing invoice inv-1001" })
+    ).toBeInTheDocument();
   });
 
   it("saves valid inline edits and updates the displayed row", async () => {

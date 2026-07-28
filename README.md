@@ -67,7 +67,7 @@ see the [Settings data flow](docs/settings-data-flow.md).
 
 For frontend/backend contract details see:
 
-docs/api-integration.md
+[docs/api-integration.md](docs/api-integration.md)
 
 ---
 

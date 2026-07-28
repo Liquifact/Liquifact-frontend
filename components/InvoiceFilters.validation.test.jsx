@@ -68,7 +68,9 @@ describe("InvoiceFilters validation", () => {
       fireEvent.blur(minInput);
       const errorId = minInput.getAttribute("aria-describedby");
       expect(errorId).toBeTruthy();
-      expect(document.getElementById(errorId)).toHaveTextContent("Min yield must be a positive number");
+      expect(document.getElementById(errorId)).toHaveTextContent(
+        "Min yield must be a positive number"
+      );
     });
   });
 

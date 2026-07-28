@@ -48,9 +48,9 @@ function mockFetch(
 }
 
 function mockFetchNetworkError(message = "Failed to fetch") {
-  (global as unknown as { fetch: jest.Mock }).fetch = jest.fn().mockRejectedValue(
-    new TypeError(message)
-  );
+  (global as unknown as { fetch: jest.Mock }).fetch = jest
+    .fn()
+    .mockRejectedValue(new TypeError(message));
 }
 
 function mockFetchAbort() {
@@ -76,9 +76,10 @@ const VALID_PARAMS = { id: "inv-001", amount: 1000, currency: "USD" };
 
 describe("fundInvoice — input validation", () => {
   it("throws FundInvoiceError with FUND_INVALID_PARAMS when id is missing", async () => {
-    await expect(
-      fundInvoice({ id: "", amount: 100, currency: "USD" })
-    ).rejects.toMatchObject({ name: "FundInvoiceError", code: "FUND_INVALID_PARAMS" });
+    await expect(fundInvoice({ id: "", amount: 100, currency: "USD" })).rejects.toMatchObject({
+      name: "FundInvoiceError",
+      code: "FUND_INVALID_PARAMS",
+    });
   });
 
   it("throws when id is not a string", async () => {
@@ -88,15 +89,15 @@ describe("fundInvoice — input validation", () => {
   });
 
   it("throws FundInvoiceError when amount is zero", async () => {
-    await expect(
-      fundInvoice({ id: "inv-001", amount: 0, currency: "USD" })
-    ).rejects.toMatchObject({ code: "FUND_INVALID_PARAMS" });
+    await expect(fundInvoice({ id: "inv-001", amount: 0, currency: "USD" })).rejects.toMatchObject({
+      code: "FUND_INVALID_PARAMS",
+    });
   });
 
   it("throws FundInvoiceError when amount is negative", async () => {
-    await expect(
-      fundInvoice({ id: "inv-001", amount: -5, currency: "USD" })
-    ).rejects.toMatchObject({ code: "FUND_INVALID_PARAMS" });
+    await expect(fundInvoice({ id: "inv-001", amount: -5, currency: "USD" })).rejects.toMatchObject(
+      { code: "FUND_INVALID_PARAMS" }
+    );
   });
 
   it("throws FundInvoiceError when amount is NaN", async () => {
@@ -112,9 +113,9 @@ describe("fundInvoice — input validation", () => {
   });
 
   it("throws when currency is missing", async () => {
-    await expect(
-      fundInvoice({ id: "inv-001", amount: 100, currency: "" })
-    ).rejects.toMatchObject({ code: "FUND_INVALID_PARAMS" });
+    await expect(fundInvoice({ id: "inv-001", amount: 100, currency: "" })).rejects.toMatchObject({
+      code: "FUND_INVALID_PARAMS",
+    });
   });
 
   it("throws when currency is not a string", async () => {
@@ -261,9 +262,7 @@ describe("fundInvoice — timeout", () => {
 
   it("throws FundInvoiceTimeoutError when the request exceeds timeoutMs", async () => {
     // fetch never resolves
-    (global as unknown as { fetch: jest.Mock }).fetch = jest.fn(
-      () => new Promise(() => {})
-    );
+    (global as unknown as { fetch: jest.Mock }).fetch = jest.fn(() => new Promise(() => {}));
 
     const fundPromise = fundInvoice({ ...VALID_PARAMS, timeoutMs: 100 });
 
@@ -284,9 +283,9 @@ describe("fundInvoice — AbortSignal cancellation", () => {
     const controller = new AbortController();
     controller.abort();
 
-    await expect(
-      fundInvoice({ ...VALID_PARAMS, signal: controller.signal })
-    ).rejects.toMatchObject({ name: "AbortError" });
+    await expect(fundInvoice({ ...VALID_PARAMS, signal: controller.signal })).rejects.toMatchObject(
+      { name: "AbortError" }
+    );
   });
 
   it("propagates AbortError when caller aborts during in-flight request", async () => {

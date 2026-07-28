@@ -97,11 +97,7 @@ describe("InvoiceDetailClient — metadata rendering", () => {
 
   it("renders the Reference row with CopyButton when referenceId is provided", () => {
     render(
-      <InvoiceDetailClient
-        {...defaultProps}
-        labelReference="Reference"
-        referenceId="inv-001"
-      />
+      <InvoiceDetailClient {...defaultProps} labelReference="Reference" referenceId="inv-001" />
     );
     expect(screen.getByText("Reference")).toBeInTheDocument();
     expect(screen.getByText("inv-001")).toBeInTheDocument();
@@ -171,9 +167,9 @@ describe("InvoiceDetailClient — spacing variants", () => {
     render(<InvoiceDetailClient {...defaultProps} />);
 
     // Find and click the Compact button
-    const compactBtn = screen.getAllByRole("button").find(
-      (b) => b.getAttribute("data-density") === "compact"
-    );
+    const compactBtn = screen
+      .getAllByRole("button")
+      .find((b) => b.getAttribute("data-density") === "compact");
     expect(compactBtn).toBeDefined();
 
     await act(async () => {
@@ -191,17 +187,21 @@ describe("InvoiceDetailClient — spacing variants", () => {
   it("section reverts to p-6 and dl to gap-4 when switching back to comfortable", async () => {
     render(<InvoiceDetailClient {...defaultProps} />);
 
-    const compactBtn = screen.getAllByRole("button").find(
-      (b) => b.getAttribute("data-density") === "compact"
-    );
-    const comfortableBtn = screen.getAllByRole("button").find(
-      (b) => b.getAttribute("data-density") === "comfortable"
-    );
+    const compactBtn = screen
+      .getAllByRole("button")
+      .find((b) => b.getAttribute("data-density") === "compact");
+    const comfortableBtn = screen
+      .getAllByRole("button")
+      .find((b) => b.getAttribute("data-density") === "comfortable");
     expect(compactBtn).toBeDefined();
     expect(comfortableBtn).toBeDefined();
 
-    await act(async () => { fireEvent.click(compactBtn!); });
-    await act(async () => { fireEvent.click(comfortableBtn!); });
+    await act(async () => {
+      fireEvent.click(compactBtn!);
+    });
+    await act(async () => {
+      fireEvent.click(comfortableBtn!);
+    });
 
     const section = document.querySelector("section");
     expect(section?.className).toContain("p-6");
@@ -219,9 +219,9 @@ describe("InvoiceDetailClient — spacing variants", () => {
 
   it("section has data-density='compact' after switching to compact", async () => {
     render(<InvoiceDetailClient {...defaultProps} />);
-    const compactBtn = screen.getAllByRole("button").find(
-      (b) => b.getAttribute("data-density") === "compact"
-    );
+    const compactBtn = screen
+      .getAllByRole("button")
+      .find((b) => b.getAttribute("data-density") === "compact");
     await act(async () => {
       fireEvent.click(compactBtn!);
     });
@@ -263,10 +263,12 @@ describe("InvoiceDetailClient — accessibility", () => {
 
   it("has no axe violations in compact mode", async () => {
     const { container } = render(<InvoiceDetailClient {...defaultProps} />);
-    const compactBtn = screen.getAllByRole("button").find(
-      (b) => b.getAttribute("data-density") === "compact"
-    );
-    await act(async () => { fireEvent.click(compactBtn!); });
+    const compactBtn = screen
+      .getAllByRole("button")
+      .find((b) => b.getAttribute("data-density") === "compact");
+    await act(async () => {
+      fireEvent.click(compactBtn!);
+    });
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });

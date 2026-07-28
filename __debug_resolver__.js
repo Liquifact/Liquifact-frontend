@@ -5,10 +5,9 @@ console.log("Resolver keys:", Object.keys(Resolver));
 const result1 = Resolver.findNodeModule("babel-jest", { basedir: process.cwd() });
 console.log("findNodeModule('babel-jest'):", result1);
 
-const result2 = Resolver.findNodeModule(
-  process.cwd().replace(/\\/g, "/") + "/jest.setup.js",
-  { basedir: process.cwd() }
-);
+const result2 = Resolver.findNodeModule(process.cwd().replace(/\\/g, "/") + "/jest.setup.js", {
+  basedir: process.cwd(),
+});
 console.log("findNodeModule(absolute):", result2);
 
 // Try with forward slashes
