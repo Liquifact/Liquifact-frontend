@@ -229,12 +229,17 @@ export default function NavMenu() {
   );
 
   /**
+   * True when the current route is the home page.
+   * Used both in brandLabel and in the brand link's aria-current attribute.
+   */
+  const isHomePage = pathname === "/" || pathname === "/home";
+
+  /**
    * Brand label depends only on the current pathname, not on open/visible.
    */
   const brandLabel = useMemo(() => {
-    const isHomePage = pathname === "/" || pathname === "/home";
     return isHomePage ? "LiquiFact" : "← LiquiFact";
-  }, [pathname]);
+  }, [isHomePage]);
 
   // ---------------------------------------------------------------------------
   // Effects

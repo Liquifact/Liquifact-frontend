@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import NavMenu from "@/components/NavMenu";
 import { copy } from "../copy/en";
 import { loadMockSettings, getCategoryList, MOCK_SETTINGS } from "./lib";
+import { exportAsCSV, exportAsJSON } from "@/utils/export";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 200;
@@ -90,6 +91,7 @@ export function SettingsPage({ loadSettings = loadMockSettings } = {}) {
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
   const [retryKey, setRetryKey] = useState(0);
+  const [exportAnnounce, setExportAnnounce] = useState("");
 
   // Reset paging when a different list of settings arrives (fetch, retry,
   // or test fixture swap).  Compared during render so no effect is needed.
@@ -161,6 +163,32 @@ export function SettingsPage({ loadSettings = loadMockSettings } = {}) {
     setLoadError("");
     setRetryKey((k) => k + 1);
   }, []);
+
+  /**
+   * Export the currently filtered settings view as a CSV file.
+   * Respects active filters — only the filtered (not necessarily visible/paged)
+   * rows are exported so the user gets what they see in the active filter state.
+   */
+  const handleExportCsv = useCallback(() => {
+    if (filteredSettings.length === 0) {
+      setExportAnnounce(copy.settings.exportEmptyAnnounce);
+      return;
+    }
+    exportAsCSV(filteredSettings, "settings-export.csv");
+    setExportAnnounce(copy.settings.exportCsvAnnounce);
+  }, [filteredSettings]);
+
+  /**
+   * Export the currently filtered settings view as a JSON file.
+   */
+  const handleExportJson = useCallback(() => {
+    if (filteredSettings.length === 0) {
+      setExportAnnounce(copy.settings.exportEmptyAnnounce);
+      return;
+    }
+    exportAsJSON(filteredSettings, "settings-export.json");
+    setExportAnnounce(copy.settings.exportJsonAnnounce);
+  }, [filteredSettings]);
 
   // Polite live-region message derived from reactive state.
   const statusMessage = useMemo(() => {
@@ -278,6 +306,44 @@ export function SettingsPage({ loadSettings = loadMockSettings } = {}) {
             </button>
           </div>
         </fieldset>
+
+        {/* Export toolbar — client-side download; no server round-trip */}
+        <div
+          role="group"
+          aria-label={copy.settings.exportGroupAriaLabel}
+          className="mb-6 flex flex-wrap items-center gap-3"
+        >
+          {/* Polite live region for export announcements */}
+          <div
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            data-testid="export-announce"
+            className="sr-only"
+          >
+            {exportAnnounce}
+          </div>
+
+          <button
+            type="button"
+            data-testid="export-csv-btn"
+            onClick={handleExportCsv}
+            aria-label={copy.settings.exportCsvAriaLabel}
+            className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-cyan-500 hover:text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          >
+            {copy.settings.exportCsv}
+          </button>
+
+          <button
+            type="button"
+            data-testid="export-json-btn"
+            onClick={handleExportJson}
+            aria-label={copy.settings.exportJsonAriaLabel}
+            className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-cyan-500 hover:text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          >
+            {copy.settings.exportJson}
+          </button>
+        </div>
 
         {/* Error state — retryable */}
         {loadError ? (

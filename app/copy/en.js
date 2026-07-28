@@ -210,6 +210,14 @@
  * @property {string} settings.announceFiltered
  * @property {string} settings.announceNoMatch
  * @property {string} settings.announceShowing
+ * @property {string} settings.exportCsv
+ * @property {string} settings.exportJson
+ * @property {string} settings.exportCsvAriaLabel
+ * @property {string} settings.exportJsonAriaLabel
+ * @property {string} settings.exportGroupAriaLabel
+ * @property {string} settings.exportEmptyAnnounce
+ * @property {string} settings.exportCsvAnnounce
+ * @property {string} settings.exportJsonAnnounce
  */
 
 /** @type {CopyDictionary} */
@@ -483,33 +491,42 @@ export const copy = {
     /** Announced politely by NavMenu when the user navigates to a new route.
      *  Replace {label} with the matching NAV_LINKS label (e.g. "Home"). */
     announceNavigation: "Navigated to {label}",
-    settings: {
-      title: "Settings",
-      subtext:
-        "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
-      emptyState: "No preferences available. Connect your wallet to unlock settings.",
-      errorTitle: "Unable to load settings",
-      errorDescription: "Unable to load settings right now.",
-      errorStatus: "Unable to load settings.",
-      retryAction: "Try again",
-      searchPlaceholder: "Search preferences…",
-      filterLegend: "Settings filters",
-      filterHelp:
-        "Use the category selector or the search box to narrow the list. Paging is reset whenever a filter changes.",
-      filterCategory: "Category:",
-      filterSearch: "Search:",
-      allCategories: "All categories",
-      clearFilters: "Reset filters",
-      noMatchFilter: "No preferences match the active filters.",
-      listAriaLabel: "Settings list",
-      loadingAriaLabel: "Loading settings",
-      loadMore: "Load more",
-      loadMoreAriaLabel: "Load more preferences",
-      endOfList: "You have reached the end of the list.",
-      announceNoSettings: "No settings available",
-      announceLoaded: "{count} preferences loaded",
-      announceFiltered: "{matched} of {total} preferences match",
-      announceNoMatch: "No preferences match",
-      announceShowing: "Showing {shown} of {total} preferences",
-    },
+  },
+  settings: {
+    title: "Settings",
+    subtext:
+      "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
+    emptyState: "No preferences available. Connect your wallet to unlock settings.",
+    errorTitle: "Unable to load settings",
+    errorDescription: "Unable to load settings right now.",
+    errorStatus: "Unable to load settings.",
+    retryAction: "Try again",
+    searchPlaceholder: "Search preferences…",
+    filterLegend: "Settings filters",
+    filterHelp:
+      "Use the category selector or the search box to narrow the list. Paging is reset whenever a filter changes.",
+    filterCategory: "Category:",
+    filterSearch: "Search:",
+    allCategories: "All categories",
+    clearFilters: "Reset filters",
+    noMatchFilter: "No preferences match the active filters.",
+    listAriaLabel: "Settings list",
+    loadingAriaLabel: "Loading settings",
+    loadMore: "Load more",
+    loadMoreAriaLabel: "Load more preferences",
+    endOfList: "You have reached the end of the list.",
+    announceNoSettings: "No settings available",
+    announceLoaded: "{count} preferences loaded",
+    announceFiltered: "{matched} of {total} preferences match",
+    announceNoMatch: "No preferences match",
+    announceShowing: "Showing {shown} of {total} preferences",
+    exportCsv: "Export CSV",
+    exportJson: "Export JSON",
+    exportCsvAriaLabel: "Export the current settings view as a CSV file",
+    exportJsonAriaLabel: "Export the current settings view as a JSON file",
+    exportGroupAriaLabel: "Export settings",
+    exportEmptyAnnounce: "No settings to export — adjust filters or wait for settings to load.",
+    exportCsvAnnounce: "Settings exported as CSV.",
+    exportJsonAnnounce: "Settings exported as JSON.",
+  },
 };
