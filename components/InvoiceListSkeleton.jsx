@@ -16,7 +16,7 @@
  */
 export default function InvoiceListSkeleton({ rows = 3, ...props }) {
   return (
-    <ul aria-hidden="true" aria-busy="true" className="space-y-4">
+    <ul aria-label="Loading investable invoices" aria-busy="true" className="space-y-4">
       {Array.from({ length: rows }).map((_, i) => (
         <li
           // Use a prefix with index for a stable, deterministic skeleton key since rows are presentational-only
