@@ -18,8 +18,7 @@ import { WalletContext, WALLET_STATES } from "./WalletProvider";
 import { copy } from "../app/copy/en";
 
 type AttemptOutcome =
-  | { kind: "success"; address?: string; network?: string }
-  | { kind: "failure"; message: string };
+  { kind: "success"; address?: string; network?: string } | { kind: "failure"; message: string };
 
 const DEFAULT_ADDRESS = "GABCDEFGHIJKLMNOPQRSTUVWXYZ12345678901234567890123456";
 
@@ -69,9 +68,11 @@ function renderHarness(initialOutcome: AttemptOutcome, retryOutcome: AttemptOutc
     const [_error, _setError] = React.useState<string | null>(
       initialOutcome.kind === "failure" ? initialOutcome.message : null
     );
-    const [_walletData, _setWalletData] = React.useState<
-      { address: string; network: string; balance: string } | null
-    >(
+    const [_walletData, _setWalletData] = React.useState<{
+      address: string;
+      network: string;
+      balance: string;
+    } | null>(
       initialOutcome.kind === "success"
         ? {
             address: initialOutcome.address ?? DEFAULT_ADDRESS,
@@ -154,9 +155,7 @@ describe("WalletStatus — error recovery flows (#705)", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /disconnect/i })).toBeInTheDocument();
     });
-    expect(
-      screen.getByText(/GABC/i, { selector: ".wallet-address-text" })
-    ).toBeInTheDocument();
+    expect(screen.getByText(/GABC/i, { selector: ".wallet-address-text" })).toBeInTheDocument();
   });
 
   it("shows the error again when the retried connection fails", async () => {
