@@ -1,5 +1,5 @@
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-const routes = ["/", "/invoices", "/invest"];
+const routes = ["/", "/invoices", "/invest", "/settings"];
 
 export default function sitemap() {
   return routes.map((path) => ({

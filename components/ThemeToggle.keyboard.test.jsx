@@ -3,6 +3,14 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ThemeToggle, { THEMES, THEME_STORAGE_KEY, resolveTheme, readStoredTheme } from "./ThemeToggle";
 
+jest.mock("./ToastProvider", () => ({
+  useToast: () => ({
+    success: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+  }),
+}));
+
 beforeEach(() => {
   localStorage.clear();
 });
@@ -13,14 +21,14 @@ describe("ThemeToggle keyboard operability", () => {
     render(<ThemeToggle />);
 
     await user.tab();
-    expect(screen.getByRole("button", { name: /theme/i })).toHaveFocus();
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveFocus();
   });
 
   it("cycles forward on Enter", async () => {
     const user = userEvent.setup();
     render(<ThemeToggle />);
 
-    const btn = screen.getByRole("button", { name: /theme/i });
+    const btn = screen.getByRole("button", { name: /theme:/i });
     btn.focus();
 
     const initialLabel = btn.getAttribute("aria-label");
@@ -33,7 +41,7 @@ describe("ThemeToggle keyboard operability", () => {
     const user = userEvent.setup();
     render(<ThemeToggle />);
 
-    const btn = screen.getByRole("button", { name: /theme/i });
+    const btn = screen.getByRole("button", { name: /theme:/i });
     btn.focus();
 
     const initialLabel = btn.getAttribute("aria-label");
@@ -46,7 +54,7 @@ describe("ThemeToggle keyboard operability", () => {
     const user = userEvent.setup();
     render(<ThemeToggle />);
 
-    const btn = screen.getByRole("button", { name: /theme/i });
+    const btn = screen.getByRole("button", { name: /theme:/i });
     btn.focus();
 
     const initialLabel = btn.getAttribute("aria-label");
@@ -59,7 +67,7 @@ describe("ThemeToggle keyboard operability", () => {
     const user = userEvent.setup();
     render(<ThemeToggle />);
 
-    const btn = screen.getByRole("button", { name: /theme/i });
+    const btn = screen.getByRole("button", { name: /theme:/i });
     btn.focus();
 
     const initialLabel = btn.getAttribute("aria-label");
@@ -72,7 +80,7 @@ describe("ThemeToggle keyboard operability", () => {
     const user = userEvent.setup();
     render(<ThemeToggle />);
 
-    const btn = screen.getByRole("button", { name: /theme/i });
+    const btn = screen.getByRole("button", { name: /theme:/i });
     btn.focus();
 
     const initialLabel = btn.getAttribute("aria-label");
@@ -85,7 +93,7 @@ describe("ThemeToggle keyboard operability", () => {
     const user = userEvent.setup();
     render(<ThemeToggle />);
 
-    const btn = screen.getByRole("button", { name: /theme/i });
+    const btn = screen.getByRole("button", { name: /theme:/i });
     btn.focus();
 
     const initialLabel = btn.getAttribute("aria-label");
@@ -98,7 +106,7 @@ describe("ThemeToggle keyboard operability", () => {
     const user = userEvent.setup();
     render(<ThemeToggle />);
 
-    const btn = screen.getByRole("button", { name: /theme/i });
+    const btn = screen.getByRole("button", { name: /theme:/i });
     btn.focus();
     await user.keyboard("{Enter}");
 
@@ -107,19 +115,19 @@ describe("ThemeToggle keyboard operability", () => {
 
   it("has visible focus indicator (focus-ring class)", () => {
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button", { name: /theme/i });
+    const btn = screen.getByRole("button", { name: /theme:/i });
     expect(btn.className).toContain("focus-ring");
   });
 
   it("has accessible aria-label describing current state", () => {
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button", { name: /theme/i });
+    const btn = screen.getByRole("button", { name: /theme:/i });
     expect(btn.getAttribute("aria-label")).toMatch(/Theme:/);
   });
 
   it("has aria-pressed attribute", () => {
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button", { name: /theme/i });
+    const btn = screen.getByRole("button", { name: /theme:/i });
     expect(btn).toHaveAttribute("aria-pressed");
   });
 });
@@ -133,14 +141,14 @@ describe("resolveTheme", () => {
     expect(resolveTheme("dark")).toBe("dark");
   });
 
-  it("returns dark in SSR environment for system preference", () => {
-    expect(resolveTheme("system")).toBe("dark");
+  it("returns dark in SSR environment for auto preference", () => {
+    expect(resolveTheme("auto")).toBe("dark");
   });
 });
 
 describe("readStoredTheme", () => {
-  it("returns system when localStorage is empty", () => {
-    expect(readStoredTheme()).toBe("system");
+  it("returns auto when localStorage is empty (default for first-time visitors)", () => {
+    expect(readStoredTheme()).toBe("auto");
   });
 
   it("returns stored theme when valid", () => {
@@ -148,8 +156,8 @@ describe("readStoredTheme", () => {
     expect(readStoredTheme()).toBe("dark");
   });
 
-  it("returns system for invalid stored value", () => {
+  it("returns auto for invalid stored value", () => {
     localStorage.setItem(THEME_STORAGE_KEY, "invalid");
-    expect(readStoredTheme()).toBe("system");
+    expect(readStoredTheme()).toBe("auto");
   });
 });

@@ -406,6 +406,7 @@ function DirectionToggle({ column, filters, onFilterChange }) {
       onClick={handleToggle}
       disabled={!isActive}
       aria-label={ariaLabel}
+      aria-pressed={isActive}
       className={`focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none ${
         isActive
           ? "bg-cyan-900/40 text-cyan-300 hover:bg-cyan-800/60 border border-cyan-700"

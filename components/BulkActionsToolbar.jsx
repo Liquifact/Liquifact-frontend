@@ -106,7 +106,7 @@ export default function BulkActionsToolbar({
             .replace("{total}", String(visibleCount))}
           data-testid="bulk-select-all"
           onChange={() => onToggleSelectAll?.()}
-          className="h-4 w-4 rounded border-slate-500 bg-slate-900 text-cyan-500 accent-cyan-400 focus:ring-cyan-400"
+          className="h-4 w-4 rounded border-slate-500 bg-slate-900 text-cyan-500 accent-cyan-400 focus-ring"
         />
         <span className="font-medium">
           {labels.selectAllLabel.replace("{selected}", String(selectedCount)).replace(

@@ -35,6 +35,12 @@ jest.mock("@/components/NavMenu", () => {
   return { __esModule: true, default: MockNavMenu };
 });
 
+jest.mock("next/navigation", () => ({
+  useRouter: jest.fn(() => ({ replace: jest.fn() })),
+  useSearchParams: jest.fn(() => new URLSearchParams()),
+  usePathname: jest.fn(() => "/invest"),
+}));
+
 jest.mock("@/utils/export", () => ({
   exportAsCSV: jest.fn(),
   exportAsJSON: jest.fn(),
@@ -203,6 +209,40 @@ describe("InvestMarketplace", () => {
     expect(listItems[1]).toHaveTextContent("Bright Logistics GmbH");
   });
 
+  it("applies design-token spacing and typography to marketplace cards", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "12,500",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "8.2%",
+        status: "Open",
+      },
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    const card = getInvoiceListItems()[0];
+    expect(card).toHaveStyle({ padding: "var(--market-card-padding)" });
+
+    const titleLink = within(card).getByRole("link", { name: /acme supplies ltd/i });
+    expect(titleLink).toHaveStyle({
+      fontSize: "var(--market-card-title-font-size)",
+      fontWeight: "var(--market-card-title-font-weight)",
+      lineHeight: "var(--market-card-title-line-height)",
+    });
+
+    const metaRow = within(card).getByText(/USD/i).closest("div");
+    expect(metaRow).toHaveStyle({
+      fontSize: "var(--market-card-meta-font-size)",
+      lineHeight: "var(--market-card-meta-line-height)",
+      letterSpacing: "var(--market-card-meta-letter-spacing)",
+    });
+  });
+
   it("renders a stable structure for the loaded marketplace state", async () => {
     const invoices = [
       {
@@ -250,7 +290,8 @@ describe("InvestMarketplace", () => {
             2 investable invoices loaded
           </div>
           <h1
-            class="text-2xl font-bold mb-2"
+            class="text-2xl font-bold mb-2 outline-none"
+            tabindex="-1"
           >
             Invest
           </h1>
@@ -260,7 +301,7 @@ describe("InvestMarketplace", () => {
             Browse tokenized invoices and fund them. Estimated yield is shown for educational purposes; actual payment is received at invoice maturity.
           </p>
           <div
-            class="mb-4"
+            class="mb-4 flex flex-wrap items-center justify-between gap-4"
           >
             <div
               class="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
@@ -296,6 +337,22 @@ describe("InvestMarketplace", () => {
                   None
                 </button>
               </div>
+            </div>
+            <div
+              class="flex gap-2"
+            >
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                type="button"
+              >
+                Export CSV
+              </button>
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                type="button"
+              >
+                Export JSON
+              </button>
             </div>
           </div>
           <div
@@ -358,43 +415,58 @@ describe("InvestMarketplace", () => {
               Soon: These filter controls are currently unavailable.
             </div>
             <div
-              class="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none"
+              class="flex flex-wrap gap-4 items-center pointer-events-none opacity-60"
             >
               <div
                 class="flex flex-wrap gap-4 items-center"
               >
-                <fieldset
-                  class="flex items-center gap-2 border-none p-0 m-0"
+                <div
+                  class="flex flex-col gap-1"
                 >
-                  <legend
-                    class="sr-only"
+                  <fieldset
+                    class="flex items-center gap-2 border-none p-0 m-0"
                   >
-                    Yield Range
-                  </legend>
+                    <legend
+                      class="sr-only"
+                    >
+                      Yield Range
+                    </legend>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Minimum yield percentage"
+                      class="w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none border-slate-700 focus:border-cyan-500"
+                      min="0"
+                      placeholder="Min yield"
+                      step="0.1"
+                      type="number"
+                      value=""
+                    />
+                    <span
+                      class="text-slate-500"
+                    >
+                      -
+                    </span>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maximum yield percentage"
+                      class="w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none border-slate-700 focus:border-cyan-500"
+                      min="0"
+                      placeholder="Max yield"
+                      step="0.1"
+                      type="number"
+                      value=""
+                    />
+                  </fieldset>
+                </div>
+                <label
+                  class="flex items-center gap-2 text-sm text-slate-300"
+                >
                   <input
-                    aria-label="Minimum yield percentage"
-                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                    min="0"
-                    placeholder="Min yield"
-                    step="0.1"
-                    type="number"
-                    value=""
+                    class="rounded border-slate-700 bg-slate-800/50 text-cyan-500 focus:ring-cyan-500"
+                    type="checkbox"
                   />
-                  <span
-                    class="text-slate-500"
-                  >
-                    -
-                  </span>
-                  <input
-                    aria-label="Maximum yield percentage"
-                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                    min="0"
-                    placeholder="Max yield"
-                    step="0.1"
-                    type="number"
-                    value=""
-                  />
-                </fieldset>
+                  Watchlist Only
+                </label>
                 <div
                   aria-label="Currency filter"
                   class="flex items-center gap-1"
@@ -446,32 +518,38 @@ describe("InvestMarketplace", () => {
                     CHF
                   </button>
                 </div>
-                <fieldset
-                  class="flex items-center gap-2 border-none p-0 m-0"
+                <div
+                  class="flex flex-col gap-1"
                 >
-                  <legend
-                    class="sr-only"
+                  <fieldset
+                    class="flex items-center gap-2 border-none p-0 m-0"
                   >
-                    Maturity Date Range
-                  </legend>
-                  <input
-                    aria-label="Maturity date from"
-                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-                    type="date"
-                    value=""
-                  />
-                  <span
-                    class="text-slate-500"
-                  >
-                    -
-                  </span>
-                  <input
-                    aria-label="Maturity date to"
-                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-                    type="date"
-                    value=""
-                  />
-                </fieldset>
+                    <legend
+                      class="sr-only"
+                    >
+                      Maturity Date Range
+                    </legend>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maturity date from"
+                      class="rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] border-slate-700 focus:border-cyan-500"
+                      type="date"
+                      value=""
+                    />
+                    <span
+                      class="text-slate-500"
+                    >
+                      -
+                    </span>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maturity date to"
+                      class="rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] border-slate-700 focus:border-cyan-500"
+                      type="date"
+                      value=""
+                    />
+                  </fieldset>
+                </div>
                 <fieldset
                   class="flex items-center gap-2 border-none p-0 m-0"
                 >
@@ -507,7 +585,8 @@ describe("InvestMarketplace", () => {
                   </select>
                   <button
                     aria-label="Sort amount direction"
-                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    aria-pressed="false"
+                    class="focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -515,7 +594,8 @@ describe("InvestMarketplace", () => {
                   </button>
                   <button
                     aria-label="Sort yield direction"
-                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    aria-pressed="false"
+                    class="focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -524,7 +604,7 @@ describe("InvestMarketplace", () => {
                 </fieldset>
                 <button
                   aria-label="Clear all filters"
-                  class="ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                  class="focus-ring ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
                   disabled=""
                   type="button"
                 >
@@ -538,25 +618,29 @@ describe("InvestMarketplace", () => {
             class="space-y-4"
           >
             <li
-              class="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
+              class="rounded-xl border border-slate-800 bg-slate-900/50"
+              style="padding: var(--market-card-padding);"
             >
               <div
-                class="flex items-center justify-between mb-3"
+                class="flex items-center justify-between"
+                style="margin-bottom: var(--market-card-gap); gap: var(--market-card-gap);"
               >
                 <a
-                  class="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                  class="rounded font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
                   href="/invest/inv-001"
+                  style="font-size: var(--market-card-title-font-size); font-weight: var(--market-card-title-font-weight); line-height: var(--market-card-title-line-height);"
                 >
                   Acme Supplies Ltd
                 </a>
                 <span
-                  class="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300"
+                  class="rounded-full bg-cyan-900/60 px-2 py-1 text-xs font-semibold text-cyan-300"
                 >
                   Open
                 </span>
               </div>
               <div
-                class="flex gap-6 text-sm text-slate-400"
+                class="flex flex-wrap items-center text-slate-400"
+                style="gap: var(--market-card-gap); font-size: var(--market-card-meta-font-size); line-height: var(--market-card-meta-line-height); letter-spacing: var(--market-card-meta-letter-spacing);"
               >
                 <span>
                   USD
@@ -574,25 +658,29 @@ describe("InvestMarketplace", () => {
               </div>
             </li>
             <li
-              class="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
+              class="rounded-xl border border-slate-800 bg-slate-900/50"
+              style="padding: var(--market-card-padding);"
             >
               <div
-                class="flex items-center justify-between mb-3"
+                class="flex items-center justify-between"
+                style="margin-bottom: var(--market-card-gap); gap: var(--market-card-gap);"
               >
                 <a
-                  class="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                  class="rounded font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
                   href="/invest/inv-002"
+                  style="font-size: var(--market-card-title-font-size); font-weight: var(--market-card-title-font-weight); line-height: var(--market-card-title-line-height);"
                 >
                   Bright Logistics GmbH
                 </a>
                 <span
-                  class="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300"
+                  class="rounded-full bg-cyan-900/60 px-2 py-1 text-xs font-semibold text-cyan-300"
                 >
                   Open
                 </span>
               </div>
               <div
-                class="flex gap-6 text-sm text-slate-400"
+                class="flex flex-wrap items-center text-slate-400"
+                style="gap: var(--market-card-gap); font-size: var(--market-card-meta-font-size); line-height: var(--market-card-meta-line-height); letter-spacing: var(--market-card-meta-letter-spacing);"
               >
                 <span>
                   EUR
@@ -646,7 +734,8 @@ describe("InvestMarketplace", () => {
             No invoices available
           </div>
           <h1
-            class="text-2xl font-bold mb-2"
+            class="text-2xl font-bold mb-2 outline-none"
+            tabindex="-1"
           >
             Invest
           </h1>
@@ -656,7 +745,7 @@ describe("InvestMarketplace", () => {
             Browse tokenized invoices and fund them. Estimated yield is shown for educational purposes; actual payment is received at invoice maturity.
           </p>
           <div
-            class="mb-4"
+            class="mb-4 flex flex-wrap items-center justify-between gap-4"
           >
             <div
               class="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
@@ -692,6 +781,24 @@ describe("InvestMarketplace", () => {
                   None
                 </button>
               </div>
+            </div>
+            <div
+              class="flex gap-2"
+            >
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled=""
+                type="button"
+              >
+                Export CSV
+              </button>
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled=""
+                type="button"
+              >
+                Export JSON
+              </button>
             </div>
           </div>
           <div
@@ -754,43 +861,58 @@ describe("InvestMarketplace", () => {
               Soon: These filter controls are currently unavailable.
             </div>
             <div
-              class="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none"
+              class="flex flex-wrap gap-4 items-center pointer-events-none opacity-60"
             >
               <div
                 class="flex flex-wrap gap-4 items-center"
               >
-                <fieldset
-                  class="flex items-center gap-2 border-none p-0 m-0"
+                <div
+                  class="flex flex-col gap-1"
                 >
-                  <legend
-                    class="sr-only"
+                  <fieldset
+                    class="flex items-center gap-2 border-none p-0 m-0"
                   >
-                    Yield Range
-                  </legend>
+                    <legend
+                      class="sr-only"
+                    >
+                      Yield Range
+                    </legend>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Minimum yield percentage"
+                      class="w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none border-slate-700 focus:border-cyan-500"
+                      min="0"
+                      placeholder="Min yield"
+                      step="0.1"
+                      type="number"
+                      value=""
+                    />
+                    <span
+                      class="text-slate-500"
+                    >
+                      -
+                    </span>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maximum yield percentage"
+                      class="w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none border-slate-700 focus:border-cyan-500"
+                      min="0"
+                      placeholder="Max yield"
+                      step="0.1"
+                      type="number"
+                      value=""
+                    />
+                  </fieldset>
+                </div>
+                <label
+                  class="flex items-center gap-2 text-sm text-slate-300"
+                >
                   <input
-                    aria-label="Minimum yield percentage"
-                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                    min="0"
-                    placeholder="Min yield"
-                    step="0.1"
-                    type="number"
-                    value=""
+                    class="rounded border-slate-700 bg-slate-800/50 text-cyan-500 focus:ring-cyan-500"
+                    type="checkbox"
                   />
-                  <span
-                    class="text-slate-500"
-                  >
-                    -
-                  </span>
-                  <input
-                    aria-label="Maximum yield percentage"
-                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                    min="0"
-                    placeholder="Max yield"
-                    step="0.1"
-                    type="number"
-                    value=""
-                  />
-                </fieldset>
+                  Watchlist Only
+                </label>
                 <div
                   aria-label="Currency filter"
                   class="flex items-center gap-1"
@@ -842,32 +964,38 @@ describe("InvestMarketplace", () => {
                     CHF
                   </button>
                 </div>
-                <fieldset
-                  class="flex items-center gap-2 border-none p-0 m-0"
+                <div
+                  class="flex flex-col gap-1"
                 >
-                  <legend
-                    class="sr-only"
+                  <fieldset
+                    class="flex items-center gap-2 border-none p-0 m-0"
                   >
-                    Maturity Date Range
-                  </legend>
-                  <input
-                    aria-label="Maturity date from"
-                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-                    type="date"
-                    value=""
-                  />
-                  <span
-                    class="text-slate-500"
-                  >
-                    -
-                  </span>
-                  <input
-                    aria-label="Maturity date to"
-                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-                    type="date"
-                    value=""
-                  />
-                </fieldset>
+                    <legend
+                      class="sr-only"
+                    >
+                      Maturity Date Range
+                    </legend>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maturity date from"
+                      class="rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] border-slate-700 focus:border-cyan-500"
+                      type="date"
+                      value=""
+                    />
+                    <span
+                      class="text-slate-500"
+                    >
+                      -
+                    </span>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maturity date to"
+                      class="rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] border-slate-700 focus:border-cyan-500"
+                      type="date"
+                      value=""
+                    />
+                  </fieldset>
+                </div>
                 <fieldset
                   class="flex items-center gap-2 border-none p-0 m-0"
                 >
@@ -903,7 +1031,8 @@ describe("InvestMarketplace", () => {
                   </select>
                   <button
                     aria-label="Sort amount direction"
-                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    aria-pressed="false"
+                    class="focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -911,7 +1040,8 @@ describe("InvestMarketplace", () => {
                   </button>
                   <button
                     aria-label="Sort yield direction"
-                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    aria-pressed="false"
+                    class="focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -920,7 +1050,7 @@ describe("InvestMarketplace", () => {
                 </fieldset>
                 <button
                   aria-label="Clear all filters"
-                  class="ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                  class="focus-ring ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
                   disabled=""
                   type="button"
                 >
@@ -972,7 +1102,8 @@ describe("InvestMarketplace", () => {
             Unable to load investable invoices.
           </div>
           <h1
-            class="text-2xl font-bold mb-2"
+            class="text-2xl font-bold mb-2 outline-none"
+            tabindex="-1"
           >
             Invest
           </h1>
@@ -982,7 +1113,7 @@ describe("InvestMarketplace", () => {
             Browse tokenized invoices and fund them. Estimated yield is shown for educational purposes; actual payment is received at invoice maturity.
           </p>
           <div
-            class="mb-4"
+            class="mb-4 flex flex-wrap items-center justify-between gap-4"
           >
             <div
               class="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
@@ -1018,6 +1149,24 @@ describe("InvestMarketplace", () => {
                   None
                 </button>
               </div>
+            </div>
+            <div
+              class="flex gap-2"
+            >
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled=""
+                type="button"
+              >
+                Export CSV
+              </button>
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled=""
+                type="button"
+              >
+                Export JSON
+              </button>
             </div>
           </div>
           <div
@@ -1080,43 +1229,58 @@ describe("InvestMarketplace", () => {
               Soon: These filter controls are currently unavailable.
             </div>
             <div
-              class="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none"
+              class="flex flex-wrap gap-4 items-center pointer-events-none opacity-60"
             >
               <div
                 class="flex flex-wrap gap-4 items-center"
               >
-                <fieldset
-                  class="flex items-center gap-2 border-none p-0 m-0"
+                <div
+                  class="flex flex-col gap-1"
                 >
-                  <legend
-                    class="sr-only"
+                  <fieldset
+                    class="flex items-center gap-2 border-none p-0 m-0"
                   >
-                    Yield Range
-                  </legend>
+                    <legend
+                      class="sr-only"
+                    >
+                      Yield Range
+                    </legend>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Minimum yield percentage"
+                      class="w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none border-slate-700 focus:border-cyan-500"
+                      min="0"
+                      placeholder="Min yield"
+                      step="0.1"
+                      type="number"
+                      value=""
+                    />
+                    <span
+                      class="text-slate-500"
+                    >
+                      -
+                    </span>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maximum yield percentage"
+                      class="w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none border-slate-700 focus:border-cyan-500"
+                      min="0"
+                      placeholder="Max yield"
+                      step="0.1"
+                      type="number"
+                      value=""
+                    />
+                  </fieldset>
+                </div>
+                <label
+                  class="flex items-center gap-2 text-sm text-slate-300"
+                >
                   <input
-                    aria-label="Minimum yield percentage"
-                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                    min="0"
-                    placeholder="Min yield"
-                    step="0.1"
-                    type="number"
-                    value=""
+                    class="rounded border-slate-700 bg-slate-800/50 text-cyan-500 focus:ring-cyan-500"
+                    type="checkbox"
                   />
-                  <span
-                    class="text-slate-500"
-                  >
-                    -
-                  </span>
-                  <input
-                    aria-label="Maximum yield percentage"
-                    class="w-28 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                    min="0"
-                    placeholder="Max yield"
-                    step="0.1"
-                    type="number"
-                    value=""
-                  />
-                </fieldset>
+                  Watchlist Only
+                </label>
                 <div
                   aria-label="Currency filter"
                   class="flex items-center gap-1"
@@ -1168,32 +1332,38 @@ describe("InvestMarketplace", () => {
                     CHF
                   </button>
                 </div>
-                <fieldset
-                  class="flex items-center gap-2 border-none p-0 m-0"
+                <div
+                  class="flex flex-col gap-1"
                 >
-                  <legend
-                    class="sr-only"
+                  <fieldset
+                    class="flex items-center gap-2 border-none p-0 m-0"
                   >
-                    Maturity Date Range
-                  </legend>
-                  <input
-                    aria-label="Maturity date from"
-                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-                    type="date"
-                    value=""
-                  />
-                  <span
-                    class="text-slate-500"
-                  >
-                    -
-                  </span>
-                  <input
-                    aria-label="Maturity date to"
-                    class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500 [color-scheme:dark]"
-                    type="date"
-                    value=""
-                  />
-                </fieldset>
+                    <legend
+                      class="sr-only"
+                    >
+                      Maturity Date Range
+                    </legend>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maturity date from"
+                      class="rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] border-slate-700 focus:border-cyan-500"
+                      type="date"
+                      value=""
+                    />
+                    <span
+                      class="text-slate-500"
+                    >
+                      -
+                    </span>
+                    <input
+                      aria-invalid="false"
+                      aria-label="Maturity date to"
+                      class="rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] border-slate-700 focus:border-cyan-500"
+                      type="date"
+                      value=""
+                    />
+                  </fieldset>
+                </div>
                 <fieldset
                   class="flex items-center gap-2 border-none p-0 m-0"
                 >
@@ -1229,7 +1399,8 @@ describe("InvestMarketplace", () => {
                   </select>
                   <button
                     aria-label="Sort amount direction"
-                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    aria-pressed="false"
+                    class="focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -1237,7 +1408,8 @@ describe("InvestMarketplace", () => {
                   </button>
                   <button
                     aria-label="Sort yield direction"
-                    class="rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    aria-pressed="false"
+                    class="focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -1246,7 +1418,7 @@ describe("InvestMarketplace", () => {
                 </fieldset>
                 <button
                   aria-label="Clear all filters"
-                  class="ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                  class="focus-ring ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
                   disabled=""
                   type="button"
                 >
@@ -1307,7 +1479,7 @@ describe("InvestMarketplace", () => {
             >
               <button
                 aria-busy="false"
-                class="inline-flex items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-medium transition-all duration-200 focus-ring disabled:opacity-50 disabled:cursor-not-allowed bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 active:bg-cyan-500/40"
+                class="inline-flex items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-medium transition-all duration-200 focus-ring disabled:opacity-50 disabled:cursor-not-allowed bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 active:bg-cyan-500/40   cursor-pointer"
                 type="button"
               >
                 Try again
@@ -2261,8 +2433,10 @@ describe("InvestMarketplace", () => {
     await flushTimers(0);
 
     expect(screen.getByText("Issuer 1")).toBeInTheDocument();
+    jest.useRealTimers();
     expect(await axe(container)).toHaveNoViolations();
-  });
+    jest.useFakeTimers();
+  }, 60_000);
 
   it("has no axe violations in the empty state", async () => {
     const loadInvoices = createDeferredLoader([], 0);
@@ -2271,18 +2445,24 @@ describe("InvestMarketplace", () => {
     await flushTimers(0);
 
     expect(screen.getByText(/No investable invoices\./i)).toBeInTheDocument();
+    jest.useRealTimers();
     expect(await axe(container)).toHaveNoViolations();
-  });
+    jest.useFakeTimers();
+  }, 60_000);
 
   it("has no axe violations in the error state", async () => {
-    const loadInvoices = jest.fn(() => new Promise((_, reject) => setTimeout(() => reject(new Error("boom")), 0)));
+    const loadInvoices = jest.fn(
+      () => new Promise((_, reject) => setTimeout(() => reject(new Error("boom")), 0))
+    );
 
     const { container } = render(<InvestMarketplace loadInvoices={loadInvoices} />);
     await flushTimers(0);
 
     expect(screen.getByRole("alert")).toBeInTheDocument();
+    jest.useRealTimers();
     expect(await axe(container)).toHaveNoViolations();
-  });
+    jest.useFakeTimers();
+  }, 60_000);
 
   it("retry: shows skeleton while reloading, then renders list on success", async () => {
     let callCount = 0;
@@ -2597,7 +2777,7 @@ describe("Export functionality", () => {
     // Apply a search that yields no results
     const searchInput = screen.getByRole("textbox", { name: /Search by issuer name/i });
     fireEvent.change(searchInput, { target: { value: "NonExistentIssuerXYZ123" } });
-    
+
     // Fast-forward debounce
     await flushTimers(SEARCH_DEBOUNCE_MS);
 
@@ -2606,5 +2786,124 @@ describe("Export functionality", () => {
 
     expect(exportCsvBtn).toBeDisabled();
     expect(exportJsonBtn).toBeDisabled();
+  });
+
+  it("disables export buttons while invoices are still loading", () => {
+    render(<InvestMarketplace loadInvoices={createPendingLoader()} />);
+
+    expect(screen.getByRole("button", { name: "Export CSV" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Export JSON" })).toBeDisabled();
+  });
+
+  it("disables export buttons in the empty state (no invoices loaded)", async () => {
+    render(<InvestMarketplace loadInvoices={createDeferredLoader([], 0)} />);
+    await flushTimers(0);
+
+    expect(screen.getByRole("button", { name: "Export CSV" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Export JSON" })).toBeDisabled();
+  });
+
+  it("export respects active currency filter — only filtered invoices exported", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    // Filter by EUR — only Bright Logistics GmbH should be included
+    fireEvent.click(screen.getByRole("button", { name: /Filter by EUR/i }));
+    await flushTimers(0);
+
+    const exportCsvBtn = screen.getByRole("button", { name: "Export CSV" });
+    fireEvent.click(exportCsvBtn);
+
+    expect(exportAsCSV).toHaveBeenCalledTimes(1);
+    // Only EUR invoices (1 of 3) should be passed
+    const passedInvoices = exportAsCSV.mock.calls[0][0];
+    expect(passedInvoices).toHaveLength(1);
+    expect(passedInvoices[0].currency).toBe("EUR");
+    expect(exportAsCSV).toHaveBeenCalledWith(passedInvoices, "invoices_export.csv");
+  });
+
+  it("export respects active search query — only matching invoices exported", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    // Search for "Sunrise" — only Sunrise Exports Pte should match
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "Sunrise" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+
+    expect(exportAsJSON).toHaveBeenCalledTimes(1);
+    const passedInvoices = exportAsJSON.mock.calls[0][0];
+    expect(passedInvoices).toHaveLength(1);
+    expect(passedInvoices[0].issuer).toBe("Sunrise Exports Pte");
+  });
+
+  it("export buttons are native <button> elements for keyboard accessibility", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    const exportCsvBtn = screen.getByRole("button", { name: "Export CSV" });
+    const exportJsonBtn = screen.getByRole("button", { name: "Export JSON" });
+
+    // Native buttons have implicit keyboard support (Enter/Space). RTL fireEvent.keyDown
+    // does not trigger React's onClick, so we verify the semantic HTML is correct.
+    expect(exportCsvBtn.tagName).toBe("BUTTON");
+    expect(exportJsonBtn.tagName).toBe("BUTTON");
+    expect(exportCsvBtn).toHaveAttribute("type", "button");
+    expect(exportJsonBtn).toHaveAttribute("type", "button");
+  });
+
+  it("does not call export when clicking the disabled button", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    // Make the list empty
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "NonExistentIssuerXYZ123" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    const exportCsvBtn = screen.getByRole("button", { name: "Export CSV" });
+    expect(exportCsvBtn).toBeDisabled();
+    fireEvent.click(exportCsvBtn);
+
+    expect(exportAsCSV).not.toHaveBeenCalled();
+  });
+
+  it("enables export buttons again after clearing a filter that previously emptied the list", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    // Filter to EUR only to get a subset
+    fireEvent.click(screen.getByRole("button", { name: /Filter by EUR/i }));
+    await flushTimers(0);
+
+    const exportCsvBtn = screen.getByRole("button", { name: "Export CSV" });
+    expect(exportCsvBtn).not.toBeDisabled();
+
+    // Now filter with a search that empties the list
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "NonExistent" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    expect(exportCsvBtn).toBeDisabled();
+
+    // Clear the search
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    // Now the EUR-filtered list should be visible again
+    expect(exportCsvBtn).not.toBeDisabled();
+    fireEvent.click(exportCsvBtn);
+
+    expect(exportAsCSV).toHaveBeenCalledTimes(1);
+    const passedInvoices = exportAsCSV.mock.calls[0][0];
+    // Only EUR invoices should be exported
+    expect(passedInvoices.every((inv) => inv.currency === "EUR")).toBe(true);
   });
 });

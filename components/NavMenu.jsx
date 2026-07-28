@@ -237,6 +237,7 @@ export default function NavMenu() {
   /**
    * Brand label depends only on the current pathname, not on open/visible.
    */
+  const isHomePage = pathname === "/" || pathname === "/home";
   const brandLabel = useMemo(() => {
     return isHomePage ? "LiquiFact" : "← LiquiFact";
   }, [isHomePage]);

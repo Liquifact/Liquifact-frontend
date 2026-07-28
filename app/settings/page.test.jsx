@@ -69,6 +69,22 @@ jest.mock("@/components/NavMenu", () => {
   return { __esModule: true, default: MockNavMenu };
 });
 
+const mockToastSuccess = jest.fn();
+const mockToastError = jest.fn();
+jest.mock("@/components/ToastProvider", () => ({
+  useToast: () => ({ success: mockToastSuccess, error: mockToastError }),
+}));
+
+jest.mock("@/components/CopyButton", () => {
+  const actual = jest.requireActual("@/components/CopyButton");
+  return {
+    __esModule: true,
+    default: actual.default,
+    copyToClipboard: jest.fn(),
+  };
+});
+import { copyToClipboard } from "@/components/CopyButton";
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function createDeferredLoader(rows, delayMs = 0) {
@@ -923,6 +939,94 @@ describe("SettingsPage – a11y live region semantics", () => {
   });
 });
 
+describe("SettingsPage – inline editing", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  });
+
+  it("renders Edit button only for wallet category rows", async () => {
+    const rows = [
+      { id: "r1", category: "wallet", label: "Wallet Setting", type: "text", value: "A", description: "Desc A" },
+      { id: "r2", category: "display", label: "Display Setting", type: "text", value: "B", description: "Desc B" },
+    ];
+    render(<SettingsPage loadSettings={createDeferredLoader(rows, 0)} />);
+    await flushTimers(0);
+
+    const editButtons = screen.queryAllByRole("button", { name: /^Edit/i });
+    expect(editButtons).toHaveLength(1);
+    expect(editButtons[0]).toHaveAttribute("aria-label", "Edit Wallet Setting");
+  });
+
+  it("can edit, save and announce the result", async () => {
+    const rows = [
+      { id: "r1", category: "wallet", label: "Wallet Setting", type: "text", value: "A", description: "Desc A" },
+    ];
+    render(<SettingsPage loadSettings={createDeferredLoader(rows, 0)} />);
+    await flushTimers(0);
+
+    // Enter edit mode
+    fireEvent.click(screen.getByRole("button", { name: "Edit Wallet Setting" }));
+
+    // Verify input is shown
+    const input = screen.getByRole("textbox", { name: "Edit Wallet Setting" });
+    expect(input).toHaveValue("A");
+
+    // Change value and save via Enter
+    fireEvent.change(input, { target: { value: "B" } });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+    // Verify view mode is restored with new value
+    expect(screen.queryByRole("textbox", { name: "Edit Wallet Setting" })).not.toBeInTheDocument();
+    // The value span is now "B"
+    expect(screen.getByText("B")).toBeInTheDocument();
+  });
+
+  it("can cancel editing with Escape", async () => {
+    const rows = [
+      { id: "r1", category: "wallet", label: "Wallet Setting", type: "text", value: "A", description: "Desc A" },
+    ];
+    render(<SettingsPage loadSettings={createDeferredLoader(rows, 0)} />);
+    await flushTimers(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit Wallet Setting" }));
+    const input = screen.getByRole("textbox", { name: "Edit Wallet Setting" });
+    fireEvent.change(input, { target: { value: "B" } });
+    
+    // Cancel
+    fireEvent.keyDown(input, { key: "Escape", code: "Escape" });
+
+    expect(screen.queryByRole("textbox", { name: "Edit Wallet Setting" })).not.toBeInTheDocument();
+    expect(screen.getByText("A")).toBeInTheDocument();
+  });
+
+  it("validates empty value before saving", async () => {
+    const rows = [
+      { id: "r1", category: "wallet", label: "Wallet Setting", type: "text", value: "A", description: "Desc A" },
+    ];
+    render(<SettingsPage loadSettings={createDeferredLoader(rows, 0)} />);
+    await flushTimers(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit Wallet Setting" }));
+    const input = screen.getByRole("textbox", { name: "Edit Wallet Setting" });
+    fireEvent.change(input, { target: { value: "   " } });
+    
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    // Still in edit mode
+    expect(screen.getByRole("textbox", { name: "Edit Wallet Setting" })).toBeInTheDocument();
+    
+    // Error is shown
+    expect(screen.getByText("Value cannot be empty")).toBeInTheDocument();
+  });
+});
+
 describe("SettingsRoute default export", () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -958,3 +1062,58 @@ describe("SettingsRoute default export", () => {
     expect(getRenderedRows()).toHaveLength(rows.length);
   });
 });
+
+describe("SettingsPage - Copy identifier affordance", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  });
+
+  it("copies the row identifier and surfaces a success toast", async () => {
+    copyToClipboard.mockResolvedValueOnce();
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
+    await flushTimers(0);
+
+    const copyBtn = screen.getByRole("button", { name: `Copy ${copy.settings.copyIdentifier}` });
+    
+    await act(async () => {
+      fireEvent.click(copyBtn);
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
+    expect(copyToClipboard).toHaveBeenCalledWith("row-001");
+    expect(mockToastSuccess).toHaveBeenCalledWith(
+      copy.settings.toastCopySuccessMsg,
+      copy.settings.toastCopySuccessTitle
+    );
+  });
+
+  it("surfaces an error toast when copying fails (fallback)", async () => {
+    copyToClipboard.mockRejectedValueOnce(new Error("fallback"));
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(1), 0)} />);
+    await flushTimers(0);
+
+    const copyBtn = screen.getByRole("button", { name: `Copy ${copy.settings.copyIdentifier}` });
+    
+    await act(async () => {
+      fireEvent.click(copyBtn);
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
+    expect(copyToClipboard).toHaveBeenCalledWith("row-001");
+    expect(mockToastError).toHaveBeenCalledWith(
+      copy.settings.toastCopyErrorMsg,
+      copy.settings.toastCopyErrorTitle
+    );
+  });
+});
+
