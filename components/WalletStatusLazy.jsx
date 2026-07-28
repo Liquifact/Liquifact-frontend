@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import WalletErrorBoundary from "./WalletErrorBoundary";
 
 /**
  * Static placeholder that mirrors WalletStatus dimensions.
@@ -49,9 +50,26 @@ function WalletStatusPlaceholder() {
  * the same outer box model as WalletStatus, no cumulative layout shift
  * occurs when the real component hydrates.
  */
-const WalletStatusLazy = dynamic(() => import("./WalletStatus"), {
+const LazyWalletStatus = dynamic(() => import("./WalletStatus"), {
   ssr: false,
   loading: WalletStatusPlaceholder,
 });
 
-export default WalletStatusLazy;
+/**
+ * Guarded, lazy-loaded wallet UI — the export every caller (NavMenu desktop
+ * and mobile slots) uses.
+ *
+ * The boundary lives here rather than at each call site so all placements are
+ * protected automatically: an unexpected render error inside WalletStatus (or
+ * inside the lazily-loaded chunk) now degrades to an accessible fallback with
+ * a Retry action instead of blanking the whole page.
+ */
+export default function WalletStatusLazy() {
+  return (
+    <WalletErrorBoundary>
+      <LazyWalletStatus />
+    </WalletErrorBoundary>
+  );
+}
+
+export { LazyWalletStatus, WalletStatusPlaceholder };

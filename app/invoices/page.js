@@ -3,6 +3,7 @@ import { useState } from "react";
 import { copy } from "../copy/en";
 import NavMenu from "../../components/NavMenu";
 import UploadZone from "../../components/UploadZone";
+import UploadErrorBoundary from "../../components/UploadErrorBoundary";
 import InvoiceList from "../../components/InvoiceList";
 
 export default function InvoicesPage() {
@@ -28,7 +29,9 @@ export default function InvoicesPage() {
 
         <div className="grid gap-10 lg:grid-cols-3">
           <div className="lg:col-span-1">
-            <UploadZone onUploadSuccess={handleUploadSuccess} />
+            <UploadErrorBoundary>
+              <UploadZone onUploadSuccess={handleUploadSuccess} />
+            </UploadErrorBoundary>
           </div>
           <div className="lg:col-span-2">
             <InvoiceList optimisticInvoices={optimisticInvoices} />

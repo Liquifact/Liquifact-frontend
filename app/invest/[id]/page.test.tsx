@@ -33,6 +33,7 @@
 
 import React from "react";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { axe, toHaveNoViolations } from "jest-axe";
 
@@ -62,6 +63,18 @@ jest.mock("@/components/WalletContext", () => ({
   useWallet: jest.fn(() => ({ state: "disconnected", connect: jest.fn() })),
 }));
 
+// Mock useOptimisticFund so FundActions tests are unit-level.
+// Default return value is set in the outer beforeEach below.
+jest.mock("@/lib/hooks/useOptimisticFund", () => ({
+  FUNDING_STATES: {
+    IDLE: "idle",
+    PENDING: "pending",
+    CONFIRMED: "confirmed",
+    ROLLED_BACK: "rolled_back",
+  },
+  useOptimisticFund: jest.fn(),
+}));
+
 jest.mock(
   "@/components/WalletStatus",
   () =>
@@ -77,6 +90,16 @@ jest.mock(
       return <nav data-testid="nav-menu">NavMenu</nav>;
     }
 );
+
+jest.mock("@/app/invest/MarketplaceContext", () => ({
+  useMarketplace: () => ({
+    invoices: [],
+    setInvoices: jest.fn(),
+    pendingIds: new Set(),
+    fundInvoice: jest.fn().mockResolvedValue(true),
+  }),
+  MarketplaceProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 
 jest.mock("@/components/ErrorBanner", () => ({
   __esModule: true,
@@ -130,20 +153,72 @@ jest.mock("../lib", () => ({
 import { notFound } from "next/navigation";
 import { getInvoiceById } from "../lib";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
+import { useOptimisticFund, FUNDING_STATES } from "@/lib/hooks/useOptimisticFund";
 import InvoiceDetailPage from "./page";
 import FundActions, { copyInvoiceUrl, copyToClipboardFallback } from "./FundActions";
+import InvoiceDetail from "@/components/InvoiceDetail";
 import { copy } from "@/app/copy/en";
 
 const mockGetInvoiceById = getInvoiceById as jest.MockedFunction<typeof getInvoiceById>;
 const mockUseWallet = useWallet as jest.MockedFunction<typeof useWallet>;
+const mockUseOptimisticFund = useOptimisticFund as jest.MockedFunction<typeof useOptimisticFund>;
 
-// ── Fixture ───────────────────────────────────────────────────────────────────
-
+/** Canonical fixture used by the server-shell tests (Acme / inv-001). */
 const MOCK_INVOICE = {
   id: "inv-001",
   issuer: "Acme Supplies Ltd",
   amount: "12,500",
   amountValue: 12500,
+  currency: "USD",
+  dueDate: "2026-06-15",
+  yield: "8.2%",
+  yieldValue: 8.2,
+  status: "Open",
+};
+
+// Default hook return for "idle, Open" scenario — used by most FundActions tests
+function makeOptimisticHook(overrides: Partial<ReturnType<typeof useOptimisticFund>> = {}) {
+  return {
+    optimisticStatus: "Open",
+    fundingState: FUNDING_STATES.IDLE,
+    isFunding: false,
+    submitFund: jest.fn(),
+    ...overrides,
+  };
+}
+
+/**
+ * CopyButton is mocked here to avoid pulling in ToastProvider for the
+ * print-stylesheet tests.  Dedicated CopyButton integration tests live in
+ * the "InvoiceDetail — copy button" describe block below and use a real
+ * CopyButton + ToastProvider.
+ */
+const mockCopyButtonOnClick = jest.fn();
+jest.mock("@/components/CopyButton", () => {
+  return function CopyButtonMock({
+    text,
+    label,
+  }: {
+    text: string;
+    label: string;
+  }) {
+    return (
+      <button
+        type="button"
+        data-testid="copy-button-mock"
+        aria-label={`Copy ${label}`}
+        onClick={mockCopyButtonOnClick}
+      >
+        Copy {label}
+      </button>
+    );
+  };
+});
+
+const mockInvoice = {
+  id: "invoice-123",
+  issuer: "Test Issuer LLC",
+  amount: "5,000",
   currency: "USD",
   dueDate: "2026-06-15",
   yield: "8.2%",
@@ -157,6 +232,9 @@ beforeEach(() => {
   mockUseWallet.mockReturnValue({ state: "disconnected", connect: jest.fn() } as ReturnType<
     typeof useWallet
   >);
+  // Provide a sensible default for the optimistic hook so all existing
+  // FundActions tests get a working hook instance without extra setup.
+  mockUseOptimisticFund.mockReturnValue(makeOptimisticHook());
   // The jsdom origin (http://localhost:3000) comes from the @jest-environment-options
   // docblock above — modern jsdom no longer allows deleting/reassigning window.location.
 });
@@ -220,7 +298,11 @@ describe("InvoiceDetailPage (Server Component shell)", () => {
     it("renders the StatusPill for the invoice status", async () => {
       await renderServerPage({ id: "inv-001" });
 
-      expect(screen.getByRole("status")).toHaveAttribute("data-status", "Open");
+      // FundActions also renders a role="status" live region (issue #727),
+      // so the StatusPill is located by its data-status attribute.
+      const statusRegions = screen.getAllByRole("status");
+      const statusPill = statusRegions.find((el) => el.hasAttribute("data-status"));
+      expect(statusPill).toHaveAttribute("data-status", "Open");
     });
 
     it("injects a JSON-LD script tag", async () => {
@@ -395,6 +477,9 @@ describe("FundActions", () => {
     });
 
     it("is disabled when invoice status is not Open", () => {
+      mockUseOptimisticFund.mockReturnValue(
+        makeOptimisticHook({ optimisticStatus: "Funded" })
+      );
       render(<FundActions id="inv-001" status="Funded" />);
       expect(
         screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel })
@@ -534,16 +619,144 @@ describe("FundActions", () => {
   });
 
   describe("accessibility", () => {
-    it("passes axe accessibility checks", async () => {
+    it("FundActions passes axe accessibility checks", async () => {
       const { container } = render(<FundActions {...defaultProps} />);
       const results = await axe(container);
       expect(results).toHaveNoViolations();
+    });
+
+    it("every action button has an accessible name", () => {
+      render(<FundActions {...defaultProps} />);
+
+      const fundBtn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      expect(fundBtn).toHaveAttribute("aria-label", copy.invest.detail.fundButtonLabel);
+
+      const copyBtn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+      expect(copyBtn).toHaveAttribute("aria-label", copy.invest.detail.copyLinkButtonLabel);
+
+      const printBtn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+      expect(printBtn).toHaveAttribute("aria-label", copy.invest.detail.printButtonLabel);
     });
 
     it("action row and disclaimer carry no-print class", () => {
       const { container } = render(<FundActions {...defaultProps} />);
       const noPrintEls = container.querySelectorAll(".no-print");
       expect(noPrintEls.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe("duplicate submission protection", () => {
+    it("blocks rapid double-click on fund amount submit", async () => {
+      const user = userEvent.setup();
+
+      // Deferred promise so the guard stays active during both click dispatch
+      let resolveFund: (value: unknown) => void;
+      const fundPromise = new Promise((resolve) => {
+        resolveFund = resolve;
+      });
+      const mockFund = jest.fn().mockReturnValue(fundPromise);
+
+      jest.spyOn(require("@/app/invest/MarketplaceContext"), "useMarketplace").mockReturnValue({
+        invoices: [],
+        setInvoices: jest.fn(),
+        pendingIds: new Set(),
+        fundInvoice: mockFund,
+      });
+
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={1000} currency="USD" yieldValue={8.2} />
+      );
+
+      const amountInput = screen.getByRole("spinbutton", { name: /funding amount/i });
+      await user.type(amountInput, "500");
+
+      const submitBtn = screen.getByRole("button", { name: /fund this invoice/i });
+
+      // Dispatch both clicks without awaiting — second should be guarded while first in-flight
+      const firstClick = user.click(submitBtn);
+      const secondClick = user.click(submitBtn);
+
+      // Only the first call should have gone through
+      expect(mockFund).toHaveBeenCalledTimes(1);
+
+      resolveFund!(true);
+      await firstClick;
+      await secondClick;
+    });
+
+    it("allows funding different amounts as sequential intents", async () => {
+      const user = userEvent.setup();
+      const mockFund = jest.fn().mockResolvedValue(true);
+
+      jest.spyOn(require("@/app/invest/MarketplaceContext"), "useMarketplace").mockReturnValue({
+        invoices: [],
+        setInvoices: jest.fn(),
+        pendingIds: new Set(),
+        fundInvoice: mockFund,
+      });
+
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={1000} currency="USD" yieldValue={8.2} />
+      );
+
+      // First amount — $500
+      const input = screen.getByRole("spinbutton", { name: /funding amount/i });
+      await user.type(input, "500");
+      await user.click(screen.getByRole("button", { name: /fund this invoice/i }));
+
+      await waitFor(() => {
+        expect(mockFund).toHaveBeenCalledTimes(1);
+      });
+
+      // Different amount — $700 (sequential, after first completes)
+      await user.clear(input);
+      await user.type(input, "700");
+      await user.click(screen.getByRole("button", { name: /fund this invoice/i }));
+
+      await waitFor(() => {
+        expect(mockFund).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it("resets submission guard after funding completes", async () => {
+      const user = userEvent.setup();
+      const mockFund = jest.fn().mockResolvedValue(true);
+
+      jest.spyOn(require("@/app/invest/MarketplaceContext"), "useMarketplace").mockReturnValue({
+        invoices: [],
+        setInvoices: jest.fn(),
+        pendingIds: new Set(),
+        fundInvoice: mockFund,
+      });
+
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={1000} currency="USD" yieldValue={8.2} />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: /funding amount/i });
+      await user.type(input, "500");
+      const submitBtn = screen.getByRole("button", { name: /fund this invoice/i });
+
+      // First fund
+      await user.click(submitBtn);
+      await waitFor(() => {
+        expect(mockFund).toHaveBeenCalledTimes(1);
+      });
+
+      // Second fund — same amount, after first completed — should be allowed
+      await user.click(submitBtn);
+      await waitFor(() => {
+        expect(mockFund).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it("cleans up submission guard on unmount", () => {
+      const { unmount } = render(
+        <FundActions id="inv-001" status="Open" maxAmount={1000} currency="USD" yieldValue={8.2} />
+      );
+
+      // Unmount — should not throw
+      expect(() => unmount()).not.toThrow();
     });
   });
 });
@@ -640,6 +853,7 @@ describe("copy.invest.detail — key presence and non-empty", () => {
     "copyErrorTitle",
     "loadErrorMsg",
     "loadErrorTitle",
+    "actionGroupLabel",
   ] as const;
 
   it("exports copy.invest.detail as an object", () => {
@@ -672,5 +886,356 @@ describe("print stylesheet classes", () => {
       el.textContent?.includes("Yield references")
     );
     expect(disclaimer).toBeInTheDocument();
+  });
+});
+
+// =============================================================================
+// 6. Keyboard operability
+// =============================================================================
+
+describe("keyboard operability", () => {
+  describe("FundActions buttons — keyboard activation", () => {
+    it("Fund button activates on Enter", async () => {
+      const user = userEvent.setup();
+      const connect = jest.fn();
+      mockUseWallet.mockReturnValue({
+        state: WALLET_STATES.DISCONNECTED,
+        connect,
+      } as ReturnType<typeof useWallet>);
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      btn.focus();
+      await user.keyboard("{Enter}");
+      expect(connect).toHaveBeenCalledTimes(1);
+    });
+
+    it("Fund button activates on Space", async () => {
+      const user = userEvent.setup();
+      const connect = jest.fn();
+      mockUseWallet.mockReturnValue({
+        state: WALLET_STATES.DISCONNECTED,
+        connect,
+      } as ReturnType<typeof useWallet>);
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      btn.focus();
+      await user.keyboard(" ");
+      expect(connect).toHaveBeenCalledTimes(1);
+    });
+
+    it("Copy link button activates on Enter", async () => {
+      const user = userEvent.setup();
+      const writeText = jest.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        get: () => ({ writeText }),
+      });
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+      btn.focus();
+      await user.keyboard("{Enter}");
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/invest/inv-001"));
+      });
+    });
+
+    it("Copy link button activates on Space", async () => {
+      const user = userEvent.setup();
+      const writeText = jest.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        get: () => ({ writeText }),
+      });
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+      btn.focus();
+      await user.keyboard(" ");
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/invest/inv-001"));
+      });
+    });
+
+    it("Print button activates on Enter", async () => {
+      const user = userEvent.setup();
+      const printSpy = jest.spyOn(window, "print").mockImplementation(() => {});
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+      btn.focus();
+      await user.keyboard("{Enter}");
+      expect(printSpy).toHaveBeenCalledTimes(1);
+      printSpy.mockRestore();
+    });
+
+    it("Print button activates on Space", async () => {
+      const user = userEvent.setup();
+      const printSpy = jest.spyOn(window, "print").mockImplementation(() => {});
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+      btn.focus();
+      await user.keyboard(" ");
+      expect(printSpy).toHaveBeenCalledTimes(1);
+      printSpy.mockRestore();
+    });
+  });
+
+  describe("FundActions buttons — focus-visible class", () => {
+    it("Fund button has the focus-ring class", () => {
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      expect(btn.className).toContain("focus-ring");
+    });
+
+    it("Copy link button has the focus-ring class", () => {
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+      expect(btn.className).toContain("focus-ring");
+    });
+
+    it("Print button has the focus-ring class", () => {
+      render(<FundActions id="inv-001" status="Open" />);
+      const btn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+      expect(btn.className).toContain("focus-ring");
+    });
+  });
+
+  describe("FundActions — ARIA group semantics", () => {
+    it("action row has role='group'", () => {
+      const { container } = render(<FundActions id="inv-001" status="Open" />);
+      const group = container.querySelector('[role="group"]');
+      expect(group).toBeInTheDocument();
+    });
+
+    it("action row group has an aria-label", () => {
+      const { container } = render(<FundActions id="inv-001" status="Open" />);
+      const group = container.querySelector('[role="group"]');
+      expect(group).toHaveAttribute("aria-label", copy.invest.detail.actionGroupLabel);
+    });
+
+    it("group contains Fund, Copy, and Print buttons", () => {
+      const { container } = render(<FundActions id="inv-001" status="Open" />);
+      const group = container.querySelector('[role="group"]');
+      const buttons = group!.querySelectorAll("button");
+      expect(buttons).toHaveLength(3);
+    });
+  });
+
+  describe("FundActions — disabled button keyboard behavior", () => {
+    it("disabled Fund button is not focusable via Tab", async () => {
+      const user = userEvent.setup();
+      render(<FundActions id="inv-001" status="Funded" />);
+      const fundBtn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      expect(fundBtn).toBeDisabled();
+
+      // Tab through all focusable elements — disabled button should be skipped
+      await user.tab();
+      const activeEl = document.activeElement;
+      expect(activeEl).not.toBe(fundBtn);
+    });
+
+    it("disabled Copy link button is not focusable via Tab during copy", async () => {
+      const user = userEvent.setup();
+      const writeText = jest.fn().mockImplementation(
+        () => new Promise<void>((resolve) => setTimeout(resolve, 100))
+      );
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        get: () => ({ writeText }),
+      });
+
+      render(<FundActions id="inv-001" status="Open" />);
+      const copyBtn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+
+      // Focus and activate copy button via keyboard
+      copyBtn.focus();
+      await user.keyboard("{Enter}");
+
+      // Button should be disabled during async copy
+      await waitFor(() => {
+        expect(copyBtn).toBeDisabled();
+      });
+    });
+  });
+
+  describe("Tab order — FundActions focus sequence", () => {
+    it("tabs through Fund → Copy → Print in order", async () => {
+      const user = userEvent.setup();
+      render(<FundActions id="inv-001" status="Open" />);
+
+      const fundBtn = screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel });
+      const copyBtn = screen.getByRole("button", { name: copy.invest.detail.copyLinkButtonLabel });
+      const printBtn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+
+      // Focus the Fund button first (simulating Tab from previous element)
+      fundBtn.focus();
+      expect(fundBtn).toHaveFocus();
+
+      await user.tab();
+      expect(copyBtn).toHaveFocus();
+
+      await user.tab();
+      expect(printBtn).toHaveFocus();
+    });
+
+    it("Print button does not wrap focus back to Fund", async () => {
+      const user = userEvent.setup();
+      render(<FundActions id="inv-001" status="Open" />);
+
+      const printBtn = screen.getByRole("button", { name: copy.invest.detail.printButtonLabel });
+      printBtn.focus();
+
+      await user.tab();
+      // Focus should move to the next focusable element after FundActions (disclaimer or beyond)
+      expect(document.activeElement).not.toBe(printBtn);
+    });
+  });
+
+  describe("FundAmountInput — keyboard operability", () => {
+    it("input is focusable via Tab", async () => {
+      const user = userEvent.setup();
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={10000} currency="USD" yieldValue={8.2} />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: /funding amount/i });
+      input.focus();
+      expect(input).toHaveFocus();
+    });
+
+    it("input accepts keyboard input", async () => {
+      const user = userEvent.setup();
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={10000} currency="USD" yieldValue={8.2} />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: /funding amount/i });
+      input.focus();
+      await user.keyboard("500");
+      expect(input).toHaveValue(500);
+    });
+
+    it("submit button activates on Enter inside the input", async () => {
+      const user = userEvent.setup();
+      const connect = jest.fn();
+      mockUseWallet.mockReturnValue({
+        state: WALLET_STATES.CONNECTED,
+        connect,
+      } as ReturnType<typeof useWallet>);
+
+      render(
+        <FundActions id="inv-001" status="Open" maxAmount={10000} currency="USD" yieldValue={8.2} />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: /funding amount/i });
+      input.focus();
+      await user.keyboard("500");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(mockToast.success).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe("page-level keyboard landmarks", () => {
+    it("main element has id='main-content' for skip-link target", async () => {
+      const { container } = await renderServerPage({ id: "inv-001" });
+      const main = container.querySelector("main#main-content");
+      expect(main).toBeInTheDocument();
+    });
+
+    it("back-to-marketplace link is keyboard-focusable", async () => {
+      await renderServerPage({ id: "inv-001" });
+      const link = screen.getByRole("link", { name: copy.invest.detail.backToMarketplaceLabel });
+      expect(link).not.toHaveAttribute("tabindex", "-1");
+      link.focus();
+      expect(link).toHaveFocus();
+    });
+
+    it("back-to-home link is keyboard-focusable", async () => {
+      await renderServerPage({ id: "inv-001" });
+      const link = screen.getByRole("link", { name: /liquifact/i });
+      expect(link).not.toHaveAttribute("tabindex", "-1");
+      link.focus();
+      expect(link).toHaveFocus();
+    });
+  });
+
+  describe("axe accessibility", () => {
+    it("FundActions passes axe checks with keyboard-only focus styles", async () => {
+      const { container } = render(<FundActions id="inv-001" status="Open" />);
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+  });
+});
+
+// ── Copy button integration (within InvoiceDetail) ────────────────────────────
+
+describe("InvoiceDetail — copy button", () => {
+  it("renders a copy button for the Reference ID", async () => {
+    const loadInvoice = jest.fn(async () => mockInvoice);
+
+    render(<InvoiceDetail loadInvoice={loadInvoice} />);
+
+    const copyBtn = await screen.findByTestId("copy-button-mock");
+    expect(copyBtn).toBeInTheDocument();
+  });
+
+  it("copy button has an accessible label referencing the Reference ID", async () => {
+    const loadInvoice = jest.fn(async () => mockInvoice);
+
+    render(<InvoiceDetail loadInvoice={loadInvoice} />);
+
+    // aria-label should mention the label passed to CopyButton
+    const copyBtn = await screen.findByRole("button", { name: /copy reference id/i });
+    expect(copyBtn).toBeInTheDocument();
+  });
+
+  it("displays the invoice ID in the Reference row", async () => {
+    const loadInvoice = jest.fn(async () => mockInvoice);
+
+    render(<InvoiceDetail loadInvoice={loadInvoice} />);
+
+    // Wait for data to load
+    await screen.findByTestId("copy-button-mock");
+
+    expect(screen.getByText("invoice-123")).toBeInTheDocument();
+    expect(screen.getByText("Reference")).toBeInTheDocument();
+  });
+
+  it("copy button is keyboard-reachable (not disabled)", async () => {
+    const loadInvoice = jest.fn(async () => mockInvoice);
+
+    render(<InvoiceDetail loadInvoice={loadInvoice} />);
+
+    const copyBtn = await screen.findByTestId("copy-button-mock");
+    expect(copyBtn).not.toBeDisabled();
+
+    copyBtn.focus();
+    expect(copyBtn).toHaveFocus();
+  });
+
+  it("copy button is not rendered while the invoice is loading", () => {
+    // loadInvoice never resolves → stays in loading state
+    const loadInvoice = jest.fn(() => new Promise(() => {}));
+    render(<InvoiceDetail loadInvoice={loadInvoice} />);
+
+    expect(screen.queryByTestId("copy-button-mock")).not.toBeInTheDocument();
+  });
+
+  it("copy button is not rendered when the invoice fails to load", async () => {
+    const loadInvoice = jest.fn().mockRejectedValue(new Error("Network error"));
+    render(<InvoiceDetail loadInvoice={loadInvoice} />);
+
+    // Wait for the error banner
+    await screen.findByRole("alert");
+
+    expect(screen.queryByTestId("copy-button-mock")).not.toBeInTheDocument();
   });
 });

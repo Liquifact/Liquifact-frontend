@@ -114,8 +114,8 @@ describe("WalletStatus", () => {
     renderWithProviders(<WalletStatus />);
     await user.click(screen.getByRole("button", { name: /connect wallet/i }));
 
-    await screen.findByRole("button", { name: /install wallet/i });
-    await user.click(screen.getByRole("button", { name: /install wallet/i }));
+    await screen.findByRole("button", { name: /install (stellar )?wallet/i });
+    await user.click(screen.getByRole("button", { name: /install (stellar )?wallet/i }));
 
     expect(openSpy).toHaveBeenCalledWith(
       "https://www.stellar.org/wallets",
@@ -124,5 +124,36 @@ describe("WalletStatus", () => {
     );
 
     openSpy.mockRestore();
+  });
+
+  it("allows keyboard activation of wallet controls with sensible focus order", async () => {
+    const user = setup();
+    freighter.isFreighterConnected.mockResolvedValue(true);
+    freighter.connectFreighter.mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
+    freighter.assertExpectedNetwork.mockResolvedValue(undefined);
+    freighter.getFreighterNetwork.mockResolvedValue("testnet");
+
+    renderWithProviders(<WalletStatus />);
+
+    // Test keyboard activation of the connect button
+    const connectButton = screen.getByRole("button", { name: /connect wallet/i });
+    connectButton.focus();
+    expect(connectButton).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    // Wait for connection to complete
+    const disconnectButton = await screen.findByRole("button", { name: /disconnect/i });
+
+    // The disconnect button should be first in DOM order now
+    const copyButton = screen.getByRole("button", { name: /copy wallet address/i });
+    // Verify focus order by checking DOM order: primary action should be first
+    const buttons = screen.getAllByRole("button");
+    expect(buttons[0]).toBe(disconnectButton);
+    expect(buttons[1]).toBe(copyButton);
+
+    // And test disconnect via keyboard
+    disconnectButton.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("button", { name: /connect wallet/i })).toBeInTheDocument();
   });
 });

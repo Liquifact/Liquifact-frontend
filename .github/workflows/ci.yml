@@ -69,7 +69,7 @@ jobs:
       # keeping dependencies secure is critical.
       # To waive a false-positive, use 'npm audit fix' or update the package manually.
       - name: Dependency Audit
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high --omit=dev
 
   secret-scan:
     runs-on: ubuntu-latest

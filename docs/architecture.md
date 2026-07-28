@@ -57,6 +57,8 @@ loads); `error.js` is the route error boundary; `not-found.js` backs
                                          (data via InvestMarketplace → fetchInvestableInvoices)
 /invest/[id]     app/invest/[id]/page → NavMenu, StatusPill, WalletStatus, Button,
                                          ErrorBanner (data via getInvoiceById)
+                                         See the [Invoice Detail Data Flow diagram](invoice-detail-data-flow.md)
+                                         for the full fetch → transform → render pipeline.
 ```
 
 Shared presentational components live in `components/` and are framework-route
@@ -74,7 +76,7 @@ There are **two** invoice data paths today, and they are intentionally separate:
    `{ id, issuer, amount, currency, dueDate, yield, status }` (missing fields
    default to `null`, unknown fields are dropped). Consumed by `/invest` via the
    `InvestMarketplace({ loadInvoices = fetchInvestableInvoices })` seam, which
-   makes the data source injectable for tests.
+   makes the data source injectable for tests. For a visual map of the marketplace data loading, filtering, sorting, and rendering pipeline, see the [Marketplace Data Flow diagram](marketplace-data-flow.md).
 
 2. **Mock layer — `app/invest/lib.js`** (`MOCK_INVOICES`, `loadMockInvoices`,
    `getInvoiceById`)
@@ -100,7 +102,7 @@ Other live clients: `lib/api/health.js` (`/health`, used on the home page) and
 
 | State              | Owner                                        | Notes                                                              |
 | ------------------ | -------------------------------------------- | ----------------------------------------------------------------- |
-| Wallet connection  | `components/WalletProvider.jsx` (`useWallet`) | Mounted once in `app/layout.js`; persists a minimal, non-secret snapshot to `localStorage`. |
+| Wallet connection  | `components/WalletProvider.jsx` (`useWallet`) | Mounted once in `app/layout.js`; persists a minimal, non-secret snapshot to `localStorage`. See [`docs/wallet-data-flow.md`](wallet-data-flow.md) for the full fetch → transform → render diagram. |
 | Toasts             | `components/ToastProvider.jsx` (`useToast`)   | Mounted once in `app/layout.js`.                                  |
 | Theme              | `components/ThemeToggle.jsx` + pre-paint script | Persisted in `localStorage`; applied before hydration.           |
 | Marketplace filters| `/invest` page + `lib/hooks/useInvoiceFilters.js` | Search/filter/sort state is serialized to the URL query string.  |
@@ -146,12 +148,19 @@ All permanent reference material for this frontend belongs in `docs/`:
 | `docs/api-integration.md` | HTTP payload / endpoint contract with the Express backend |
 | `docs/configuration.md` | Every `NEXT_PUBLIC_*` env variable, validation rules, defaults |
 | `docs/design-tokens.md` | CSS custom properties, Tailwind token mapping |
-| `docs/accessibility.md` | Accessibility statement and WCAG notes |
+| `docs/accessibility.md` | Accessibility statement and WCAG notes — includes [marketplace roles, keyboard, and focus](accessibility.md#marketplace-accessibility-issue-692) |
 | `docs/wallet-developer-guide.md` | Stellar / Freighter integration guide |
+| `docs/wallet-data-flow.md` | Wallet data-flow diagrams (fetch → transform → render) |
 | `docs/observability.md` | `reportError` sink and pluggable observability |
 | `docs/performance.md` | Bundle-size targets and code-splitting notes |
 | `docs/security.md` | CSP policy rationale and threat model |
 | `docs/getting-started.md` | Onboarding walkthrough for new contributors |
+| `docs/marketplace-data-flow.md` | Marketplace data-flow diagram (fetch -> transform -> render) |
+<<<<<<< HEAD
+=======
+| `docs/invoice-detail-data-flow.md` | Invoice detail data-flow diagram (fetch → transform → render → client islands) |
+>>>>>>> pr-892
+| `docs/settings-api.md` | Settings component props/API reference and minimal usage examples |
 | `docs/issue-334-cpu-budget-median-throttling.md` | Archived: CPU budget fix for median price oracle (contracts context) |
 | `docs/issue-334-flow-diagram.md` | Archived: Flow diagram for Issue #334 buffer truncation |
 

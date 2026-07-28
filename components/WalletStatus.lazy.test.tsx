@@ -16,9 +16,9 @@ function renderLazy() {
 
 // ── Mock next/dynamic so we can control lazy-load timing in tests ──
 jest.mock("next/dynamic", () => {
-  const ReactForMock = require("react");
-
   return function dynamicMock(importFunc, options) {
+    const ReactForMock = require("react");
+
     function DynamicWrapper(props) {
       const [Component, setComponent] = ReactForMock.useState(null);
       const [isLoading, setIsLoading] = ReactForMock.useState(true);
@@ -50,11 +50,10 @@ jest.mock("next/dynamic", () => {
 
     DynamicWrapper.displayName = "DynamicWrapper";
     const SuspenseWrapper = (props) => {
-      const inlineReact = require("react");
-      return inlineReact.createElement(
-        inlineReact.Suspense,
-        { fallback: options?.loading ? inlineReact.createElement(options.loading, props) : null },
-        inlineReact.createElement(DynamicWrapper, props)
+      return ReactForMock.createElement(
+        ReactForMock.Suspense,
+        { fallback: options?.loading ? ReactForMock.createElement(options.loading, props) : null },
+        ReactForMock.createElement(DynamicWrapper, props)
       );
     };
     SuspenseWrapper.displayName = "SuspenseWrapper";

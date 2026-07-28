@@ -8,14 +8,20 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 
 - [EmptyState](#emptystate)
 - [ErrorBanner](#errorbanner)
+- [OfflineBanner](#offlinebanner)
 - [Footer](#footer)
+- [Form](#form)
 - [FundAmountInput](#fundamountinput)
 - [Hooks](#hooks)
+- [InvoiceCard](#invoicecard)
+- [InvoiceFilters](#invoicefilters)
 - [InvoiceList](#invoicelist)
 - [InvoiceListSkeleton](#invoicelistskeleton)
 - [InvoiceSearch](#invoicesearch)
 - [InvoiceTimeline](#invoicetimeline)
 - [NavMenu](#navmenu)
+- [Pagination](#pagination)
+- [StatusLegendFilter](#statuslegendfilter)
 - [StatusPill](#statuspill)
 - [ThemeToggle](#themetoggle)
 - [ToastProvider / useToast](#toastprovider--usetoast)
@@ -140,6 +146,38 @@ Displays a structured error message with a variant label, title, description, op
 
 ---
 
+## OfflineBanner
+
+A persistent banner displayed when the browser loses network connectivity. When the connection is restored, a transient success notification is shown via the toast system.
+
+**File:** `components/OfflineBanner.jsx`
+
+### Behaviour
+
+- **Offline:** renders a fixed-position amber banner at the top of the viewport reading "You are offline — some features may be unavailable."
+- **Reconnection:** when the browser transitions from offline to online, fires a `success` toast with the title "Back online" and message "Your network connection has been restored."
+- **Online (stable):** renders nothing — no banner, no toast.
+
+### Dependencies
+
+- `useNetworkStatus` — SSR-safe hook from `lib/hooks/useNetworkStatus.js`
+- `useToast` — from the `ToastProvider` context (must be rendered inside a `<ToastProvider>`)
+
+### Accessibility
+
+- The offline banner uses `role="alert"` and `aria-live="assertive"` so screen readers announce the offline state immediately when it appears.
+- The reconnection toast uses the existing toast system, which announces via `aria-live="polite"`.
+- A warning triangle icon is present as a visual cue but marked `aria-hidden="true"` — the text alone conveys the meaning (WCAG 2.1 §1.4.1).
+
+### Example
+
+```jsx
+// Mounted in app/layout.js inside ToastProvider
+<OfflineBanner />
+```
+
+---
+
 ## Footer
 
 Site footer with navigation links (Docs, System Status, Contact Support). Links are sourced from the `app/copy/en.js` copy file.
@@ -164,6 +202,75 @@ Site footer with navigation links (Docs, System Status, Contact Support). Links 
   links={[{ label: 'Home', href: '/', external: false }]}
 />
 ```
+
+---
+
+## InvoiceCard
+
+Marketplace invoice card for the Invest list. The entire card is a single navigational `Link` to `/invest/[id]`. Status is rendered through the shared `StatusPill` so label, tone, and a11y metadata stay aligned with the detail page.
+
+**File:** `components/InvoiceCard.jsx`
+
+### Props
+
+| Prop      | Type      | Default | Description                                      |
+| --------- | --------- | ------- | ------------------------------------------------ |
+| `invoice` | `Invoice` | —       | Invoice object (`id`, `issuer`, amount fields, `status`, …) |
+
+### Accessibility
+
+- The card root is one focusable `Link` with a composed `aria-label` of the form `Invoice {id} from {issuer}` plus an optional status segment when the canonical pill resolves.
+- Nested `StatusPill` exposes `role="status"` and `aria-label="Status: …"` (text + tone; not colour-only).
+- Focus indicator: `focus-visible:ring-2` cyan outline (see Known Limitations in `docs/accessibility.md` for `.focus-ring` alignment).
+
+### Design tokens
+
+- Card spacing and typography now follow the shared marketplace-card tokens defined in `app/globals.css` (`--market-card-padding`, `--market-card-gap`, and the title/meta typography tokens).
+- These values keep the marketplace card layout consistent across the shared `InvoiceCard` component and the `/invest` list experience.
+
+> **Note:** `/invest` currently renders inline list rows rather than mounting `InvoiceCard`. Prefer this component when consolidating list markup so a11y and layout stay in sync with `InvoiceListSkeleton`.
+
+### Example
+
+```jsx
+import InvoiceCard from "@/components/InvoiceCard";
+
+<li>
+  <InvoiceCard invoice={invoice} />
+</li>
+```
+
+---
+
+## InvoiceFilters
+
+Advanced marketplace filters: yield range, currency chips, maturity dates, sort, and clear. Also exports `StatusLegendFilter`, `ActiveFilterSummary`, filter helpers, and `DEFAULT_FILTERS`.
+
+**File:** `components/InvoiceFilters.jsx`
+
+### Named exports (a11y-relevant)
+
+| Export               | Description                                                                 |
+| -------------------- | --------------------------------------------------------------------------- |
+| `default`            | Full filter toolbar (currency roving tabindex, yield/maturity/sort fields) |
+| `StatusLegendFilter` | Status chip row — see [StatusLegendFilter](#statuslegendfilter)              |
+| `ActiveFilterSummary`| Results count + removable active-filter chips                               |
+
+### Accessibility (`InvoiceFilters` default)
+
+- Currency chips: `role="toolbar"` · `aria-label="Currency filter"` · roving `tabindex` · `aria-pressed` — full keyboard contract in [`docs/accessibility.md`](docs/accessibility.md#roving-tabindex-for-filter-chips-issue-466).
+- Yield and maturity groups use `<fieldset>` + `sr-only` legends; inputs carry descriptive `aria-label`s.
+- Sort `<select>` has `aria-label="Sort options"`; Clear has `aria-label="Clear all filters"`.
+- Date inputs currently use `focus:border-cyan-500` instead of `.focus-ring` (tracked in Known Limitations).
+
+### Accessibility (`ActiveFilterSummary`)
+
+- Removable chips live in `<ul aria-label="Active filters">`.
+- Each remove control is a `<button>` with `aria-label={`Remove ${chip.label}`}`.
+- Decorative `×` is `aria-hidden="true"`.
+- Clear-all (when shown) is a native button with a visible focus ring.
+
+> **Note:** On `/invest`, advanced filters are wrapped in a coming-soon `<fieldset aria-disabled="true">` (see marketplace contract). `ActiveFilterSummary` is implemented and tested but not currently mounted on the page.
 
 ---
 
@@ -288,9 +395,10 @@ The default placeholder includes a visible `(press /)` hint for discoverability.
 
 ### Accessibility
 
-- Labelled via a `sr-only` `<label>` linked to the input with `htmlFor` / `id`.
+- Named via the optional `aria-label` prop on the text input (the marketplace page passes copy from `app/copy/en`).
 - The global shortcut does not trap or hijack keystrokes in editable fields.
 - Modifier combinations (`Ctrl+/`, `Meta+/`, `Alt+/`) are ignored to avoid conflicting with browser shortcuts.
+- Focus styling uses `focus:ring-2` (see Known Limitations in `docs/accessibility.md` for `.focus-ring` alignment).
 
 ### Example
 
@@ -682,6 +790,48 @@ import StatusPill from '@/components/StatusPill';
 
 ---
 
+## Pagination
+
+Accessible “Load more” control for list views. Optionally announces page-based navigation when `page` / `totalPages` / `pageSize` are supplied.
+
+**File:** `components/Pagination.jsx`
+
+### Props
+
+| Prop         | Type       | Default | Description                                                                 |
+| ------------ | ---------- | ------- | --------------------------------------------------------------------------- |
+| `shown`      | `number`   | —       | Number of items currently visible                                           |
+| `total`      | `number`   | —       | Total items available                                                       |
+| `onLoadMore` | `function` | —       | Called when the user activates Load more                                    |
+| `page`       | `number`   | —       | Optional 1-based page; with `totalPages` enables page-mode announcer        |
+| `totalPages` | `number`   | —       | Optional total pages (page mode)                                            |
+| `pageSize`   | `number`   | —       | Optional items per page for “showing items A–B”                             |
+| `ref`        | `Ref`      | —       | Forwarded to the Load more button for focus restore after each load         |
+
+### Accessibility
+
+- **Load-more mode (default):** visible count text uses `aria-live="polite"`; the button has `aria-label="Load more invoices"` and receives the forwarded ref so callers can call `.focus()` after appending items.
+- **Page mode:** a hidden `role="status" aria-live="polite" aria-atomic="true"` region announces `Page X of Y, showing items A–B` only after the first real `page` change (initial mount is skipped).
+- Page-mode announcer is **omitted** in load-more mode so it does not compete with a page-owned list announcer (see [`docs/accessibility.md`](docs/accessibility.md#pagination-announcements-issue-276)).
+- Focus indicator: `focus-visible:ring-2` (Known Limitations notes `.focus-ring` drift).
+
+> **Note:** `/invest` currently uses an inline Load more button with the same focus-restore pattern; prefer this component when consolidating.
+
+### Example
+
+```jsx
+import Pagination from "@/components/Pagination";
+
+<Pagination
+  ref={loadMoreRef}
+  shown={visibleCount}
+  total={filtered.length}
+  onLoadMore={handleLoadMore}
+/>
+```
+
+---
+
 ## StatusLegendFilter
 
 A compact, toggleable chip row that lets investors filter the Invest marketplace by one or more invoice statuses. The chip set is derived from `INVOICE_STATUSES` in `lib/types/invoice.js` so it never drifts from the canonical status vocabulary and `STATUS_PILL_MAP` tones.
@@ -949,6 +1099,49 @@ deriveExpectedYield(10000, 10000, 8.2); // 820 (full amount)
 ## Hooks
 
 Reusable React hooks that live under `lib/hooks/`. Hooks are the canonical home for shared persistence and behaviour so any feature can adopt the same contract without re-implementing edge cases (SSR safety, quota errors, type preservation).
+
+### `useNetworkStatus`
+
+SSR-safe hook that tracks the browser's online/offline status by subscribing to the `online` and `offline` events on `window`.
+
+**File:** `lib/hooks/useNetworkStatus.js`
+
+#### Signature
+
+```js
+const isOnline = useNetworkStatus();
+```
+
+| Returns    | Type      | Description                                        |
+| ---------- | --------- | -------------------------------------------------- |
+| `isOnline` | `boolean` | `true` when the browser reports a network connection, `false` when offline. Always `true` during SSR. |
+
+#### SSR-safety contract
+
+- **Initial render always returns `true`** — the hook never reads `navigator.onLine` during render. This keeps React hydration deterministic in a Next.js app router context.
+- The actual `navigator.onLine` read happens inside `useEffect` after mount on the client.
+- Event listeners are registered after mount and cleaned up on unmount — no stale handlers leak across navigations or hot-reloads.
+
+#### Behaviour
+
+- Listens to `window` `online` and `offline` events. When the browser fires `offline`, the hook sets `isOnline` to `false`; when `online` fires, it sets `isOnline` to `true`.
+- Does NOT subscribe to `focus` or `visibilitychange` — only the standard `online`/`offline` API events are used, eliminating false re-connection announcements on tab switches.
+- Callers that need to detect the transition (e.g. show a reconnected toast) should track the previous value via `useRef`.
+
+#### Example
+
+```jsx
+'use client';
+
+import { useNetworkStatus } from '@/lib/hooks/useNetworkStatus';
+
+function MyComponent() {
+  const isOnline = useNetworkStatus();
+  return <span>{isOnline ? 'Online' : 'Offline'}</span>;
+}
+```
+
+---
 
 ### `useLocalStorage`
 

@@ -48,6 +48,19 @@ and where wallet/toast/theme state lives.
 For the exact invoice fixture shape, formatted-versus-raw value rules, and the
 API migration seam, see the [Invoice data contract](docs/invoice-data.md).
 
+For marketplace component usage, props, and common patterns, see the
+[Marketplace usage guide](docs/marketplace.md).
+
+For a step-by-step diagram of how `/invest/[id]` fetches, transforms, and
+renders an invoice (including the RSC/client boundary split), see the
+[Invoice-detail data flow](docs/invoice-detail-flow.md).
+
+For a visual diagram of how upload loads and renders data (fetch → transform → render),
+see the [Upload data flow](docs/upload-data-flow.md).
+
+For a visual diagram of how settings loads, edits, and persists data (fetch → transform → render),
+see the [Settings data flow](docs/settings-data-flow.md).
+
 ---
 
 ## API Integration
@@ -260,6 +273,8 @@ Tech: **Next.js 16** (App Router), **React 19**, **Tailwind CSS 4**.
 
 ## Accessibility
 
+See the full [Accessibility Statement](docs/accessibility.md) for WCAG commitment, focus-ring audit, live regions, and contributor checklist. Marketplace-specific **roles, keyboard interactions, and focus behaviour** for `/invest` and `/invest/[id]` are documented in [Marketplace accessibility](docs/accessibility.md#marketplace-accessibility-issue-692).
+
 ### Skip-to-content link
 
 A visually-hidden "Skip to content" link is the first focusable element on every page. It becomes visible when focused (first Tab press) and jumps the keyboard user past the navigation header directly to `<main id="main-content">`.
@@ -346,7 +361,7 @@ See COMPONENTS.md for the full component library reference — props, accessibil
   | WRONG_NETWORK  | `warning`       | Amber — user must switch network       |
   | NO_WALLET      | `external`      | Violet — opens install URL             |
 
-- **UploadZone Progress Indicator**: During the upload phase, if a `progress` prop (number between `0` and `100`) is supplied to `UploadZone`, a determinate progress bar (`role="progressbar"`) is displayed. If no `progress` is supplied, it falls back to an indeterminate spinner. Smooth transitions are disabled when `prefers-reduced-motion` is active.
+- **UploadZone Progress Indicator**: During the upload phase, if a `progress` prop (number between `0` and `100`) is supplied to `UploadZone`, a determinate progress bar is displayed via the reusable `ProgressBar` component. If no `progress` is supplied, it falls back to an indeterminate spinner with "Uploading invoice..." text. Features: visible percentage, full ARIA attributes (`role="progressbar"`, `aria-valuemin`, `aria-valuemax`, `aria-valuenow`), `sr-only` text for assistive technologies, and `prefers-reduced-motion` support. Design allows future integration with XHR/fetch progress callbacks.
 - **UploadZone Reset Flow**: After a successful upload (status = `"success"`), an **"Upload another invoice"** button appears below the success message. Clicking it:
   - Clears the file, error, and status back to their initial (idle) values.
   - Clears the hidden file `<input>` so the same file can be re-selected.
@@ -713,6 +728,7 @@ liquifact-frontend/
 │   ├── Pagination.jsx      # Page controls for large result sets
 │   ├── ToastProvider.jsx   # Toast notification system
 │   ├── UploadZone.jsx      # Invoice PDF upload + validation
+│   ├── ProgressBar.jsx     # Reusable accessible progress bar
 │   ├── WalletProvider.jsx  # App-wide wallet state provider
 │   ├── WalletStatus.jsx    # Wallet connection / address display
 │   └── WalletStatusLazy.jsx # next/dynamic wrapper (ssr: false)
@@ -730,6 +746,8 @@ Tech: **Next.js 16** (App Router), **React 19**, **Tailwind CSS 4**.
 ---
 
 ## Accessibility
+
+See the full [Accessibility Statement](docs/accessibility.md) for WCAG commitment, focus-ring audit, live regions, and contributor checklist. Marketplace-specific **roles, keyboard interactions, and focus behaviour** for `/invest` and `/invest/[id]` are documented in [Marketplace accessibility](docs/accessibility.md#marketplace-accessibility-issue-692).
 
 ### Skip-to-content link
 
@@ -790,25 +808,6 @@ As the application handles financial flows and wallet integration, our CI pipeli
 
 ---
 
-## Dependency updates
-
-Dependabot opens weekly PRs on Monday to keep npm packages and GitHub Actions current.
-
-PRs are grouped to limit noise:
-
-- **nextjs-react** — `next`, `react`, `react-dom`, and their `@types` packages together (coordinated bumps).
-- **dev-tooling** — all remaining `devDependencies` in one PR.
-- **github-actions** — action version bumps in a separate PR.
-
-**Reviewing a Dependabot PR**
-
-1. Check the CI run passes (lockfile check + lint + build).
-2. Scan the changelog/release notes linked in the PR description for breaking changes.
-3. For `nextjs-react` bumps, do a quick smoke test (`npm run dev`) locally.
-4. Approve and merge — **do not enable auto-merge**; every dependency bump requires a human reviewer.
-
----
-
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow, branch naming convention, local checks, and accessibility expectations. Also see our [Accessibility Statement](docs/accessibility.md).
@@ -829,7 +828,7 @@ We welcome UI improvements, new pages (e.g. invoice upload, marketplace), and St
 
 See [COMPONENTS.md](COMPONENTS.md) for the full component library reference — props, accessibility notes, and usage examples for every shared component (`ErrorBanner`, `Footer`, `InvoiceListSkeleton`, `ToastProvider`, `UploadZone`, `WalletProvider`, `WalletStatus`).
 
-- **UploadZone Progress Indicator**: During the upload phase, if a `progress` prop (number between `0` and `100`) is supplied to `UploadZone`, a determinate progress bar (`role="progressbar"`) is displayed. If no `progress` is supplied, it falls back to an indeterminate spinner. Smooth transitions are disabled when `prefers-reduced-motion` is active.
+- **UploadZone Progress Indicator**: During the upload phase, if a `progress` prop (number between `0` and `100`) is supplied to `UploadZone`, a determinate progress bar is displayed via the reusable `ProgressBar` component. If no `progress` is supplied, it falls back to an indeterminate spinner with "Uploading invoice..." text. Features: visible percentage, full ARIA attributes (`role="progressbar"`, `aria-valuemin`, `aria-valuemax`, `aria-valuenow`), `sr-only` text for assistive technologies, and `prefers-reduced-motion` support. Design allows future integration with XHR/fetch progress callbacks.
 - **UploadZone Reset Flow**: After a successful upload (status = `"success"`), an **"Upload another invoice"** button appears below the success message. Clicking it:
   - Clears the file, error, and status back to their initial (idle) values.
   - Clears the hidden file `<input>` so the same file can be re-selected.

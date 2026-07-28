@@ -46,6 +46,14 @@ jest.mock("./WalletStatusLazy", () => ({
   },
 }));
 
+jest.mock("./ToastProvider", () => ({
+  useToast: () => ({
+    success: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+  }),
+}));
+
 // ── Shared helpers ───────────────────────────────────────────────────────────
 
 function getFocusRingElements(container: HTMLElement): HTMLElement[] {
@@ -170,14 +178,14 @@ describe("NavMenu focus ring", () => {
 describe("ThemeToggle focus ring", () => {
   it("applies focus-ring class to the toggle button", () => {
     render(<ThemeToggle />);
-    const toggle = screen.getByRole("button", { name: /theme/i });
+    const toggle = screen.getByRole("button", { name: /theme:/i });
     expect(toggle.className).toContain("focus-ring");
   });
 
   it("remains keyboard-focusable", async () => {
     const user = userEvent.setup();
     render(<ThemeToggle />);
-    const toggle = screen.getByRole("button", { name: /theme/i });
+    const toggle = screen.getByRole("button", { name: /theme:/i });
     await user.tab();
     expect(toggle).toHaveFocus();
   });
@@ -227,7 +235,7 @@ describe("Keyboard focus traversal across interactive components", () => {
 
     const btn1 = screen.getByTestId("btn-1");
     const btn2 = screen.getByTestId("btn-2");
-    const toggle = screen.getByRole("button", { name: /theme/i });
+    const toggle = screen.getByRole("button", { name: /theme:/i });
 
     await user.tab();
     expect(btn1).toHaveFocus();

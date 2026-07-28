@@ -16,6 +16,7 @@ import {
   getFreighterNetwork,
   assertExpectedNetwork,
 } from "../lib/wallet/freighter";
+import { announce } from "../lib/a11y/liveRegion";
 
 /**
  * Read the toast API when available. Returns null when WalletProvider is
@@ -177,6 +178,7 @@ export function WalletProvider({ children }) {
   const [state, setState] = useState(WALLET_STATES.DISCONNECTED);
   const [walletData, setWalletData] = useState(null);
   const [error, setError] = useState(null);
+  const [hydrating, setHydrating] = useState(true);
   const skipPersistRef = useRef(true);
   const toast = useOptionalToast();
 
@@ -191,6 +193,7 @@ export function WalletProvider({ children }) {
       });
       /* eslint-enable react-hooks/set-state-in-effect */
     }
+    setHydrating(false);
   }, []);
 
   useEffect(() => {
@@ -223,6 +226,7 @@ export function WalletProvider({ children }) {
         setState(WALLET_STATES.NO_WALLET);
         setWalletData(null);
         toast?.error("No Stellar wallet detected. Install one to continue.", "No wallet");
+        announce("Wallet connection failed");
         return {
           outcome: "no_wallet",
           message: "No Stellar wallet detected. Install one to continue.",
@@ -241,6 +245,7 @@ export function WalletProvider({ children }) {
         setWalletData(null);
         setError(networkErr.message);
         toast?.error(networkErr.message, "Wrong network");
+        announce("Wallet connection failed");
         return {
           outcome: "wrong_network",
           message: networkErr.message,
@@ -257,6 +262,7 @@ export function WalletProvider({ children }) {
       };
       setWalletData(data);
       toast?.success("Wallet connected successfully.", "Wallet connected");
+      announce("Wallet connected successfully");
       return { outcome: "success" };
     } catch (err) {
       setState(WALLET_STATES.ERROR);
@@ -264,6 +270,7 @@ export function WalletProvider({ children }) {
       const errMsg = err.message || "Failed to connect to wallet. Please try again.";
       setError(errMsg);
       toast?.error(errMsg, "Connection failed");
+      announce("Wallet connection failed");
       return {
         outcome: "error",
         message: errMsg,
@@ -276,11 +283,12 @@ export function WalletProvider({ children }) {
     setWalletData(null);
     setError(null);
     clearStoredSnapshot();
+    announce("Wallet disconnected");
   }, []);
 
   const value = useMemo(
-    () => ({ state, walletData, error, connect, disconnect }),
-    [state, walletData, error, connect, disconnect]
+    () => ({ state, walletData, error, hydrating, connect, disconnect }),
+    [state, walletData, error, hydrating, connect, disconnect]
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
@@ -293,6 +301,7 @@ export function WalletProvider({ children }) {
  * @returns {{
  *   state: string,
  *   walletData: { address: string, network: string, balance?: string } | null,
+ *   hydrating: boolean,
  *   connect: () => Promise<{ outcome: string, message?: string }>,
  *   disconnect: () => void
  * }}
