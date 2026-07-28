@@ -278,11 +278,11 @@ export default function WalletStatus() {
       <div className="flex items-center gap-3">
         {/* Status dot */}
         <div
-          className={`h-2 w-2 rounded-full transition-colors duration-200 ${
+          className={`h-2 w-2 rounded-full transition-colors duration-200 motion-reduce:transition-none wallet-status-dot ${
             state === WALLET_STATES.CONNECTED
               ? "bg-green-500"
               : state === WALLET_STATES.CONNECTING
-                ? "bg-yellow-500 animate-pulse"
+                ? "bg-yellow-500 animate-pulse motion-reduce:animate-none"
                 : state === WALLET_STATES.ERROR || state === WALLET_STATES.WRONG_NETWORK
                   ? "bg-red-500"
                   : "bg-slate-600"
@@ -311,7 +311,7 @@ export default function WalletStatus() {
               {/* Address row */}
               <div className="flex items-center gap-2">
                 <span
-                  className="font-mono text-slate-300"
+                  className="font-mono text-slate-300 wallet-address-text"
                   style={{ fontSize: "var(--wallet-address-font-size)" }}
                 >
                   {truncateAddress(walletData.address)}
@@ -321,7 +321,7 @@ export default function WalletStatus() {
                   onClick={handleCopyAddress}
                   aria-label={copy.wallet.copyAddressButton}
                   title={copy.wallet.copyAddressButton}
-                  className="text-slate-400 hover:text-slate-200 transition-colors focus-ring cursor-pointer focus-visible:outline-2 focus-visible:outline-cyan-400"
+                  className="text-slate-400 hover:text-slate-200 transition-colors motion-reduce:transition-none focus-ring cursor-pointer focus-visible:outline-2 focus-visible:outline-cyan-400 wallet-copy-btn"
                 >
                   <svg
                     className="h-4 w-4"
@@ -345,7 +345,7 @@ export default function WalletStatus() {
                 const { compact, full } = formatWalletBalance(walletData.balance);
                 return (
                   <span
-                    className="text-slate-500"
+                    className="text-slate-500 wallet-balance-text"
                     style={{ fontSize: "var(--wallet-meta-font-size)" }}
                     title={full}
                     aria-label={`Wallet balance: ${full}`}
@@ -356,13 +356,13 @@ export default function WalletStatus() {
               })()}
             </div>
           ) : (
-            <span className="text-xs text-slate-400">Wallet connected</span>
+            <span className="text-xs text-slate-400 wallet-helper-text">Wallet connected</span>
           )
         ) : state === WALLET_STATES.CONNECTING ? (
           /* Loading state */
           <span
             id="wallet-helper-text"
-            className="text-xs text-slate-400"
+            className="text-xs text-slate-400 wallet-helper-text"
             role="status"
             aria-live="polite"
           >
@@ -371,7 +371,7 @@ export default function WalletStatus() {
         ) : state === WALLET_STATES.ERROR || state === WALLET_STATES.WRONG_NETWORK ? (
           /* Error state */
           <div className="flex items-center gap-3" role="alert" aria-live="assertive">
-            <span id="wallet-helper-text" className="max-w-xs text-xs text-red-400">
+            <span id="wallet-helper-text" className="max-w-xs text-xs text-red-400 wallet-helper-text">
               {config.helperText}
             </span>
 
@@ -390,7 +390,7 @@ export default function WalletStatus() {
           /* Empty / disconnected state */
           <span
             id="wallet-helper-text"
-            className="max-w-xs text-xs text-slate-400"
+            className="max-w-xs text-xs text-slate-400 wallet-helper-text"
             role="status"
             aria-live="polite"
           >

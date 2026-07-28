@@ -184,6 +184,12 @@ body {
   .invoice-detail-section {
     transition: none;
   }
+
+  /* Wallet status copy button and dot transitions */
+  .wallet-copy-btn,
+  .wallet-status-dot {
+    transition: none;
+  }
 }
 
 /* ── Accessibility: high contrast ──────────────────────────────────────────── */
@@ -242,6 +248,33 @@ body {
     color: CanvasText;
     forced-color-adjust: none;
   }
+
+  /* Wallet components */
+  .wallet-status-dot {
+    forced-color-adjust: none;
+  }
+
+  .wallet-address-text {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .wallet-balance-text {
+    color: GrayText;
+    forced-color-adjust: none;
+  }
+
+  .wallet-helper-text {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .wallet-skeleton-text-primary,
+  .wallet-skeleton-text-secondary,
+  .wallet-skeleton-btn {
+    border: 1px solid CanvasText;
+    background-color: Canvas;
+  }
 }
 
 @media (prefers-contrast: more) {
@@ -286,6 +319,25 @@ body {
     border-color: #475569; /* slate-600 — stronger than slate-800 */
     background-color: #0f172a; /* slate-900 — fully opaque */
     color: #cbd5e1; /* slate-300 — stronger than slate-300 */
+  }
+
+  /* Wallet components */
+  .wallet-address-text {
+    color: #f1f5f9; /* slate-100 */
+  }
+
+  .wallet-balance-text,
+  .wallet-helper-text {
+    color: #cbd5e1; /* slate-300 */
+  }
+
+  .wallet-skeleton-text-primary,
+  .wallet-skeleton-btn {
+    background-color: #475569; /* slate-600 */
+  }
+
+  .wallet-skeleton-text-secondary {
+    background-color: #334155; /* slate-700 */
   }
 }
 

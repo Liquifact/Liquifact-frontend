@@ -1,7 +1,5 @@
 import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import "./globals.css";
 import Footer from "../components/Footer";
 import { ToastProvider } from "../components/ToastProvider";
