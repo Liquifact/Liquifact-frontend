@@ -600,18 +600,18 @@ export function InvestMarketplace({
     }
   }, [allState, clearSelection, selectAllInvoices]);
 
-  const handleRequestDelete = useCallback(() => {
+  const handleRequestDelete = () => {
     // Snapshot the selection so the user can't race the dialog by tapping a
     // row between opening and confirming. The hook will also prune stale
     // ids on the next render, which keeps confirm/cancel honest.
     setPendingDeleteIds(new Set(selectedIds));
-  }, [selectedIds]);
+  };
 
-  const handleCancelDelete = useCallback(() => {
+  const handleCancelDelete = () => {
     setPendingDeleteIds(null);
-  }, []);
+  };
 
-  const handleConfirmDelete = useCallback(async () => {
+  const handleConfirmDelete = async () => {
     const idsToDelete = pendingDeleteIds;
     if (!idsToDelete || idsToDelete.size === 0) {
       setPendingDeleteIds(null);
@@ -647,7 +647,7 @@ export function InvestMarketplace({
     } finally {
       setBulkRunning((prev) => ({ ...prev, delete: false }));
     }
-  }, [pendingDeleteIds, onBulkDelete, bulkLabels, toastApi, invoices]);
+  };
 
   const handleExport = useCallback(() => {
     if (selectedIds.size === 0) {
