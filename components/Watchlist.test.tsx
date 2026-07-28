@@ -302,5 +302,152 @@ describe("Watchlist Component — States and Interactions", () => {
       await user.tab();
       expect(searchInput).toHaveFocus();
     });
+
+    it("follows a logical tab order through all visible controls", async () => {
+      const user = userEvent.setup();
+      const onClearAllMock = jest.fn();
+      const onToggleStarMock = jest.fn();
+      const onRemoveItemMock = jest.fn();
+
+      render(
+        <Watchlist
+          items={MOCK_ITEMS}
+          onClearAll={onClearAllMock}
+          onToggleStar={onToggleStarMock}
+          onRemoveItem={onRemoveItemMock}
+        />
+      );
+
+      const clearBtn = screen.getByRole("button", { name: "Clear all watchlist items" });
+      const searchInput = screen.getByRole("searchbox", { name: "Search watchlist" });
+      const selectAllCheckbox = screen.getByRole("checkbox", { name: "Select all watchlist items" });
+      const item1Checkbox = screen.getByRole("checkbox", { name: /Select invoice inv-101 from Acme Corp/ });
+      const starBtn = screen.getByRole("button", { name: /Remove invoice inv-101 from watchlist/ });
+      const issuerLink = screen.getByRole("link", { name: /View details for invoice inv-101/ });
+      const removeBtn = screen.getByRole("button", { name: /Remove Acme Corp from watchlist/ });
+
+      await user.tab();
+      expect(clearBtn).toHaveFocus();
+
+      await user.tab();
+      expect(searchInput).toHaveFocus();
+
+      await user.tab();
+      expect(selectAllCheckbox).toHaveFocus();
+
+      await user.tab();
+      expect(item1Checkbox).toHaveFocus();
+
+      await user.tab();
+      expect(starBtn).toHaveFocus();
+
+      await user.tab();
+      expect(issuerLink).toHaveFocus();
+
+      await user.tab();
+      expect(removeBtn).toHaveFocus();
+    });
+
+    it("activates Clear watchlist button on Enter", async () => {
+      const user = userEvent.setup();
+      const onClearAllMock = jest.fn();
+      render(<Watchlist items={MOCK_ITEMS} onClearAll={onClearAllMock} />);
+
+      const clearBtn = screen.getByRole("button", { name: "Clear all watchlist items" });
+      clearBtn.focus();
+      expect(clearBtn).toHaveFocus();
+
+      await user.keyboard("{Enter}");
+      expect(onClearAllMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("activates Clear watchlist button on Space", async () => {
+      const user = userEvent.setup();
+      const onClearAllMock = jest.fn();
+      render(<Watchlist items={MOCK_ITEMS} onClearAll={onClearAllMock} />);
+
+      const clearBtn = screen.getByRole("button", { name: "Clear all watchlist items" });
+      clearBtn.focus();
+      expect(clearBtn).toHaveFocus();
+
+      await user.keyboard(" ");
+      expect(onClearAllMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("activates star toggle on Enter", async () => {
+      const user = userEvent.setup();
+      const onToggleStarMock = jest.fn();
+      render(<Watchlist items={MOCK_ITEMS} onToggleStar={onToggleStarMock} />);
+
+      const starBtn = screen.getByRole("button", { name: /Remove invoice inv-101 from watchlist/ });
+      starBtn.focus();
+      expect(starBtn).toHaveFocus();
+
+      await user.keyboard("{Enter}");
+      expect(onToggleStarMock).toHaveBeenCalledWith("inv-101");
+    });
+
+    it("activates star toggle on Space", async () => {
+      const user = userEvent.setup();
+      const onToggleStarMock = jest.fn();
+      render(<Watchlist items={MOCK_ITEMS} onToggleStar={onToggleStarMock} />);
+
+      const starBtn = screen.getByRole("button", { name: /Remove invoice inv-101 from watchlist/ });
+      starBtn.focus();
+      expect(starBtn).toHaveFocus();
+
+      await user.keyboard(" ");
+      expect(onToggleStarMock).toHaveBeenCalledWith("inv-101");
+    });
+
+    it("activates Remove button on Enter", async () => {
+      const user = userEvent.setup();
+      const onRemoveItemMock = jest.fn();
+      render(<Watchlist items={MOCK_ITEMS} onRemoveItem={onRemoveItemMock} />);
+
+      const removeBtn = screen.getByRole("button", { name: /Remove Acme Corp from watchlist/ });
+      removeBtn.focus();
+      expect(removeBtn).toHaveFocus();
+
+      await user.keyboard("{Enter}");
+      expect(onRemoveItemMock).toHaveBeenCalledWith("inv-101");
+    });
+
+    it("activates Remove button on Space", async () => {
+      const user = userEvent.setup();
+      const onRemoveItemMock = jest.fn();
+      render(<Watchlist items={MOCK_ITEMS} onRemoveItem={onRemoveItemMock} />);
+
+      const removeBtn = screen.getByRole("button", { name: /Remove Acme Corp from watchlist/ });
+      removeBtn.focus();
+      expect(removeBtn).toHaveFocus();
+
+      await user.keyboard(" ");
+      expect(onRemoveItemMock).toHaveBeenCalledWith("inv-101");
+    });
+
+    it("activates issuer link on Enter", async () => {
+      const user = userEvent.setup();
+      render(<Watchlist items={MOCK_ITEMS} />);
+
+      const issuerLink = screen.getByRole("link", { name: /View details for invoice inv-101/ });
+      issuerLink.focus();
+      expect(issuerLink).toHaveFocus();
+
+      await user.keyboard("{Enter}");
+      expect(issuerLink).toHaveAttribute("href", "/invest/inv-101");
+    });
+
+    it("shows visible focus ring on interactive controls", async () => {
+      const user = userEvent.setup();
+      const onClearAllMock = jest.fn();
+      render(<Watchlist items={MOCK_ITEMS} onClearAll={onClearAllMock} />);
+
+      const clearBtn = screen.getByRole("button", { name: "Clear all watchlist items" });
+      await user.tab();
+      expect(clearBtn).toHaveFocus();
+
+      expect(clearBtn.className).toContain("focus-ring");
+    });
   });
 });

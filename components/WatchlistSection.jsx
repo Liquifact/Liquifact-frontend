@@ -48,7 +48,7 @@ export default function WatchlistSection() {
                   <h3 className="font-semibold text-cyan-300">{wl.name}</h3>
                   <button
                     onClick={() => removeWatchlist(wl.id)}
-                    className="text-xs text-red-400 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-400 rounded"
+                    className="text-xs text-red-400 hover:text-red-300 focus-visible:outline-none focus-ring rounded"
                     aria-label={`Delete ${wl.name} watchlist`}
                   >
                     Delete

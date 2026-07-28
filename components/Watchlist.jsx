@@ -216,7 +216,7 @@ export default function Watchlist({
             action={
               <Link
                 href="/invest"
-                className="inline-flex items-center gap-2 rounded-xl border border-cyan-700 bg-cyan-900/30 px-5 py-2.5 text-sm font-semibold text-cyan-300 transition-colors hover:bg-cyan-800/40 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                className="inline-flex items-center gap-2 rounded-xl border border-cyan-700 bg-cyan-900/30 px-5 py-2.5 text-sm font-semibold text-cyan-300 transition-colors hover:bg-cyan-800/40 focus-visible:outline-none focus-ring"
               >
                 Browse marketplace
               </Link>
@@ -250,7 +250,7 @@ export default function Watchlist({
             type="button"
             onClick={onClearAll}
             aria-label="Clear all watchlist items"
-            className="self-start sm:self-auto rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300 transition-colors hover:bg-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+            className="self-start sm:self-auto rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300 transition-colors hover:bg-red-500/20 focus-visible:outline-none focus-ring"
           >
             Clear watchlist
           </button>
@@ -279,7 +279,7 @@ export default function Watchlist({
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search watchlist..."
             aria-label="Search watchlist"
-            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-slate-100 placeholder-slate-500 transition-colors focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-slate-100 placeholder-slate-500 transition-colors focus-visible:border-cyan-500 focus-visible:outline-none focus-ring"
           />
         </div>
         
@@ -294,7 +294,7 @@ export default function Watchlist({
               }}
               onChange={handleSelectAll}
               aria-label="Select all watchlist items"
-              className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-950"
+              className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-500 focus-visible:outline-none focus-ring"
             />
             Select all
           </label>
@@ -306,7 +306,7 @@ export default function Watchlist({
                 type="button"
                 onClick={handleBulkExport}
                 aria-label={`Export ${selectedIds.size} selected items`}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-950"
+                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-700 focus-visible:outline-none focus-ring"
               >
                 Export
               </button>
@@ -314,7 +314,7 @@ export default function Watchlist({
                 type="button"
                 onClick={handleBulkRemove}
                 aria-label={`Remove ${selectedIds.size} selected items`}
-                className="rounded-lg border border-red-900/50 bg-red-900/20 px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 focus:ring-offset-slate-950"
+                className="rounded-lg border border-red-900/50 bg-red-900/20 px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-red-900/40 focus-visible:outline-none focus-ring"
               >
                 Delete
               </button>
@@ -332,7 +332,7 @@ export default function Watchlist({
           <button
             type="button"
             onClick={() => setSearchQuery("")}
-            className="mt-3 text-xs font-medium text-cyan-400 underline hover:text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            className="mt-3 text-xs font-medium text-cyan-400 underline hover:text-cyan-300 focus-visible:outline-none focus-ring"
             aria-label="Clear search filter"
           >
             Clear search filter
@@ -373,13 +373,13 @@ export default function Watchlist({
               >
                 <div className="flex items-start gap-3">
                   <div className="flex items-center h-8">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleToggleSelection(item.id)}
-                      aria-label={`Select invoice ${item.id} from ${issuerName}`}
-                      className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-950 cursor-pointer"
-                    />
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelection(item.id)}
+                        aria-label={`Select invoice ${item.id} from ${issuerName}`}
+                        className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-500 focus-visible:outline-none focus-ring cursor-pointer"
+                      />
                   </div>
                   <button
                     type="button"
@@ -387,7 +387,7 @@ export default function Watchlist({
                     aria-pressed={true}
                     aria-label={`Remove invoice ${item.id} from watchlist`}
                     title={`Starred — click to remove ${item.id}`}
-                    className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-amber-400/30 bg-amber-400/10 text-amber-400 transition-colors hover:bg-amber-400/20 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-amber-400/30 bg-amber-400/10 text-amber-400 transition-colors hover:bg-amber-400/20 focus-visible:outline-none focus-ring"
                   >
                     <StarIcon filled={true} />
                   </button>
@@ -395,7 +395,7 @@ export default function Watchlist({
                     <div className="flex items-center gap-2">
                       <Link
                         href={`/invest/${item.id}`}
-                        className="font-semibold text-slate-100 hover:text-cyan-300 focus:outline-none focus:underline"
+                        className="font-semibold text-slate-100 hover:text-cyan-300 focus-visible:outline-none focus-ring"
                         aria-label={`View details for invoice ${item.id} from ${issuerName}`}
                       >
                         {issuerName}
@@ -418,7 +418,7 @@ export default function Watchlist({
                     type="button"
                     onClick={handleRemove}
                     aria-label={`Remove ${issuerName} from watchlist`}
-                    className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-slate-700 hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                    className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-slate-700 hover:bg-slate-800 hover:text-white focus-visible:outline-none focus-ring"
                   >
                     Remove
                   </button>
