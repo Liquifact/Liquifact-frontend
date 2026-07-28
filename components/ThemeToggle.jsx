@@ -76,9 +76,7 @@ export function resolveTheme(pref) {
   if (pref === "dark") return "dark";
   // 'auto' – query the OS preference; default to 'dark' in SSR/test env
   if (typeof window !== "undefined" && window.matchMedia) {
-    return window.matchMedia("(prefers-color-scheme: light)").matches
-      ? "light"
-      : "dark";
+    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
   }
   return "dark";
 }
@@ -289,9 +287,7 @@ export default function ThemeToggle({ className = "" }) {
 
   const isDarkActive =
     preference === "dark" ||
-    (preference === "auto" &&
-      typeof window !== "undefined" &&
-      resolvedTheme === "dark");
+    (preference === "auto" && typeof window !== "undefined" && resolvedTheme === "dark");
 
   const absoluteUpdatedAt = updatedAt ? updatedAt.toLocaleString() : null;
 

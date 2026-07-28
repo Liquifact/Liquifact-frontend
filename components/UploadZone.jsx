@@ -286,7 +286,9 @@ function UploadZone({ onUploadSuccess, progress }) {
               {"\u{1F4C2}"}
             </span>
             <p className="font-medium text-slate-300">{copy.uploadZone.dragDropPrompt}</p>
-            <p className="upload-muted-text text-sm text-slate-500">{copy.uploadZone.browsePrompt}</p>
+            <p className="upload-muted-text text-sm text-slate-500">
+              {copy.uploadZone.browsePrompt}
+            </p>
             <div className="flex justify-center gap-2 flex-wrap pt-1">
               <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-400">
                 {copy.uploadZone.badgePdfOnly}

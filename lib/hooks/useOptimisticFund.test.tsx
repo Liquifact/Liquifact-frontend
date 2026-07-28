@@ -34,10 +34,7 @@ const SUCCESS_RESULT = {
 };
 
 /** Create a fundFn that resolves after `delay` ms. */
-function makeFundFn(
-  result: unknown = SUCCESS_RESULT,
-  delay = 0
-): jest.Mock {
+function makeFundFn(result: unknown = SUCCESS_RESULT, delay = 0): jest.Mock {
   return jest.fn(
     () =>
       new Promise((resolve, reject) =>
@@ -98,9 +95,7 @@ describe("useOptimisticFund — initial state", () => {
 describe("useOptimisticFund — optimistic update", () => {
   it("flips optimisticStatus to 'Funded' immediately when submit is called", async () => {
     const fundFn = makeFundFn(SUCCESS_RESULT, 100); // slow so we can observe pending state
-    const { result } = renderHook(() =>
-      useOptimisticFund({ ...DEFAULT_OPTS, fundFn })
-    );
+    const { result } = renderHook(() => useOptimisticFund({ ...DEFAULT_OPTS, fundFn }));
 
     act(() => {
       result.current.submitFund(1000);
@@ -112,9 +107,7 @@ describe("useOptimisticFund — optimistic update", () => {
 
   it("sets fundingState to pending immediately", async () => {
     const fundFn = makeFundFn(SUCCESS_RESULT, 100);
-    const { result } = renderHook(() =>
-      useOptimisticFund({ ...DEFAULT_OPTS, fundFn })
-    );
+    const { result } = renderHook(() => useOptimisticFund({ ...DEFAULT_OPTS, fundFn }));
 
     act(() => {
       result.current.submitFund(1000);
@@ -126,9 +119,7 @@ describe("useOptimisticFund — optimistic update", () => {
 
   it("passes correct params to fundFn", async () => {
     const fundFn = makeFundFn();
-    const { result } = renderHook(() =>
-      useOptimisticFund({ ...DEFAULT_OPTS, fundFn })
-    );
+    const { result } = renderHook(() => useOptimisticFund({ ...DEFAULT_OPTS, fundFn }));
 
     await act(async () => {
       await result.current.submitFund(500);
@@ -141,9 +132,7 @@ describe("useOptimisticFund — optimistic update", () => {
 
   it("includes an AbortSignal in the fundFn call", async () => {
     const fundFn = makeFundFn();
-    const { result } = renderHook(() =>
-      useOptimisticFund({ ...DEFAULT_OPTS, fundFn })
-    );
+    const { result } = renderHook(() => useOptimisticFund({ ...DEFAULT_OPTS, fundFn }));
 
     await act(async () => {
       await result.current.submitFund(200);
@@ -300,9 +289,7 @@ describe("useOptimisticFund — rollback on failure", () => {
 describe("useOptimisticFund — concurrent submit guard", () => {
   it("prevents a second call while the first is still pending", async () => {
     const fundFn = makeFundFn(SUCCESS_RESULT, 100);
-    const { result } = renderHook(() =>
-      useOptimisticFund({ ...DEFAULT_OPTS, fundFn })
-    );
+    const { result } = renderHook(() => useOptimisticFund({ ...DEFAULT_OPTS, fundFn }));
 
     // Start first call but don't await it
     act(() => {
@@ -320,9 +307,7 @@ describe("useOptimisticFund — concurrent submit guard", () => {
 
   it("allows a new call after the previous one completes", async () => {
     const fundFn = makeFundFn();
-    const { result } = renderHook(() =>
-      useOptimisticFund({ ...DEFAULT_OPTS, fundFn })
-    );
+    const { result } = renderHook(() => useOptimisticFund({ ...DEFAULT_OPTS, fundFn }));
 
     // First call
     await act(async () => {
@@ -353,9 +338,7 @@ describe("useOptimisticFund — abort on unmount", () => {
       return new Promise(() => {}); // Never resolves
     });
 
-    const { result, unmount } = renderHook(() =>
-      useOptimisticFund({ ...DEFAULT_OPTS, fundFn })
-    );
+    const { result, unmount } = renderHook(() => useOptimisticFund({ ...DEFAULT_OPTS, fundFn }));
 
     act(() => {
       result.current.submitFund(1000);
@@ -383,9 +366,7 @@ describe("useOptimisticFund — abort on unmount", () => {
         })
     );
 
-    const { result, unmount } = renderHook(() =>
-      useOptimisticFund({ ...DEFAULT_OPTS, fundFn })
-    );
+    const { result, unmount } = renderHook(() => useOptimisticFund({ ...DEFAULT_OPTS, fundFn }));
 
     act(() => {
       result.current.submitFund(1000);
@@ -454,8 +435,7 @@ describe("useOptimisticFund — upstream status sync", () => {
   it("does NOT update optimisticStatus when status prop changes while pending", async () => {
     const fundFn = makeFundFn(SUCCESS_RESULT, 200); // slow
     const { result, rerender } = renderHook(
-      ({ status }: { status: string }) =>
-        useOptimisticFund({ ...DEFAULT_OPTS, status, fundFn }),
+      ({ status }: { status: string }) => useOptimisticFund({ ...DEFAULT_OPTS, status, fundFn }),
       { initialProps: { status: "Open" } }
     );
 

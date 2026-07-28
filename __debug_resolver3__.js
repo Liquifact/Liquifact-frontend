@@ -12,14 +12,12 @@ const result2 = DefaultResolver.findNodeModule(
 );
 console.log("findNodeModule(absolute):", result2);
 
-const result3 = DefaultResolver.findNodeModule(
-  process.cwd() + "/jest.setup.js",
-  { basedir: process.cwd() }
-);
+const result3 = DefaultResolver.findNodeModule(process.cwd() + "/jest.setup.js", {
+  basedir: process.cwd(),
+});
 console.log("findNodeModule(backslash):", result3);
 
-const result4 = DefaultResolver.findNodeModule(
-  "<rootDir>/jest.setup.js",
-  { basedir: process.cwd() }
-);
+const result4 = DefaultResolver.findNodeModule("<rootDir>/jest.setup.js", {
+  basedir: process.cwd(),
+});
 console.log("findNodeModule(<rootDir>):", result4);

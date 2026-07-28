@@ -56,11 +56,7 @@ jest.mock("@/components/FundAmountInput", () => ({
     disabled: boolean;
   }) {
     return (
-      <button
-        data-testid="fund-amount-submit"
-        disabled={disabled}
-        onClick={() => onSubmit(500)}
-      >
+      <button data-testid="fund-amount-submit" disabled={disabled} onClick={() => onSubmit(500)}>
         Submit amount
       </button>
     );
@@ -242,10 +238,12 @@ describe("optimistic rollback on failure", () => {
         ...mockUseMarketplace(),
         pendingIds: new Set(mockPendingIds),
       });
-      return promise.then(() => {}).catch((e) => {
-        mockPendingIds.delete("inv-001");
-        throw e;
-      });
+      return promise
+        .then(() => {})
+        .catch((e) => {
+          mockPendingIds.delete("inv-001");
+          throw e;
+        });
     });
 
     const { rerender } = render(<FundActions {...DEFAULT_PROPS} performFund={mockFundInvoice} />);
@@ -479,11 +477,7 @@ describe("default performFund placeholder", () => {
     });
 
     // fundInvoice is called with a default no-op action
-    expect(mockFundInvoice).toHaveBeenCalledWith(
-      "inv-001",
-      500,
-      expect.any(Function)
-    );
+    expect(mockFundInvoice).toHaveBeenCalledWith("inv-001", 500, expect.any(Function));
 
     // The default action resolves, so success toast should appear
     expect(mockToast.success).toHaveBeenCalledWith(

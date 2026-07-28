@@ -12,12 +12,9 @@ describe("useDebouncedValue", () => {
   });
 
   it("updates the debounced value after the specified delay", () => {
-    const { result, rerender } = renderHook(
-      ({ value }) => useDebouncedValue(value, 500),
-      {
-        initialProps: { value: "initial" },
-      }
-    );
+    const { result, rerender } = renderHook(({ value }) => useDebouncedValue(value, 500), {
+      initialProps: { value: "initial" },
+    });
 
     expect(result.current).toBe("initial");
 
@@ -40,12 +37,9 @@ describe("useDebouncedValue", () => {
   });
 
   it("coalesces rapid successive changes into the latest value", () => {
-    const { result, rerender } = renderHook(
-      ({ value }) => useDebouncedValue(value, 500),
-      {
-        initialProps: { value: "" },
-      }
-    );
+    const { result, rerender } = renderHook(({ value }) => useDebouncedValue(value, 500), {
+      initialProps: { value: "" },
+    });
 
     rerender({ value: "c" });
 
@@ -80,12 +74,9 @@ describe("useDebouncedValue", () => {
   });
 
   it("cleans up the pending timer when unmounted", () => {
-    const { result, rerender, unmount } = renderHook(
-      ({ value }) => useDebouncedValue(value, 500),
-      {
-        initialProps: { value: "initial" },
-      }
-    );
+    const { result, rerender, unmount } = renderHook(({ value }) => useDebouncedValue(value, 500), {
+      initialProps: { value: "initial" },
+    });
 
     rerender({ value: "updated" });
 
@@ -103,9 +94,7 @@ describe("useDebouncedValue", () => {
   });
 
   it("handles immediate unmount without throwing", () => {
-    const { unmount } = renderHook(() =>
-      useDebouncedValue("value", 500)
-    );
+    const { unmount } = renderHook(() => useDebouncedValue("value", 500));
 
     expect(() => unmount()).not.toThrow();
 

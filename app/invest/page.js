@@ -386,15 +386,18 @@ export function InvestMarketplace({
   }, [setInvoices, setLoadError, setRetryKey]);
 
   /** Toggle a status chip: add if absent, remove if present. */
-  const handleStatusToggle = useCallback((status) => {
-    setFilters((prev) => {
-      const current = Array.isArray(prev.statuses) ? prev.statuses : [];
-      const next = current.includes(status)
-        ? current.filter((s) => s !== status)
-        : [...current, status];
-      return { ...prev, statuses: next };
-    });
-  }, [setFilters]);
+  const handleStatusToggle = useCallback(
+    (status) => {
+      setFilters((prev) => {
+        const current = Array.isArray(prev.statuses) ? prev.statuses : [];
+        const next = current.includes(status)
+          ? current.filter((s) => s !== status)
+          : [...current, status];
+        return { ...prev, statuses: next };
+      });
+    },
+    [setFilters]
+  );
 
   /** Clear all status chips. */
   const handleClearStatuses = useCallback(() => {
@@ -472,7 +475,7 @@ export function InvestMarketplace({
       list = list.filter((inv) => filters.statuses.includes(inv.status));
     }
     if (filters.watchlistOnly) {
-      const allStarredIds = new Set(watchlists.flatMap(wl => wl.invoiceIds));
+      const allStarredIds = new Set(watchlists.flatMap((wl) => wl.invoiceIds));
       list = list.filter((inv) => allStarredIds.has(inv.id));
     }
     return applySortToList(list, filters);
@@ -669,13 +672,7 @@ export function InvestMarketplace({
     } finally {
       setBulkRunning((prev) => ({ ...prev, export: false }));
     }
-  }, [
-    selectedIds,
-    filteredInvoices,
-    onBulkExport,
-    bulkLabels,
-    toastApi,
-  ]);
+  }, [selectedIds, filteredInvoices, onBulkExport, bulkLabels, toastApi]);
 
   // const visibleInvoices = filteredInvoices.slice(0, visibleCount);
 
@@ -754,7 +751,7 @@ export function InvestMarketplace({
           >
             {copy.invest.filterSoonLabel}
           </div>
-          <div          className="flex flex-wrap gap-4 items-center pointer-events-none opacity-60">
+          <div className="flex flex-wrap gap-4 items-center pointer-events-none opacity-60">
             {/* InvoiceFilters only — search moved above */}
             <InvoiceFilters
               filters={filters}
@@ -817,7 +814,10 @@ export function InvestMarketplace({
                   >
                     <div
                       className="flex items-center justify-between"
-                      style={{ marginBottom: "var(--market-card-gap)", gap: "var(--market-card-gap)" }}
+                      style={{
+                        marginBottom: "var(--market-card-gap)",
+                        gap: "var(--market-card-gap)",
+                      }}
                     >
                       <Link
                         href={`/invest/${inv.id}`}

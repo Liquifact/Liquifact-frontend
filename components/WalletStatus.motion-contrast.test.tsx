@@ -11,10 +11,7 @@ import { ToastProvider } from "./ToastProvider";
 
 expect.extend(toHaveNoViolations);
 
-const cssSource = fs.readFileSync(
-  path.join(__dirname, "..", "app", "globals.css"),
-  "utf8"
-);
+const cssSource = fs.readFileSync(path.join(__dirname, "..", "app", "globals.css"), "utf8");
 
 function extractMediaBlock(source: string, featureFragment: string): string {
   const startPattern = new RegExp(
@@ -82,18 +79,9 @@ describe("globals.css — wallet accessibility overrides", () => {
   it("defines forced-colors overrides for wallet selectors", () => {
     const block = extractMediaBlock(cssSource, "forced-colors: active");
     expectRule(block, ".wallet-status-dot", ["forced-color-adjust: none"]);
-    expectRule(block, ".wallet-address-text", [
-      "color: CanvasText",
-      "forced-color-adjust: none",
-    ]);
-    expectRule(block, ".wallet-balance-text", [
-      "color: GrayText",
-      "forced-color-adjust: none",
-    ]);
-    expectRule(block, ".wallet-helper-text", [
-      "color: CanvasText",
-      "forced-color-adjust: none",
-    ]);
+    expectRule(block, ".wallet-address-text", ["color: CanvasText", "forced-color-adjust: none"]);
+    expectRule(block, ".wallet-balance-text", ["color: GrayText", "forced-color-adjust: none"]);
+    expectRule(block, ".wallet-helper-text", ["color: CanvasText", "forced-color-adjust: none"]);
     expectRule(block, ".wallet-skeleton-text-primary", [
       "border: 1px solid CanvasText",
       "background-color: Canvas",

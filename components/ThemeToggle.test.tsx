@@ -430,14 +430,9 @@ describe("ThemeToggle", () => {
   it("writes the new preference to localStorage on click", async () => {
     const ls = mockLocalStorage({});
     render(<ThemeToggle />);
-    await act(async () =>
-      fireEvent.click(screen.getByRole("button", { name: /theme:/i }))
-    );
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: /theme:/i })));
     // useLocalStorage writes JSON.stringify("light")
-    expect(ls.setItem).toHaveBeenCalledWith(
-      THEME_STORAGE_KEY,
-      JSON.stringify("light")
-    );
+    expect(ls.setItem).toHaveBeenCalledWith(THEME_STORAGE_KEY, JSON.stringify("light"));
   });
 
   it("sets data-theme on <html> after mount", async () => {
@@ -544,10 +539,7 @@ describe("ThemeToggle", () => {
     mockMatchMedia(false); // OS prefers dark
     render(<ThemeToggle />);
     await act(async () => {});
-    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute("aria-pressed", "true");
   });
 
   // ── data attributes ────────────────────────────────────────────────────────
@@ -584,9 +576,7 @@ describe("ThemeToggle", () => {
 
   it("forwards className to the button", () => {
     render(<ThemeToggle className="my-extra-class" />);
-    expect(screen.getByRole("button", { name: /theme:/i })).toHaveClass(
-      "my-extra-class"
-    );
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveClass("my-extra-class");
   });
 
   // ── SVG icon ──────────────────────────────────────────────────────────────
@@ -665,10 +655,7 @@ describe("ThemeToggle", () => {
       fireEvent.click(screen.getByRole("button", { name: "Copy theme identifier" }));
     });
 
-    expect(mockToast.error).toHaveBeenCalledWith(
-      "Failed to copy theme identifier.",
-      "Error"
-    );
+    expect(mockToast.error).toHaveBeenCalledWith("Failed to copy theme identifier.", "Error");
   });
 });
 
@@ -761,10 +748,7 @@ describe("ThemeToggle - last updated timestamp", () => {
     await act(async () => {});
 
     expect(screen.getByText(/updated just now/i)).toBeInTheDocument();
-    expect(ls.setItem).toHaveBeenCalledWith(
-      THEME_UPDATED_STORAGE_KEY,
-      String(FIXED_NOW.getTime())
-    );
+    expect(ls.setItem).toHaveBeenCalledWith(THEME_UPDATED_STORAGE_KEY, String(FIXED_NOW.getTime()));
   });
 
   it("does not overwrite an already-stored timestamp on mount", async () => {
@@ -774,10 +758,7 @@ describe("ThemeToggle - last updated timestamp", () => {
     await act(async () => {});
 
     expect(screen.getByText(/updated 10 minutes ago/i)).toBeInTheDocument();
-    expect(ls.setItem).not.toHaveBeenCalledWith(
-      THEME_UPDATED_STORAGE_KEY,
-      expect.anything()
-    );
+    expect(ls.setItem).not.toHaveBeenCalledWith(THEME_UPDATED_STORAGE_KEY, expect.anything());
   });
 
   it("reads a previously-stored timestamp via readStoredThemeUpdatedAt", () => {
@@ -828,12 +809,7 @@ describe("ThemeToggle - last updated timestamp", () => {
     await act(async () => {});
 
     const container = document.getElementById("theme-updated-at");
-    expect(container).toHaveAttribute(
-      "title",
-      expect.stringContaining("Theme last updated")
-    );
-    expect(container?.querySelector(".sr-only")).toHaveTextContent(
-      FIXED_NOW.toLocaleString()
-    );
+    expect(container).toHaveAttribute("title", expect.stringContaining("Theme last updated"));
+    expect(container?.querySelector(".sr-only")).toHaveTextContent(FIXED_NOW.toLocaleString());
   });
 });

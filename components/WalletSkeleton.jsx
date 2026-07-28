@@ -37,7 +37,11 @@ import { copy } from "../app/copy/en";
  * @param {string}  [props.className]  Optional extra classes on the wrapper.
  * @param {string}  [props["data-testid"]]  Test id override (defaults to "wallet-skeleton").
  */
-export default function WalletSkeleton({ className = "", "data-testid": testId = "wallet-skeleton", ...rest }) {
+export default function WalletSkeleton({
+  className = "",
+  "data-testid": testId = "wallet-skeleton",
+  ...rest
+}) {
   return (
     <>
       <div

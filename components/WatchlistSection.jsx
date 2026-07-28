@@ -29,7 +29,7 @@ export default function WatchlistSection() {
     <ErrorBoundary FallbackComponent={WatchlistSectionFallback}>
       <section className="mb-12">
         <h2 className="text-xl font-bold text-slate-100 mb-4">Your Watchlists</h2>
-        
+
         {/* Watchlist creation form */}
         <div className="mb-8 max-w-md">
           <WatchlistInput onSubmit={handleCreateWatchlist} />

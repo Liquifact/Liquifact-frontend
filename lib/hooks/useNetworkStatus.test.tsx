@@ -103,16 +103,24 @@ describe("useNetworkStatus — event subscription", () => {
   it("toggles between online and offline across multiple events", () => {
     const { result } = renderHook(() => useNetworkStatus());
 
-    act(() => { dispatchWindowEvent("offline"); });
+    act(() => {
+      dispatchWindowEvent("offline");
+    });
     expect(result.current).toBe(false);
 
-    act(() => { dispatchWindowEvent("online"); });
+    act(() => {
+      dispatchWindowEvent("online");
+    });
     expect(result.current).toBe(true);
 
-    act(() => { dispatchWindowEvent("offline"); });
+    act(() => {
+      dispatchWindowEvent("offline");
+    });
     expect(result.current).toBe(false);
 
-    act(() => { dispatchWindowEvent("online"); });
+    act(() => {
+      dispatchWindowEvent("online");
+    });
     expect(result.current).toBe(true);
   });
 });
@@ -186,8 +194,12 @@ describe("useNetworkStatus — edge cases", () => {
 
     expect(() => {
       for (let i = 0; i < 10; i++) {
-        act(() => { dispatchWindowEvent("offline"); });
-        act(() => { dispatchWindowEvent("online"); });
+        act(() => {
+          dispatchWindowEvent("offline");
+        });
+        act(() => {
+          dispatchWindowEvent("online");
+        });
       }
     }).not.toThrow();
 
@@ -198,18 +210,26 @@ describe("useNetworkStatus — edge cases", () => {
   it("returns the same value for consecutive same-state events (idempotent)", () => {
     const { result } = renderHook(() => useNetworkStatus());
 
-    act(() => { dispatchWindowEvent("offline"); });
+    act(() => {
+      dispatchWindowEvent("offline");
+    });
     expect(result.current).toBe(false);
 
     // Dispatching offline again should stay false.
-    act(() => { dispatchWindowEvent("offline"); });
+    act(() => {
+      dispatchWindowEvent("offline");
+    });
     expect(result.current).toBe(false);
 
-    act(() => { dispatchWindowEvent("online"); });
+    act(() => {
+      dispatchWindowEvent("online");
+    });
     expect(result.current).toBe(true);
 
     // Dispatching online again should stay true.
-    act(() => { dispatchWindowEvent("online"); });
+    act(() => {
+      dispatchWindowEvent("online");
+    });
     expect(result.current).toBe(true);
   });
 });

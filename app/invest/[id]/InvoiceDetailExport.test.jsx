@@ -44,7 +44,9 @@ describe("InvoiceDetailExport — rendering", () => {
   it("renders both Export CSV and Export JSON buttons", () => {
     render(<InvoiceDetailExport invoice={SAMPLE_INVOICE} />);
     expect(screen.getByRole("button", { name: /export invoice data as csv/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /export invoice data as json/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /export invoice data as json/i })
+    ).toBeInTheDocument();
   });
 
   it("buttons are inside a group with accessible label", () => {

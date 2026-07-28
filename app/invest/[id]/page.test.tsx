@@ -195,13 +195,7 @@ function makeOptimisticHook(overrides: Partial<ReturnType<typeof useOptimisticFu
  */
 const mockCopyButtonOnClick = jest.fn();
 jest.mock("@/components/CopyButton", () => {
-  return function CopyButtonMock({
-    text,
-    label,
-  }: {
-    text: string;
-    label: string;
-  }) {
+  return function CopyButtonMock({ text, label }: { text: string; label: string }) {
     return (
       <button
         type="button"
@@ -477,9 +471,7 @@ describe("FundActions", () => {
     });
 
     it("is disabled when invoice status is not Open", () => {
-      mockUseOptimisticFund.mockReturnValue(
-        makeOptimisticHook({ optimisticStatus: "Funded" })
-      );
+      mockUseOptimisticFund.mockReturnValue(makeOptimisticHook({ optimisticStatus: "Funded" }));
       render(<FundActions id="inv-001" status="Funded" />);
       expect(
         screen.getByRole("button", { name: copy.invest.detail.fundButtonLabel })
@@ -1040,9 +1032,9 @@ describe("keyboard operability", () => {
 
     it("disabled Copy link button is not focusable via Tab during copy", async () => {
       const user = userEvent.setup();
-      const writeText = jest.fn().mockImplementation(
-        () => new Promise<void>((resolve) => setTimeout(resolve, 100))
-      );
+      const writeText = jest
+        .fn()
+        .mockImplementation(() => new Promise<void>((resolve) => setTimeout(resolve, 100)));
       Object.defineProperty(navigator, "clipboard", {
         configurable: true,
         get: () => ({ writeText }),

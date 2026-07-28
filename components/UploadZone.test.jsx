@@ -1133,5 +1133,4 @@ describe("UploadZone", () => {
       expect(submitBtn).toBeDisabled();
     });
   });
-
 });

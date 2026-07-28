@@ -38,7 +38,7 @@ describe("Marketplace shortcut", () => {
   it("shortcut entry is in KEYBOARD_SHORTCUTS registry", () => {
     const { KEYBOARD_SHORTCUTS } = require("../lib/shortcuts");
     const marketplaceEntry = KEYBOARD_SHORTCUTS.find((s: any) => s.id === "marketplace-navigate");
-    
+
     expect(marketplaceEntry).toBeDefined();
     expect(marketplaceEntry.key).toBe("m");
     expect(marketplaceEntry.description).toBe("Navigate to the marketplace");
@@ -52,7 +52,7 @@ describe("Marketplace shortcut", () => {
 
   it("shortcut matcher ignores modifier keys", () => {
     const handler = createShortcutMatcher("m", jest.fn());
-    
+
     // Should not trigger with Ctrl
     const ctrlEvent = new KeyboardEvent("keydown", { key: "m", ctrlKey: true });
     handler(ctrlEvent);
@@ -72,7 +72,7 @@ describe("Marketplace shortcut", () => {
   it("shortcut matcher ignores key when in editable element", () => {
     const handler = createShortcutMatcher("m", jest.fn());
     const mockCallback = jest.fn();
-    
+
     // Create an input and focus it
     const input = document.createElement("input");
     input.type = "text";
@@ -83,7 +83,7 @@ describe("Marketplace shortcut", () => {
     // We're testing the matcher's behavior when focus is in an editable
     const event = new KeyboardEvent("keydown", { key: "m" });
     handler(event);
-    
+
     // The matcher should not call the handler when in editable element
     // (This is tested via the isFocusInsideEditableElement helper in the real implementation)
   });
@@ -91,20 +91,20 @@ describe("Marketplace shortcut", () => {
   it("shortcut matcher triggers on plain 'm' key", () => {
     const callback = jest.fn();
     const handler = createShortcutMatcher("m", callback);
-    
+
     const event = new KeyboardEvent("keydown", { key: "m" });
     handler(event);
-    
+
     expect(callback).toHaveBeenCalledWith(event);
   });
 
   it("shortcut matcher does not trigger on other keys", () => {
     const callback = jest.fn();
     const handler = createShortcutMatcher("m", callback);
-    
+
     const event = new KeyboardEvent("keydown", { key: "a" });
     handler(event);
-    
+
     expect(callback).not.toHaveBeenCalled();
   });
 });

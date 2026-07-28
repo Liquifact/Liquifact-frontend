@@ -302,11 +302,7 @@ export default function WalletStatus() {
               }}
             >
               {/* Density toggle — only shown when wallet is connected */}
-              <DensityToggle
-                density={density}
-                onDensityChange={setDensity}
-                className="no-print"
-              />
+              <DensityToggle density={density} onDensityChange={setDensity} className="no-print" />
 
               {/* Address row */}
               <div className="flex items-center gap-2">
@@ -371,7 +367,10 @@ export default function WalletStatus() {
         ) : state === WALLET_STATES.ERROR || state === WALLET_STATES.WRONG_NETWORK ? (
           /* Error state */
           <div className="flex items-center gap-3" role="alert" aria-live="assertive">
-            <span id="wallet-helper-text" className="max-w-xs text-xs text-red-400 wallet-helper-text">
+            <span
+              id="wallet-helper-text"
+              className="max-w-xs text-xs text-red-400 wallet-helper-text"
+            >
               {config.helperText}
             </span>
 

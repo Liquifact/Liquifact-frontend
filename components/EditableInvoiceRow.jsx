@@ -111,9 +111,7 @@ export default function EditableInvoiceRow({ invoice, onSave }) {
         // field is invalid, but Enter keypresses on text inputs could
         // still reach here. Surface a polite failure message and bail.
         const firstKey = Object.keys(errors)[0];
-        setAnnouncement(
-          `Save failed: ${firstKey ? errors[firstKey] : "form has invalid fields"}`
-        );
+        setAnnouncement(`Save failed: ${firstKey ? errors[firstKey] : "form has invalid fields"}`);
         return;
       }
       setIsEditing(false);
@@ -168,15 +166,15 @@ export default function EditableInvoiceRow({ invoice, onSave }) {
       className: [
         "w-full bg-slate-950 border rounded px-3 py-1.5 text-sm text-slate-100",
         "focus:outline-none",
-        invalid
-          ? "border-red-500 focus:border-red-500"
-          : "border-slate-700 focus:border-cyan-500",
+        invalid ? "border-red-500 focus:border-red-500" : "border-slate-700 focus:border-cyan-500",
       ].join(" "),
     };
 
     const inputEl =
       as === "select" ? (
-        <select {...sharedProps} data-testid={`edit-input-${field}`}>{children}</select>
+        <select {...sharedProps} data-testid={`edit-input-${field}`}>
+          {children}
+        </select>
       ) : (
         <input {...sharedProps} type={type} autoFocus={field === "issuer"} />
       );
@@ -210,9 +208,7 @@ export default function EditableInvoiceRow({ invoice, onSave }) {
           </div>
 
           <div className="flex flex-wrap gap-4 items-start">
-            <div className="flex-1 min-w-[200px]">
-              {renderField("issuer")}
-            </div>
+            <div className="flex-1 min-w-[200px]">{renderField("issuer")}</div>
             <div className="w-32">
               {renderField("status", {
                 as: "select",

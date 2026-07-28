@@ -363,13 +363,17 @@ describe("forced-colors: globals.css @media (forced-colors: active) block", () =
     // extraction is brittle with nested rule-sets.  The structural tests above
     // already confirm the @media block exists; these selectively check that
     // each required selector is present somewhere after the @media declaration.
-    const afterFc = cssSource.slice(cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i));
+    const afterFc = cssSource.slice(
+      cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i)
+    );
     expect(afterFc).toMatch(/\.focus-ring/);
     expect(afterFc).toMatch(/forced-color-adjust\s*:\s*none/);
   });
 
   it("applies forced-color-adjust: none to status pill elements ([data-status])", () => {
-    const afterFc = cssSource.slice(cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i));
+    const afterFc = cssSource.slice(
+      cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i)
+    );
     expect(afterFc).toMatch(/\[data-status\]/);
     expect(afterFc).toMatch(/forced-color-adjust\s*:\s*none/);
   });
@@ -377,7 +381,9 @@ describe("forced-colors: globals.css @media (forced-colors: active) block", () =
   // ── Skip-link ─────────────────────────────────────────────────────────
 
   it("styles .skip-link with ButtonFace background and ButtonText border inside forced-colors", () => {
-    const afterFc = cssSource.slice(cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i));
+    const afterFc = cssSource.slice(
+      cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i)
+    );
     expect(afterFc).toMatch(/\.skip-link/);
     expect(afterFc).toMatch(/ButtonFace/);
     expect(afterFc).toMatch(/ButtonText/);
@@ -386,7 +392,9 @@ describe("forced-colors: globals.css @media (forced-colors: active) block", () =
   // ── StatusPill — Highlight outline on :focus-visible ─────────────────
 
   it("sets Highlight outline on .focus-ring:focus-visible inside forced-colors", () => {
-    const afterFc = cssSource.slice(cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i));
+    const afterFc = cssSource.slice(
+      cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i)
+    );
     expect(afterFc).toMatch(/\.focus-ring:focus-visible/);
     expect(afterFc).toMatch(/outline\s*:\s*[^;]*Highlight/);
   });

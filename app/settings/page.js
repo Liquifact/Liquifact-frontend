@@ -84,10 +84,7 @@ const validateEmail = (value) => {
  * Storage payload shape: { displayName: string, email: string }
  */
 export default function SettingsPage() {
-  const [settings, setSettings] = useLocalStorage(
-    SETTINGS_STORAGE_KEY,
-    DEFAULT_SETTINGS
-  );
+  const [settings, setSettings] = useLocalStorage(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS);
 
   const safeSettings = useMemo(() => normalizeSettings(settings), [settings]);
 
@@ -125,10 +122,7 @@ export default function SettingsPage() {
           aria-labelledby="settings-rows-heading"
           className="rounded-2xl border border-slate-800 bg-slate-900/30 p-4 sm:p-6"
         >
-          <h2
-            id="settings-rows-heading"
-            className="sr-only"
-          >
+          <h2 id="settings-rows-heading" className="sr-only">
             {copy.settings.pageTitle}
           </h2>
 
