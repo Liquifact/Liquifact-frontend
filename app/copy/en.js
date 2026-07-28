@@ -190,6 +190,10 @@
  * @property {string} error.description
  * @property {string} error.actionLabel
  * @property {string} error.previewLabel
+ * @property {Object} network - Network status copy
+ * @property {string} network.offlineBanner
+ * @property {string} network.reconnectedTitle
+ * @property {string} network.reconnectedMsg
  * @property {Object} notFound - Not found page copy
  * @property {string} notFound.heading
  * @property {string} notFound.description
@@ -539,6 +543,11 @@ export const copy = {
     /** Announced politely by NavMenu when the user navigates to a new route.
      *  Replace {label} with the matching NAV_LINKS label (e.g. "Home"). */
     announceNavigation: "Navigated to {label}",
+  },
+  network: {
+    offlineBanner: "You are offline — some features may be unavailable.",
+    reconnectedTitle: "Back online",
+    reconnectedMsg: "Your network connection has been restored.",
   },
   notFound: {
     heading: "Page not found",
