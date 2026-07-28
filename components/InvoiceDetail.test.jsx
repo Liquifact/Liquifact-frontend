@@ -8,6 +8,24 @@ import { formatInvoiceDate as formatDate } from "../lib/format/date";
 
 expect.extend(toHaveNoViolations);
 
+const mockAnnounce = jest.fn();
+
+jest.mock("@/lib/hooks/useFormAnnouncer", () => {
+  const React = require("react");
+  return {
+    useFormAnnouncer: () => {
+      const [msg, setMsg] = React.useState("");
+      return [
+        msg,
+        React.useCallback((m) => {
+          mockAnnounce(m);
+          setMsg(m);
+        }, []),
+      ];
+    },
+  };
+});
+
 // Mock the child components so we can focus on InvoiceDetail's logic
 jest.mock("./StatusPill", () => function MockStatusPill({ status }) {
   return <div data-testid="status-pill">{status}</div>;
@@ -55,6 +73,7 @@ describe("InvoiceDetail", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAnnounce.mockClear();
   });
 
   function expectState({ loading = false, empty = false, error = false, success = false }) {
@@ -212,6 +231,58 @@ describe("InvoiceDetail", () => {
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Test Issuer");
     expect(mockLoadInvoice).toHaveBeenCalledTimes(2);
     expectState({ success: true });
+  });
+
+  // ── Announcement tests ─────────────────────────────────────────────────────
+
+  it("announces the issuer and status when invoice loads successfully", async () => {
+    mockLoadInvoice.mockResolvedValue(mockInvoice);
+
+    render(<InvoiceDetail id="inv-123" loadInvoice={mockLoadInvoice} />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("invoice-detail-skeleton")).not.toBeInTheDocument();
+    });
+
+    expect(mockAnnounce).toHaveBeenCalledWith(
+      "Loaded invoice from Test Issuer, status: pending"
+    );
+  });
+
+  it("announces the error message when loadInvoice fails", async () => {
+    mockLoadInvoice.mockRejectedValue(new Error("Network Error"));
+
+    render(<InvoiceDetail id="inv-123" loadInvoice={mockLoadInvoice} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("error-banner")).toBeInTheDocument();
+    });
+
+    expect(mockAnnounce).toHaveBeenCalledWith("Failed to load invoice: Network Error");
+  });
+
+  it("renders the announcement text in a polite aria-live region", async () => {
+    mockLoadInvoice.mockResolvedValue(mockInvoice);
+
+    render(<InvoiceDetail id="inv-123" loadInvoice={mockLoadInvoice} />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("invoice-detail-skeleton")).not.toBeInTheDocument();
+    });
+
+    const region = screen.getByTestId("invoice-detail-announcement");
+    expect(region).toHaveAttribute("role", "status");
+    expect(region).toHaveAttribute("aria-live", "polite");
+    expect(region).toHaveAttribute("aria-atomic", "true");
+    expect(region).toHaveClass("sr-only");
+  });
+
+  it("does not announce during loading state", () => {
+    mockLoadInvoice.mockReturnValue(new Promise(() => {}));
+
+    render(<InvoiceDetail id="inv-123" loadInvoice={mockLoadInvoice} />);
+
+    expect(mockAnnounce).not.toHaveBeenCalled();
   });
 
   it("has no accessibility violations in the loaded state", async () => {
