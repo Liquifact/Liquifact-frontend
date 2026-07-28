@@ -148,9 +148,7 @@ export default function InvoiceDetail({
             <div>
               <dt className="text-sm font-medium text-gray-500">Estimated yield</dt>
               <dd className="mt-1 text-lg font-semibold text-gray-900">
-                {invoice.yieldValue != null
-                  ? formatPercent(invoice.yieldValue)
-                  : invoice.yield}
+                {invoice.yieldValue != null ? formatPercent(invoice.yieldValue) : invoice.yield}
               </dd>
             </div>
 
@@ -179,5 +177,3 @@ export default function InvoiceDetail({
     </div>
   );
 }
-
-

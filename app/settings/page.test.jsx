@@ -27,13 +27,7 @@
  */
 
 import "@testing-library/jest-dom";
-import {
-  act,
-  render,
-  screen,
-  fireEvent,
-  within,
-} from "@testing-library/react";
+import { act, render, screen, fireEvent, within } from "@testing-library/react";
 import SettingsRoute, {
   SettingsPage,
   applyFiltersToSettings,
@@ -43,12 +37,7 @@ import SettingsRoute, {
   PAGE_SIZE,
   SEARCH_DEBOUNCE_MS,
 } from "./page";
-import {
-  MOCK_SETTINGS,
-  loadMockSettings,
-  getCategoryList,
-  getSettingById,
-} from "./lib";
+import { MOCK_SETTINGS, loadMockSettings, getCategoryList, getSettingById } from "./lib";
 import { copy } from "../copy/en";
 
 jest.mock("next/link", () => {
@@ -119,9 +108,7 @@ function makeRows(count) {
 }
 
 function getRenderedRows() {
-  return within(screen.getByRole("list", { name: /settings list/i })).getAllByRole(
-    "listitem"
-  );
+  return within(screen.getByRole("list", { name: /settings list/i })).getAllByRole("listitem");
 }
 
 // ── Pure-function tests (lib + helpers) ─────────────────────────────────────
@@ -157,8 +144,7 @@ describe("applyFiltersToSettings", () => {
     expect(
       out.every(
         (r) =>
-          r.label.toLowerCase().includes("email") ||
-          r.description.toLowerCase().includes("email")
+          r.label.toLowerCase().includes("email") || r.description.toLowerCase().includes("email")
       )
     ).toBe(true);
   });
@@ -202,8 +188,7 @@ describe("applyFiltersToSettings", () => {
     expect(
       out.every(
         (r) =>
-          r.label.toLowerCase().includes("alerts") ||
-          r.description.toLowerCase().includes("alerts")
+          r.label.toLowerCase().includes("alerts") || r.description.toLowerCase().includes("alerts")
       )
     ).toBe(true);
   });
@@ -257,9 +242,7 @@ describe("getSettingsLoadAnnouncement", () => {
   });
 
   it("substitutes {count} in the loaded copy", () => {
-    expect(getSettingsLoadAnnouncement(MOCK_SETTINGS)).toMatch(
-      /\d+ preferences loaded/
-    );
+    expect(getSettingsLoadAnnouncement(MOCK_SETTINGS)).toMatch(/\d+ preferences loaded/);
   });
 });
 
@@ -319,7 +302,9 @@ describe("loadMockSettings (test hook coverage)", () => {
   });
 
   it("honours window.__TEST_MOCK_SETTINGS__ override in the browser", () => {
-    const override = [{ id: "x", category: "display", label: "x", type: "toggle", value: "v", description: "d" }];
+    const override = [
+      { id: "x", category: "display", label: "x", type: "toggle", value: "v", description: "d" },
+    ];
     window.__TEST_MOCK_SETTINGS__ = override;
     return expect(loadMockSettings()).resolves.toBe(override);
   });
@@ -363,9 +348,7 @@ describe("SettingsPage – first page", () => {
   });
 
   it("renders only PAGE_SIZE rows when the list is longer than one page", async () => {
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(PAGE_SIZE + 5), 50)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(PAGE_SIZE + 5), 50)} />);
     await flushTimers(50);
 
     expect(getRenderedRows()).toHaveLength(PAGE_SIZE);
@@ -395,9 +378,7 @@ describe("SettingsPage – first page", () => {
     await flushTimers(0);
     expect(screen.queryByTestId("settings-load-more")).not.toBeInTheDocument();
 
-    rerender(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(PAGE_SIZE - 1), 0)} />
-    );
+    rerender(<SettingsPage loadSettings={createDeferredLoader(makeRows(PAGE_SIZE - 1), 0)} />);
     await flushTimers(0);
     expect(screen.queryByTestId("settings-load-more")).not.toBeInTheDocument();
   });
@@ -406,9 +387,7 @@ describe("SettingsPage – first page", () => {
     // 15 rows pulls the page past one screen, so the polite region must read
     // 'Showing 10 of 15 preferences' — not the load-count variant.
     const total = PAGE_SIZE + 5;
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(total), 50)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(total), 50)} />);
     await flushTimers(50);
     expect(screen.getByRole("status")).toHaveTextContent(
       `Showing ${PAGE_SIZE} of ${total} preferences`
@@ -419,13 +398,9 @@ describe("SettingsPage – first page", () => {
     // With total ≤ PAGE_SIZE the visibleCount/total branch falls through
     // to the load-count message.
     const total = PAGE_SIZE - 2;
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(total), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(total), 0)} />);
     await flushTimers(0);
-    expect(screen.getByRole("status")).toHaveTextContent(
-      `${total} preferences loaded`
-    );
+    expect(screen.getByRole("status")).toHaveTextContent(`${total} preferences loaded`);
   });
 });
 
@@ -576,17 +551,13 @@ describe("SettingsPage – end-of-list behavior", () => {
   });
 
   it("does NOT show the end-of-list hint when the list fits on one page (page 1 not advanced)", async () => {
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(PAGE_SIZE - 1), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(PAGE_SIZE - 1), 0)} />);
     await flushTimers(0);
     expect(screen.queryByTestId("settings-end-of-list")).not.toBeInTheDocument();
   });
 
   it("does NOT show the end-of-list hint on first render before any load-more click", async () => {
-    render(
-      <SettingsPage loadSettings={createDeferredLoader(makeRows(PAGE_SIZE + 5), 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader(makeRows(PAGE_SIZE + 5), 0)} />);
     await flushTimers(0);
     expect(screen.queryByTestId("settings-end-of-list")).not.toBeInTheDocument();
   });
@@ -787,9 +758,7 @@ describe("SettingsPage – empty / error / retry", () => {
   it("renders the empty-state message when the loaded list is empty", async () => {
     render(<SettingsPage loadSettings={createDeferredLoader([], 0)} />);
     await flushTimers(0);
-    expect(
-      screen.getByText(/No preferences available. Connect your wallet/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/No preferences available. Connect your wallet/i)).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: /settings list/i })).not.toBeInTheDocument();
   });
 
@@ -841,9 +810,7 @@ describe("SettingsPage – empty / error / retry", () => {
     );
     render(<SettingsPage loadSettings={failingLoader} />);
     await flushTimers(0);
-    expect(screen.getByRole("status")).toHaveTextContent(
-      copy.settings.errorStatus
-    );
+    expect(screen.getByRole("status")).toHaveTextContent(copy.settings.errorStatus);
   });
 
   it("retrying after an error re-runs the loader and recovers to the success state", async () => {
@@ -851,10 +818,7 @@ describe("SettingsPage – empty / error / retry", () => {
     const flakyLoader = jest.fn(() => {
       return new Promise((resolve, reject) => {
         setTimeout(
-          () =>
-            shouldFail
-              ? reject(new Error("transient"))
-              : resolve(makeRows(PAGE_SIZE + 4)),
+          () => (shouldFail ? reject(new Error("transient")) : resolve(makeRows(PAGE_SIZE + 4))),
           20
         );
       });
@@ -881,13 +845,9 @@ describe("SettingsPage – empty / error / retry", () => {
   });
 
   it("coerces a non-array load result to an empty list and shows the empty state", async () => {
-    render(
-      <SettingsPage loadSettings={createDeferredLoader({ unexpected: "shape" }, 0)} />
-    );
+    render(<SettingsPage loadSettings={createDeferredLoader({ unexpected: "shape" }, 0)} />);
     await flushTimers(0);
-    expect(
-      screen.getByText(/No preferences available. Connect your wallet/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/No preferences available. Connect your wallet/i)).toBeInTheDocument();
   });
 });
 
@@ -953,8 +913,22 @@ describe("SettingsPage – inline editing", () => {
 
   it("renders Edit button only for wallet category rows", async () => {
     const rows = [
-      { id: "r1", category: "wallet", label: "Wallet Setting", type: "text", value: "A", description: "Desc A" },
-      { id: "r2", category: "display", label: "Display Setting", type: "text", value: "B", description: "Desc B" },
+      {
+        id: "r1",
+        category: "wallet",
+        label: "Wallet Setting",
+        type: "text",
+        value: "A",
+        description: "Desc A",
+      },
+      {
+        id: "r2",
+        category: "display",
+        label: "Display Setting",
+        type: "text",
+        value: "B",
+        description: "Desc B",
+      },
     ];
     render(<SettingsPage loadSettings={createDeferredLoader(rows, 0)} />);
     await flushTimers(0);
@@ -966,7 +940,14 @@ describe("SettingsPage – inline editing", () => {
 
   it("can edit, save and announce the result", async () => {
     const rows = [
-      { id: "r1", category: "wallet", label: "Wallet Setting", type: "text", value: "A", description: "Desc A" },
+      {
+        id: "r1",
+        category: "wallet",
+        label: "Wallet Setting",
+        type: "text",
+        value: "A",
+        description: "Desc A",
+      },
     ];
     render(<SettingsPage loadSettings={createDeferredLoader(rows, 0)} />);
     await flushTimers(0);
@@ -990,7 +971,14 @@ describe("SettingsPage – inline editing", () => {
 
   it("can cancel editing with Escape", async () => {
     const rows = [
-      { id: "r1", category: "wallet", label: "Wallet Setting", type: "text", value: "A", description: "Desc A" },
+      {
+        id: "r1",
+        category: "wallet",
+        label: "Wallet Setting",
+        type: "text",
+        value: "A",
+        description: "Desc A",
+      },
     ];
     render(<SettingsPage loadSettings={createDeferredLoader(rows, 0)} />);
     await flushTimers(0);
@@ -998,7 +986,7 @@ describe("SettingsPage – inline editing", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit Wallet Setting" }));
     const input = screen.getByRole("textbox", { name: "Edit Wallet Setting" });
     fireEvent.change(input, { target: { value: "B" } });
-    
+
     // Cancel
     fireEvent.keyDown(input, { key: "Escape", code: "Escape" });
 
@@ -1008,7 +996,14 @@ describe("SettingsPage – inline editing", () => {
 
   it("validates empty value before saving", async () => {
     const rows = [
-      { id: "r1", category: "wallet", label: "Wallet Setting", type: "text", value: "A", description: "Desc A" },
+      {
+        id: "r1",
+        category: "wallet",
+        label: "Wallet Setting",
+        type: "text",
+        value: "A",
+        description: "Desc A",
+      },
     ];
     render(<SettingsPage loadSettings={createDeferredLoader(rows, 0)} />);
     await flushTimers(0);
@@ -1016,12 +1011,12 @@ describe("SettingsPage – inline editing", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit Wallet Setting" }));
     const input = screen.getByRole("textbox", { name: "Edit Wallet Setting" });
     fireEvent.change(input, { target: { value: "   " } });
-    
+
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     // Still in edit mode
     expect(screen.getByRole("textbox", { name: "Edit Wallet Setting" })).toBeInTheDocument();
-    
+
     // Error is shown
     expect(screen.getByText("Value cannot be empty")).toBeInTheDocument();
   });
@@ -1082,7 +1077,7 @@ describe("SettingsPage - Copy identifier affordance", () => {
     await flushTimers(0);
 
     const copyBtn = screen.getByRole("button", { name: `Copy ${copy.settings.copyIdentifier}` });
-    
+
     await act(async () => {
       fireEvent.click(copyBtn);
       jest.advanceTimersByTime(0);
@@ -1102,7 +1097,7 @@ describe("SettingsPage - Copy identifier affordance", () => {
     await flushTimers(0);
 
     const copyBtn = screen.getByRole("button", { name: `Copy ${copy.settings.copyIdentifier}` });
-    
+
     await act(async () => {
       fireEvent.click(copyBtn);
       jest.advanceTimersByTime(0);
@@ -1116,4 +1111,3 @@ describe("SettingsPage - Copy identifier affordance", () => {
     );
   });
 });
-

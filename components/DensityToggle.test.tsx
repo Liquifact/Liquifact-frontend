@@ -47,15 +47,17 @@ beforeEach(clearStorage);
 describe("DensityToggle — initial render", () => {
   it("renders the toggle group with the correct group label", () => {
     render(<DensityToggle />);
-    expect(
-      screen.getByRole("group", { name: detail.densityToggleLabel })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: detail.densityToggleLabel })).toBeInTheDocument();
   });
 
   it("renders Compact and Comfortable buttons", () => {
     render(<DensityToggle />);
-    expect(screen.getByRole("button", { name: detail.densityCompactAriaLabel })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: detail.densityComfortableAriaLabel })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: detail.densityCompactAriaLabel })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: detail.densityComfortableAriaLabel })
+    ).toBeInTheDocument();
   });
 
   it("Comfortable button is aria-pressed=true by default", () => {
@@ -180,7 +182,9 @@ describe("DensityToggle — localStorage persistence", () => {
     render(<DensityToggle />);
 
     await waitFor(() => {
-      const comfortableBtn = screen.getByRole("button", { name: detail.densityComfortableAriaLabel });
+      const comfortableBtn = screen.getByRole("button", {
+        name: detail.densityComfortableAriaLabel,
+      });
       expect(comfortableBtn).toHaveAttribute("aria-pressed", "true");
     });
   });

@@ -286,7 +286,9 @@ function UploadZone({ onUploadSuccess, progress }) {
               {"\u{1F4C2}"}
             </span>
             <p className="font-medium text-slate-300">{copy.uploadZone.dragDropPrompt}</p>
-            <p className="upload-muted-text text-sm text-slate-500">{copy.uploadZone.browsePrompt}</p>
+            <p className="upload-muted-text text-sm text-slate-500">
+              {copy.uploadZone.browsePrompt}
+            </p>
             <div className="flex justify-center gap-2 flex-wrap pt-1">
               <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-400">
                 {copy.uploadZone.badgePdfOnly}
@@ -387,39 +389,24 @@ function UploadZone({ onUploadSuccess, progress }) {
         )}
 
         {status === "tokenizing" && (
-          <p
-            role="status"
-            aria-live="polite"
-            className="flex items-start gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-400"
-          >
-            <Spinner />
-            {copy.uploadZone.statusTokenizing}
-          </p>
-          <button
-            type="button"
-            onClick={resetUpload}
-            className="mt-3 w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white transition-all duration-200 motion-reduce:transition-none hover:bg-emerald-500 focus-ring"
-            aria-label={copy.uploadZone.resetAriaLabel}
-          >
-            {copy.uploadZone.resetAction}
-          </button>
-        </div>
-      )}
-
-      <button
-        id="invoice-upload-btn"
-        type="submit"
-        disabled={!file || isProcessing}
-        aria-disabled={!file || isProcessing}
-        className="mt-4 w-full rounded-xl bg-cyan-500 py-3 text-sm font-semibold text-slate-950 transition-all duration-200 motion-reduce:transition-none
-          hover:bg-cyan-400 focus-ring
-          disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        {status === "uploading" && (
-          <>
-            <Spinner />
-            {copy.uploadZone.submitUploading}
-          </>
+          <div className="flex flex-col gap-3">
+            <p
+              role="status"
+              aria-live="polite"
+              className="flex items-start gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-400"
+            >
+              <Spinner />
+              {copy.uploadZone.statusTokenizing}
+            </p>
+            <button
+              type="button"
+              onClick={resetUpload}
+              className="w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white transition-all duration-200 motion-reduce:transition-none hover:bg-emerald-500 focus-ring"
+              aria-label={copy.uploadZone.resetAriaLabel}
+            >
+              {copy.uploadZone.resetAction}
+            </button>
+          </div>
         )}
 
         <button
@@ -427,9 +414,7 @@ function UploadZone({ onUploadSuccess, progress }) {
           type="submit"
           disabled={!file || isProcessing}
           aria-disabled={!file || isProcessing}
-          className="w-full rounded-xl bg-cyan-500 py-3 text-sm font-semibold text-slate-950 transition-all duration-200
-            hover:bg-cyan-400 focus-ring
-            disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full rounded-xl bg-cyan-500 py-3 text-sm font-semibold text-slate-950 transition-all duration-200 motion-reduce:transition-none hover:bg-cyan-400 focus-ring disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {status === "uploading" && (
             <>

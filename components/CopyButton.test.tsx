@@ -50,7 +50,9 @@ function renderCopyButton(props: Partial<React.ComponentProps<typeof CopyButton>
 
 /** Override navigator.clipboard with a controlled mock. */
 function mockClipboard(
-  impl: { writeText?: jest.Mock } | undefined = { writeText: jest.fn().mockResolvedValue(undefined) }
+  impl: { writeText?: jest.Mock } | undefined = {
+    writeText: jest.fn().mockResolvedValue(undefined),
+  }
 ) {
   Object.defineProperty(navigator, "clipboard", {
     value: impl,
@@ -66,7 +68,7 @@ function removeClipboard() {
   // writeText method to be absent so the `navigator.clipboard?.writeText`
   // guard in copyToClipboard falls through to the execCommand path.
   Object.defineProperty(navigator, "clipboard", {
-    value: { /* no writeText */ },
+    value: {/* no writeText */},
     configurable: true,
     writable: true,
   });

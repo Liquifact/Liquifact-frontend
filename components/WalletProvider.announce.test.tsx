@@ -66,9 +66,7 @@ describe("WalletProvider — live region announcements (issue #737)", () => {
   describe("successful wallet connect", () => {
     it("announces 'Wallet connected successfully' after debounce", async () => {
       (isFreighterConnected as jest.Mock).mockResolvedValue(true);
-      (connectFreighter as jest.Mock).mockResolvedValue(
-        "GABCDEFGHIJKLMNOPQRSTUVWXYZ123456",
-      );
+      (connectFreighter as jest.Mock).mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
       (assertExpectedNetwork as jest.Mock).mockResolvedValue(undefined);
       (getFreighterNetwork as jest.Mock).mockResolvedValue("testnet");
 
@@ -79,9 +77,7 @@ describe("WalletProvider — live region announcements (issue #737)", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId("wallet-state")).toHaveTextContent(
-          WALLET_STATES.CONNECTED,
-        );
+        expect(screen.getByTestId("wallet-state")).toHaveTextContent(WALLET_STATES.CONNECTED);
       });
 
       // Not yet — debounce still pending.
@@ -93,7 +89,7 @@ describe("WalletProvider — live region announcements (issue #737)", () => {
 
       await waitFor(() => {
         expect(document.getElementById(REGION_ID).textContent).toBe(
-          "Wallet connected successfully",
+          "Wallet connected successfully"
         );
       });
     });
@@ -110,9 +106,7 @@ describe("WalletProvider — live region announcements (issue #737)", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId("wallet-state")).toHaveTextContent(
-          WALLET_STATES.NO_WALLET,
-        );
+        expect(screen.getByTestId("wallet-state")).toHaveTextContent(WALLET_STATES.NO_WALLET);
       });
 
       act(() => {
@@ -120,19 +114,15 @@ describe("WalletProvider — live region announcements (issue #737)", () => {
       });
 
       await waitFor(() => {
-        expect(document.getElementById(REGION_ID).textContent).toBe(
-          "Wallet connection failed",
-        );
+        expect(document.getElementById(REGION_ID).textContent).toBe("Wallet connection failed");
       });
     });
 
     it("announces 'Wallet connection failed' on wrong network", async () => {
       (isFreighterConnected as jest.Mock).mockResolvedValue(true);
-      (connectFreighter as jest.Mock).mockResolvedValue(
-        "GABCDEFGHIJKLMNOPQRSTUVWXYZ123456",
-      );
+      (connectFreighter as jest.Mock).mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
       (assertExpectedNetwork as jest.Mock).mockRejectedValue(
-        new Error('Wallet is on "public" but the app requires "testnet"'),
+        new Error('Wallet is on "public" but the app requires "testnet"')
       );
 
       renderWithProvider();
@@ -142,9 +132,7 @@ describe("WalletProvider — live region announcements (issue #737)", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId("wallet-state")).toHaveTextContent(
-          WALLET_STATES.WRONG_NETWORK,
-        );
+        expect(screen.getByTestId("wallet-state")).toHaveTextContent(WALLET_STATES.WRONG_NETWORK);
       });
 
       act(() => {
@@ -152,17 +140,13 @@ describe("WalletProvider — live region announcements (issue #737)", () => {
       });
 
       await waitFor(() => {
-        expect(document.getElementById(REGION_ID).textContent).toBe(
-          "Wallet connection failed",
-        );
+        expect(document.getElementById(REGION_ID).textContent).toBe("Wallet connection failed");
       });
     });
 
     it("announces 'Wallet connection failed' on connectFreighter error", async () => {
       (isFreighterConnected as jest.Mock).mockResolvedValue(true);
-      (connectFreighter as jest.Mock).mockRejectedValue(
-        new Error("User rejected connection"),
-      );
+      (connectFreighter as jest.Mock).mockRejectedValue(new Error("User rejected connection"));
 
       renderWithProvider();
 
@@ -171,9 +155,7 @@ describe("WalletProvider — live region announcements (issue #737)", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId("wallet-state")).toHaveTextContent(
-          WALLET_STATES.ERROR,
-        );
+        expect(screen.getByTestId("wallet-state")).toHaveTextContent(WALLET_STATES.ERROR);
       });
 
       act(() => {
@@ -181,9 +163,7 @@ describe("WalletProvider — live region announcements (issue #737)", () => {
       });
 
       await waitFor(() => {
-        expect(document.getElementById(REGION_ID).textContent).toBe(
-          "Wallet connection failed",
-        );
+        expect(document.getElementById(REGION_ID).textContent).toBe("Wallet connection failed");
       });
     });
   });
@@ -196,18 +176,14 @@ describe("WalletProvider — live region announcements (issue #737)", () => {
         screen.getByRole("button", { name: "Disconnect" }).click();
       });
 
-      expect(screen.getByTestId("wallet-state")).toHaveTextContent(
-        WALLET_STATES.DISCONNECTED,
-      );
+      expect(screen.getByTestId("wallet-state")).toHaveTextContent(WALLET_STATES.DISCONNECTED);
 
       act(() => {
         jest.advanceTimersByTime(DEBOUNCE_MS);
       });
 
       await waitFor(() => {
-        expect(document.getElementById(REGION_ID).textContent).toBe(
-          "Wallet disconnected",
-        );
+        expect(document.getElementById(REGION_ID).textContent).toBe("Wallet disconnected");
       });
     });
   });
@@ -215,9 +191,7 @@ describe("WalletProvider — live region announcements (issue #737)", () => {
   describe("debounce behaviour", () => {
     it("debounces rapid wallet actions so only the last message is announced", async () => {
       (isFreighterConnected as jest.Mock).mockResolvedValue(true);
-      (connectFreighter as jest.Mock).mockResolvedValue(
-        "GABCDEFGHIJKLMNOPQRSTUVWXYZ123456",
-      );
+      (connectFreighter as jest.Mock).mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
       (assertExpectedNetwork as jest.Mock).mockResolvedValue(undefined);
       (getFreighterNetwork as jest.Mock).mockResolvedValue("testnet");
 
@@ -229,9 +203,7 @@ describe("WalletProvider — live region announcements (issue #737)", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId("wallet-state")).toHaveTextContent(
-          WALLET_STATES.CONNECTED,
-        );
+        expect(screen.getByTestId("wallet-state")).toHaveTextContent(WALLET_STATES.CONNECTED);
       });
 
       // Before debounce fires, disconnect (second action).
@@ -250,9 +222,7 @@ describe("WalletProvider — live region announcements (issue #737)", () => {
 
       // Only the latest (disconnect) result is announced.
       await waitFor(() => {
-        expect(document.getElementById(REGION_ID).textContent).toBe(
-          "Wallet disconnected",
-        );
+        expect(document.getElementById(REGION_ID).textContent).toBe("Wallet disconnected");
       });
     });
   });

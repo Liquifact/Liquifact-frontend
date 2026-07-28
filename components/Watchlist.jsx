@@ -258,7 +258,13 @@ export default function Watchlist({
       </div>
 
       {/* Live status announcement */}
-      <p role="status" data-testid="watchlist-status" aria-live="polite" aria-atomic="true" className="sr-only">
+      <p
+        role="status"
+        data-testid="watchlist-status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
         {announcementText}
       </p>
       {/* Bulk action announcement */}
@@ -282,14 +288,14 @@ export default function Watchlist({
             className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-slate-100 placeholder-slate-500 transition-colors focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
           />
         </div>
-        
+
         {/* Bulk Action Toolbar */}
         <div className="flex items-center gap-4">
           <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
             <input
               type="checkbox"
               checked={allSelected}
-              ref={input => {
+              ref={(input) => {
                 if (input) input.indeterminate = !allSelected && someSelected;
               }}
               onChange={handleSelectAll}
@@ -298,7 +304,7 @@ export default function Watchlist({
             />
             Select all
           </label>
-          
+
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400">{selectedIds.size} selected</span>
@@ -431,4 +437,3 @@ export default function Watchlist({
     </section>
   );
 }
-

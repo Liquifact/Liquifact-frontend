@@ -184,10 +184,7 @@ describe("InvoiceDetailItems — bulk select toolbar", () => {
 
     expect(onBulkExport).toHaveBeenCalledTimes(1);
     const [calledWith] = onBulkExport.mock.calls[0];
-    expect(calledWith.map((i) => i.id)).toEqual([
-      "inv-001-doc-invoice",
-      "inv-001-doc-pod",
-    ]);
+    expect(calledWith.map((i) => i.id)).toEqual(["inv-001-doc-invoice", "inv-001-doc-pod"]);
   });
 
   it("Export calls toast.success on success when supplied", async () => {
@@ -238,11 +235,7 @@ describe("InvoiceDetailItems — bulk select toolbar", () => {
     const onBulkDelete = jest.fn(async () => ({ count: 1 }));
     const toast = { success: jest.fn(), error: jest.fn(), info: jest.fn() };
     render(
-      <InvoiceDetailItems
-        initialItems={SAMPLE_ITEMS}
-        onBulkDelete={onBulkDelete}
-        toast={toast}
-      />
+      <InvoiceDetailItems initialItems={SAMPLE_ITEMS} onBulkDelete={onBulkDelete} toast={toast} />
     );
     fireEvent.click(getCheckbox("inv-001-doc-invoice"));
     fireEvent.click(screen.getByTestId("bulk-delete"));
@@ -267,11 +260,7 @@ describe("InvoiceDetailItems — bulk select toolbar", () => {
     });
     const toast = { success: jest.fn(), error: jest.fn(), info: jest.fn() };
     render(
-      <InvoiceDetailItems
-        initialItems={SAMPLE_ITEMS}
-        onBulkDelete={onBulkDelete}
-        toast={toast}
-      />
+      <InvoiceDetailItems initialItems={SAMPLE_ITEMS} onBulkDelete={onBulkDelete} toast={toast} />
     );
     fireEvent.click(getCheckbox("inv-001-doc-invoice"));
     fireEvent.click(screen.getByTestId("bulk-delete"));

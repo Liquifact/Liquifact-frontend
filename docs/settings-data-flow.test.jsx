@@ -1,6 +1,6 @@
 /**
  * Tests for settings data flow documentation
- * 
+ *
  * This test file validates the data flow patterns described in docs/settings-data-flow.md
  * by testing the key integration points between settings components.
  */
@@ -21,23 +21,23 @@ describe("Settings Data Flow - Documentation Validation", () => {
   describe("1. Initial Load Phase - Normalization", () => {
     it("normalizes settings with missing fields to defaults", () => {
       const legacyData = { displayName: "Legacy User" };
-      
+
       const normalized = normalizeSettings(legacyData);
-      
+
       expect(normalized).toEqual({
         displayName: "Legacy User",
-        email: DEFAULT_SETTINGS.email
+        email: DEFAULT_SETTINGS.email,
       });
     });
 
     it("normalizes settings with invalid types to defaults", () => {
       const invalidData = { displayName: 123, email: null };
-      
+
       const normalized = normalizeSettings(invalidData);
-      
+
       expect(normalized).toEqual({
         displayName: DEFAULT_SETTINGS.displayName,
-        email: DEFAULT_SETTINGS.email
+        email: DEFAULT_SETTINGS.email,
       });
     });
 
@@ -52,11 +52,11 @@ describe("Settings Data Flow - Documentation Validation", () => {
         displayName: "User",
         email: "user@example.com",
         unknownField: "should be ignored",
-        anotherUnknown: 123
+        anotherUnknown: 123,
       };
-      
+
       const normalized = normalizeSettings(dataWithExtras);
-      
+
       expect(normalized).not.toHaveProperty("unknownField");
       expect(normalized).not.toHaveProperty("anotherUnknown");
       expect(normalized).toHaveProperty("displayName");
@@ -84,12 +84,7 @@ describe("Settings Data Flow - Documentation Validation", () => {
     it("enters edit mode when Edit button is clicked", () => {
       const onSave = jest.fn();
       render(
-        <InlineEditRow
-          id="test-field"
-          label="Test Field"
-          value="Initial Value"
-          onSave={onSave}
-        />
+        <InlineEditRow id="test-field" label="Test Field" value="Initial Value" onSave={onSave} />
       );
 
       const editButton = screen.getByRole("button", { name: /edit test field/i });
@@ -118,7 +113,7 @@ describe("Settings Data Flow - Documentation Validation", () => {
       fireEvent.change(input, { target: { value: "A" } });
 
       expect(screen.getByText(/too short/i)).toBeInTheDocument();
-      
+
       const saveButton = screen.getByRole("button", { name: /save display name/i });
       expect(saveButton).toBeDisabled();
     });
@@ -143,7 +138,7 @@ describe("Settings Data Flow - Documentation Validation", () => {
       fireEvent.change(input, { target: { value: "invalid-email" } });
 
       expect(screen.getByText(/invalid email/i)).toBeInTheDocument();
-      
+
       const saveButton = screen.getByRole("button", { name: /save email/i });
       expect(saveButton).toBeDisabled();
     });
@@ -197,14 +192,7 @@ describe("Settings Data Flow - Documentation Validation", () => {
   describe("4. Save Flow Phase - Persistence", () => {
     it("calls onSave with trimmed value on save", () => {
       const onSave = jest.fn();
-      render(
-        <InlineEditRow
-          id="test-field"
-          label="Test Field"
-          value="Initial"
-          onSave={onSave}
-        />
-      );
+      render(<InlineEditRow id="test-field" label="Test Field" value="Initial" onSave={onSave} />);
 
       const editButton = screen.getByRole("button", { name: /edit test field/i });
       fireEvent.click(editButton);
@@ -245,14 +233,7 @@ describe("Settings Data Flow - Documentation Validation", () => {
 
     it("returns focus to Edit button after save", () => {
       const onSave = jest.fn();
-      render(
-        <InlineEditRow
-          id="test-field"
-          label="Test Field"
-          value="Initial"
-          onSave={onSave}
-        />
-      );
+      render(<InlineEditRow id="test-field" label="Test Field" value="Initial" onSave={onSave} />);
 
       const editButton = screen.getByRole("button", { name: /edit test field/i });
       fireEvent.click(editButton);
@@ -334,14 +315,7 @@ describe("Settings Data Flow - Documentation Validation", () => {
   describe("Keyboard Interactions", () => {
     it("submits form on Enter key in input", () => {
       const onSave = jest.fn();
-      render(
-        <InlineEditRow
-          id="test-field"
-          label="Test Field"
-          value="Initial"
-          onSave={onSave}
-        />
-      );
+      render(<InlineEditRow id="test-field" label="Test Field" value="Initial" onSave={onSave} />);
 
       const editButton = screen.getByRole("button", { name: /edit test field/i });
       fireEvent.click(editButton);
@@ -355,14 +329,7 @@ describe("Settings Data Flow - Documentation Validation", () => {
 
     it("cancels edit on Escape key", () => {
       const onSave = jest.fn();
-      render(
-        <InlineEditRow
-          id="test-field"
-          label="Test Field"
-          value="Initial"
-          onSave={onSave}
-        />
-      );
+      render(<InlineEditRow id="test-field" label="Test Field" value="Initial" onSave={onSave} />);
 
       const editButton = screen.getByRole("button", { name: /edit test field/i });
       fireEvent.click(editButton);
@@ -377,14 +344,7 @@ describe("Settings Data Flow - Documentation Validation", () => {
 
     it("returns focus to Edit button after Escape cancel", () => {
       const onSave = jest.fn();
-      render(
-        <InlineEditRow
-          id="test-field"
-          label="Test Field"
-          value="Initial"
-          onSave={onSave}
-        />
-      );
+      render(<InlineEditRow id="test-field" label="Test Field" value="Initial" onSave={onSave} />);
 
       const editButton = screen.getByRole("button", { name: /edit test field/i });
       fireEvent.click(editButton);

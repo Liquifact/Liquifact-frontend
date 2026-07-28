@@ -12,7 +12,10 @@ const config = {
   },
   setupFilesAfterEnv: [require.resolve("./jest.setup.js")],
   transform: {
-    "^.+\\.(js|jsx|ts|tsx|mjs)$": ["babel-jest", { configFile: path.join(root, "babel-jest.config.js") }],
+    "^.+\\.(js|jsx|ts|tsx|mjs)$": [
+      "babel-jest",
+      { configFile: path.join(root, "babel-jest.config.js") },
+    ],
   },
   transformIgnorePatterns: ["/node_modules/(?!(next|@next)/)"],
 };

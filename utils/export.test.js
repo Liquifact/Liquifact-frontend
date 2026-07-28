@@ -22,22 +22,22 @@ describe("export utilities", () => {
     jest.clearAllMocks();
     originalCreateObjectURL = URL.createObjectURL;
     originalRevokeObjectURL = URL.revokeObjectURL;
-    
+
     mockCreateObjectURL = jest.fn(() => "mock-url");
     mockRevokeObjectURL = jest.fn();
     URL.createObjectURL = mockCreateObjectURL;
     URL.revokeObjectURL = mockRevokeObjectURL;
 
     mockClick = jest.fn();
-    mockAppendChild = jest.spyOn(document.body, 'appendChild').mockImplementation(() => {});
-    mockRemoveChild = jest.spyOn(document.body, 'removeChild').mockImplementation(() => {});
+    mockAppendChild = jest.spyOn(document.body, "appendChild").mockImplementation(() => {});
+    mockRemoveChild = jest.spyOn(document.body, "removeChild").mockImplementation(() => {});
 
-    jest.spyOn(document, 'createElement').mockImplementation((tagName) => {
-      if (tagName === 'a') {
+    jest.spyOn(document, "createElement").mockImplementation((tagName) => {
+      if (tagName === "a") {
         return {
           click: mockClick,
-          href: '',
-          download: ''
+          href: "",
+          download: "",
         };
       }
       return document.createElement(tagName);
@@ -153,9 +153,7 @@ describe("export utilities", () => {
     });
 
     it("handles null and undefined field values", async () => {
-      const data = [
-        { a: 1, b: null, c: undefined, d: "text" },
-      ];
+      const data = [{ a: 1, b: null, c: undefined, d: "text" }];
       exportAsCSV(data, "nulls.csv");
       const blob = mockCreateObjectURL.mock.calls[0][0];
       const text = await readBlobText(blob);
@@ -163,9 +161,7 @@ describe("export utilities", () => {
     });
 
     it("protects against CSV injection in data values", async () => {
-      const data = [
-        { formula: "=SUM(A1:A10)", name: "Malicious" },
-      ];
+      const data = [{ formula: "=SUM(A1:A10)", name: "Malicious" }];
       exportAsCSV(data, "injection.csv");
       const blob = mockCreateObjectURL.mock.calls[0][0];
       const text = await readBlobText(blob);

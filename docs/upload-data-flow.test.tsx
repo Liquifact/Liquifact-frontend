@@ -1,6 +1,6 @@
 /**
  * Tests for upload data flow documentation
- * 
+ *
  * This test file validates the data flow patterns described in docs/upload-data-flow.md
  * by testing the integration between UploadZone, the parent page component, and InvoiceList.
  */
@@ -14,7 +14,7 @@ describe("Upload Data Flow - Documentation Validation", () => {
   describe("1. File Selection Phase", () => {
     it("validates basic file constraints synchronously", () => {
       const { container } = render(<UploadZone />);
-      
+
       // Verify file input exists with correct accept attribute
       const fileInput = container.querySelector('input[type="file"]');
       expect(fileInput).toHaveAttribute("accept", ".pdf");
@@ -23,22 +23,22 @@ describe("Upload Data Flow - Documentation Validation", () => {
     it("validates PDF magic bytes asynchronously", async () => {
       // This validates the deep validation step described in the documentation
       const { validatePdfFile } = require("../lib/validation/pdf");
-      
+
       // Create a mock PDF file with valid magic bytes
-      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]); // %PDF-
+      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]); // %PDF-
       const pdfFile = new File([pdfContent], "test.pdf", { type: "application/pdf" });
-      
+
       const result = await validatePdfFile(pdfFile);
       expect(result.valid).toBe(true);
     });
 
     it("rejects files with invalid magic bytes", async () => {
       const { validatePdfFile } = require("../lib/validation/pdf");
-      
+
       // Create a file without PDF magic bytes
       const invalidContent = new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x00]);
       const invalidFile = new File([invalidContent], "test.pdf", { type: "application/pdf" });
-      
+
       const result = await validatePdfFile(invalidFile);
       expect(result.valid).toBe(false);
       expect(result.reason).toContain("PDF format");
@@ -46,9 +46,9 @@ describe("Upload Data Flow - Documentation Validation", () => {
 
     it("rejects zero-byte files", async () => {
       const { validatePdfFile } = require("../lib/validation/pdf");
-      
+
       const emptyFile = new File([], "empty.pdf", { type: "application/pdf" });
-      
+
       const result = await validatePdfFile(emptyFile);
       expect(result.valid).toBe(false);
       expect(result.reason).toContain("empty");
@@ -56,13 +56,13 @@ describe("Upload Data Flow - Documentation Validation", () => {
 
     it("sanitizes filenames for safe display", () => {
       const { sanitizeFilename } = require("../lib/validation/pdf");
-      
+
       // Test HTML escaping
       const maliciousFilename = '<script>alert("xss")</script>.pdf';
       const sanitized = sanitizeFilename(maliciousFilename);
       expect(sanitized).not.toContain("<script>");
       expect(sanitized).toContain("&lt;script&gt;");
-      
+
       // Test length truncation
       const longFilename = "a".repeat(100) + ".pdf";
       const truncated = sanitizeFilename(longFilename, 50);
@@ -73,26 +73,24 @@ describe("Upload Data Flow - Documentation Validation", () => {
   describe("2. Upload Submission Phase", () => {
     it("transitions to uploading status on submit", async () => {
       const mockUploadSuccess = jest.fn();
-      const { container } = render(
-        <UploadZone onUploadSuccess={mockUploadSuccess} />
-      );
-      
+      const { container } = render(<UploadZone onUploadSuccess={mockUploadSuccess} />);
+
       // Create a valid PDF file
-      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]);
+      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
       const pdfFile = new File([pdfContent], "invoice.pdf", { type: "application/pdf" });
-      
+
       // Simulate file selection
       const fileInput = container.querySelector('input[type="file"]');
       fireEvent.change(fileInput, { target: { files: [pdfFile] } });
-      
+
       await waitFor(() => {
         expect(screen.getByText(/invoice\.pdf/i)).toBeInTheDocument();
       });
-      
+
       // Submit the form
       const submitButton = screen.getByRole("button", { name: /upload/i });
       fireEvent.click(submitButton);
-      
+
       // Verify uploading status is shown
       await waitFor(() => {
         expect(screen.getByText(/uploading/i)).toBeInTheDocument();
@@ -102,25 +100,25 @@ describe("Upload Data Flow - Documentation Validation", () => {
     it("creates FormData with invoice field", async () => {
       // This validates the API request structure described in the documentation
       const formDataSpy = jest.spyOn(global, "FormData");
-      
+
       const { container } = render(<UploadZone />);
-      
-      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]);
+
+      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
       const pdfFile = new File([pdfContent], "invoice.pdf", { type: "application/pdf" });
-      
+
       const fileInput = container.querySelector('input[type="file"]');
       fireEvent.change(fileInput, { target: { files: [pdfFile] } });
-      
+
       await waitFor(() => {
         expect(screen.getByText(/invoice\.pdf/i)).toBeInTheDocument();
       });
-      
+
       const submitButton = screen.getByRole("button", { name: /upload/i });
       fireEvent.click(submitButton);
-      
+
       // FormData should be created during submit
       expect(formDataSpy).toHaveBeenCalled();
-      
+
       formDataSpy.mockRestore();
     });
   });
@@ -134,30 +132,31 @@ describe("Upload Data Flow - Documentation Validation", () => {
           json: () => Promise.resolve({ tokenizationDelay: 100 }),
         })
       );
-      
+
       const mockUploadSuccess = jest.fn();
-      const { container } = render(
-        <UploadZone onUploadSuccess={mockUploadSuccess} />
-      );
-      
-      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]);
+      const { container } = render(<UploadZone onUploadSuccess={mockUploadSuccess} />);
+
+      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
       const pdfFile = new File([pdfContent], "invoice.pdf", { type: "application/pdf" });
-      
+
       const fileInput = container.querySelector('input[type="file"]');
       fireEvent.change(fileInput, { target: { files: [pdfFile] } });
-      
+
       await waitFor(() => {
         expect(screen.getByText(/invoice\.pdf/i)).toBeInTheDocument();
       });
-      
+
       const submitButton = screen.getByRole("button", { name: /upload/i });
       fireEvent.click(submitButton);
-      
+
       // Should show tokenizing status after upload
-      await waitFor(() => {
-        expect(screen.getByText(/tokenizing/i)).toBeInTheDocument();
-      }, { timeout: 3000 });
-      
+      await waitFor(
+        () => {
+          expect(screen.getByText(/tokenizing/i)).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
+
       global.fetch.mockRestore();
     });
 
@@ -168,30 +167,31 @@ describe("Upload Data Flow - Documentation Validation", () => {
           json: () => Promise.resolve({ tokenizationDelay: 0 }),
         })
       );
-      
+
       const mockUploadSuccess = jest.fn();
-      const { container } = render(
-        <UploadZone onUploadSuccess={mockUploadSuccess} />
-      );
-      
-      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]);
+      const { container } = render(<UploadZone onUploadSuccess={mockUploadSuccess} />);
+
+      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
       const pdfFile = new File([pdfContent], "invoice.pdf", { type: "application/pdf" });
-      
+
       const fileInput = container.querySelector('input[type="file"]');
       fireEvent.change(fileInput, { target: { files: [pdfFile] } });
-      
+
       await waitFor(() => {
         expect(screen.getByText(/invoice\.pdf/i)).toBeInTheDocument();
       });
-      
+
       const submitButton = screen.getByRole("button", { name: /upload/i });
       fireEvent.click(submitButton);
-      
+
       // Should complete quickly without delay
-      await waitFor(() => {
-        expect(mockUploadSuccess).toHaveBeenCalled();
-      }, { timeout: 2000 });
-      
+      await waitFor(
+        () => {
+          expect(mockUploadSuccess).toHaveBeenCalled();
+        },
+        { timeout: 2000 }
+      );
+
       global.fetch.mockRestore();
     });
   });
@@ -204,29 +204,27 @@ describe("Upload Data Flow - Documentation Validation", () => {
           json: () => Promise.resolve({ tokenizationDelay: 0 }),
         })
       );
-      
+
       const mockUploadSuccess = jest.fn();
-      const { container } = render(
-        <UploadZone onUploadSuccess={mockUploadSuccess} />
-      );
-      
-      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]);
+      const { container } = render(<UploadZone onUploadSuccess={mockUploadSuccess} />);
+
+      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
       const pdfFile = new File([pdfContent], "test-invoice.pdf", { type: "application/pdf" });
-      
+
       const fileInput = container.querySelector('input[type="file"]');
       fireEvent.change(fileInput, { target: { files: [pdfFile] } });
-      
+
       await waitFor(() => {
         expect(screen.getByText(/test-invoice\.pdf/i)).toBeInTheDocument();
       });
-      
+
       const submitButton = screen.getByRole("button", { name: /upload/i });
       fireEvent.click(submitButton);
-      
+
       await waitFor(() => {
         expect(mockUploadSuccess).toHaveBeenCalled();
       });
-      
+
       // Verify the optimistic invoice structure
       const optimisticInvoice = mockUploadSuccess.mock.calls[0][0];
       expect(optimisticInvoice).toHaveProperty("id");
@@ -236,10 +234,10 @@ describe("Upload Data Flow - Documentation Validation", () => {
       expect(optimisticInvoice).toHaveProperty("dueDate", "Pending");
       expect(optimisticInvoice).toHaveProperty("yield", "Pending");
       expect(optimisticInvoice).toHaveProperty("status", "Pending tokenization");
-      
+
       // Verify ID format
       expect(optimisticInvoice.id).toMatch(/^upload-\d+-test-invoice\.pdf$/);
-      
+
       global.fetch.mockRestore();
     });
 
@@ -250,27 +248,30 @@ describe("Upload Data Flow - Documentation Validation", () => {
           json: () => Promise.resolve({ tokenizationDelay: 0 }),
         })
       );
-      
+
       const { container } = render(<UploadZone />); // No onUploadSuccess prop
-      
-      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]);
+
+      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
       const pdfFile = new File([pdfContent], "invoice.pdf", { type: "application/pdf" });
-      
+
       const fileInput = container.querySelector('input[type="file"]');
       fireEvent.change(fileInput, { target: { files: [pdfFile] } });
-      
+
       await waitFor(() => {
         expect(screen.getByText(/invoice\.pdf/i)).toBeInTheDocument();
       });
-      
+
       const submitButton = screen.getByRole("button", { name: /upload/i });
       fireEvent.click(submitButton);
-      
+
       // Should complete without error even without callback
-      await waitFor(() => {
-        expect(screen.getByText(/upload complete/i)).toBeInTheDocument();
-      }, { timeout: 2000 });
-      
+      await waitFor(
+        () => {
+          expect(screen.getByText(/upload complete/i)).toBeInTheDocument();
+        },
+        { timeout: 2000 }
+      );
+
       global.fetch.mockRestore();
     });
   });
@@ -288,7 +289,7 @@ describe("Upload Data Flow - Documentation Validation", () => {
           status: "Pending tokenization",
         },
       ];
-      
+
       const loadedInvoices = [
         {
           id: "inv-1001",
@@ -300,14 +301,14 @@ describe("Upload Data Flow - Documentation Validation", () => {
           status: "Tokenized",
         },
       ];
-      
+
       const { container } = render(
-        <InvoiceList 
+        <InvoiceList
           loadInvoices={() => Promise.resolve(loadedInvoices)}
           optimisticInvoices={optimisticInvoices}
         />
       );
-      
+
       // Should show both invoices
       await waitFor(() => {
         expect(screen.getByText(/test\.pdf/i)).toBeInTheDocument();
@@ -327,7 +328,7 @@ describe("Upload Data Flow - Documentation Validation", () => {
           status: "Pending tokenization",
         },
       ];
-      
+
       const loadedInvoices = [
         {
           id: "inv-1001",
@@ -339,14 +340,14 @@ describe("Upload Data Flow - Documentation Validation", () => {
           status: "Tokenized",
         },
       ];
-      
+
       const { container } = render(
-        <InvoiceList 
+        <InvoiceList
           loadInvoices={() => Promise.resolve(loadedInvoices)}
           optimisticInvoices={optimisticInvoices}
         />
       );
-      
+
       // Should show optimistic version
       await waitFor(() => {
         expect(screen.getByText(/Optimistic Supplier/i)).toBeInTheDocument();
@@ -366,7 +367,7 @@ describe("Upload Data Flow - Documentation Validation", () => {
           status: "Pending tokenization",
         },
       ];
-      
+
       const loadedInvoices = [
         {
           id: "inv-1001",
@@ -387,14 +388,14 @@ describe("Upload Data Flow - Documentation Validation", () => {
           status: "Tokenized",
         },
       ];
-      
+
       const { container } = render(
-        <InvoiceList 
+        <InvoiceList
           loadInvoices={() => Promise.resolve(loadedInvoices)}
           optimisticInvoices={optimisticInvoices}
         />
       );
-      
+
       await waitFor(() => {
         const invoiceElements = container.querySelectorAll('[role="listitem"]');
         expect(invoiceElements[0]).toHaveTextContent(/Optimistic Invoice/i);
@@ -407,7 +408,7 @@ describe("Upload Data Flow - Documentation Validation", () => {
   describe("Accessibility - Status Announcements", () => {
     it("announces upload status via aria-live", async () => {
       const { container } = render(<UploadZone />);
-      
+
       // Verify status region exists
       const statusRegion = container.querySelector('[role="status"]');
       expect(statusRegion).toBeInTheDocument();
@@ -416,12 +417,12 @@ describe("Upload Data Flow - Documentation Validation", () => {
 
     it("announces errors via role=alert", async () => {
       const { container } = render(<UploadZone />);
-      
+
       // Trigger an error by selecting an invalid file
       const invalidFile = new File(["not a pdf"], "test.txt", { type: "text/plain" });
       const fileInput = container.querySelector('input[type="file"]');
       fireEvent.change(fileInput, { target: { files: [invalidFile] } });
-      
+
       await waitFor(() => {
         const errorAlert = container.querySelector('[role="alert"]');
         expect(errorAlert).toBeInTheDocument();
@@ -438,66 +439,70 @@ describe("Upload Data Flow - Documentation Validation", () => {
           json: () => Promise.resolve({ tokenizationDelay: 50 }),
         })
       );
-      
+
       const mockUploadSuccess = jest.fn();
-      const { container } = render(
-        <UploadZone onUploadSuccess={mockUploadSuccess} />
-      );
-      
-      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]);
+      const { container } = render(<UploadZone onUploadSuccess={mockUploadSuccess} />);
+
+      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
       const pdfFile = new File([pdfContent], "invoice.pdf", { type: "application/pdf" });
-      
+
       // Start: idle state
       expect(screen.getByRole("button", { name: /upload/i })).not.toBeDisabled();
-      
+
       // Select file: still idle
       const fileInput = container.querySelector('input[type="file"]');
       fireEvent.change(fileInput, { target: { files: [pdfFile] } });
-      
+
       await waitFor(() => {
         expect(screen.getByText(/invoice\.pdf/i)).toBeInTheDocument();
       });
-      
+
       // Submit: uploading
       const submitButton = screen.getByRole("button", { name: /upload/i });
       fireEvent.click(submitButton);
-      
+
       await waitFor(() => {
         expect(screen.getByText(/uploading/i)).toBeInTheDocument();
         expect(submitButton).toBeDisabled();
       });
-      
+
       // After API response: tokenizing
-      await waitFor(() => {
-        expect(screen.getByText(/tokenizing/i)).toBeInTheDocument();
-      }, { timeout: 3000 });
-      
+      await waitFor(
+        () => {
+          expect(screen.getByText(/tokenizing/i)).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
+
       // After delay: success
-      await waitFor(() => {
-        expect(screen.getByText(/upload complete/i)).toBeInTheDocument();
-        expect(mockUploadSuccess).toHaveBeenCalled();
-      }, { timeout: 4000 });
-      
+      await waitFor(
+        () => {
+          expect(screen.getByText(/upload complete/i)).toBeInTheDocument();
+          expect(mockUploadSuccess).toHaveBeenCalled();
+        },
+        { timeout: 4000 }
+      );
+
       global.fetch.mockRestore();
     });
 
     it("transitions from error back to idle on new file selection", async () => {
       const { container } = render(<UploadZone />);
-      
+
       // Trigger error
       const invalidFile = new File(["not pdf"], "test.txt", { type: "text/plain" });
       const fileInput = container.querySelector('input[type="file"]');
       fireEvent.change(fileInput, { target: { files: [invalidFile] } });
-      
+
       await waitFor(() => {
         expect(container.querySelector('[role="alert"]')).toBeInTheDocument();
       });
-      
+
       // Select valid file
-      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]);
+      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
       const validFile = new File([pdfContent], "invoice.pdf", { type: "application/pdf" });
       fireEvent.change(fileInput, { target: { files: [validFile] } });
-      
+
       // Error should clear, back to idle with file selected
       await waitFor(() => {
         expect(container.querySelector('[role="alert"]')).not.toBeInTheDocument();
@@ -509,14 +514,14 @@ describe("Upload Data Flow - Documentation Validation", () => {
   describe("Security Considerations", () => {
     it("escapes HTML in filenames before display", async () => {
       const { container } = render(<UploadZone />);
-      
-      const xssFilename = '<img src=x onerror=alert(1)>.pdf';
-      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]);
+
+      const xssFilename = "<img src=x onerror=alert(1)>.pdf";
+      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
       const xssFile = new File([pdfContent], xssFilename, { type: "application/pdf" });
-      
+
       const fileInput = container.querySelector('input[type="file"]');
       fireEvent.change(fileInput, { target: { files: [xssFile] } });
-      
+
       await waitFor(() => {
         const filenameElement = screen.getByText(/\.pdf/i);
         expect(filenameElement.innerHTML).not.toContain("<img");
@@ -526,14 +531,14 @@ describe("Upload Data Flow - Documentation Validation", () => {
 
     it("enforces 10MB size limit", async () => {
       const { container } = render(<UploadZone />);
-      
+
       // Create a file larger than 10MB
       const largeContent = new Uint8Array(11 * 1024 * 1024);
       const largeFile = new File([largeContent], "large.pdf", { type: "application/pdf" });
-      
+
       const fileInput = container.querySelector('input[type="file"]');
       fireEvent.change(fileInput, { target: { files: [largeFile] } });
-      
+
       await waitFor(() => {
         expect(container.querySelector('[role="alert"]')).toBeInTheDocument();
         expect(screen.getByText(/size/i)).toBeInTheDocument();
