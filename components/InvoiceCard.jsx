@@ -164,14 +164,22 @@ export default function InvoiceCard({ invoice }) {
   return (
     <Link
       href={`/invest/${id}`}
-      className="group block rounded-lg border border-slate-800 bg-slate-900/60 px-5 py-4 transition-colors hover:border-cyan-700/60 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+      className="group block rounded-lg border border-slate-800 bg-slate-900/60 transition-colors hover:border-cyan-700/60 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+      style={{ padding: "var(--market-card-padding)" }}
       aria-label={`Invoice ${id ?? ""} from ${issuer ?? "unknown issuer"}${statusSuffix}`}
     >
       {/* Row layout: mirrors InvoiceListSkeleton column widths */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+      <div className="flex flex-wrap items-center" style={{ gap: "var(--market-card-gap)" }}>
         {/* Issuer — w-1/4 min */}
         <div className="min-w-0 flex-1 basis-1/4">
-          <p className="truncate font-semibold text-slate-100 group-hover:text-cyan-300 transition-colors">
+          <p
+            className="truncate font-semibold text-slate-100 transition-colors group-hover:text-cyan-300"
+            style={{
+              fontSize: "var(--market-card-title-font-size)",
+              fontWeight: "var(--market-card-title-font-weight)",
+              lineHeight: "var(--market-card-title-line-height)",
+            }}
+          >
             {issuer ?? <span className="text-slate-500 italic">Unknown issuer</span>}
           </p>
           <p className="text-xs text-slate-500 mt-0.5 flex items-center">
@@ -181,21 +189,42 @@ export default function InvoiceCard({ invoice }) {
         </div>
 
         {/* Amount — w-1/5 */}
-        <div className="basis-1/5 text-right">
+        <div
+          className="basis-1/5 text-right"
+          style={{
+            fontSize: "var(--market-card-meta-font-size)",
+            lineHeight: "var(--market-card-meta-line-height)",
+            letterSpacing: "var(--market-card-meta-letter-spacing)",
+          }}
+        >
           <p className="font-mono text-slate-200">{formatCurrency(amount, { currency })}</p>
-          <p className="text-xs text-slate-500 mt-0.5">Amount</p>
+          <p className="mt-0.5 text-xs text-slate-500">Amount</p>
         </div>
 
         {/* Yield — w-1/6 */}
-        <div className="basis-1/6 text-right">
+        <div
+          className="basis-1/6 text-right"
+          style={{
+            fontSize: "var(--market-card-meta-font-size)",
+            lineHeight: "var(--market-card-meta-line-height)",
+            letterSpacing: "var(--market-card-meta-letter-spacing)",
+          }}
+        >
           <p className="font-mono text-cyan-400">{yieldText}</p>
-          <p className="text-xs text-slate-500 mt-0.5">Yield</p>
+          <p className="mt-0.5 text-xs text-slate-500">Yield</p>
         </div>
 
         {/* Maturity — w-1/5 */}
-        <div className="basis-1/5 text-right">
+        <div
+          className="basis-1/5 text-right"
+          style={{
+            fontSize: "var(--market-card-meta-font-size)",
+            lineHeight: "var(--market-card-meta-line-height)",
+            letterSpacing: "var(--market-card-meta-letter-spacing)",
+          }}
+        >
           <p className="text-slate-300">{formatDate(dueDate)}</p>
-          <p className="text-xs text-slate-500 mt-0.5">Maturity</p>
+          <p className="mt-0.5 text-xs text-slate-500">Maturity</p>
         </div>
 
         {/* Status pill and Watchlist Star — w-auto */}

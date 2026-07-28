@@ -141,14 +141,14 @@ describe("resolveTheme", () => {
     expect(resolveTheme("dark")).toBe("dark");
   });
 
-  it("returns dark in SSR environment for system preference", () => {
-    expect(resolveTheme("system")).toBe("dark");
+  it("returns dark in SSR environment for auto preference", () => {
+    expect(resolveTheme("auto")).toBe("dark");
   });
 });
 
 describe("readStoredTheme", () => {
-  it("returns system when localStorage is empty", () => {
-    expect(readStoredTheme()).toBe("system");
+  it("returns auto when localStorage is empty (default for first-time visitors)", () => {
+    expect(readStoredTheme()).toBe("auto");
   });
 
   it("returns stored theme when valid", () => {
@@ -156,8 +156,8 @@ describe("readStoredTheme", () => {
     expect(readStoredTheme()).toBe("dark");
   });
 
-  it("returns system for invalid stored value", () => {
+  it("returns auto for invalid stored value", () => {
     localStorage.setItem(THEME_STORAGE_KEY, "invalid");
-    expect(readStoredTheme()).toBe("system");
+    expect(readStoredTheme()).toBe("auto");
   });
 });

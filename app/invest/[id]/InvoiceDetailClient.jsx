@@ -42,10 +42,11 @@
  * an API call in future.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import CopyButton from "@/components/CopyButton";
 import DensityToggle from "@/components/DensityToggle";
 import { useDensity } from "@/lib/hooks/useDensity";
+import { getInvoiceFieldValidator } from "@/lib/validation/invoice";
 import { copy } from "@/app/copy/en";
 
 /** @type {Record<string, {gap: string, padding: string}>} */
@@ -70,6 +71,9 @@ const ie = copy.invest.detail.inlineEdit;
  * @param {string}   props.rawValue      - Editable raw value (unformatted)
  * @param {'text'|'number'|'date'} [props.inputType='text'] - Input type
  * @param {string}   [props.inputPattern] - Optional pattern attribute
+ * @param {(value:string) => string | null} [props.validator] - Live validator
+ *   returning `null` when valid or an error message string. Defaults to
+ *   {@link getInvoiceFieldValidator} keyed off `field`.
  * @param {(field:string, value:string)=>void} props.onSave - Callback on success
  * @param {(msg:string)=>void} props.onAnnounce - Shared live-region setter
  */
@@ -80,15 +84,44 @@ function EditableRow({
   rawValue,
   inputType = "text",
   inputPattern,
+  validator,
   onSave,
   onAnnounce,
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(rawValue);
-  const [error, setError] = useState("");
   const inputRef = useRef(null);
+  const reactId = useId();
+  const inputElId = `inline-edit-${field}-${reactId}`;
+  const errorElId = `inline-edit-error-${field}-${reactId}`;
 
-  // Focus the input when we enter edit mode.
+  // Resolve the live validator: caller-supplied wins, otherwise fall back to
+  // the field-keyed validator from `lib/validation/invoice`. We freeze the
+  // function reference in a useCallback so the useMemo below is a pure
+  // function of (draft, isEditing) and won't churn on every render.
+  const effectiveValidator = useMemo(
+    () => (typeof validator === "function" ? validator : getInvoiceFieldValidator(field)),
+    [validator, field]
+  );
+
+  // Live validation: derived on every keystroke. We deliberately stop
+  // validating as soon as we leave edit mode so error copy from a previous
+  // keystroke does not flash against the read-only view.
+  const error = useMemo(() => {
+    if (!isEditing) return null;
+    if (typeof effectiveValidator !== "function") return null;
+    const result = effectiveValidator(draft);
+    // Coerce non-string / empty-string returns to null per the
+    // InvoiceFieldValidator contract ("a non-empty error message").
+    return typeof result === "string" && result.length > 0 ? result : null;
+  }, [isEditing, effectiveValidator, draft]);
+
+  const isInvalid = error !== null;
+  const trimmedDraft = draft.trim();
+
+  // Focus the input whenever we enter edit mode (independent of validity;
+  // an invalid pre-existing value is rare but possible and we still want
+  // the user to start typing).
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
@@ -97,41 +130,28 @@ function EditableRow({
 
   const handleEdit = () => {
     setDraft(rawValue);
-    setError("");
     setIsEditing(true);
   };
 
   const handleCancel = useCallback(() => {
     setIsEditing(false);
     setDraft(rawValue);
-    setError("");
     onAnnounce(ie.announceCancelled);
   }, [rawValue, onAnnounce]);
 
   const handleSave = useCallback(() => {
-    const trimmed = draft.trim();
-
-    if (!trimmed) {
-      const msg = ie.errorRequired.replace("{field}", label);
-      setError(msg);
-      onAnnounce(`Save failed: ${msg}`);
+    if (isInvalid) {
+      // Defensive guard: Save button is `disabled` while invalid, but an
+      // Enter keypress on a non-disabled text input could still reach here
+      // if the browser fires a synthetic click. Announce without saving so
+      // the user understands why nothing happened.
+      onAnnounce(`Save failed: ${error ?? ie.errorRequired.replace("{field}", label)}`);
       return;
     }
-
-    if (field === "amount") {
-      const numeric = parseFloat(trimmed.replace(/,/g, ""));
-      if (isNaN(numeric) || numeric <= 0) {
-        setError(ie.errorAmount);
-        onAnnounce(`Save failed: ${ie.errorAmount}`);
-        return;
-      }
-    }
-
     setIsEditing(false);
-    setError("");
     onAnnounce(ie.announceSaved.replace("{field}", label));
-    onSave(field, trimmed);
-  }, [draft, field, label, onSave, onAnnounce]);
+    onSave(field, trimmedDraft);
+  }, [isInvalid, error, label, field, onSave, onAnnounce, trimmedDraft]);
 
   const handleKeyDown = useCallback(
     (e) => {
@@ -148,12 +168,9 @@ function EditableRow({
 
   const handleChange = (e) => {
     setDraft(e.target.value);
-    if (error) setError("");
   };
 
   const editBtnLabel = ie.editButton.replace("{field}", label);
-  const inputId = `inline-edit-${field}`;
-  const errorId = `inline-edit-error-${field}`;
 
   return (
     <div>
@@ -163,22 +180,28 @@ function EditableRow({
           <div className="flex flex-col gap-2 mt-1">
             <input
               ref={inputRef}
-              id={inputId}
+              id={inputElId}
               type={inputType}
               value={draft}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               aria-label={label}
-              aria-describedby={error ? errorId : undefined}
-              aria-invalid={!!error}
+              aria-describedby={isInvalid ? errorElId : undefined}
+              aria-invalid={isInvalid}
               pattern={inputPattern}
               data-testid={`inline-edit-input-${field}`}
-              className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500 focus-ring"
+              className={[
+                "w-full bg-slate-950 border rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus-ring",
+                isInvalid
+                  ? "border-red-500 focus:border-red-500"
+                  : "border-slate-700 focus:border-cyan-500",
+              ].join(" ")}
             />
-            {error && (
+            {isInvalid && (
               <p
-                id={errorId}
+                id={errorElId}
                 role="alert"
+                aria-live="polite"
                 data-testid={`inline-edit-error-${field}`}
                 className="text-red-400 text-xs"
               >
@@ -189,8 +212,10 @@ function EditableRow({
               <button
                 type="button"
                 onClick={handleSave}
+                disabled={isInvalid}
+                aria-disabled={isInvalid}
                 data-testid={`inline-edit-save-${field}`}
-                className="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium rounded transition-colors focus-ring"
+                className="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 disabled:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60 text-white text-xs font-medium rounded transition-colors focus-ring"
               >
                 {ie.saveButton}
               </button>

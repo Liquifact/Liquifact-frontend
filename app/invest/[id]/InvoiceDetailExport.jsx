@@ -68,7 +68,7 @@ export default function InvoiceDetailExport({ invoice }) {
         onClick={handleExportCSV}
         disabled={disabled}
         aria-label={detail.exportCSVLabel}
-        className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus-ring disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {detail.exportCSVButton}
       </button>
@@ -77,7 +77,7 @@ export default function InvoiceDetailExport({ invoice }) {
         onClick={handleExportJSON}
         disabled={disabled}
         aria-label={detail.exportJSONLabel}
-        className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus-ring disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {detail.exportJSONButton}
       </button>

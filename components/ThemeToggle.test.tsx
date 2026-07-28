@@ -2,6 +2,8 @@
  * @file ThemeToggle.test.tsx
  *
  * Comprehensive tests for the ThemeToggle component and its exported helpers.
+ * Covers the "auto" mode introduced in issue #465.
+ *
  * Includes jest-axe accessibility checks for key states (loaded / empty / error).
  */
 
@@ -61,6 +63,47 @@ function mockLocalStorage(initial: Record<string, string> = {}) {
   return mock;
 }
 
+/**
+ * Produce a `matchMedia` mock and return a helper that can fire the
+ * `change` event on the returned media-query object.
+ */
+function mockMatchMediaWithEvents(prefersLight: boolean) {
+  const listeners: Array<() => void> = [];
+
+  const mqObject = {
+    matches: prefersLight,
+    media: "(prefers-color-scheme: light)",
+    addEventListener: jest.fn((type: string, fn: () => void) => {
+      if (type === "change") listeners.push(fn);
+    }),
+    removeEventListener: jest.fn((type: string, fn: () => void) => {
+      const idx = listeners.indexOf(fn);
+      if (idx !== -1) listeners.splice(idx, 1);
+    }),
+    dispatchEvent: jest.fn(),
+  };
+
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: jest.fn().mockImplementation((query: string) => {
+      if (query === "(prefers-color-scheme: light)") return mqObject;
+      return {
+        matches: false,
+        media: query,
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      };
+    }),
+  });
+
+  return {
+    mqObject,
+    fireChange: () => listeners.forEach((fn) => fn()),
+    listenerCount: () => listeners.length,
+  };
+}
+
 function mockMatchMedia(prefersLight: boolean) {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
@@ -77,8 +120,8 @@ function mockMatchMedia(prefersLight: boolean) {
 // ─── 1. THEMES constant ───────────────────────────────────────────────────────
 
 describe("THEMES", () => {
-  it("is an array containing light, dark, and system", () => {
-    expect(THEMES).toEqual(expect.arrayContaining(["light", "dark", "system"]));
+  it("is an array containing light, dark, and auto", () => {
+    expect(THEMES).toEqual(expect.arrayContaining(["light", "dark", "auto"]));
   });
 
   it("has exactly three entries", () => {
@@ -89,13 +132,32 @@ describe("THEMES", () => {
     expect(THEMES[0]).toBe("light");
   });
 
+  it('ends with "auto"', () => {
+    expect(THEMES[2]).toBe("auto");
+  });
+
   it("THEME_STORAGE_KEY is a non-empty string", () => {
     expect(typeof THEME_STORAGE_KEY).toBe("string");
     expect(THEME_STORAGE_KEY.length).toBeGreaterThan(0);
   });
 });
 
-// ─── 2. resolveTheme ────────────────────────────────────────────────────────
+// ─── 2. THEME_IDENTIFIER export ──────────────────────────────────────────────
+
+describe("THEME_IDENTIFIER", () => {
+  it("is exported as a non-empty string", () => {
+    expect(typeof THEME_IDENTIFIER).toBe("string");
+    expect(THEME_IDENTIFIER.length).toBeGreaterThan(0);
+  });
+
+  it("is a stable constant (same value on repeated imports)", () => {
+    // Re-import to verify stability; Jest module cache ensures same ref.
+    const { THEME_IDENTIFIER: id2 } = require("./ThemeToggle");
+    expect(id2).toBe(THEME_IDENTIFIER);
+  });
+});
+
+// ─── 3. resolveTheme ────────────────────────────────────────────────────────
 
 describe("resolveTheme", () => {
   beforeEach(() => mockMatchMedia(false));
@@ -108,18 +170,23 @@ describe("resolveTheme", () => {
     expect(resolveTheme("dark")).toBe("dark");
   });
 
-  it('returns "dark" for "system" when OS prefers dark', () => {
+  it('returns "dark" for "auto" when OS prefers dark', () => {
     mockMatchMedia(false);
-    expect(resolveTheme("system")).toBe("dark");
+    expect(resolveTheme("auto")).toBe("dark");
   });
 
-  it('returns "light" for "system" when OS prefers light', () => {
+  it('returns "light" for "auto" when OS prefers light', () => {
     mockMatchMedia(true);
-    expect(resolveTheme("system")).toBe("light");
+    expect(resolveTheme("auto")).toBe("light");
+  });
+
+  it('returns "dark" for "auto" when matchMedia is unavailable (SSR / test env)', () => {
+    Object.defineProperty(window, "matchMedia", { writable: true, value: undefined });
+    expect(resolveTheme("auto")).toBe("dark");
   });
 });
 
-// ─── 3. readStoredTheme ──────────────────────────────────────────────────────
+// ─── 4. readStoredTheme ──────────────────────────────────────────────────────
 
 describe("readStoredTheme", () => {
   it("returns stored preference when it is a valid THEME", () => {
@@ -127,17 +194,17 @@ describe("readStoredTheme", () => {
     expect(readStoredTheme()).toBe("light");
   });
 
-  it('returns "system" when nothing is stored', () => {
+  it('returns "auto" when nothing is stored (default for first-time visitors)', () => {
     mockLocalStorage({});
-    expect(readStoredTheme()).toBe("system");
+    expect(readStoredTheme()).toBe("auto");
   });
 
-  it('returns "system" when stored value is not a valid theme', () => {
+  it('returns "auto" when stored value is not a valid theme', () => {
     mockLocalStorage({ [THEME_STORAGE_KEY]: "rainbow" });
-    expect(readStoredTheme()).toBe("system");
+    expect(readStoredTheme()).toBe("auto");
   });
 
-  it('returns "system" when localStorage throws', () => {
+  it('returns "auto" when localStorage throws', () => {
     Object.defineProperty(window, "localStorage", {
       writable: true,
       value: {
@@ -147,11 +214,16 @@ describe("readStoredTheme", () => {
         setItem: jest.fn(),
       },
     });
-    expect(readStoredTheme()).toBe("system");
+    expect(readStoredTheme()).toBe("auto");
+  });
+
+  it('accepts stored value "auto"', () => {
+    mockLocalStorage({ [THEME_STORAGE_KEY]: "auto" });
+    expect(readStoredTheme()).toBe("auto");
   });
 });
 
-// ─── 4. applyTheme ───────────────────────────────────────────────────────────
+// ─── 5. applyTheme ───────────────────────────────────────────────────────────
 
 describe("applyTheme", () => {
   beforeEach(() => {
@@ -170,20 +242,20 @@ describe("applyTheme", () => {
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
   });
 
-  it('sets data-theme="dark" for "system" when OS prefers dark', () => {
+  it('sets data-theme="dark" for "auto" when OS prefers dark', () => {
     mockMatchMedia(false);
-    applyTheme("system");
+    applyTheme("auto");
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
   });
 
-  it('sets data-theme="light" for "system" when OS prefers light', () => {
+  it('sets data-theme="light" for "auto" when OS prefers light', () => {
     mockMatchMedia(true);
-    applyTheme("system");
+    applyTheme("auto");
     expect(document.documentElement).toHaveAttribute("data-theme", "light");
   });
 });
 
-// ─── 5. ThemeToggle component ────────────────────────────────────────────────
+// ─── 6. ThemeToggle component ────────────────────────────────────────────────
 
 describe("ThemeToggle", () => {
   let originalClipboard: Clipboard | undefined;
@@ -227,34 +299,61 @@ describe("ThemeToggle", () => {
 
   it("uses the correct button role for the icon-only theme control", () => {
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button", { name: "Theme: System (click for Light)" });
+    const btn = screen.getByRole("button", { name: /theme: auto/i });
     expect(btn).toHaveAttribute("role", "button");
   });
 
-  it("exposes a descriptive accessible name for the system icon state", () => {
+  // ── Accessible name per state ──────────────────────────────────────────────
+
+  it("exposes a descriptive accessible name for the auto state (dark resolved)", () => {
+    mockMatchMedia(false); // OS prefers dark
     render(<ThemeToggle />);
-    expect(screen.getByRole("button", { name: "Theme: System (click for Light)" })).toBeInTheDocument();
+    // default is "auto" for first-time visitors; resolved = dark
+    expect(
+      screen.getByRole("button", {
+        name: /theme: auto \(resolved: dark\)/i,
+      })
+    ).toBeInTheDocument();
   });
 
-  it("exposes a descriptive accessible name for the light icon state", () => {
-    mockLocalStorage({ [THEME_STORAGE_KEY]: "light" });
+  it("exposes a descriptive accessible name for the auto state (light resolved)", () => {
+    mockMatchMedia(true); // OS prefers light
     render(<ThemeToggle />);
-    expect(screen.getByRole("button", { name: "Theme: Light (click for Dark)" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /theme: auto \(resolved: light\)/i,
+      })
+    ).toBeInTheDocument();
   });
 
-  it("exposes a descriptive accessible name for the dark icon state", () => {
-    mockLocalStorage({ [THEME_STORAGE_KEY]: "dark" });
+  it("exposes a descriptive accessible name for the light state", () => {
+    mockLocalStorage({ [THEME_STORAGE_KEY]: JSON.stringify("light") });
     render(<ThemeToggle />);
-    expect(screen.getByRole("button", { name: "Theme: Dark (click for System)" })).toBeInTheDocument();
+    // useLocalStorage hydrates after mount via useEffect – trigger it
+    act(() => {});
+    expect(
+      screen.getByRole("button", { name: "Theme: Light (click for Dark)" })
+    ).toBeInTheDocument();
+  });
+
+  it("exposes a descriptive accessible name for the dark state", () => {
+    mockLocalStorage({ [THEME_STORAGE_KEY]: JSON.stringify("dark") });
+    render(<ThemeToggle />);
+    act(() => {});
+    expect(
+      screen.getByRole("button", { name: "Theme: Dark (click for Auto)" })
+    ).toBeInTheDocument();
   });
 
   it("aria-label mentions the current theme preference", () => {
     render(<ThemeToggle />);
     const btn = screen.getByRole("button", { name: /theme:/i });
-    expect(btn.getAttribute("aria-label")).toMatch(/system/i);
+    expect(btn.getAttribute("aria-label")).toMatch(/auto/i);
   });
 
-  it("cycles system → light on first click", async () => {
+  // ── Cycle order: auto → light → dark → auto ────────────────────────────────
+
+  it("cycles auto → light on first click", async () => {
     render(<ThemeToggle />);
     const btn = screen.getByRole("button", { name: /theme:/i });
     await act(async () => {
@@ -263,9 +362,26 @@ describe("ThemeToggle", () => {
     expect(btn).toHaveAttribute("data-theme-pref", "light");
   });
 
-  // ── 5b-i. Keyboard activation ────────────────────────────────────────────
+  it("cycles light → dark on second click", async () => {
+    render(<ThemeToggle />);
+    const btn = screen.getByRole("button", { name: /theme:/i });
+    await act(async () => fireEvent.click(btn));
+    await act(async () => fireEvent.click(btn));
+    expect(btn).toHaveAttribute("data-theme-pref", "dark");
+  });
 
-  it("is focusable and keyboard-accessible (button is natively operable)", async () => {
+  it("cycles dark → auto on third click (wraps back)", async () => {
+    render(<ThemeToggle />);
+    const btn = screen.getByRole("button", { name: /theme:/i });
+    await act(async () => fireEvent.click(btn));
+    await act(async () => fireEvent.click(btn));
+    await act(async () => fireEvent.click(btn));
+    expect(btn).toHaveAttribute("data-theme-pref", "auto");
+  });
+
+  // ── Keyboard activation ────────────────────────────────────────────────────
+
+  it("is focusable and keyboard-accessible (button is natively operable)", () => {
     render(<ThemeToggle />);
     const btn = screen.getByRole("button", { name: /theme:/i });
     btn.focus();
@@ -273,21 +389,20 @@ describe("ThemeToggle", () => {
     expect(btn.tagName).toBe("BUTTON");
   });
 
-  it("cycles theme via keyboard click (simulates Enter/Space activation)", async () => {
-    render(<ThemeToggle />);
-    const btn = screen.getByRole("button", { name: /theme:/i });
-    btn.focus();
-    await act(async () => {
-      fireEvent.click(btn);
-    });
-    expect(btn).toHaveAttribute("data-theme-pref", "light");
-  });
-
   it("cycles theme forward on ArrowDown keydown", async () => {
     render(<ThemeToggle />);
     const btn = screen.getByRole("button", { name: /theme:/i });
     await act(async () => {
       fireEvent.keyDown(btn, { key: "ArrowDown" });
+    });
+    expect(btn).toHaveAttribute("data-theme-pref", "light");
+  });
+
+  it("cycles theme forward on ArrowRight keydown", async () => {
+    render(<ThemeToggle />);
+    const btn = screen.getByRole("button", { name: /theme:/i });
+    await act(async () => {
+      fireEvent.keyDown(btn, { key: "ArrowRight" });
     });
     expect(btn).toHaveAttribute("data-theme-pref", "light");
   });
@@ -301,28 +416,28 @@ describe("ThemeToggle", () => {
     expect(btn).toHaveAttribute("data-theme-pref", "dark");
   });
 
-  it("cycles light → dark on second click", async () => {
+  it("cycles theme backward on ArrowLeft keydown", async () => {
     render(<ThemeToggle />);
     const btn = screen.getByRole("button", { name: /theme:/i });
-    await act(async () => fireEvent.click(btn));
-    await act(async () => fireEvent.click(btn));
+    await act(async () => {
+      fireEvent.keyDown(btn, { key: "ArrowLeft" });
+    });
     expect(btn).toHaveAttribute("data-theme-pref", "dark");
   });
 
-  it("cycles dark → system on third click", async () => {
-    render(<ThemeToggle />);
-    const btn = screen.getByRole("button", { name: /theme:/i });
-    await act(async () => fireEvent.click(btn));
-    await act(async () => fireEvent.click(btn));
-    await act(async () => fireEvent.click(btn));
-    expect(btn).toHaveAttribute("data-theme-pref", "system");
-  });
+  // ── Persistence ────────────────────────────────────────────────────────────
 
   it("writes the new preference to localStorage on click", async () => {
     const ls = mockLocalStorage({});
     render(<ThemeToggle />);
-    await act(async () => fireEvent.click(screen.getByRole("button", { name: /theme:/i })));
-    expect(ls.setItem).toHaveBeenCalledWith(THEME_STORAGE_KEY, "light");
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: /theme:/i }))
+    );
+    // useLocalStorage writes JSON.stringify("light")
+    expect(ls.setItem).toHaveBeenCalledWith(
+      THEME_STORAGE_KEY,
+      JSON.stringify("light")
+    );
   });
 
   it("sets data-theme on <html> after mount", async () => {
@@ -331,60 +446,150 @@ describe("ThemeToggle", () => {
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
   });
 
-  // ── 5e. aria-pressed reflects the active theme ────────────────────────
+  // ── auto mode OS preference live update ───────────────────────────────────
+
+  it("updates data-theme when OS preference changes while in auto mode", async () => {
+    const { fireChange, mqObject } = mockMatchMediaWithEvents(false); // starts dark
+    render(<ThemeToggle />);
+    await act(async () => {});
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+
+    // Simulate OS switching to light mode
+    mqObject.matches = true;
+    await act(async () => {
+      fireChange();
+    });
+    expect(document.documentElement).toHaveAttribute("data-theme", "light");
+  });
+
+  it("does NOT update data-theme on OS change when preference is explicit (light)", async () => {
+    const { fireChange, mqObject } = mockMatchMediaWithEvents(false);
+    mockLocalStorage({ [THEME_STORAGE_KEY]: JSON.stringify("light") });
+    render(<ThemeToggle />);
+    await act(async () => {});
+
+    // OS switches, but since preference is "light" the listener is not registered
+    mqObject.matches = true;
+    await act(async () => {
+      fireChange();
+    });
+    // data-theme should still be "light" (not changed by OS switch)
+    expect(document.documentElement).toHaveAttribute("data-theme", "light");
+  });
+
+  it("removes the OS preference listener when switching away from auto mode", async () => {
+    const { listenerCount } = mockMatchMediaWithEvents(false);
+    render(<ThemeToggle />);
+    await act(async () => {});
+    // Should be subscribed while in auto mode
+    expect(listenerCount()).toBe(1);
+
+    // Click to move to "light" – listener should be removed
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /theme:/i }));
+    });
+    expect(listenerCount()).toBe(0);
+  });
+
+  it("re-registers the OS preference listener when cycling back to auto", async () => {
+    const { listenerCount } = mockMatchMediaWithEvents(false);
+    render(<ThemeToggle />);
+    await act(async () => {});
+
+    // auto → light (unsubscribed)
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: /theme:/i })));
+    expect(listenerCount()).toBe(0);
+
+    // light → dark (still unsubscribed)
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: /theme:/i })));
+    expect(listenerCount()).toBe(0);
+
+    // dark → auto (re-subscribed)
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: /theme:/i })));
+    expect(listenerCount()).toBe(1);
+  });
+
+  // ── aria-pressed ───────────────────────────────────────────────────────────
 
   it("aria-pressed is false when the active theme is light", async () => {
     render(<ThemeToggle />);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /theme:/i }));
     });
-    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
   });
 
   it("aria-pressed is true when the active theme is dark", async () => {
     render(<ThemeToggle />);
     const btn = screen.getByRole("button", { name: /theme:/i });
-    await act(async () => {
-      fireEvent.click(btn);
-    });
-    await act(async () => {
-      fireEvent.click(btn);
-    });
+    await act(async () => fireEvent.click(btn));
+    await act(async () => fireEvent.click(btn));
     expect(btn).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("aria-pressed follows the system preference when the theme is set to system", async () => {
-    mockMatchMedia(true);
+  it("aria-pressed follows the OS preference when the theme is set to auto (OS=light)", async () => {
+    mockMatchMedia(true); // OS prefers light → not dark
     render(<ThemeToggle />);
     await act(async () => {});
-    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
   });
 
-  // ── 5f. data attributes stay in sync ─────────────────────────────────────
+  it("aria-pressed is true when auto resolves to dark (OS=dark)", async () => {
+    mockMatchMedia(false); // OS prefers dark
+    render(<ThemeToggle />);
+    await act(async () => {});
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+  });
 
-  it("data-theme-next shows the next theme in the cycle", async () => {
+  // ── data attributes ────────────────────────────────────────────────────────
+
+  it("data-theme-next shows the next theme in the cycle (auto → light)", async () => {
     render(<ThemeToggle />);
     await act(async () => {});
     const btn = screen.getByRole("button", { name: /theme:/i });
-    // starts at 'system', next is 'light'
+    // starts at 'auto', next is 'light'
     expect(btn).toHaveAttribute("data-theme-next", "light");
   });
 
-  it("updates data-theme-next after a click", async () => {
+  it("updates data-theme-next after a click (light → dark)", async () => {
     render(<ThemeToggle />);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /theme:/i }));
     });
     // now at 'light', next is 'dark'
-    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute("data-theme-next", "dark");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute(
+      "data-theme-next",
+      "dark"
+    );
   });
 
-  // ── 5g. className forwarding ──────────────────────────────────────────────
+  it("data-theme-next wraps back to auto after dark", async () => {
+    render(<ThemeToggle />);
+    const btn = screen.getByRole("button", { name: /theme:/i });
+    await act(async () => fireEvent.click(btn)); // → light
+    await act(async () => fireEvent.click(btn)); // → dark
+    expect(btn).toHaveAttribute("data-theme-next", "auto");
+  });
+
+  // ── className forwarding ───────────────────────────────────────────────────
 
   it("forwards className to the button", () => {
     render(<ThemeToggle className="my-extra-class" />);
-    expect(screen.getByRole("button", { name: /theme:/i })).toHaveClass("my-extra-class");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveClass(
+      "my-extra-class"
+    );
   });
+
+  // ── SVG icon ──────────────────────────────────────────────────────────────
 
   it("renders an SVG icon that is aria-hidden", () => {
     render(<ThemeToggle />);
@@ -395,9 +600,10 @@ describe("ThemeToggle", () => {
     });
   });
 
+  // ── Copy-identifier button ─────────────────────────────────────────────────
+
   it("renders an accessible copy control for the theme identifier", () => {
     render(<ThemeToggle />);
-
     const copyButton = screen.getByRole("button", { name: "Copy theme identifier" });
     expect(copyButton).toBeInTheDocument();
     expect(copyButton).toHaveAttribute("type", "button");
@@ -445,9 +651,28 @@ describe("ThemeToggle", () => {
       "Copied!"
     );
   });
+
+  it("shows an error toast when Clipboard API write is rejected", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: jest.fn().mockRejectedValue(new Error("denied")) },
+      configurable: true,
+      writable: true,
+    });
+
+    render(<ThemeToggle />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copy theme identifier" }));
+    });
+
+    expect(mockToast.error).toHaveBeenCalledWith(
+      "Failed to copy theme identifier.",
+      "Error"
+    );
+  });
 });
 
-// ─── 6. Accessibility (jest-axe) – Acceptance Criteria ───────────────────────
+// ─── 7. Accessibility (jest-axe) – Acceptance Criteria ───────────────────────
 
 describe("ThemeToggle accessibility (jest-axe)", () => {
   beforeEach(() => {
@@ -457,8 +682,8 @@ describe("ThemeToggle accessibility (jest-axe)", () => {
   });
   afterEach(cleanupDataTheme);
 
-  // LOADED state (default / system preference)
-  it("has no accessibility violations in loaded (system) state", async () => {
+  // LOADED state (default / auto preference)
+  it("has no accessibility violations in loaded (auto) state", async () => {
     const { container } = render(<ThemeToggle />);
     await act(async () => {});
     const results = await axe(container);
@@ -467,7 +692,7 @@ describe("ThemeToggle accessibility (jest-axe)", () => {
 
   // LOADED state – light
   it("has no accessibility violations in light theme state", async () => {
-    mockLocalStorage({ [THEME_STORAGE_KEY]: "light" });
+    mockLocalStorage({ [THEME_STORAGE_KEY]: JSON.stringify("light") });
     const { container } = render(<ThemeToggle />);
     await act(async () => {});
     const results = await axe(container);
@@ -476,7 +701,7 @@ describe("ThemeToggle accessibility (jest-axe)", () => {
 
   // LOADED state – dark
   it("has no accessibility violations in dark theme state", async () => {
-    mockLocalStorage({ [THEME_STORAGE_KEY]: "dark" });
+    mockLocalStorage({ [THEME_STORAGE_KEY]: JSON.stringify("dark") });
     const { container } = render(<ThemeToggle />);
     await act(async () => {});
     const results = await axe(container);
@@ -513,7 +738,7 @@ describe("ThemeToggle accessibility (jest-axe)", () => {
   });
 });
 
-// ─── 6. Relative "last updated" timestamp ────────────────────────────────────
+// ─── 8. Relative "last updated" timestamp ────────────────────────────────────
 
 describe("ThemeToggle - last updated timestamp", () => {
   const FIXED_NOW = new Date("2026-07-26T12:00:00.000Z");
@@ -536,7 +761,10 @@ describe("ThemeToggle - last updated timestamp", () => {
     await act(async () => {});
 
     expect(screen.getByText(/updated just now/i)).toBeInTheDocument();
-    expect(ls.setItem).toHaveBeenCalledWith(THEME_UPDATED_STORAGE_KEY, String(FIXED_NOW.getTime()));
+    expect(ls.setItem).toHaveBeenCalledWith(
+      THEME_UPDATED_STORAGE_KEY,
+      String(FIXED_NOW.getTime())
+    );
   });
 
   it("does not overwrite an already-stored timestamp on mount", async () => {
@@ -546,7 +774,10 @@ describe("ThemeToggle - last updated timestamp", () => {
     await act(async () => {});
 
     expect(screen.getByText(/updated 10 minutes ago/i)).toBeInTheDocument();
-    expect(ls.setItem).not.toHaveBeenCalledWith(THEME_UPDATED_STORAGE_KEY, expect.anything());
+    expect(ls.setItem).not.toHaveBeenCalledWith(
+      THEME_UPDATED_STORAGE_KEY,
+      expect.anything()
+    );
   });
 
   it("reads a previously-stored timestamp via readStoredThemeUpdatedAt", () => {
@@ -597,7 +828,12 @@ describe("ThemeToggle - last updated timestamp", () => {
     await act(async () => {});
 
     const container = document.getElementById("theme-updated-at");
-    expect(container).toHaveAttribute("title", expect.stringContaining("Theme last updated"));
-    expect(container?.querySelector(".sr-only")).toHaveTextContent(FIXED_NOW.toLocaleString());
+    expect(container).toHaveAttribute(
+      "title",
+      expect.stringContaining("Theme last updated")
+    );
+    expect(container?.querySelector(".sr-only")).toHaveTextContent(
+      FIXED_NOW.toLocaleString()
+    );
   });
 });
