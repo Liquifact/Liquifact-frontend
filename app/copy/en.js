@@ -549,6 +549,11 @@ export const copy = {
     announceError: "Wallet connection failed.",
     announceWrongNetwork: "Wallet connected to wrong network.",
     announceNoWallet: "No wallet detected.",
+    densityToggleLabel: "Wallet density",
+    densityCompact: "Compact",
+    densityComfortable: "Comfortable",
+    densityCompactAriaLabel: "Switch wallet view to compact density",
+    densityComfortableAriaLabel: "Switch wallet view to comfortable density",
     // Wallet error-boundary fallback (see components/WalletErrorBoundary.jsx)
     errorTitle: "Wallet unavailable",
     errorDescription:
