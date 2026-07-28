@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Button from "./Button";
 import ConfirmDialog from "./ConfirmDialog";
 import ErrorBanner from "./ErrorBanner";
@@ -8,6 +8,7 @@ import EmptyState, { InvoiceEmptyIllustration } from "./EmptyState";
 import InvoiceListSkeleton from "./InvoiceListSkeleton";
 import { useToast } from "./ToastProvider";
 import { copy } from "../app/copy/en";
+import { downloadInvoices } from "../lib/exportInvoices";
 
 const INVOICE_STATUSES = {
   PENDING_TOKENIZATION: "Pending tokenization",
@@ -165,6 +166,10 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
     () => mergeInvoices(optimisticInvoices, invoices ?? []),
     [optimisticInvoices, invoices]
   );
+  const handleExport = useCallback(
+    (format) => downloadInvoices(mergedInvoices, format),
+    [mergedInvoices]
+  );
 
   const allSelected =
     mergedInvoices.length > 0 && mergedInvoices.every((inv) => selectedIds.has(inv.id));
@@ -298,6 +303,16 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
             </p>
           </div>
         </div>
+        {invoices !== null && mergedInvoices.length > 0 && (
+          <div className="flex items-center gap-2" role="group" aria-label="Export invoices">
+            <Button variant="secondary" onClick={() => handleExport("csv")}>
+              Export CSV
+            </Button>
+            <Button variant="secondary" onClick={() => handleExport("json")}>
+              Export JSON
+            </Button>
+          </div>
+        )}
         <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
           {statusMessage}
         </p>
