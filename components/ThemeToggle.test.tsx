@@ -198,7 +198,7 @@ describe("ThemeToggle", () => {
 
   it("renders a button element", () => {
     render(<ThemeToggle />);
-    expect(screen.getByRole("button")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /theme:/i })).toBeInTheDocument();
   });
 
   it('has id="theme-toggle"', () => {
@@ -208,14 +208,14 @@ describe("ThemeToggle", () => {
 
   it("has a non-empty aria-label", () => {
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button");
+    const btn = screen.getByRole("button", { name: /theme:/i });
     expect(btn).toHaveAttribute("aria-label");
     expect(btn.getAttribute("aria-label")!.length).toBeGreaterThan(0);
   });
 
   it("aria-label mentions the current theme preference", () => {
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button");
+    const btn = screen.getByRole("button", { name: /theme:/i });
     // Default preference is 'system'
     expect(btn.getAttribute("aria-label")).toMatch(/system/i);
   });
@@ -224,7 +224,7 @@ describe("ThemeToggle", () => {
 
   it("cycles system → light on first click", async () => {
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button");
+    const btn = screen.getByRole("button", { name: /theme:/i });
     await act(async () => {
       fireEvent.click(btn);
     });
@@ -233,7 +233,7 @@ describe("ThemeToggle", () => {
 
   it("cycles light → dark on second click", async () => {
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button");
+    const btn = screen.getByRole("button", { name: /theme:/i });
     await act(async () => {
       fireEvent.click(btn);
     });
@@ -245,7 +245,7 @@ describe("ThemeToggle", () => {
 
   it("cycles dark → system on third click", async () => {
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button");
+    const btn = screen.getByRole("button", { name: /theme:/i });
     await act(async () => {
       fireEvent.click(btn);
     });
@@ -260,7 +260,7 @@ describe("ThemeToggle", () => {
 
   it("wraps from system back to light after a full cycle", async () => {
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button");
+    const btn = screen.getByRole("button", { name: /theme:/i });
     for (let i = 0; i < THEMES.length + 1; i++) {
       await act(async () => {
         fireEvent.click(btn);
@@ -276,7 +276,7 @@ describe("ThemeToggle", () => {
     const ls = mockLocalStorage({});
     render(<ThemeToggle />);
     await act(async () => {
-      fireEvent.click(screen.getByRole("button"));
+      fireEvent.click(screen.getByRole("button", { name: /theme:/i }));
     });
     expect(ls.setItem).toHaveBeenCalledWith(THEME_STORAGE_KEY, "light");
   });
@@ -284,7 +284,7 @@ describe("ThemeToggle", () => {
   it('stores "dark" after a second click', async () => {
     const ls = mockLocalStorage({});
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button");
+    const btn = screen.getByRole("button", { name: /theme:/i });
     await act(async () => {
       fireEvent.click(btn);
     });
@@ -298,7 +298,7 @@ describe("ThemeToggle", () => {
     mockLocalStorage({ [THEME_STORAGE_KEY]: "dark" });
     render(<ThemeToggle />);
     await act(async () => {}); // flush useEffect
-    const btn = screen.getByRole("button");
+    const btn = screen.getByRole("button", { name: /theme:/i });
     expect(btn).toHaveAttribute("data-theme-pref", "dark");
   });
 
@@ -313,14 +313,14 @@ describe("ThemeToggle", () => {
   it('sets data-theme="light" on <html> after clicking to light', async () => {
     render(<ThemeToggle />);
     await act(async () => {
-      fireEvent.click(screen.getByRole("button"));
+      fireEvent.click(screen.getByRole("button", { name: /theme:/i }));
     });
     expect(document.documentElement).toHaveAttribute("data-theme", "light");
   });
 
   it('sets data-theme="dark" on <html> after clicking to dark', async () => {
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button");
+    const btn = screen.getByRole("button", { name: /theme:/i });
     await act(async () => {
       fireEvent.click(btn);
     });
@@ -335,20 +335,20 @@ describe("ThemeToggle", () => {
   it('aria-pressed is false when preference is "system"', async () => {
     render(<ThemeToggle />);
     await act(async () => {});
-    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute("aria-pressed", "false");
   });
 
   it('aria-pressed is true when preference is "light"', async () => {
     render(<ThemeToggle />);
     await act(async () => {
-      fireEvent.click(screen.getByRole("button"));
+      fireEvent.click(screen.getByRole("button", { name: /theme:/i }));
     });
-    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute("aria-pressed", "true");
   });
 
   it('aria-pressed is true when preference is "dark"', async () => {
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button");
+    const btn = screen.getByRole("button", { name: /theme:/i });
     await act(async () => {
       fireEvent.click(btn);
     });
@@ -363,7 +363,7 @@ describe("ThemeToggle", () => {
   it("data-theme-next shows the next theme in the cycle", async () => {
     render(<ThemeToggle />);
     await act(async () => {});
-    const btn = screen.getByRole("button");
+    const btn = screen.getByRole("button", { name: /theme:/i });
     // starts at 'system', next is 'light'
     expect(btn).toHaveAttribute("data-theme-next", "light");
   });
@@ -371,23 +371,23 @@ describe("ThemeToggle", () => {
   it("updates data-theme-next after a click", async () => {
     render(<ThemeToggle />);
     await act(async () => {
-      fireEvent.click(screen.getByRole("button"));
+      fireEvent.click(screen.getByRole("button", { name: /theme:/i }));
     });
     // now at 'light', next is 'dark'
-    expect(screen.getByRole("button")).toHaveAttribute("data-theme-next", "dark");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute("data-theme-next", "dark");
   });
 
   // ── 5g. className forwarding ──────────────────────────────────────────────
 
   it("forwards className to the button", () => {
     render(<ThemeToggle className="my-extra-class" />);
-    expect(screen.getByRole("button")).toHaveClass("my-extra-class");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveClass("my-extra-class");
   });
 
   it("keeps built-in classes alongside the custom className", () => {
     render(<ThemeToggle className="extra" />);
-    expect(screen.getByRole("button")).toHaveClass("rounded-lg");
-    expect(screen.getByRole("button")).toHaveClass("extra");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveClass("rounded-lg");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveClass("extra");
   });
 
   // ── 5h. SVG icons are decorative ─────────────────────────────────────────
@@ -407,5 +407,171 @@ describe("ThemeToggle", () => {
     svgs.forEach((svg) => {
       expect(svg).toHaveAttribute("focusable", "false");
     });
+  });
+});
+
+// ── Theme options modal (focus-trap, escape, restore) ───────────────────────
+
+describe("ThemeToggle — theme options modal", () => {
+  beforeAll(() => {
+    // jsdom has no real layout engine, so every element's `offsetParent` is
+    // null by default — including genuinely visible ones.
+    // getFocusableElements uses offsetParent to detect display:none-hidden
+    // elements, so without this stub the focus trap would (only in tests)
+    // treat every option as hidden.
+    Object.defineProperty(HTMLElement.prototype, "offsetParent", {
+      configurable: true,
+      get() {
+        return document.body;
+      },
+    });
+  });
+
+  beforeEach(() => {
+    cleanupDataTheme();
+    mockLocalStorage({});
+    mockMatchMedia(false);
+  });
+
+  afterEach(() => {
+    cleanupDataTheme();
+  });
+
+  it("opens the modal when the options trigger is clicked", async () => {
+    render(<ThemeToggle />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /theme options/i }));
+    });
+    expect(screen.getByRole("dialog", { name: "Theme" })).toBeInTheDocument();
+  });
+
+  it("sets aria-expanded on the trigger while the modal is open", async () => {
+    render(<ThemeToggle />);
+    const trigger = screen.getByRole("button", { name: /theme options/i });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("does not change the main toggle button's preference just by opening the modal", async () => {
+    const ls = mockLocalStorage({});
+    render(<ThemeToggle />);
+    await act(async () => {});
+    const callsBeforeOpening = ls.setItem.mock.calls.length;
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /theme options/i }));
+    });
+
+    expect(ls.setItem.mock.calls.length).toBe(callsBeforeOpening);
+  });
+
+  it("selecting an option changes the theme and closes the modal", async () => {
+    const ls = mockLocalStorage({});
+    render(<ThemeToggle />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /theme options/i }));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
+    });
+
+    expect(ls.setItem).toHaveBeenCalledWith(THEME_STORAGE_KEY, "dark");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("restores focus to the options trigger after selecting an option", async () => {
+    render(<ThemeToggle />);
+    const trigger = screen.getByRole("button", { name: /theme options/i });
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
+    });
+    // Focus restoration is scheduled via queueMicrotask.
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("closes on Escape and restores focus to the trigger", async () => {
+    render(<ThemeToggle />);
+    const trigger = screen.getByRole("button", { name: /theme options/i });
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("restores focus to whichever element had focus before opening, not necessarily the trigger", async () => {
+    render(
+      <div>
+        <button type="button">Elsewhere</button>
+        <ThemeToggle />
+      </div>
+    );
+    const elsewhere = screen.getByRole("button", { name: "Elsewhere" });
+    elsewhere.focus();
+    expect(document.activeElement).toBe(elsewhere);
+
+    // fireEvent.click (unlike a real browser click or userEvent.click) does
+    // not itself move focus, so activeElement at open time genuinely
+    // remains "elsewhere" here — exercising the branch where the opener
+    // captures document.activeElement rather than assuming it's the trigger.
+    const trigger = screen.getByRole("button", { name: /theme options/i });
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(document.activeElement).toBe(elsewhere);
+  });
+
+  it("closes when the backdrop is clicked", async () => {
+    render(<ThemeToggle />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /theme options/i }));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("theme-options-backdrop"));
+    });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("traps Tab focus within the modal", async () => {
+    render(<ThemeToggle />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /theme options/i }));
+    });
+
+    const options = screen.getAllByRole("radio");
+    options[options.length - 1].focus();
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Tab" });
+
+    expect(document.activeElement).toBe(options[0]);
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import ThemeOptionsModal from "./ThemeOptionsModal";
 
 /**
  * The three theme options the user can cycle through.
@@ -108,6 +109,46 @@ export default function ThemeToggle({ className = "" }) {
     });
   };
 
+  // ─── Theme options modal (focus-trap, escape, restore) ──────────────────
+  // Additive: does not change the toggle button's existing click-to-cycle
+  // behaviour or appearance above.
+  const [modalOpen, setModalOpen] = useState(false);
+  const optionsButtonRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
+  const titleId = useId();
+
+  const openModal = useCallback(() => {
+    const active = document.activeElement;
+    previouslyFocusedRef.current =
+      active instanceof HTMLElement && active !== document.body ? active : optionsButtonRef.current;
+    setModalOpen(true);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModalOpen(false);
+  }, []);
+
+  const handleSelectFromModal = useCallback((pref) => {
+    setPreference(pref);
+    setModalOpen(false);
+  }, []);
+
+  // Restore focus to whatever triggered the modal once it closes.
+  useEffect(() => {
+    if (modalOpen) return undefined;
+    const target = previouslyFocusedRef.current;
+    previouslyFocusedRef.current = null;
+    if (
+      target &&
+      target instanceof HTMLElement &&
+      document.body.contains(target) &&
+      typeof target.focus === "function"
+    ) {
+      queueMicrotask(() => target.focus());
+    }
+    return undefined;
+  }, [modalOpen]);
+
   const ICONS = {
     light: (
       // Sun
@@ -182,26 +223,62 @@ export default function ThemeToggle({ className = "" }) {
   const capitalise = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
   return (
-    <button
-      id="theme-toggle"
-      type="button"
-      onClick={handleClick}
-      aria-label={LABELS[preference]}
-      aria-pressed={preference !== "system"}
-      title={`Current theme: ${capitalise(preference)}`}
-      data-theme-pref={preference}
-      data-theme-next={nextPref}
-      className={[
-        "rounded-lg p-2 transition-colors",
-        "text-slate-300 hover:text-cyan-400 hover:bg-slate-800",
-        "dark:text-slate-300 dark:hover:text-cyan-400",
-        "focus-ring",
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      {ICONS[preference]}
-    </button>
+    <>
+      <button
+        id="theme-toggle"
+        type="button"
+        onClick={handleClick}
+        aria-label={LABELS[preference]}
+        aria-pressed={preference !== "system"}
+        title={`Current theme: ${capitalise(preference)}`}
+        data-theme-pref={preference}
+        data-theme-next={nextPref}
+        className={[
+          "rounded-lg p-2 transition-colors",
+          "text-slate-300 hover:text-cyan-400 hover:bg-slate-800",
+          "dark:text-slate-300 dark:hover:text-cyan-400",
+          "focus-ring",
+          className,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {ICONS[preference]}
+      </button>
+
+      <button
+        ref={optionsButtonRef}
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={modalOpen}
+        aria-label="Theme options"
+        title="Theme options"
+        onClick={openModal}
+        className="focus-ring rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-800 hover:text-cyan-400"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      <ThemeOptionsModal
+        open={modalOpen}
+        onClose={closeModal}
+        preference={preference}
+        onSelect={handleSelectFromModal}
+        titleId={titleId}
+      />
+    </>
   );
 }
