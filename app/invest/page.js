@@ -301,8 +301,9 @@ export function InvestMarketplace({
   const initialUrlState = parseFiltersFromSearchParams(searchParamsValue, DEFAULT_FILTERS);
 
   const { watchlists } = useWatchlist();
-  
-  const [density, setDensity] = useDensity();
+  // Toast is optional — bulk handlers no-op toast when provider is absent (unit tests).
+  const toastApi = null;
+
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -807,65 +808,55 @@ export function InvestMarketplace({
             retryLabel="Retry loading watchlist"
           >
             <>
-              <ul
-                aria-label={copy.invest.listAriaLabel}
-                data-density={density}
-                className={density === "compact" ? "space-y-2" : "space-y-4"}
-              >
-                {filteredInvoices.slice(0, visibleCount).map((inv) => {
-                  const checked = isSelected(inv.id);
-                  return (
-                    <li
-                      key={inv.id}
-                      data-testid={`invoice-row-${inv.id}`}
-                      data-selected={checked ? "true" : "false"}
-                      className={`rounded-xl border transition-colors ${
-                        density === "compact" ? "p-3" : "p-5"
-                      } ${
-                        checked
-                          ? "border-cyan-500/70 bg-cyan-950/40 ring-1 ring-cyan-700/40"
-                          : "border-slate-800 bg-slate-900/50"
-                      }`}
+              <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
+                {filteredInvoices.slice(0, visibleCount).map((inv) => (
+                  <li
+                    key={inv.id}
+                    className="rounded-xl border border-slate-800 bg-slate-900/50"
+                    style={{ padding: "var(--market-card-padding)" }}
+                  >
+                    <div
+                      className="flex items-center justify-between"
+                      style={{ marginBottom: "var(--market-card-gap)", gap: "var(--market-card-gap)" }}
                     >
-                      <div className={`flex items-center justify-between ${density === "compact" ? "mb-1.5" : "mb-3"} gap-3`}>
-                        <label className="inline-flex items-center gap-2 rounded px-1 py-0.5 hover:bg-slate-800/40 focus-within:ring-2 focus-within:ring-cyan-400 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleSelection(inv.id)}
-                            aria-label={(bulkLabels.rowCheckboxAria || "Select invoice {id} from {issuer}")
-                              .replace("{id}", inv.id)
-                              .replace("{issuer}", inv.issuer || "")}
-                            data-testid={`invoice-checkbox-${inv.id}`}
-                            className="h-4 w-4 rounded border-slate-500 bg-slate-900 text-cyan-500 accent-cyan-400 focus:ring-cyan-400"
-                          />
-                          <Link
-                            href={`/invest/${inv.id}`}
-                            className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
-                          >
-                            {inv.issuer}
-                          </Link>
-                        </label>
-                        <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
-                          {inv.status}
-                        </span>
-                      </div>
-                      <div className="flex gap-6 text-sm text-slate-400">
-                        <span>
-                          {inv.currency}&nbsp;{inv.amount}
-                        </span>
-                        <span>
-                          {copy.invest.labelYield}
-                          {inv.yield}
-                        </span>
-                        <span>
-                          {copy.invest.labelMaturity}
-                          {inv.dueDate}
-                        </span>
-                      </div>
-                    </li>
-                  );
-                })}
+                      <Link
+                        href={`/invest/${inv.id}`}
+                        className="rounded font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+                        style={{
+                          fontSize: "var(--market-card-title-font-size)",
+                          fontWeight: "var(--market-card-title-font-weight)",
+                          lineHeight: "var(--market-card-title-line-height)",
+                        }}
+                      >
+                        {inv.issuer}
+                      </Link>
+                      <span className="rounded-full bg-cyan-900/60 px-2 py-1 text-xs font-semibold text-cyan-300">
+                        {inv.status}
+                      </span>
+                    </div>
+                    <div
+                      className="flex flex-wrap items-center text-slate-400"
+                      style={{
+                        gap: "var(--market-card-gap)",
+                        fontSize: "var(--market-card-meta-font-size)",
+                        lineHeight: "var(--market-card-meta-line-height)",
+                        letterSpacing: "var(--market-card-meta-letter-spacing)",
+                      }}
+                    >
+                      <span>
+                        {inv.currency}&nbsp;{inv.amount}
+                      </span>
+                      <span>
+                        {copy.invest.labelYield}
+                        {inv.yield}
+                      </span>
+                      <span>
+                        {copy.invest.labelMaturity}
+                        {inv.dueDate}
+                      </span>
+                    </div>
+                  </li>
+                ))}
               </ul>
               {visibleCount < filteredInvoices.length && (
                 <button
