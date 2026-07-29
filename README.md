@@ -69,6 +69,8 @@ For frontend/backend contract details see:
 
 [docs/api-integration.md](docs/api-integration.md)
 
+For the current Invest marketplace component props and usage reference, see [docs/marketplace-api.md](docs/marketplace-api.md).
+
 ---
 
 ## Development
@@ -149,6 +151,8 @@ export function getInvoiceLoadAnnouncement(invoices, { filterActive, filteredCou
 ```
 
 Both `filterActive` and `filteredCount` are computed inside `InvestMarketplace` from live state (`hasAnyActiveFilters(filters, debouncedSearch)` and `filteredInvoices.length`) and are passed in explicitly — the function itself has no implicit dependencies on component state.
+
+For a concise component-by-component API reference, see [docs/marketplace-api.md](docs/marketplace-api.md).
 
 ### Error recovery
 

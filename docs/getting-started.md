@@ -40,6 +40,7 @@ This guide covers the fastest way to run LiquiFact Frontend locally, run tests, 
 ## Useful commands
 
 - `npm run dev` — start the Next.js development server
+- For marketplace component props and a minimal usage example, see [marketplace-api.md](marketplace-api.md).
 - `npm run lint` — run ESLint across the repository
 - `npm test` — run the Jest unit and accessibility test suite
 - `npm run build` — create a production build
