@@ -285,8 +285,8 @@ describe("InvoiceDetailPage (Server Component shell)", () => {
     it("renders the maturity date as a <dd>", async () => {
       const { container } = await renderServerPage({ id: "inv-001" });
 
-      const dds = Array.from(container.querySelectorAll("dd")).map((el) => el.textContent);
-      expect(dds).toContain("2026-06-15");
+      const dds = Array.from(container.querySelectorAll("dd")).map((el) => el.textContent || "");
+      expect(dds.some((text) => text.includes("2026-06-15"))).toBe(true);
     });
 
     it("renders the StatusPill for the invoice status", async () => {

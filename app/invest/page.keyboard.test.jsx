@@ -204,7 +204,8 @@ describe("Marketplace tab order", () => {
 
     const links = screen.getAllByRole("link").filter((l) => l.textContent?.startsWith("Issuer"));
     for (const link of links) {
-      await user.tab();
+      await user.tab(); // focus row selection checkbox
+      await user.tab(); // focus invoice link
       expect(link).toHaveFocus();
     }
 

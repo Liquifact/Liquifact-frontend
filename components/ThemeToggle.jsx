@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
-import ThemeOptionsModal from "./ThemeOptionsModal";
+import { useEffect, useState } from "react";
+import { formatRelativeTime } from "../lib/format/date";
+import CopyButton from "./CopyButton";
 
 /**
  * The three theme options the user can cycle through.
@@ -17,6 +18,9 @@ export const THEMES = /** @type {const} */ (["light", "dark", "auto"]);
 
 /** localStorage key where the preference is persisted. */
 export const THEME_STORAGE_KEY = "liquifact-theme";
+
+/** Stable identifier for the theme preference setting. */
+export const THEME_IDENTIFIER = THEME_STORAGE_KEY;
 
 /** localStorage key where the last-changed timestamp (epoch ms) is persisted. */
 export const THEME_UPDATED_STORAGE_KEY = "liquifact-theme-updated-at";
@@ -171,13 +175,7 @@ export default function ThemeToggle({ className = "" }) {
     return () => clearInterval(id);
   }, []);
 
-  /**
-   * Advance the preference one step forward ("next") or backward ("prev")
-   * through the THEMES cycle and update the last-changed timestamp.
-   *
-   * @param {"next"|"prev"} direction
-   */
-  const cycleTheme = (direction) => {
+  const cycleTheme = (direction = "next") => {
     setPreference((prev) => {
       const idx = THEMES.indexOf(prev);
       if (direction === "next") {
@@ -359,8 +357,9 @@ export default function ThemeToggle({ className = "" }) {
         id="theme-toggle"
         type="button"
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
         aria-label={LABELS[preference]}
-        aria-pressed={preference !== "system"}
+        aria-pressed={isDarkActive}
         title={`Current theme: ${capitalise(preference)}`}
         data-theme-pref={preference}
         data-theme-next={nextPref}
@@ -376,28 +375,18 @@ export default function ThemeToggle({ className = "" }) {
       >
         {ICONS[preference]}
       </button>
-
-      <button
-        ref={optionsButtonRef}
-        type="button"
-        aria-haspopup="dialog"
-        aria-expanded={modalOpen}
-        aria-label="Theme options"
-        title="Theme options"
-        onClick={openModal}
-        className="focus-ring rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-800 hover:text-cyan-400"
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-          focusable="false"
+      <CopyButton
+        text={THEME_IDENTIFIER}
+        label="theme identifier"
+        successMessage="Theme identifier copied to clipboard."
+        errorMessage="Unable to copy theme identifier. Select and copy it manually."
+        className="h-8 w-8 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-cyan-400 dark:text-slate-300 dark:hover:text-cyan-400"
+      />
+      {updatedAt && (
+        <span
+          id="theme-updated-at"
+          className="text-xs text-slate-400 dark:text-slate-400"
+          title={`Theme last updated ${absoluteUpdatedAt}`}
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>

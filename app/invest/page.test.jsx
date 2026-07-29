@@ -458,15 +458,6 @@ describe("InvestMarketplace", () => {
                     />
                   </fieldset>
                 </div>
-                <label
-                  class="flex items-center gap-2 text-sm text-slate-300"
-                >
-                  <input
-                    class="rounded border-slate-700 bg-slate-800/50 text-cyan-500 focus:ring-cyan-500"
-                    type="checkbox"
-                  />
-                  Watchlist Only
-                </label>
                 <div
                   aria-label="Currency filter"
                   class="flex items-center gap-1"
@@ -585,8 +576,7 @@ describe("InvestMarketplace", () => {
                   </select>
                   <button
                     aria-label="Sort amount direction"
-                    aria-pressed="false"
-                    class="focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -594,8 +584,7 @@ describe("InvestMarketplace", () => {
                   </button>
                   <button
                     aria-label="Sort yield direction"
-                    aria-pressed="false"
-                    class="focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -604,7 +593,7 @@ describe("InvestMarketplace", () => {
                 </fieldset>
                 <button
                   aria-label="Clear all filters"
-                  class="focus-ring ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                  class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
                   disabled=""
                   type="button"
                 >
@@ -616,22 +605,32 @@ describe("InvestMarketplace", () => {
           <ul
             aria-label="Investable invoices"
             class="space-y-4"
+            data-density="comfortable"
           >
             <li
-              class="rounded-xl border border-slate-800 bg-slate-900/50"
-              style="padding: var(--market-card-padding);"
+              class="rounded-xl border transition-colors p-5 border-slate-800 bg-slate-900/50"
+              data-selected="false"
+              data-testid="invoice-row-inv-001"
             >
               <div
-                class="flex items-center justify-between"
-                style="margin-bottom: var(--market-card-gap); gap: var(--market-card-gap);"
+                class="flex items-center justify-between mb-3 gap-3"
               >
-                <a
-                  class="rounded font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
-                  href="/invest/inv-001"
-                  style="font-size: var(--market-card-title-font-size); font-weight: var(--market-card-title-font-weight); line-height: var(--market-card-title-line-height);"
+                <label
+                  class="inline-flex items-center gap-2 rounded px-1 py-0.5 hover:bg-slate-800/40 focus-within:ring-2 focus-within:ring-cyan-400 cursor-pointer"
                 >
-                  Acme Supplies Ltd
-                </a>
+                  <input
+                    aria-label="Select invoice inv-001 from Acme Supplies Ltd"
+                    class="h-4 w-4 rounded border-slate-500 bg-slate-900 text-cyan-500 accent-cyan-400 focus:ring-cyan-400"
+                    data-testid="invoice-checkbox-inv-001"
+                    type="checkbox"
+                  />
+                  <a
+                    class="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                    href="/invest/inv-001"
+                  >
+                    Acme Supplies Ltd
+                  </a>
+                </label>
                 <span
                   class="rounded-full bg-cyan-900/60 px-2 py-1 text-xs font-semibold text-cyan-300"
                 >
@@ -658,20 +657,29 @@ describe("InvestMarketplace", () => {
               </div>
             </li>
             <li
-              class="rounded-xl border border-slate-800 bg-slate-900/50"
-              style="padding: var(--market-card-padding);"
+              class="rounded-xl border transition-colors p-5 border-slate-800 bg-slate-900/50"
+              data-selected="false"
+              data-testid="invoice-row-inv-002"
             >
               <div
-                class="flex items-center justify-between"
-                style="margin-bottom: var(--market-card-gap); gap: var(--market-card-gap);"
+                class="flex items-center justify-between mb-3 gap-3"
               >
-                <a
-                  class="rounded font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
-                  href="/invest/inv-002"
-                  style="font-size: var(--market-card-title-font-size); font-weight: var(--market-card-title-font-weight); line-height: var(--market-card-title-line-height);"
+                <label
+                  class="inline-flex items-center gap-2 rounded px-1 py-0.5 hover:bg-slate-800/40 focus-within:ring-2 focus-within:ring-cyan-400 cursor-pointer"
                 >
-                  Bright Logistics GmbH
-                </a>
+                  <input
+                    aria-label="Select invoice inv-002 from Bright Logistics GmbH"
+                    class="h-4 w-4 rounded border-slate-500 bg-slate-900 text-cyan-500 accent-cyan-400 focus:ring-cyan-400"
+                    data-testid="invoice-checkbox-inv-002"
+                    type="checkbox"
+                  />
+                  <a
+                    class="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                    href="/invest/inv-002"
+                  >
+                    Bright Logistics GmbH
+                  </a>
+                </label>
                 <span
                   class="rounded-full bg-cyan-900/60 px-2 py-1 text-xs font-semibold text-cyan-300"
                 >
@@ -702,6 +710,58 @@ describe("InvestMarketplace", () => {
             class="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400"
           >
             Note: Yield references are educational only and reflect on-chain basis-point assumptions. Invoice contracts settle at maturity.
+          </div>
+          <div
+            class="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/60 pt-4"
+          >
+            <div
+              aria-label="Display density"
+              class="flex items-center gap-2 text-sm"
+              role="group"
+            >
+              <span
+                aria-hidden="true"
+                class="text-slate-400 select-none"
+                id="density-toggle-label"
+              >
+                Display density
+                :
+              </span>
+              <button
+                aria-label="Switch to compact density"
+                aria-pressed="false"
+                class="rounded px-3 py-1 text-xs font-medium transition-colors focus-ring border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500"
+                data-density="compact"
+                type="button"
+              >
+                Compact
+              </button>
+              <button
+                aria-label="Switch to comfortable density"
+                aria-pressed="true"
+                class="rounded px-3 py-1 text-xs font-medium transition-colors focus-ring bg-cyan-500/20 text-cyan-400 border border-cyan-500/40"
+                data-density="comfortable"
+                type="button"
+              >
+                Comfortable
+              </button>
+            </div>
+            <div
+              class="flex gap-2"
+            >
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                type="button"
+              >
+                Export CSV
+              </button>
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                type="button"
+              >
+                Export JSON
+              </button>
+            </div>
           </div>
         </main>
       </div>
@@ -904,15 +964,6 @@ describe("InvestMarketplace", () => {
                     />
                   </fieldset>
                 </div>
-                <label
-                  class="flex items-center gap-2 text-sm text-slate-300"
-                >
-                  <input
-                    class="rounded border-slate-700 bg-slate-800/50 text-cyan-500 focus:ring-cyan-500"
-                    type="checkbox"
-                  />
-                  Watchlist Only
-                </label>
                 <div
                   aria-label="Currency filter"
                   class="flex items-center gap-1"
@@ -1031,8 +1082,7 @@ describe("InvestMarketplace", () => {
                   </select>
                   <button
                     aria-label="Sort amount direction"
-                    aria-pressed="false"
-                    class="focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -1040,8 +1090,7 @@ describe("InvestMarketplace", () => {
                   </button>
                   <button
                     aria-label="Sort yield direction"
-                    aria-pressed="false"
-                    class="focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -1050,7 +1099,7 @@ describe("InvestMarketplace", () => {
                 </fieldset>
                 <button
                   aria-label="Clear all filters"
-                  class="focus-ring ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                  class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
                   disabled=""
                   type="button"
                 >
@@ -1063,6 +1112,60 @@ describe("InvestMarketplace", () => {
             class="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
           >
             No investable invoices. Connect wallet to see the marketplace.
+          </div>
+          <div
+            class="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/60 pt-4"
+          >
+            <div
+              aria-label="Display density"
+              class="flex items-center gap-2 text-sm"
+              role="group"
+            >
+              <span
+                aria-hidden="true"
+                class="text-slate-400 select-none"
+                id="density-toggle-label"
+              >
+                Display density
+                :
+              </span>
+              <button
+                aria-label="Switch to compact density"
+                aria-pressed="false"
+                class="rounded px-3 py-1 text-xs font-medium transition-colors focus-ring border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500"
+                data-density="compact"
+                type="button"
+              >
+                Compact
+              </button>
+              <button
+                aria-label="Switch to comfortable density"
+                aria-pressed="true"
+                class="rounded px-3 py-1 text-xs font-medium transition-colors focus-ring bg-cyan-500/20 text-cyan-400 border border-cyan-500/40"
+                data-density="comfortable"
+                type="button"
+              >
+                Comfortable
+              </button>
+            </div>
+            <div
+              class="flex gap-2"
+            >
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled=""
+                type="button"
+              >
+                Export CSV
+              </button>
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled=""
+                type="button"
+              >
+                Export JSON
+              </button>
+            </div>
           </div>
         </main>
       </div>
@@ -1272,15 +1375,6 @@ describe("InvestMarketplace", () => {
                     />
                   </fieldset>
                 </div>
-                <label
-                  class="flex items-center gap-2 text-sm text-slate-300"
-                >
-                  <input
-                    class="rounded border-slate-700 bg-slate-800/50 text-cyan-500 focus:ring-cyan-500"
-                    type="checkbox"
-                  />
-                  Watchlist Only
-                </label>
                 <div
                   aria-label="Currency filter"
                   class="flex items-center gap-1"
@@ -1399,8 +1493,7 @@ describe("InvestMarketplace", () => {
                   </select>
                   <button
                     aria-label="Sort amount direction"
-                    aria-pressed="false"
-                    class="focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -1408,8 +1501,7 @@ describe("InvestMarketplace", () => {
                   </button>
                   <button
                     aria-label="Sort yield direction"
-                    aria-pressed="false"
-                    class="focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
+                    class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 rounded px-2 py-1 text-xs font-mono transition-colors select-none bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
                     disabled=""
                     type="button"
                   >
@@ -1418,7 +1510,7 @@ describe("InvestMarketplace", () => {
                 </fieldset>
                 <button
                   aria-label="Clear all filters"
-                  class="focus-ring ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                  class="focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 ml-auto rounded-lg border px-4 py-2 text-sm transition-colors border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
                   disabled=""
                   type="button"
                 >
@@ -1483,6 +1575,60 @@ describe("InvestMarketplace", () => {
                 type="button"
               >
                 Try again
+              </button>
+            </div>
+          </div>
+          <div
+            class="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/60 pt-4"
+          >
+            <div
+              aria-label="Display density"
+              class="flex items-center gap-2 text-sm"
+              role="group"
+            >
+              <span
+                aria-hidden="true"
+                class="text-slate-400 select-none"
+                id="density-toggle-label"
+              >
+                Display density
+                :
+              </span>
+              <button
+                aria-label="Switch to compact density"
+                aria-pressed="false"
+                class="rounded px-3 py-1 text-xs font-medium transition-colors focus-ring border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500"
+                data-density="compact"
+                type="button"
+              >
+                Compact
+              </button>
+              <button
+                aria-label="Switch to comfortable density"
+                aria-pressed="true"
+                class="rounded px-3 py-1 text-xs font-medium transition-colors focus-ring bg-cyan-500/20 text-cyan-400 border border-cyan-500/40"
+                data-density="comfortable"
+                type="button"
+              >
+                Comfortable
+              </button>
+            </div>
+            <div
+              class="flex gap-2"
+            >
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled=""
+                type="button"
+              >
+                Export CSV
+              </button>
+              <button
+                class="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled=""
+                type="button"
+              >
+                Export JSON
               </button>
             </div>
           </div>

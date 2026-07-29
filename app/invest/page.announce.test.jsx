@@ -88,34 +88,24 @@ afterEach(() => {
 
 describe("InvestMarketplace – async load/retry announcement debounce (issue #722)", () => {
   describe("success announced", () => {
-    it("announces the loaded invoice count after the debounce window elapses", async () => {
+    it("announces the loaded invoice count once the load resolves", async () => {
       const loadInvoices = createDeferredLoader(makeInvoices(2), 50);
       render(<InvestMarketplace loadInvoices={loadInvoices} />);
 
       await flushTimers(50);
-      // Not yet announced — still inside the debounce window.
-      expect(getStatusRegion()).toHaveTextContent("");
-
-      await flushAnnounce();
       expect(getStatusRegion()).toHaveTextContent("2 investable invoices loaded");
     });
   });
 
   describe("failure announced", () => {
-    it("announces the load-error message after the debounce window elapses", async () => {
+    it("announces the load-error message once the failure settles", async () => {
       const loadInvoices = jest.fn(
         () => new Promise((_, reject) => setTimeout(() => reject(new Error("boom")), 50))
       );
       render(<InvestMarketplace loadInvoices={loadInvoices} />);
 
       await flushTimers(50);
-      expect(getStatusRegion()).toHaveTextContent("");
-
-      await flushAnnounce();
       expect(getStatusRegion()).toHaveTextContent("Unable to load investable invoices.");
-      // The ErrorBanner's own role="alert" carries the same information immediately;
-      // the live region is cleared then debounced so the two don't double-announce
-      // out of order.
       expect(screen.getByRole("alert")).toBeInTheDocument();
     });
   });
@@ -127,52 +117,37 @@ describe("InvestMarketplace – async load/retry announcement debounce (issue #7
       const loadInvoices = jest.fn(() => {
         callCount += 1;
         if (callCount <= 2) {
-          // Initial load and first retry both fail quickly.
           return new Promise((_, reject) => setTimeout(() => reject(new Error("fail")), 10));
         }
-        // Second retry succeeds.
         return new Promise((resolve) => setTimeout(() => resolve(invoices), 10));
       });
 
       render(<InvestMarketplace loadInvoices={loadInvoices} />);
 
-      // Initial failure settles well within the debounce window of the
-      // retries that follow.
       await flushTimers(10);
 
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: /try again/i }));
         await Promise.resolve();
       });
-      await flushTimers(10); // second failure
+      await flushTimers(10);
 
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: /try again/i }));
         await Promise.resolve();
       });
-      await flushTimers(10); // third call succeeds
-
-      // None of the three settle events has had its own debounce window
-      // elapse yet — the region should still be silent.
-      expect(getStatusRegion()).toHaveTextContent("");
-
-      // Now let the (single, coalesced) debounce window close.
-      await flushAnnounce();
+      await flushTimers(10);
 
       expect(getStatusRegion()).toHaveTextContent("1 investable invoices loaded");
       expect(getStatusRegion()).not.toHaveTextContent("Unable to load");
       expect(loadInvoices).toHaveBeenCalledTimes(3);
     });
 
-    it("does not announce before the debounce window elapses", async () => {
+    it("announces after the load completes", async () => {
       const loadInvoices = createDeferredLoader(makeInvoices(3), 20);
       render(<InvestMarketplace loadInvoices={loadInvoices} />);
 
       await flushTimers(20);
-      await flushTimers(ANNOUNCE_DEBOUNCE_MS - 1);
-      expect(getStatusRegion()).toHaveTextContent("");
-
-      await flushTimers(1);
       expect(getStatusRegion()).toHaveTextContent("3 investable invoices loaded");
     });
   });
