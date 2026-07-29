@@ -8,7 +8,7 @@
  *   - Primary interactions & keyboard accessibility
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import ErrorBanner from "./ErrorBanner";
 import EmptyState from "./EmptyState";
@@ -96,6 +96,8 @@ export default function Watchlist({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkAnnouncement, setBulkAnnouncement] = useState("");
+  const [liveAnnouncement, setLiveAnnouncement] = useState("");
+  const [hasMounted, setHasMounted] = useState(false);
 
   const errorMessage = useMemo(() => {
     if (!error) return "";
@@ -118,6 +120,28 @@ export default function Watchlist({
   const allSelected =
     filteredItems.length > 0 && filteredItems.every((item) => selectedIds.has(item.id));
   const someSelected = filteredItems.some((item) => selectedIds.has(item.id));
+
+  const computedAnnouncement = useMemo(() => {
+    if (loading || errorMessage) return "";
+    if (!items || items.length === 0) return "Your watchlist is empty";
+    if (searchQuery.trim()) {
+      return `Showing ${filteredItems.length} of ${items.length} watchlist items for search "${searchQuery.trim()}"`;
+    }
+    return `${items.length} invoice${items.length === 1 ? "" : "s"} in watchlist`;
+  }, [errorMessage, filteredItems.length, items, loading, searchQuery]);
+
+  useEffect(() => {
+    if (!hasMounted) {
+      setHasMounted(true);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setLiveAnnouncement(computedAnnouncement);
+    }, 300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [computedAnnouncement, hasMounted]);
 
   const handleSelectAll = () => {
     const next = new Set(selectedIds);
@@ -210,6 +234,15 @@ export default function Watchlist({
           <h2 className="text-xl font-semibold text-slate-100">{title}</h2>
         </div>
         <div className="mt-6">
+          <p
+            role="status"
+            data-testid="watchlist-status"
+            aria-live="polite"
+            aria-atomic="true"
+            className="sr-only"
+          >
+            {liveAnnouncement}
+          </p>
           <EmptyState
             title="Your watchlist is empty"
             description="Star invoices from the marketplace to keep track of them here."
@@ -228,10 +261,6 @@ export default function Watchlist({
   }
 
   // 4. Success State & Primary Interactions
-  const announcementText = searchQuery.trim()
-    ? `Showing ${filteredItems.length} of ${items.length} watchlist items for search "${searchQuery.trim()}"`
-    : `${items.length} invoice${items.length === 1 ? "" : "s"} in watchlist`;
-
   return (
     <section
       aria-label={title}
@@ -265,7 +294,7 @@ export default function Watchlist({
         aria-atomic="true"
         className="sr-only"
       >
-        {announcementText}
+        {liveAnnouncement}
       </p>
       {/* Bulk action announcement */}
       <p role="status" aria-live="polite" className="sr-only">

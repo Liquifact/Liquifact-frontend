@@ -234,6 +234,64 @@ describe("Watchlist Component — States and Interactions", () => {
       const results = await axe(container);
       expect(results).toHaveNoViolations();
     });
+
+    it("does not announce on initial mount and announces after later updates", () => {
+      jest.useFakeTimers();
+      const { rerender } = render(<Watchlist items={[MOCK_ITEMS[0]]} />);
+      const liveRegion = screen.getByTestId("watchlist-status");
+
+      expect(liveRegion).toHaveTextContent("");
+
+      rerender(<Watchlist items={MOCK_ITEMS} />);
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(liveRegion).toHaveTextContent("2 invoices in watchlist");
+      jest.useRealTimers();
+    });
+
+    it("debounces rapid successive updates and announces the latest message", () => {
+      jest.useFakeTimers();
+      const { rerender } = render(<Watchlist items={[MOCK_ITEMS[0]]} />);
+      const liveRegion = screen.getByTestId("watchlist-status");
+
+      rerender(<Watchlist items={MOCK_ITEMS} />);
+      rerender(
+        <Watchlist
+          items={[...MOCK_ITEMS, { id: "inv-103", issuer: "Northwind", status: "Open" }]}
+        />
+      );
+
+      expect(liveRegion).toHaveTextContent("");
+
+      act(() => {
+        jest.advanceTimersByTime(299);
+      });
+      expect(liveRegion).toHaveTextContent("");
+
+      act(() => {
+        jest.advanceTimersByTime(1);
+      });
+      expect(liveRegion).toHaveTextContent("3 invoices in watchlist");
+      jest.useRealTimers();
+    });
+
+    it("announces when the watchlist becomes empty", () => {
+      jest.useFakeTimers();
+      const { rerender } = render(<Watchlist items={MOCK_ITEMS} />);
+      const liveRegion = screen.getByTestId("watchlist-status");
+
+      expect(liveRegion).toHaveTextContent("");
+
+      rerender(<Watchlist items={[]} />);
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(liveRegion).toHaveTextContent("Your watchlist is empty");
+      jest.useRealTimers();
+    });
   });
 
   // ===========================================================================
