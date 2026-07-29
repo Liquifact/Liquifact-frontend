@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useId, useCallback } from "react";
 import { formatRelativeTime } from "../lib/format/date";
 import CopyButton from "./CopyButton";
+import ThemeOptionsModal from "./ThemeOptionsModal";
+import { useLocalStorage } from "../lib/hooks/useLocalStorage";
+import { useToast } from "./ToastProvider";
 
 /**
  * The three theme options the user can cycle through.
@@ -217,7 +220,7 @@ export default function ThemeToggle({ className = "" }) {
   const handleSelectFromModal = useCallback((pref) => {
     setPreference(pref);
     setModalOpen(false);
-  }, []);
+  }, [setPreference]);
 
   // Restore focus to whatever triggered the modal once it closes.
   useEffect(() => {

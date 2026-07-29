@@ -180,8 +180,8 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
   const statusMessage = useMemo(() => {
     if (loadError) return loadError;
     if (invoices === null) return "Loading invoices...";
-    return getInvoiceAnnouncement(displayInvoices);
-  }, [invoices, displayInvoices, loadError]);
+    return getInvoiceAnnouncement(mergedInvoices);
+  }, [invoices, mergedInvoices, loadError]);
 
   const selectAllRef = useRef(null);
   const headerCheckboxId = useId();
@@ -432,7 +432,7 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
 
       {invoices === null && mergedInvoices.length === 0 ? (
         <InvoiceListSkeleton rows={3} />
-      ) : displayInvoices.length === 0 ? (
+      ) : mergedInvoices.length === 0 ? (
         <EmptyState
           icon={<InvoiceEmptyIllustration />}
           title="No invoices yet"
@@ -448,7 +448,7 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
         />
       ) : (
         <ul className="space-y-4">
-          {displayInvoices.map((invoice) => {
+          {mergedInvoices.map((invoice) => {
             const statusValue =
               invoice.status in STATUS_STYLES
                 ? invoice.status
