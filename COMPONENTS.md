@@ -14,6 +14,8 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 - [FundAmountInput](#fundamountinput)
 - [Hooks](#hooks)
 - [InvoiceCard](#invoicecard)
+- [InvoiceDetail](#invoicedetail)
+- [InvoiceDetailSkeleton](#invoicedetailskeleton)
 - [InvoiceFilters](#invoicefilters)
 - [InvoiceList](#invoicelist)
 - [InvoiceListSkeleton](#invoicelistskeleton)
@@ -239,6 +241,58 @@ import InvoiceCard from "@/components/InvoiceCard";
   <InvoiceCard invoice={invoice} />
 </li>
 ```
+
+---
+
+## InvoiceDetail
+
+A presentational component that renders the full details of an invoice. It manages its own loading/error state via an injectable `loadInvoice` prop.
+
+**File:** `components/InvoiceDetail.jsx`
+
+### Props
+
+| Prop          | Type                                            | Required | Description                                                         |
+| ------------- | ----------------------------------------------- | -------- | ------------------------------------------------------------------- |
+| `id`          | `string`                                        | Yes      | The unique invoice identifier.                                      |
+| `loadInvoice` | `(id: string) => Promise<Invoice>`              | Yes      | An async function that resolves to an invoice object or throws.     |
+
+### Named exports
+
+| Export                     | Description                                                                         |
+| -------------------------- | ----------------------------------------------------------------------------------- |
+| `default` (`InvoiceDetail`) | The main detail component                                                           |
+
+### Example
+
+```jsx
+import InvoiceDetail from "@/components/InvoiceDetail";
+
+async function fetchInvoice(id) {
+  const res = await fetch(`/api/invoices/${id}`);
+  if (!res.ok) throw new Error("Not found");
+  return res.json();
+}
+
+<InvoiceDetail
+  id="12345"
+  loadInvoice={fetchInvoice}
+/>
+```
+
+---
+
+## InvoiceDetailSkeleton
+
+A presentational skeleton component used as a loading state while fetching invoice details. Its dimensions and structure mirror the actual detail layout to prevent layout shift.
+
+**File:** `components/InvoiceDetailSkeleton.jsx`
+
+### Named exports
+
+| Export                           | Description                               |
+| -------------------------------- | ----------------------------------------- |
+| `default` (`InvoiceDetailSkeleton`) | The main skeleton component               |
 
 ---
 
