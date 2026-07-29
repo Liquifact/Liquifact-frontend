@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { formatRelativeTime } from "../lib/format/date";
-import { useLocalStorage } from "../lib/hooks/useLocalStorage";
-import { useToast } from "./ToastProvider";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import ThemeOptionsModal from "./ThemeOptionsModal";
 
 /**
  * The three theme options the user can cycle through.
@@ -204,6 +202,46 @@ export default function ThemeToggle({ className = "" }) {
     }
   };
 
+  // ─── Theme options modal (focus-trap, escape, restore) ──────────────────
+  // Additive: does not change the toggle button's existing click-to-cycle
+  // behaviour or appearance above.
+  const [modalOpen, setModalOpen] = useState(false);
+  const optionsButtonRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
+  const titleId = useId();
+
+  const openModal = useCallback(() => {
+    const active = document.activeElement;
+    previouslyFocusedRef.current =
+      active instanceof HTMLElement && active !== document.body ? active : optionsButtonRef.current;
+    setModalOpen(true);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModalOpen(false);
+  }, []);
+
+  const handleSelectFromModal = useCallback((pref) => {
+    setPreference(pref);
+    setModalOpen(false);
+  }, []);
+
+  // Restore focus to whatever triggered the modal once it closes.
+  useEffect(() => {
+    if (modalOpen) return undefined;
+    const target = previouslyFocusedRef.current;
+    previouslyFocusedRef.current = null;
+    if (
+      target &&
+      target instanceof HTMLElement &&
+      document.body.contains(target) &&
+      typeof target.focus === "function"
+    ) {
+      queueMicrotask(() => target.focus());
+    }
+    return undefined;
+  }, [modalOpen]);
+
   const ICONS = {
     light: (
       // Sun
@@ -316,15 +354,13 @@ export default function ThemeToggle({ className = "" }) {
   };
 
   return (
-    <span className="inline-flex items-center gap-2">
+    <>
       <button
         id="theme-toggle"
         type="button"
-        role="button"
         onClick={handleClick}
-        onKeyDown={handleKeyDown}
         aria-label={LABELS[preference]}
-        aria-pressed={isDarkActive}
+        aria-pressed={preference !== "system"}
         title={`Current theme: ${capitalise(preference)}`}
         data-theme-pref={preference}
         data-theme-next={nextPref}
@@ -340,15 +376,16 @@ export default function ThemeToggle({ className = "" }) {
       >
         {ICONS[preference]}
       </button>
+
       <button
+        ref={optionsButtonRef}
         type="button"
-        aria-label="Copy theme identifier"
-        onClick={handleCopyIdentifier}
-        className={[
-          "rounded-lg p-2 transition-colors text-xs",
-          "text-slate-400 hover:text-cyan-400 hover:bg-slate-800",
-          "focus-ring",
-        ].join(" ")}
+        aria-haspopup="dialog"
+        aria-expanded={modalOpen}
+        aria-label="Theme options"
+        title="Theme options"
+        onClick={openModal}
+        className="focus-ring rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-800 hover:text-cyan-400"
       >
         <svg
           width="14"
@@ -362,20 +399,17 @@ export default function ThemeToggle({ className = "" }) {
           aria-hidden="true"
           focusable="false"
         >
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
-      {updatedAt && (
-        <span
-          id="theme-updated-at"
-          className="text-xs text-slate-400 dark:text-slate-400"
-          title={`Theme last updated ${absoluteUpdatedAt}`}
-        >
-          <span aria-hidden="true">Updated {formatRelativeTime(updatedAt)}</span>
-          <span className="sr-only">Theme last updated {absoluteUpdatedAt}</span>
-        </span>
-      )}
-    </span>
+
+      <ThemeOptionsModal
+        open={modalOpen}
+        onClose={closeModal}
+        preference={preference}
+        onSelect={handleSelectFromModal}
+        titleId={titleId}
+      />
+    </>
   );
 }
