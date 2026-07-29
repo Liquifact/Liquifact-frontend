@@ -26,14 +26,10 @@ import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
 import { exportAsCSV, exportAsJSON } from "@/utils/export";
-import { INVOICE_STATUSES } from "@/lib/types/invoice";
 import useBulkSelection from "@/lib/hooks/useBulkSelection";
 import DensityToggle from "@/components/DensityToggle";
 import { useDensity } from "@/lib/hooks/useDensity";
-import { useSettingsAnnouncer } from "@/components/useSettingsAnnouncer";
 import { useToast } from "@/components/ToastProvider";
-import ErrorBoundary from "@/components/ErrorBoundary";
-import MarketplaceErrorBoundary from "@/components/MarketplaceErrorBoundary";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
@@ -322,9 +318,6 @@ export function InvestMarketplace({
   const [loadError, setLoadError] = useState("");
   const [filters, setFilters] = useState(initialUrlState.filters);
   const [debouncedSearch, setDebouncedSearch] = useState(initialUrlState.searchQuery);
-  const [pendingDeleteIds, setPendingDeleteIds] = useState(null);
-  const [bulkRunning, setBulkRunning] = useState({ export: false, delete: false });
-  const bulkLabels = copy.invest.bulk;
 
   const committedSearchRef = useRef(
     buildSearchParams(initialUrlState.filters, initialUrlState.searchQuery).toString()
