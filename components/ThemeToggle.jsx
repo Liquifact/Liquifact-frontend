@@ -28,11 +28,6 @@ export const THEME_UPDATED_STORAGE_KEY = "liquifact-theme-updated-at";
 /** How often the displayed "last updated" text re-renders to stay fresh, in ms. */
 export const THEME_UPDATED_TICK_MS = 60_000;
 
-/**
- * Stable identifier string used by the "Copy theme identifier" button.
- * Consumers (e.g. tests) can import this to assert the clipboard payload.
- */
-export const THEME_IDENTIFIER = "liquifact-theme-identifier";
 
 /**
  * Read the persisted "theme last changed" timestamp from localStorage.
@@ -387,6 +382,29 @@ export default function ThemeToggle({ className = "" }) {
           id="theme-updated-at"
           className="text-xs text-slate-400 dark:text-slate-400"
           title={`Theme last updated ${absoluteUpdatedAt}`}
+        >
+          {formatRelativeTime(updatedAt)}
+        </span>
+      )}
+      <button
+        ref={optionsButtonRef}
+        type="button"
+        aria-label="Theme options"
+        aria-haspopup="dialog"
+        onClick={openModal}
+        className="ml-2 rounded-lg p-2 transition-colors text-slate-300 hover:text-cyan-400 hover:bg-slate-800 dark:text-slate-300 dark:hover:text-cyan-400 focus-ring"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          focusable="false"
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>

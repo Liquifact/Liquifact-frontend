@@ -121,6 +121,43 @@ describe("InvestMarketplace", () => {
     expect(status).toHaveAttribute("aria-live", "polite");
   });
 
+  it("sets aria-busy=true on the results region during load and clears it on success", async () => {
+    const { container } = render(<InvestMarketplace loadInvoices={createDeferredLoader(makeInvoices(1), 100)} />);
+    
+    // During load, the region wrapper should have aria-busy="true"
+    const busyRegion = container.querySelector('[aria-busy="true"]');
+    expect(busyRegion).toBeInTheDocument();
+    
+    await flushTimers(100);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
+    
+    // On success, aria-busy should be cleared (false)
+    const clearedRegion = container.querySelector('[aria-busy="false"]');
+    expect(clearedRegion).toBeInTheDocument();
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeInTheDocument();
+  });
+
+  it("sets aria-busy=true on the results region during load and clears it on error", async () => {
+    const errorLoader = jest.fn(() => new Promise((_, reject) => setTimeout(() => reject(new Error("Fail")), 100)));
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const { container } = render(<InvestMarketplace loadInvoices={errorLoader} />);
+    
+    // During load, the region wrapper should have aria-busy="true"
+    const busyRegion = container.querySelector('[aria-busy="true"]');
+    expect(busyRegion).toBeInTheDocument();
+    
+    await flushTimers(100);
+    await flushTimers(ANNOUNCE_DEBOUNCE_MS);
+    
+    // On error, aria-busy should be cleared (false)
+    const clearedRegion = container.querySelector('[aria-busy="false"]');
+    expect(clearedRegion).toBeInTheDocument();
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeInTheDocument();
+
+    consoleErrorSpy.mockRestore();
+  });
+
   it("announces the loaded invoice count exactly once after the list resolves", async () => {
     const invoices = [
       {
