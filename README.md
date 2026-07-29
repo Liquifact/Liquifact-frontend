@@ -53,6 +53,8 @@ For frontend/backend contract details see:
 
 docs/api-integration.md
 
+For the current Invest marketplace component props and usage reference, see [docs/marketplace-api.md](docs/marketplace-api.md).
+
 ---
 
 ## Development
@@ -105,6 +107,8 @@ The invoices page header also uses the shared `NavMenu` component, replacing the
 ### Marketplace search
 
 The Invest page (`app/invest/page.js`) includes an issuer search field above the invoice list. Typing in the field filters invoices by case-insensitive substring match on `issuer`. Input is debounced at **200ms** so the text field stays responsive while filtering waits for settled input. When a filter is active, the `aria-live` status region announces the match count (e.g. "2 of 3 invoices match"). A distinct "no matches" state is shown when the filter yields zero results, separate from the empty-marketplace state.
+
+For a concise component-by-component API reference, see [docs/marketplace-api.md](docs/marketplace-api.md).
 
 ### Error recovery
 
