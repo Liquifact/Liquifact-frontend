@@ -618,3 +618,155 @@ describe("InvoiceList - Export", () => {
     expect(exported.some((inv) => inv.issuer === "Company 1")).toBe(true);
   });
 });
+
+// ── UploadIdCopyButton tests ──────────────────────────────────────────────────
+
+const COPY_TEST_INVOICE = {
+  id: "inv-copy-001",
+  issuer: "Copy Test Co",
+  amount: "5,000",
+  currency: "USD",
+  dueDate: "2026-09-01",
+  yield: "6.0%",
+  status: "Tokenized",
+};
+
+describe("UploadIdCopyButton", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("renders the upload identifier as visible text", async () => {
+    render(<InvoiceList loadInvoices={jest.fn().mockResolvedValue([COPY_TEST_INVOICE])} />);
+    await waitFor(() => expect(screen.getByText("inv-copy-001")).toBeInTheDocument());
+  });
+
+  it("renders a copy button with the correct aria-label", async () => {
+    const { copy } = await import("../app/copy/en");
+    render(<InvoiceList loadInvoices={jest.fn().mockResolvedValue([COPY_TEST_INVOICE])} />);
+    await waitFor(() => screen.getByText("inv-copy-001"));
+
+    expect(
+      screen.getByRole("button", {
+        name: copy.invoices.copyIdAriaLabel.replace("{id}", "inv-copy-001"),
+      })
+    ).toBeInTheDocument();
+  });
+
+  it("calls Clipboard API and shows success toast on click", async () => {
+    const { copy } = await import("../app/copy/en");
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+      writable: true,
+    });
+
+    render(<InvoiceList loadInvoices={jest.fn().mockResolvedValue([COPY_TEST_INVOICE])} />);
+    await waitFor(() => screen.getByText("inv-copy-001"));
+
+    await fireEvent.click(
+      screen.getByRole("button", {
+        name: copy.invoices.copyIdAriaLabel.replace("{id}", "inv-copy-001"),
+      })
+    );
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("inv-copy-001"));
+    expect(mockToast.success).toHaveBeenCalledWith(
+      copy.invoices.copyIdSuccessMsg,
+      copy.invoices.copyIdSuccessTitle
+    );
+  });
+
+  it("shows error toast when Clipboard API rejects", async () => {
+    const { copy } = await import("../app/copy/en");
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: jest.fn().mockRejectedValue(new Error("Permission denied")) },
+      configurable: true,
+      writable: true,
+    });
+
+    render(<InvoiceList loadInvoices={jest.fn().mockResolvedValue([COPY_TEST_INVOICE])} />);
+    await waitFor(() => screen.getByText("inv-copy-001"));
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: copy.invoices.copyIdAriaLabel.replace("{id}", "inv-copy-001"),
+      })
+    );
+
+    await waitFor(() =>
+      expect(mockToast.error).toHaveBeenCalledWith(
+        copy.invoices.copyIdErrorMsg,
+        copy.invoices.copyIdErrorTitle
+      )
+    );
+  });
+
+  it("uses execCommand fallback when Clipboard API is unavailable and shows success toast", async () => {
+    const { copy } = await import("../app/copy/en");
+    Object.defineProperty(navigator, "clipboard", {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    const execCommand = jest.spyOn(document, "execCommand").mockReturnValue(true);
+
+    render(<InvoiceList loadInvoices={jest.fn().mockResolvedValue([COPY_TEST_INVOICE])} />);
+    await waitFor(() => screen.getByText("inv-copy-001"));
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: copy.invoices.copyIdAriaLabel.replace("{id}", "inv-copy-001"),
+      })
+    );
+
+    await waitFor(() => expect(execCommand).toHaveBeenCalledWith("copy"));
+    expect(mockToast.success).toHaveBeenCalledWith(
+      copy.invoices.copyIdSuccessMsg,
+      copy.invoices.copyIdSuccessTitle
+    );
+
+    execCommand.mockRestore();
+  });
+
+  it("copy button is a keyboard-operable native button element", async () => {
+    const { copy } = await import("../app/copy/en");
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: jest.fn().mockResolvedValue(undefined) },
+      configurable: true,
+      writable: true,
+    });
+
+    render(<InvoiceList loadInvoices={jest.fn().mockResolvedValue([COPY_TEST_INVOICE])} />);
+    await waitFor(() => screen.getByText("inv-copy-001"));
+
+    const btn = screen.getByRole("button", {
+      name: copy.invoices.copyIdAriaLabel.replace("{id}", "inv-copy-001"),
+    });
+    expect(btn.tagName).toBe("BUTTON");
+    expect(btn).not.toBeDisabled();
+  });
+
+  it("renders a copy button for each invoice in the list", async () => {
+    const { copy } = await import("../app/copy/en");
+    const invoices = [
+      { ...COPY_TEST_INVOICE, id: "inv-aaa", issuer: "Issuer A" },
+      { ...COPY_TEST_INVOICE, id: "inv-bbb", issuer: "Issuer B" },
+    ];
+
+    render(<InvoiceList loadInvoices={jest.fn().mockResolvedValue(invoices)} />);
+    await waitFor(() => screen.getByText("inv-aaa"));
+
+    expect(
+      screen.getByRole("button", {
+        name: copy.invoices.copyIdAriaLabel.replace("{id}", "inv-aaa"),
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: copy.invoices.copyIdAriaLabel.replace("{id}", "inv-bbb"),
+      })
+    ).toBeInTheDocument();
+  });
+});
