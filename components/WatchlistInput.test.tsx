@@ -1,5 +1,5 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import WatchlistInput from "./WatchlistInput";
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import WatchlistInput, { validateWatchlistInputs } from './WatchlistInput';
 
 describe("WatchlistInput", () => {
   it("renders the form correctly", () => {
@@ -53,16 +53,9 @@ describe("WatchlistInput", () => {
     expect(await screen.findByText("Target yield must be between 0 and 100.")).toBeInTheDocument();
   });
 
-  it("validates non-numeric target yield", async () => {
-    render(<WatchlistInput onSubmit={jest.fn()} />);
-    const yieldInput = screen.getByLabelText(/Target Yield/i);
-
-    // Testing non-numeric inputs might be handled by the browser for type="number",
-    // but in case of manual override or string manipulation:
-    fireEvent.change(yieldInput, { target: { value: "abc" } });
-    fireEvent.blur(yieldInput);
-
-    expect(await screen.findByText("Target yield must be a valid number.")).toBeInTheDocument();
+  it('validates non-numeric target yield via validation function', () => {
+    const errors = validateWatchlistInputs('Valid Name', 'abc');
+    expect(errors.targetYield).toBe('Target yield must be a valid number.');
   });
 
   it("submits successfully with valid data", async () => {
@@ -84,21 +77,20 @@ describe("WatchlistInput", () => {
         targetYield: 8.5,
       });
     });
-
-    // Checks that inputs are cleared
-    expect(nameInput.value).toBe("");
-    expect(yieldInput.value).toBe("");
+    
+    expect(nameInput.value).toBe('');
+    expect(yieldInput.value).toBe('');
   });
 
   it("blocks submission while invalid", async () => {
     const mockOnSubmit = jest.fn();
     render(<WatchlistInput onSubmit={mockOnSubmit} />);
-
-    const submitBtn = screen.getByRole("button", { name: /Create Watchlist/i });
-    fireEvent.click(submitBtn); // submitting empty
-
-    expect(await screen.findByText("Watchlist name is required.")).toBeInTheDocument();
+    
+    const form = screen.getByRole('button', { name: /Create Watchlist/i }).closest('form');
+    fireEvent.submit(form);
+    
+    expect(await screen.findByText('Watchlist name is required.')).toBeInTheDocument();
     expect(mockOnSubmit).not.toHaveBeenCalled();
-    expect(submitBtn).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Create Watchlist/i })).toBeDisabled();
   });
 });

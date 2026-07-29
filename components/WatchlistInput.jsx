@@ -106,10 +106,8 @@ export default function WatchlistInput({ onSubmit, disabled = false }) {
           aria-invalid={visibleNameError ? "true" : "false"}
           className={[
             "w-full rounded-lg border bg-slate-950 px-4 py-2 text-sm text-slate-100",
-            "focus:outline-none focus:ring-2",
-            visibleNameError
-              ? "border-red-500 focus:ring-red-500"
-              : "border-slate-700 focus:ring-cyan-500",
+            "focus-visible:outline-none focus-ring",
+            visibleNameError ? "border-red-500" : "border-slate-700"
           ].join(" ")}
         />
         {visibleNameError && (
@@ -136,10 +134,8 @@ export default function WatchlistInput({ onSubmit, disabled = false }) {
           aria-invalid={visibleYieldError ? "true" : "false"}
           className={[
             "w-full rounded-lg border bg-slate-950 px-4 py-2 text-sm text-slate-100",
-            "focus:outline-none focus:ring-2",
-            visibleYieldError
-              ? "border-red-500 focus:ring-red-500"
-              : "border-slate-700 focus:ring-cyan-500",
+            "focus-visible:outline-none focus-ring",
+            visibleYieldError ? "border-red-500" : "border-slate-700"
           ].join(" ")}
         />
         {visibleYieldError && (

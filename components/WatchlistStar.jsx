@@ -26,7 +26,7 @@ export default function WatchlistStar({ invoiceId }) {
     <button
       type="button"
       onClick={handleToggle}
-      className={`p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-colors ${
+      className={`p-2 rounded-full focus-visible:outline-none focus-ring transition-colors ${
         isStarred ? "text-yellow-400 hover:text-yellow-300" : "text-slate-500 hover:text-slate-400"
       }`}
       aria-label={isStarred ? "Remove from watchlist" : "Add to watchlist"}
