@@ -140,7 +140,7 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
         fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
       });
 
-      const spinners = screen.getAllByRole("img", { name: /uploading/i });
+      const spinners = screen.getAllByRole("img", { name: /loading/i });
       expect(spinners.length).toBeGreaterThan(0);
       expect(spinners[0]).toHaveAttribute("role", "img");
       expect(spinners[0]).toHaveAttribute("aria-label");
@@ -162,11 +162,12 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
         target: { files: [file] },
       });
 
-      await act(async () => {
-        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
-      });
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
 
-      const submitBtn = screen.getByRole("button", { name: /upload & tokenize invoice/i });
+      // Once uploading begins the button label changes to "Uploading invoice..."
+      // (spinner text + copy.uploadZone.submitUploading). We look it up by its
+      // new accessible name so the query reflects the actual in-flight state.
+      const submitBtn = screen.getByRole("button", { name: /uploading invoice/i });
       expect(submitBtn).toBeDisabled();
       expect(submitBtn).toHaveAttribute("aria-disabled", "true");
     });
@@ -316,13 +317,14 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeEnabled();
 
-      // 2. Uploading state
-      await act(async () => {
-        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
-      });
+      // 2. Uploading state — click fires handleSubmit synchronously, immediately
+      //    switching the component to the "uploading" state before we assert.
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
 
       expect(screen.getByRole("status")).toHaveTextContent(/uploading/i);
-      expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeDisabled();
+      // Button label changes to "Uploading invoice..." while in-flight
+      const uploadingBtn = screen.getByRole("button", { name: /uploading invoice/i });
+      expect(uploadingBtn).toBeDisabled();
 
       // 3. Tokenizing state (resolve fetch response only)
       await act(async () => {
@@ -515,8 +517,8 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
       render(<UploadZone />);
 
-      // Check decorative icons in idle state
-      const idleIcons = screen.getAllByText("📁");
+      // Check decorative icons in idle state — component renders 📂 (U+1F4C2 open folder)
+      const idleIcons = screen.getAllByText("\u{1F4C2}");
       idleIcons.forEach((icon) => {
         expect(icon).toHaveAttribute("aria-hidden", "true");
       });
@@ -528,12 +530,11 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       const fileIcon = screen.getByText("✅");
       expect(fileIcon).toHaveAttribute("aria-hidden", "true");
 
-      // Upload to check spinner
-      await act(async () => {
-        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
-      });
+      // Upload to check spinner — click without act() so the fetch stays pending
+      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
 
-      const spinners = screen.getAllByRole("img", { name: /uploading/i });
+      // Spinner's aria-label is "Loading" (copy.uploadZone.spinnerLabel)
+      const spinners = screen.getAllByRole("img", { name: /loading/i });
       expect(spinners[0]).toHaveAttribute("aria-label");
     });
   });

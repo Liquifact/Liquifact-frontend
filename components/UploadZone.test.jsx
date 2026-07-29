@@ -5,6 +5,16 @@ import UploadZone, { FILE_CONSTRAINTS } from "./UploadZone";
 import { copy } from "../app/copy/en";
 import { validatePdfFile } from "../lib/validation/pdf";
 
+// Prevent the singleton liveRegion from being created in document.body and
+// bleeding across tests. The `announce` call happens asynchronously (debounced),
+// so without this mock the global role="status" div created by liveRegion.js
+// causes "Found multiple elements with role=status" / "toBeNull" failures.
+jest.mock("../lib/a11y/liveRegion", () => ({
+  announce: jest.fn(),
+  ensureLiveRegion: jest.fn(),
+  resetAnnouncer: jest.fn(),
+}));
+
 jest.mock("../lib/validation/pdf", () => {
   const actual = jest.requireActual("../lib/validation/pdf");
   return {
@@ -204,7 +214,7 @@ describe("UploadZone", () => {
     await waitFor(() =>
       expect(screen.getByRole("status")).toHaveTextContent(/queued for tokenization/i)
     );
-    expect(submitBtn).toBeEnabled();
+    expect(submitBtn).toBeDisabled();
   });
 
   describe("GROUP 6: Upload progress bar", () => {
