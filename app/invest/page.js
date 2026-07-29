@@ -773,108 +773,110 @@ export function InvestMarketplace({
         {/* Error state – retryable.
             ErrorBanner already exposes role="alert" + aria-live="assertive".
             Do not wrap it in another alert — nested alerts confuse AT and RTL. */}
-        {loadError ? (
-          <div role="alert" aria-live="assertive">
-            <ErrorBanner
-              title={copy.invest.errorTitle}
-              description={loadError}
-              actionLabel={copy.invest.retryAction}
-              onAction={reload}
-            />
-          </div>
-        ) : invoices === null ? (
-          <InvoiceListSkeleton rows={3} />
-        ) : invoices.length === 0 ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
-          >
-            {copy.invest.emptyState}
-          </div>
-        ) : filteredInvoices.length === 0 ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
-          >
-            {copy.invest.noMatchFilter}
-          </div>
-        ) : (
-          <ErrorBoundary
-            onError={(err, info) => reportError(err, { where: "invest.watchlist", info })}
-            fallbackTitle="Error loading watchlist"
-            fallbackDescription="An error occurred while rendering the watchlist. We logged the error — you can retry loading this section."
-            retryLabel="Retry loading watchlist"
-          >
-            <>
-              <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
-                {filteredInvoices.slice(0, visibleCount).map((inv) => (
-                  <li
-                    key={inv.id}
-                    className="rounded-xl border border-slate-800 bg-slate-900/50"
-                    style={{ padding: "var(--market-card-padding)" }}
-                  >
-                    <div
-                      className="flex items-center justify-between"
-                      style={{ marginBottom: "var(--market-card-gap)", gap: "var(--market-card-gap)" }}
+        <div aria-busy={invoices === null}>
+          {loadError ? (
+            <div role="alert" aria-live="assertive">
+              <ErrorBanner
+                title={copy.invest.errorTitle}
+                description={loadError}
+                actionLabel={copy.invest.retryAction}
+                onAction={reload}
+              />
+            </div>
+          ) : invoices === null ? (
+            <InvoiceListSkeleton rows={3} />
+          ) : invoices.length === 0 ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
+            >
+              {copy.invest.emptyState}
+            </div>
+          ) : filteredInvoices.length === 0 ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
+            >
+              {copy.invest.noMatchFilter}
+            </div>
+          ) : (
+            <ErrorBoundary
+              onError={(err, info) => reportError(err, { where: "invest.watchlist", info })}
+              fallbackTitle="Error loading watchlist"
+              fallbackDescription="An error occurred while rendering the watchlist. We logged the error — you can retry loading this section."
+              retryLabel="Retry loading watchlist"
+            >
+              <>
+                <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
+                  {filteredInvoices.slice(0, visibleCount).map((inv) => (
+                    <li
+                      key={inv.id}
+                      className="rounded-xl border border-slate-800 bg-slate-900/50"
+                      style={{ padding: "var(--market-card-padding)" }}
                     >
-                      <Link
-                        href={`/invest/${inv.id}`}
-                        className="rounded font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+                      <div
+                        className="flex items-center justify-between"
+                        style={{ marginBottom: "var(--market-card-gap)", gap: "var(--market-card-gap)" }}
+                      >
+                        <Link
+                          href={`/invest/${inv.id}`}
+                          className="rounded font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+                          style={{
+                            fontSize: "var(--market-card-title-font-size)",
+                            fontWeight: "var(--market-card-title-font-weight)",
+                            lineHeight: "var(--market-card-title-line-height)",
+                          }}
+                        >
+                          {inv.issuer}
+                        </Link>
+                        <span className="rounded-full bg-cyan-900/60 px-2 py-1 text-xs font-semibold text-cyan-300">
+                          {inv.status}
+                        </span>
+                      </div>
+                      <div
+                        className="flex flex-wrap items-center text-slate-400"
                         style={{
-                          fontSize: "var(--market-card-title-font-size)",
-                          fontWeight: "var(--market-card-title-font-weight)",
-                          lineHeight: "var(--market-card-title-line-height)",
+                          gap: "var(--market-card-gap)",
+                          fontSize: "var(--market-card-meta-font-size)",
+                          lineHeight: "var(--market-card-meta-line-height)",
+                          letterSpacing: "var(--market-card-meta-letter-spacing)",
                         }}
                       >
-                        {inv.issuer}
-                      </Link>
-                      <span className="rounded-full bg-cyan-900/60 px-2 py-1 text-xs font-semibold text-cyan-300">
-                        {inv.status}
-                      </span>
-                    </div>
-                    <div
-                      className="flex flex-wrap items-center text-slate-400"
-                      style={{
-                        gap: "var(--market-card-gap)",
-                        fontSize: "var(--market-card-meta-font-size)",
-                        lineHeight: "var(--market-card-meta-line-height)",
-                        letterSpacing: "var(--market-card-meta-letter-spacing)",
-                      }}
-                    >
-                      <span>
-                        {inv.currency}&nbsp;{inv.amount}
-                      </span>
-                      <span>
-                        {copy.invest.labelYield}
-                        {inv.yield}
-                      </span>
-                      <span>
-                        {copy.invest.labelMaturity}
-                        {inv.dueDate}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              {visibleCount < filteredInvoices.length && (
-                <button
-                  ref={loadMoreRef}
-                  type="button"
-                  onClick={handleLoadMore}
-                  aria-label={copy.invest.loadMoreAriaLabel}
-                  className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50 focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500"
-                >
-                  {copy.invest.loadMore}
-                </button>
-              )}
-              <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
-                {copy.invest.yieldDisclaimer}
-              </div>
-            </>
-          </ErrorBoundary>
-        )}
+                        <span>
+                          {inv.currency}&nbsp;{inv.amount}
+                        </span>
+                        <span>
+                          {copy.invest.labelYield}
+                          {inv.yield}
+                        </span>
+                        <span>
+                          {copy.invest.labelMaturity}
+                          {inv.dueDate}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {visibleCount < filteredInvoices.length && (
+                  <button
+                    ref={loadMoreRef}
+                    type="button"
+                    onClick={handleLoadMore}
+                    aria-label={copy.invest.loadMoreAriaLabel}
+                    className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50 focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500"
+                  >
+                    {copy.invest.loadMore}
+                  </button>
+                )}
+                <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
+                  {copy.invest.yieldDisclaimer}
+                </div>
+              </>
+            </ErrorBoundary>
+          )}
+        </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/60 pt-4">
           <DensityToggle density={density} onDensityChange={setDensity} />
