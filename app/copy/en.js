@@ -628,6 +628,8 @@ export const copy = {
     helperConnected: "Connected to Stellar {network}",
     helperError: "Connection failed. Please try again.",
     helperWrongNetwork: "Please switch to the Stellar public network",
+    helperInvalidProvider:
+      "The detected wallet provider could not be verified. Reinstall the Freighter extension and reload.",
     helperNoWallet: "No Stellar wallet detected. Install one to continue",
     installWalletUrl: "https://www.stellar.org/wallets",
     toastConnectedTitle: "Wallet connected",
@@ -646,6 +648,7 @@ export const copy = {
     announceDisconnected: "Wallet disconnected.",
     announceError: "Wallet connection failed.",
     announceWrongNetwork: "Wallet connected to wrong network.",
+    announceInvalidProvider: "Unverified wallet provider detected.",
     announceNoWallet: "No wallet detected.",
     densityToggleLabel: "Wallet density",
     densityCompact: "Compact",

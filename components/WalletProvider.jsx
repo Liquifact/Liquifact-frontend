@@ -15,6 +15,7 @@ import {
   connectFreighter,
   getFreighterNetwork,
   assertExpectedNetwork,
+  InvalidProviderError,
 } from "../lib/wallet/freighter";
 import { announce } from "../lib/a11y/liveRegion";
 
@@ -33,6 +34,7 @@ export const WALLET_STATES = {
   CONNECTED: "connected",
   ERROR: "error",
   WRONG_NETWORK: "wrong_network",
+  INVALID_PROVIDER: "invalid_provider",
   NO_WALLET: "no_wallet",
 };
 
@@ -210,7 +212,8 @@ export function WalletProvider({ children }) {
     if (
       state === WALLET_STATES.DISCONNECTED ||
       state === WALLET_STATES.ERROR ||
-      state === WALLET_STATES.WRONG_NETWORK
+      state === WALLET_STATES.WRONG_NETWORK ||
+      state === WALLET_STATES.INVALID_PROVIDER
     ) {
       clearStoredSnapshot();
     }
@@ -221,7 +224,24 @@ export function WalletProvider({ children }) {
     setError(null);
 
     try {
-      const isInstalled = await isFreighterConnected();
+      let isInstalled;
+      try {
+        isInstalled = await isFreighterConnected();
+      } catch (providerErr) {
+        if (providerErr instanceof InvalidProviderError) {
+          setState(WALLET_STATES.INVALID_PROVIDER);
+          setWalletData(null);
+          setError(providerErr.message);
+          toast?.error(providerErr.message, "Unverified wallet provider");
+          announce("Wallet connection failed");
+          return {
+            outcome: "invalid_provider",
+            message: providerErr.message,
+          };
+        }
+        throw providerErr;
+      }
+
       if (!isInstalled) {
         setState(WALLET_STATES.NO_WALLET);
         setWalletData(null);
@@ -233,11 +253,24 @@ export function WalletProvider({ children }) {
         };
       }
 
-      const address = await connectFreighter();
+      let address;
+      try {
+        address = await connectFreighter();
+      } catch (providerErr) {
+        if (providerErr instanceof InvalidProviderError) {
+          setState(WALLET_STATES.INVALID_PROVIDER);
+          setWalletData(null);
+          setError(providerErr.message);
+          toast?.error(providerErr.message, "Unverified wallet provider");
+          announce("Wallet connection failed");
+          return {
+            outcome: "invalid_provider",
+            message: providerErr.message,
+          };
+        }
+        throw providerErr;
+      }
 
-      // Hard gate: block if Freighter is on an unexpected network.
-      // assertExpectedNetwork treats an unreadable network as a mismatch so we
-      // never silently fall through to a connected state on the wrong ledger.
       try {
         await assertExpectedNetwork();
       } catch (networkErr) {
