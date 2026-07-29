@@ -51,8 +51,18 @@ API migration seam, see the [Invoice data contract](docs/invoice-data.md).
 For marketplace component usage, props, and common patterns, see the
 [Marketplace usage guide](docs/marketplace.md).
 
-For `UploadZone` props, named exports, validation rules, and usage examples, see the
-[UploadZone API reference](docs/upload-api.md).
+For invoice-detail component usage, props, and examples, see the
+[Invoice detail usage guide](docs/invoice-detail-usage.md).
+
+For a step-by-step diagram of how `/invest/[id]` fetches, transforms, and
+renders an invoice (including the RSC/client boundary split), see the
+[Invoice-detail data flow](docs/invoice-detail-flow.md).
+
+For a visual diagram of how upload loads and renders data (fetch → transform → render),
+see the [Upload data flow](docs/upload-data-flow.md).
+
+For a visual diagram of how settings loads, edits, and persists data (fetch → transform → render),
+see the [Settings data flow](docs/settings-data-flow.md).
 
 ---
 
