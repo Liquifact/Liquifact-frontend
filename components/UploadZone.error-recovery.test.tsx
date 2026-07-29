@@ -23,6 +23,16 @@ import { validatePdfFile } from "../lib/validation/pdf";
 // Module mocks
 // ---------------------------------------------------------------------------
 
+// Prevent the singleton liveRegion from being created in document.body and
+// bleeding across tests. Without this mock, announce() appends a persistent
+// role="status" div that makes subsequent queryByRole("alert") calls fail
+// ("Found multiple elements" or "Unable to find role=alert").
+jest.mock("../lib/a11y/liveRegion", () => ({
+  announce: jest.fn(),
+  ensureLiveRegion: jest.fn(),
+  resetAnnouncer: jest.fn(),
+}));
+
 jest.mock("../lib/validation/pdf", () => {
   const actual = jest.requireActual("../lib/validation/pdf");
   return {
@@ -185,7 +195,8 @@ describe("UploadZone — error-recovery flows", () => {
     await waitFor(() =>
       expect(screen.getByRole("status")).toHaveTextContent(copy.uploadZone.statusUploading)
     );
-    expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeDisabled();
+    // While uploading, the button label changes to the spinner + "Uploading invoice..." text
+    expect(screen.getByRole("button", { name: /uploading invoice/i })).toBeDisabled();
 
     // Error alert should be gone while upload is in progress
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();

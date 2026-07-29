@@ -266,7 +266,7 @@ function UploadZone({ onUploadSuccess, progress }) {
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
         onKeyDown={handleKeyDown}
-        className={`focus-ring cursor-pointer rounded-xl border-2 border-dashed transition-colors duration-200 motion-reduce:transition-none p-10 text-center ${dropZoneBorder}`}
+        className={`upload-dropzone focus-ring cursor-pointer rounded-xl border-2 border-dashed transition-colors duration-200 motion-reduce:transition-none p-10 text-center ${dropZoneBorder}`}
       >
         {file ? (
           <div className="space-y-2">
@@ -341,6 +341,7 @@ function UploadZone({ onUploadSuccess, progress }) {
                   className="h-full bg-cyan-400 transition-all duration-300 motion-reduce:transition-none"
                   style={{ width: `${Math.round(progress)}%` }}
                 />
+                <span className="sr-only">{Math.round(progress)}% uploaded</span>
               </div>
             )}
           </div>
@@ -367,11 +368,32 @@ function UploadZone({ onUploadSuccess, progress }) {
           </div>
         )}
 
+        {status === "success" && (
+          <div className="flex flex-col gap-3">
+            <p
+              role="status"
+              aria-live="polite"
+              className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400"
+            >
+              <span aria-hidden="true">✅</span>
+              {copy.uploadZone.statusSuccess}
+            </p>
+            <button
+              type="button"
+              onClick={resetUpload}
+              className="w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white transition-all duration-200 motion-reduce:transition-none hover:bg-emerald-500 focus-ring"
+              aria-label={copy.uploadZone.resetAriaLabel}
+            >
+              {copy.uploadZone.resetAction}
+            </button>
+          </div>
+        )}
+
         <button
           id="invoice-upload-btn"
           type="submit"
-          disabled={!file || isProcessing}
-          aria-disabled={!file || isProcessing}
+          disabled={!file || isProcessing || status === "success"}
+          aria-disabled={!file || isProcessing || status === "success"}
           className="w-full rounded-xl bg-cyan-500 py-3 text-sm font-semibold text-slate-950 transition-all duration-200 motion-reduce:transition-none hover:bg-cyan-400 focus-ring disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {status === "uploading" && (
