@@ -34,6 +34,8 @@ function getTransitionAnnouncement(nextState) {
       return copy.wallet.announceError;
     case WALLET_STATES.WRONG_NETWORK:
       return copy.wallet.announceWrongNetwork;
+    case WALLET_STATES.INVALID_PROVIDER:
+      return copy.wallet.announceInvalidProvider;
     case WALLET_STATES.NO_WALLET:
       return copy.wallet.announceNoWallet;
     default:
@@ -128,6 +130,15 @@ function getStateConfig(currentState, walletData, error) {
         showAddress: false,
       };
 
+    case WALLET_STATES.INVALID_PROVIDER:
+      return {
+        buttonText: copy.wallet.retryButton,
+        buttonVariant: "danger",
+        helperText: error || copy.wallet.helperInvalidProvider,
+        disabled: false,
+        showAddress: false,
+      };
+
     case WALLET_STATES.NO_WALLET:
       return {
         buttonText: copy.wallet.installWalletButton,
@@ -210,6 +221,7 @@ export default function WalletStatus() {
       case WALLET_STATES.DISCONNECTED:
       case WALLET_STATES.ERROR:
       case WALLET_STATES.WRONG_NETWORK:
+      case WALLET_STATES.INVALID_PROVIDER:
         void connect();
         break;
 
@@ -283,7 +295,9 @@ export default function WalletStatus() {
               ? "bg-green-500"
               : state === WALLET_STATES.CONNECTING
                 ? "bg-yellow-500 animate-pulse motion-reduce:animate-none"
-                : state === WALLET_STATES.ERROR || state === WALLET_STATES.WRONG_NETWORK
+                : state === WALLET_STATES.ERROR ||
+                    state === WALLET_STATES.WRONG_NETWORK ||
+                    state === WALLET_STATES.INVALID_PROVIDER
                   ? "bg-red-500"
                   : "bg-slate-600"
           }`}
@@ -364,7 +378,9 @@ export default function WalletStatus() {
           >
             Connecting wallet...
           </span>
-        ) : state === WALLET_STATES.ERROR || state === WALLET_STATES.WRONG_NETWORK ? (
+        ) : state === WALLET_STATES.ERROR ||
+          state === WALLET_STATES.WRONG_NETWORK ||
+          state === WALLET_STATES.INVALID_PROVIDER ? (
           /* Error state */
           <div className="flex items-center gap-3" role="alert" aria-live="assertive">
             <span
@@ -416,6 +432,11 @@ export default function WalletStatus() {
           </div>
         ) : state === WALLET_STATES.WRONG_NETWORK ? (
           <div role="alert">Wallet is connected to the wrong network.</div>
+        ) : state === WALLET_STATES.INVALID_PROVIDER ? (
+          <div role="alert">
+            Unverified wallet provider detected.
+            {error ? ` ${error}` : ""}
+          </div>
         ) : (
           <div role="status" aria-live="polite">
             No wallet connected.
