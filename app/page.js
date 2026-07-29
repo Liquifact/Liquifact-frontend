@@ -7,6 +7,7 @@ import { copy } from "./copy/en";
 import { getHealth } from "../lib/api/health";
 import { env } from "../lib/config/env";
 import { extractKnownFields, safeJsonStringify } from "../lib/format/safeJson";
+import HealthStatusSkeleton from "../components/HealthStatusSkeleton";
 
 const API_URL = env.apiUrl;
 
@@ -112,6 +113,8 @@ export default function Home() {
           >
             {loading ? copy.home.checking : copy.home.checkApiHealth}
           </button>
+
+          {loading && <HealthStatusSkeleton />}
 
           {!loading && health && (
             <div className="mt-4">
