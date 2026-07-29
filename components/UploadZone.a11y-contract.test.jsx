@@ -4,6 +4,11 @@ import { axe, toHaveNoViolations } from "jest-axe";
 import UploadZone from "./UploadZone";
 import { validatePdfFile } from "../lib/validation/pdf";
 
+const mockAnnounce = jest.fn();
+jest.mock("../lib/a11y/liveRegion", () => ({
+  announce: (...args) => mockAnnounce(...args),
+}));
+
 jest.mock("../lib/validation/pdf", () => {
   const actual = jest.requireActual("../lib/validation/pdf");
   return {
@@ -34,6 +39,7 @@ const ORIGINAL_ENV = process.env;
 
 beforeEach(() => {
   jest.useFakeTimers();
+  mockAnnounce.mockClear();
   process.env = {
     ...ORIGINAL_ENV,
     NEXT_PUBLIC_API_URL: "https://api.mock-liquifact.org",
@@ -403,6 +409,73 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
         const status = screen.getByRole("status");
         expect(status).toBeInTheDocument();
         expect(status.textContent.toLowerCase()).toContain("queued for tokenization");
+      });
+    });
+
+    it("announces success via polite live region when upload completes", async () => {
+      mockFetchOk();
+      render(<UploadZone />);
+
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [createMockFile()] },
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+        await Promise.resolve();
+        jest.runAllTimers();
+      });
+
+      await waitFor(() => {
+        expect(mockAnnounce).toHaveBeenCalledWith(
+          expect.stringContaining("queued for tokenization")
+        );
+      });
+    });
+
+    it("announces failure via polite live region when upload fails", async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: jest.fn().mockResolvedValue({ message: "Internal server error" }),
+      });
+      render(<UploadZone />);
+
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [createMockFile()] },
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+        await Promise.resolve();
+        jest.runAllTimers();
+      });
+
+      await waitFor(() => {
+        expect(mockAnnounce).toHaveBeenCalledWith(
+          expect.stringMatching(/internal server error|upload failed/i)
+        );
+      });
+    });
+
+    it("announces network failure via polite live region", async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error("Network error"));
+      render(<UploadZone />);
+
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [createMockFile()] },
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+        await Promise.resolve();
+        jest.runAllTimers();
+      });
+
+      await waitFor(() => {
+        expect(mockAnnounce).toHaveBeenCalledWith(
+          expect.stringContaining("Network error")
+        );
       });
     });
   });
