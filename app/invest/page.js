@@ -746,6 +746,7 @@ export function InvestMarketplace({
             {copy.invest.filterSoonLabel}
           </div>
           <div className="flex flex-wrap gap-4 items-center pointer-events-none opacity-60">
+            {/* InvoiceFilters only — search moved above */}
             <InvoiceFilters
               filters={filters}
               onFilterChange={setFilters}
@@ -772,20 +773,30 @@ export function InvestMarketplace({
             ErrorBanner already exposes role="alert" + aria-live="assertive".
             Do not wrap it in another alert — nested alerts confuse AT and RTL. */}
         {loadError ? (
-          <ErrorBanner
-            title={copy.invest.errorTitle}
-            description={loadError}
-            actionLabel={copy.invest.retryAction}
-            onAction={reload}
-          />
+          <div role="alert" aria-live="assertive">
+            <ErrorBanner
+              title={copy.invest.errorTitle}
+              description={loadError}
+              actionLabel={copy.invest.retryAction}
+              onAction={reload}
+            />
+          </div>
         ) : invoices === null ? (
           <InvoiceListSkeleton rows={3} />
         ) : invoices.length === 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
+          >
             {copy.invest.emptyState}
           </div>
         ) : filteredInvoices.length === 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
+          >
             {copy.invest.noMatchFilter}
           </div>
         ) : (

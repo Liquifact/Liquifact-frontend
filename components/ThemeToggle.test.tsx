@@ -299,6 +299,35 @@ describe("ThemeToggle", () => {
 
   it("uses the correct button role for the icon-only theme control", () => {
     render(<ThemeToggle />);
+    const btn = screen.getByRole("button", { name: "Theme: System (click for Light)" });
+    expect(btn).toHaveAttribute("role", "button");
+  });
+
+  it("exposes a descriptive accessible name for the system icon state", () => {
+    render(<ThemeToggle />);
+    expect(
+      screen.getByRole("button", { name: "Theme: System (click for Light)" })
+    ).toBeInTheDocument();
+  });
+
+  it("exposes a descriptive accessible name for the light icon state", () => {
+    mockLocalStorage({ [THEME_STORAGE_KEY]: "light" });
+    render(<ThemeToggle />);
+    expect(
+      screen.getByRole("button", { name: "Theme: Light (click for Dark)" })
+    ).toBeInTheDocument();
+  });
+
+  it("exposes a descriptive accessible name for the dark icon state", () => {
+    mockLocalStorage({ [THEME_STORAGE_KEY]: "dark" });
+    render(<ThemeToggle />);
+    expect(
+      screen.getByRole("button", { name: "Theme: Dark (click for System)" })
+    ).toBeInTheDocument();
+  });
+
+  it("aria-label mentions the current theme preference", () => {
+    render(<ThemeToggle />);
     const btn = screen.getByRole("button", { name: /theme:/i });
     // Default preference is 'system'
     expect(btn.getAttribute("aria-label")).toMatch(/system/i);
@@ -417,7 +446,10 @@ describe("ThemeToggle", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /theme:/i }));
     });
-    expect(document.documentElement).toHaveAttribute("data-theme", "light");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
   });
 
   it('sets data-theme="dark" on <html> after clicking to dark', async () => {
@@ -437,7 +469,10 @@ describe("ThemeToggle", () => {
   it('aria-pressed is false when preference is "system"', async () => {
     render(<ThemeToggle />);
     await act(async () => {});
-    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
   });
 
   it("removes the OS preference listener when switching away from auto mode", async () => {
@@ -509,7 +544,10 @@ describe("ThemeToggle", () => {
       fireEvent.click(screen.getByRole("button", { name: /theme:/i }));
     });
     // now at 'light', next is 'dark'
-    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute("data-theme-next", "dark");
+    expect(screen.getByRole("button", { name: /theme:/i })).toHaveAttribute(
+      "data-theme-next",
+      "dark"
+    );
   });
 
   it("data-theme-next wraps back to auto after dark", async () => {

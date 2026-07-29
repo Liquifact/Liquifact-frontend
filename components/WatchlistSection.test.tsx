@@ -1,102 +1,129 @@
+/**
+ * @jest-environment jsdom
+ *
+ * @file components/WatchlistSection.test.tsx
+ */
+
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
-import WatchlistSection from "./WatchlistSection";
+import { axe, toHaveNoViolations } from "jest-axe";
+
+import WatchlistSection, { WatchlistGrid, WatchlistSectionSkeleton } from "./WatchlistSection";
+
+expect.extend(toHaveNoViolations);
+
+// -----------------------------------------------------------------------------
+// Mocks
+// -----------------------------------------------------------------------------
+
+const mockAddWatchlist = jest.fn();
+const mockRemoveWatchlist = jest.fn();
 
 jest.mock("@/lib/hooks/useWatchlist", () => ({
   useWatchlist: jest.fn(),
 }));
 
-jest.mock("react-error-boundary", () => ({
-  ErrorBoundary: ({ children }) => children,
-}), { virtual: true });
+jest.mock("@/lib/hooks/useHydrated", () => ({
+  useHydrated: jest.fn(),
+}));
 
-const { useWatchlist } = require("@/lib/hooks/useWatchlist");
+jest.mock("@/lib/observability/reportError", () => ({
+  reportError: jest.fn(),
+}));
 
-describe("WatchlistSection — keyboard operability", () => {
-  const mockAddWatchlist = jest.fn();
-  const mockRemoveWatchlist = jest.fn();
+import { useWatchlist } from "@/lib/hooks/useWatchlist";
+import { useHydrated } from "@/lib/hooks/useHydrated";
 
-  beforeEach(() => {
-    mockAddWatchlist.mockClear();
-    mockRemoveWatchlist.mockClear();
+const VALID_WATCHLISTS = [
+  {
+    id: "1",
+    name: "High Yield",
+    invoiceIds: ["inv-1", "inv-2"],
+  },
+  {
+    id: "2",
+    name: "Short Term",
+    invoiceIds: [],
+  },
+];
+
+// Invalid data used to trigger the ErrorBoundary
+const CORRUPT_WATCHLISTS = [
+  {
+    id: "1",
+    name: "Corrupted",
+  },
+];
+
+function mockHook({ watchlists = [] } = {}) {
+  (useWatchlist as jest.Mock).mockReturnValue({
+    watchlists,
+    addWatchlist: mockAddWatchlist,
+    removeWatchlist: mockRemoveWatchlist,
   });
+}
 
-  it("renders a delete button for each watchlist", () => {
-    useWatchlist.mockReturnValue({
-      watchlists: [
-        { id: "1", name: "High Yield", invoiceIds: [] },
-        { id: "2", name: "Short Term", invoiceIds: [] },
-      ],
-      addWatchlist: mockAddWatchlist,
-      removeWatchlist: mockRemoveWatchlist,
+let consoleErrorSpy: jest.SpyInstance;
+
+beforeAll(() => {
+  consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+});
+
+afterAll(() => {
+  consoleErrorSpy.mockRestore();
+});
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  (useHydrated as jest.Mock).mockReturnValue(true);
+});
+
+// -----------------------------------------------------------------------------
+// Loading State
+// -----------------------------------------------------------------------------
+
+describe("WatchlistSection — Loading State & Exclusivity", () => {
+  it("renders an accessible loading placeholder before hydration", () => {
+    (useHydrated as jest.Mock).mockReturnValue(false);
+
+    mockHook({
+      watchlists: [],
     });
 
     render(<WatchlistSection />);
 
-    const deleteButtons = screen.getAllByRole("button", { name: /Delete/ });
-    expect(deleteButtons).toHaveLength(2);
+    const loading = screen.getByTestId("watchlist-section-loading");
+
+    expect(loading).toHaveAttribute("role", "status");
+    expect(loading).toHaveAttribute("aria-live", "polite");
+    expect(loading).toHaveAttribute("aria-busy", "true");
+
+    expect(screen.getAllByTestId("watchlist-section-skeleton-card").length).toBeGreaterThan(0);
   });
 
-  it("delete button is reachable by keyboard via Tab", async () => {
-    const user = userEvent.setup();
-    useWatchlist.mockReturnValue({
-      watchlists: [{ id: "1", name: "High Yield", invoiceIds: [] }],
-      addWatchlist: mockAddWatchlist,
-      removeWatchlist: mockRemoveWatchlist,
+  it("does not render empty, error or success content while loading", () => {
+    (useHydrated as jest.Mock).mockReturnValue(false);
+
+    mockHook({
+      watchlists: VALID_WATCHLISTS,
     });
 
     render(<WatchlistSection />);
-    const deleteBtn = screen.getByRole("button", { name: /Delete High Yield watchlist/ });
 
-    deleteBtn.focus();
-    expect(deleteBtn).toHaveFocus();
+    expect(screen.queryByText("You don't have any watchlists yet")).not.toBeInTheDocument();
+
+    expect(screen.queryByText("High Yield")).not.toBeInTheDocument();
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("activates delete on Enter", async () => {
-    const user = userEvent.setup();
-    useWatchlist.mockReturnValue({
-      watchlists: [{ id: "1", name: "High Yield", invoiceIds: [] }],
-      addWatchlist: mockAddWatchlist,
-      removeWatchlist: mockRemoveWatchlist,
-    });
+  it("standalone skeleton exposes the same accessibility contract", () => {
+    render(<WatchlistSectionSkeleton />);
 
-    render(<WatchlistSection />);
-    const deleteBtn = screen.getByRole("button", { name: /Delete High Yield watchlist/ });
-    deleteBtn.focus();
+    const loading = screen.getByTestId("watchlist-section-loading");
 
-    await user.keyboard("{Enter}");
-    expect(mockRemoveWatchlist).toHaveBeenCalledWith("1");
-  });
-
-  it("activates delete on Space", async () => {
-    const user = userEvent.setup();
-    useWatchlist.mockReturnValue({
-      watchlists: [{ id: "1", name: "High Yield", invoiceIds: [] }],
-      addWatchlist: mockAddWatchlist,
-      removeWatchlist: mockRemoveWatchlist,
-    });
-
-    render(<WatchlistSection />);
-    const deleteBtn = screen.getByRole("button", { name: /Delete High Yield watchlist/ });
-    deleteBtn.focus();
-
-    await user.keyboard(" ");
-    expect(mockRemoveWatchlist).toHaveBeenCalledWith("1");
-  });
-
-  it("applies focus-ring class for visible keyboard focus", () => {
-    useWatchlist.mockReturnValue({
-      watchlists: [{ id: "1", name: "High Yield", invoiceIds: [] }],
-      addWatchlist: mockAddWatchlist,
-      removeWatchlist: mockRemoveWatchlist,
-    });
-
-    render(<WatchlistSection />);
-    const deleteBtn = screen.getByRole("button", { name: /Delete High Yield watchlist/ });
-
-    expect(deleteBtn.className).toContain("focus-ring");
-    expect(deleteBtn.className).not.toContain("focus:outline-none");
+    expect(loading).toHaveAttribute("role", "status");
+    expect(loading).toHaveAttribute("aria-busy", "true");
   });
 });

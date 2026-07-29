@@ -326,8 +326,7 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
         });
       });
 
-      // Assert tokenizing status before timers run
-      expect(screen.getByRole("status")).toHaveTextContent(/tokenizing/i);
+      await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/tokenization/i));
 
       // 4. Success state (advance timers to complete tokenization stage)
       await act(async () => {

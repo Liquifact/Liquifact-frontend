@@ -14,7 +14,7 @@ import CopyButton from "./CopyButton";
  *
  * @type {readonly string[]}
  */
-export const THEMES = /** @type {const} */ (["light", "dark", "auto"]);
+export const THEMES = /** @type {const} */ (["light", "dark", "system"]);
 
 /** localStorage key where the preference is persisted. */
 export const THEME_STORAGE_KEY = "liquifact-theme";

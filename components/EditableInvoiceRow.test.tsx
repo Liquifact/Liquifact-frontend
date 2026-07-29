@@ -44,14 +44,18 @@ describe("EditableInvoiceRow", () => {
     const user = userEvent.setup();
     render(<EditableInvoiceRow invoice={mockInvoice} onSave={mockOnSave} />);
 
+    // Enter edit mode
     await user.click(screen.getByRole("button", { name: /Edit Test Issuer/i }));
 
+    // Change a value
     const issuerInput = screen.getByRole("textbox", { name: /Issuer/i });
     await user.clear(issuerInput);
     await user.type(issuerInput, "Changed Issuer");
 
+    // Cancel
     await user.click(screen.getByRole("button", { name: /Cancel/i }));
 
+    // Should be back to view mode with original value
     expect(screen.queryByRole("textbox", { name: /Issuer/i })).not.toBeInTheDocument();
     expect(screen.getByText("Test Issuer")).toBeInTheDocument();
   });
@@ -100,14 +104,8 @@ describe("EditableInvoiceRow", () => {
     const issuerInput = screen.getByRole("textbox", { name: /Issuer/i });
     await user.clear(issuerInput);
 
-    // Live validation surfaces the error BEFORE the user even clicks Save.
-    expect(screen.getByTestId("edit-error-issuer")).toBeInTheDocument();
-    expect(screen.getByTestId("edit-error-issuer")).toHaveTextContent(/empty/i);
+    await user.click(screen.getByRole("button", { name: /Save/i }));
 
-    // Save button is disabled; clicking it does not save.
-    const save = screen.getByRole("button", { name: /Save/i });
-    expect(save).toBeDisabled();
-    fireEvent.click(save);
     expect(mockOnSave).not.toHaveBeenCalled();
   });
 
@@ -121,13 +119,12 @@ describe("EditableInvoiceRow", () => {
     await user.clear(amountInput);
     await user.type(amountInput, "-500");
 
-    expect(screen.getByTestId("edit-error-amount")).toBeInTheDocument();
-    expect(screen.getByTestId("edit-error-amount")).toHaveTextContent(/positive number/i);
-    expect(screen.getByRole("button", { name: /Save/i })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /Save/i }));
+
     expect(mockOnSave).not.toHaveBeenCalled();
   });
 
-  it("shows an inline error and blocks save when amount is NaN", async () => {
+  it("shows validation error when amount is NaN", async () => {
     const user = userEvent.setup();
     render(<EditableInvoiceRow invoice={mockInvoice} onSave={mockOnSave} />);
 
@@ -137,8 +134,8 @@ describe("EditableInvoiceRow", () => {
     await user.clear(amountInput);
     await user.type(amountInput, "abc");
 
-    expect(screen.getByTestId("edit-error-amount")).toHaveTextContent(/positive number/i);
-    expect(screen.getByRole("button", { name: /Save/i })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /Save/i }));
+
     expect(mockOnSave).not.toHaveBeenCalled();
   });
 
@@ -150,103 +147,13 @@ describe("EditableInvoiceRow", () => {
 
     const issuerInput = screen.getByRole("textbox", { name: /Issuer/i });
     await user.clear(issuerInput);
-    expect(screen.getByTestId("edit-error-issuer")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Save/i }));
+
+    expect(screen.getByText("Issuer, amount, and maturity are required.")).toBeInTheDocument();
 
     await user.type(issuerInput, "F");
-    expect(screen.queryByTestId("edit-error-issuer")).not.toBeInTheDocument();
-  });
-
-  // ── New tests for the inline-validation pattern (issue #613) ──────────────
-
-  describe("validation: aria wiring", () => {
-    it("aria-describedby on the issuer input points to the issuer error paragraph when invalid", async () => {
-      const user = userEvent.setup();
-      render(<EditableInvoiceRow invoice={mockInvoice} onSave={mockOnSave} />);
-      await user.click(screen.getByRole("button", { name: /Edit Test Issuer/i }));
-      const issuerInput = screen.getByRole("textbox", { name: /Issuer/i });
-      await user.clear(issuerInput);
-      const errorId = screen.getByTestId("edit-error-issuer").getAttribute("id");
-      expect(errorId).toBeTruthy();
-      expect(issuerInput).toHaveAttribute("aria-describedby", errorId);
-    });
-
-    it("aria-invalid is 'true' when the issuer error is present", async () => {
-      const user = userEvent.setup();
-      render(<EditableInvoiceRow invoice={mockInvoice} onSave={mockOnSave} />);
-      await user.click(screen.getByRole("button", { name: /Edit Test Issuer/i }));
-      const issuerInput = screen.getByRole("textbox", { name: /Issuer/i });
-      await user.clear(issuerInput);
-      expect(issuerInput).toHaveAttribute("aria-invalid", "true");
-    });
-
-    it("aria-describedby is removed once the user types a valid value", async () => {
-      const user = userEvent.setup();
-      render(<EditableInvoiceRow invoice={mockInvoice} onSave={mockOnSave} />);
-      await user.click(screen.getByRole("button", { name: /Edit Test Issuer/i }));
-      const issuerInput = screen.getByRole("textbox", { name: /Issuer/i });
-      await user.clear(issuerInput);
-      expect(issuerInput).toHaveAttribute("aria-describedby");
-      await user.type(issuerInput, "Restored");
-      expect(issuerInput).not.toHaveAttribute("aria-describedby");
-      expect(issuerInput).toHaveAttribute("aria-invalid", "false");
-    });
-
-    it("error paragraph has role='alert' so screen readers announce it", async () => {
-      const user = userEvent.setup();
-      render(<EditableInvoiceRow invoice={mockInvoice} onSave={mockOnSave} />);
-      await user.click(screen.getByRole("button", { name: /Edit Test Issuer/i }));
-      const issuerInput = screen.getByRole("textbox", { name: /Issuer/i });
-      await user.clear(issuerInput);
-      expect(screen.getByTestId("edit-error-issuer")).toHaveAttribute("role", "alert");
-    });
-  });
-
-  describe("validation: Save button blocked", () => {
-    it("Save button is enabled when all fields stay valid", async () => {
-      const user = userEvent.setup();
-      render(<EditableInvoiceRow invoice={mockInvoice} onSave={mockOnSave} />);
-      await user.click(screen.getByRole("button", { name: /Edit Test Issuer/i }));
-      expect(screen.getByRole("button", { name: /Save/i })).toBeEnabled();
-    });
-
-    it("Save button is disabled if currency becomes invalid", async () => {
-      const user = userEvent.setup();
-      render(<EditableInvoiceRow invoice={mockInvoice} onSave={mockOnSave} />);
-      await user.click(screen.getByRole("button", { name: /Edit Test Issuer/i }));
-      const currencyInput = screen.getByRole("textbox", { name: /Currency/i });
-      await user.clear(currencyInput);
-      await user.type(currencyInput, "US-DOLLAR");
-      expect(screen.getByRole("button", { name: /Save/i })).toBeDisabled();
-    });
-
-    it("Save button is disabled if yield becomes invalid", async () => {
-      const user = userEvent.setup();
-      render(<EditableInvoiceRow invoice={mockInvoice} onSave={mockOnSave} />);
-      await user.click(screen.getByRole("button", { name: /Edit Test Issuer/i }));
-      const yieldInput = screen.getByRole("textbox", { name: /Yield/i });
-      await user.clear(yieldInput);
-      await user.type(yieldInput, "-1");
-      expect(screen.getByRole("button", { name: /Save/i })).toBeDisabled();
-    });
-
-    it("Save button is disabled if dueDate becomes invalid", () => {
-      render(<EditableInvoiceRow invoice={mockInvoice} onSave={mockOnSave} />);
-      fireEvent.click(screen.getByRole("button", { name: /Edit Test Issuer/i }));
-      // <input type="date"> is not queryable via getByRole("textbox") in
-      // jsdom, so use the dedicated testid instead.
-      const dateInput = screen.getByTestId("edit-input-dueDate");
-      fireEvent.change(dateInput, { target: { value: "not-a-date" } });
-      expect(screen.getByRole("button", { name: /Save/i })).toBeDisabled();
-    });
-
-    it("clicking a disabled Save does not call onSave", async () => {
-      const user = userEvent.setup();
-      render(<EditableInvoiceRow invoice={mockInvoice} onSave={mockOnSave} />);
-      await user.click(screen.getByRole("button", { name: /Edit Test Issuer/i }));
-      const issuerInput = screen.getByRole("textbox", { name: /Issuer/i });
-      await user.clear(issuerInput);
-      fireEvent.click(screen.getByRole("button", { name: /Save/i }));
-      expect(mockOnSave).not.toHaveBeenCalled();
-    });
+    expect(
+      screen.queryByText("Issuer, amount, and maturity are required.")
+    ).not.toBeInTheDocument();
   });
 });

@@ -51,11 +51,11 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
     delete global.window;
 
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button", { name: /theme:/i });
-    
+    const btn = screen.getByRole("button");
+
     // During loading (SSR), it falls back to 'system'
     expect(btn).toHaveAttribute("data-theme-pref", "system");
-    
+
     // Restore window
     global.window = originalWindow;
   });
@@ -63,8 +63,8 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
   it("renders the right UI for empty state", () => {
     // Local storage is empty
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button", { name: /theme:/i });
-    
+    const btn = screen.getByRole("button");
+
     // With empty preferences, it falls back to 'system'
     expect(btn).toHaveAttribute("data-theme-pref", "system");
   });
@@ -81,8 +81,8 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
     });
 
     render(<ThemeToggle />);
-    const btn = screen.getByRole("button", { name: /theme:/i });
-    
+    const btn = screen.getByRole("button");
+
     // Error state falls back to 'system' safely
     expect(btn).toHaveAttribute("data-theme-pref", "system");
   });
@@ -102,7 +102,7 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
     });
 
     render(<ThemeToggle />);
-    
+
     // Initial success state from localStorage
     let btn = screen.getByRole("button", { name: /theme:/i });
     expect(btn).toHaveAttribute("data-theme-pref", "light");

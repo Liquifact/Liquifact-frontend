@@ -662,13 +662,6 @@ export const copy = {
         placeholder: "name@example.com",
       },
     },
-    errors: {
-      required: "This field cannot be empty.",
-      displayNameTooShort: "Display name must be at least 2 characters.",
-      displayNameTooLong: "Display name must be 100 characters or fewer.",
-      invalidEmail: "Enter a valid email address.",
-      emailTooLong: "Email address must be 254 characters or fewer.",
-    },
   },
   nav: {
     announceNavigation: "Navigated to {label}",

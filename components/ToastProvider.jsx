@@ -250,9 +250,29 @@ export function ToastProvider({ children }) {
     [addToast]
   );
 
+  // The visible stack below is a single aria-live="polite" region, so every
+  // toast add/remove re-announces the *entire* stack's text to assistive
+  // tech, not just what changed. That's tolerable for routine success/info
+  // notices, but an error deserves to interrupt and be heard on its own
+  // rather than get buried in — or diluted by — that batched announcement.
+  // This separate, visually-hidden aria-live="assertive" region tracks only
+  // the newest error currently in the stack and is decoupled from the
+  // polite region above, so an error's title/message gets its own
+  // assertive announcement independent of whatever else is in the stack.
+  // It intentionally has no ARIA role (just aria-live) so it never competes
+  // with role="status"/role="alert" queries elsewhere in the toast tree.
+  const latestError = toasts.find((toast) => toast.variant === "error");
+  const assertiveAnnouncement = latestError
+    ? [latestError.title, latestError.message].filter(Boolean).join(": ")
+    : "";
+
   return (
     <ToastContext.Provider value={value}>
       {children}
+
+      <div aria-live="assertive" className="sr-only" data-testid="toast-assertive-announcer">
+        {assertiveAnnouncement}
+      </div>
 
       <ToastErrorBoundary>
         <ToastStack
