@@ -11,6 +11,8 @@ describe("FormsView states", () => {
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
       expect(screen.queryByText(/no forms yet/i)).not.toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: /forms/i })).not.toBeInTheDocument();
+      expect(screen.getByTestId("forms-view-loading")).toHaveAttribute("aria-busy", "true");
+      expect(screen.getByText(/loading forms, please wait/i)).toBeInTheDocument();
     });
 
     it("renders only the error banner in the error state", () => {
@@ -52,9 +54,9 @@ describe("FormsView states", () => {
       render(<FormsView status="loading" />);
 
       const region = screen.getByTestId("forms-view-loading");
-      expect(region).toHaveAttribute("role", "status");
-      expect(region).toHaveAttribute("aria-live", "polite");
       expect(region).toHaveAttribute("aria-busy", "true");
+      expect(region.querySelector("[aria-hidden='true']")).toBeInTheDocument();
+      expect(region).toHaveTextContent(/loading forms, please wait/i);
     });
 
     it("marks the empty state as a polite status region", () => {
@@ -130,6 +132,30 @@ describe("FormsView states", () => {
       expect(screen.getByText("Refreshed form")).toBeInTheDocument();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
       expect(screen.queryByTestId("forms-view-loading")).not.toBeInTheDocument();
+    });
+
+    it("replaces the skeleton with empty state once loading settles with no data", () => {
+      const { rerender } = render(<FormsView status="loading" />);
+
+      expect(screen.getByTestId("forms-view-loading")).toBeInTheDocument();
+
+      rerender(<FormsView status="empty" />);
+
+      expect(screen.queryByTestId("forms-view-loading")).not.toBeInTheDocument();
+      expect(screen.getByText(/no forms yet/i)).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("replaces the skeleton with loaded content once data arrives", () => {
+      const { rerender } = render(<FormsView status="loading" />);
+
+      expect(screen.getByTestId("forms-view-loading")).toBeInTheDocument();
+
+      rerender(<FormsView status="loaded" data={[{ id: "1", title: "Onboarding form" }]} />);
+
+      expect(screen.queryByTestId("forms-view-loading")).not.toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /^forms$/i })).toBeInTheDocument();
+      expect(screen.getByText("Onboarding form")).toBeInTheDocument();
     });
 
     it("does not throw when onRetry is not provided", async () => {

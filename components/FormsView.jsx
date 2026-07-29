@@ -1,6 +1,5 @@
 "use client";
 
-import Spinner from "./Spinner";
 import EmptyState from "./EmptyState";
 import ErrorBanner from "./ErrorBanner";
 
@@ -32,14 +31,36 @@ export default function FormsView({ status = "loaded", data = [], error = null, 
   if (status === "loading") {
     return (
       <div
-        role="status"
-        aria-live="polite"
         aria-busy="true"
         data-testid="forms-view-loading"
-        className="flex items-center gap-3 rounded-3xl border border-slate-800 bg-slate-900/40 p-10 text-slate-300"
+        className="rounded-3xl border border-slate-800 bg-slate-900/40 p-6 sm:p-8"
       >
-        <Spinner className="h-5 w-5" />
-        <span>Loading forms…</span>
+        <div className="space-y-5" aria-hidden="true">
+          <div className="space-y-3">
+            <div className="h-6 w-24 rounded bg-slate-700/80 animate-pulse" />
+            <div className="h-4 w-full max-w-md rounded bg-slate-800 animate-pulse" />
+          </div>
+
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={`forms-skeleton-row-${index}`}
+                className="rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 shrink-0 rounded-2xl bg-slate-800 animate-pulse" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="h-4 w-3/5 rounded bg-slate-700 animate-pulse" />
+                    <div className="h-3 w-2/5 rounded bg-slate-800 animate-pulse" />
+                  </div>
+                  <div className="h-9 w-24 shrink-0 rounded-full bg-slate-800 animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <span className="sr-only">Loading forms, please wait…</span>
       </div>
     );
   }
