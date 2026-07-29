@@ -50,6 +50,7 @@ jobs:
         run: npm run format:check
 
       - name: Build
+        if: github.event_name == 'push'
         run: npm run build
 
       - name: Test Accessibility
