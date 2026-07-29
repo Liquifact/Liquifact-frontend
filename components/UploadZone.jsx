@@ -1,15 +1,23 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import { env } from "../lib/config/env";
 import { copy } from "../app/copy/en";
 import { validatePdfFile, sanitizeFilename } from "../lib/validation/pdf";
-import ProgressBar from "./ProgressBar";
+// `ProgressBar` is reserved for a future determinate-progress UI driven by
+// the parent; the current `status === "uploading"` block renders its own
+// accessibility-friendly progressbar so we don't import it here yet.
 
 // Base URL for backend API; validated and centralized in lib/config/env.
 const API_URL = env?.apiUrl || "";
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+// Density toggle – kept in local state only until a settings-storage module
+// is introduced. "comfortable" is the default; "compact" is opt-in via the
+// (future) density toggle component. Defining it as a module-local constant
+// avoids an undefined-symbol ReferenceError on first render.
+const DEFAULT_DENSITY = "comfortable";
 
 const FILE_CONSTRAINTS = {
   accept: ".pdf",
@@ -96,17 +104,9 @@ function UploadZone({ onUploadSuccess, progress }) {
   const [status, setStatus] = useState("idle");
   const [density, setDensity] = useState(DEFAULT_DENSITY);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDensity(readDensity());
-  }, []);
-
   function handleDensityToggle() {
-    setDensity((prev) => {
-      const next = toggleDensityValue(prev);
-      writeDensity(next);
-      return next;
-    });
+    // Local-only toggle until a settings module owns persistence.
+    setDensity((prev) => (prev === "compact" ? "comfortable" : "compact"));
   }
 
   function resetUpload() {
@@ -224,8 +224,6 @@ function UploadZone({ onUploadSuccess, progress }) {
   const isProcessing = status === "uploading" || status === "tokenizing";
   const isCompact = density === "compact";
   const densityGap = isCompact ? "gap-2" : "gap-4";
-  const dropzonePadding = isCompact ? "p-6" : "p-10";
-  const toggleLabel = isCompact ? "Comfortable" : "Compact";
 
   const dropZoneBorder = dragOver
     ? "border-cyan-400 bg-cyan-500/10"
@@ -264,7 +262,7 @@ function UploadZone({ onUploadSuccess, progress }) {
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
         onKeyDown={handleKeyDown}
-        className={`focus-ring cursor-pointer rounded-xl border-2 border-dashed transition-colors duration-200 p-10 text-center ${dropZoneBorder}`}
+        className={`focus-ring cursor-pointer rounded-xl border-2 border-dashed transition-colors duration-200 motion-reduce:transition-none p-10 text-center ${dropZoneBorder}`}
       >
         {file ? (
           <div className="space-y-2">
@@ -302,50 +300,6 @@ function UploadZone({ onUploadSuccess, progress }) {
       </div>
 
       <div data-testid="upload-zone" className={`flex flex-col ${densityGap}`}>
-        <label htmlFor="invoice-file-input" className="sr-only">
-          {copy.uploadZone.fileInputLabel}
-        </label>
-        <input
-          ref={inputRef}
-          id="invoice-file-input"
-          type="file"
-          accept={FILE_CONSTRAINTS.accept}
-          className="sr-only"
-          aria-label={copy.uploadZone.fileInputLabel}
-          onChange={handleChange}
-        />
-        <div
-          ref={dropzoneRef}
-          role="button"
-          tabIndex={0}
-          aria-label={copy.uploadZone.dropZoneLabel}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
-          onKeyDown={handleKeyDown}
-          className={`cursor-pointer rounded-xl border-2 border-dashed transition-colors duration-200 ${dropzonePadding} text-center ${dropZoneBorder}`}
-        >
-          <div className="flex items-center gap-2">
-            {typeof progress !== "number" && <Spinner />}
-            <span id="upload-status-text">{copy.uploadZone.statusUploading}</span>
-            {typeof progress === "number" && (
-              <span className="ml-auto font-medium">{Math.round(progress)}%</span>
-            )}
-          </div>
-          {typeof progress === "number" && (
-            <ProgressBar
-              value={progress}
-              max={100}
-              label={copy.uploadZone.statusUploading}
-              className="mt-1"
-            />
-          )}
-        </div>
-
         {error && (
           <p
             role="alert"
