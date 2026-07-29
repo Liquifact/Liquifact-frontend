@@ -32,6 +32,7 @@ import { copy } from "@/app/copy/en";
 import { INVALID_VALUE_FALLBACK, formatCurrency, formatAmount } from "@/lib/format/currency";
 import { getInvoiceById } from "../lib";
 import FundActions from "./FundActions";
+import { RouteFocus } from "./FocusManager";
 
 const detail = copy.invest.detail;
 
@@ -141,6 +142,7 @@ export default async function InvoiceDetailPage({ params }) {
       </header>
 
       <main id="main-content" className="max-w-4xl mx-auto px-6 py-12">
+        <RouteFocus />
         {/* ── JSON-LD structured data ────────────────────────────────── */}
         {invoiceJsonLd ? (
           <script
