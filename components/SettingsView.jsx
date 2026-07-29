@@ -1,34 +1,65 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import SettingsErrorBoundary from "./SettingsErrorBoundary";
 import Button from "./Button";
+import EmptyState from "./EmptyState";
+import ErrorBanner from "./ErrorBanner";
+import { copy } from "../app/copy/en";
 
 /**
  * SettingsContent — inner component rendering settings UI.
  */
 export function SettingsContent({ loadData, children, ...props }) {
   const [loading, setLoading] = useState(!!loadData);
+  const [error, setError] = useState(null);
   const [data, setData] = useState({ email: "user@example.com", notifications: true });
+  const [retryCount, setRetryCount] = useState(0);
 
-  useEffect(() => {
-    let active = true;
-    if (loadData) {
-      loadData()
-        .then((res) => {
-          if (active) setData(res);
-        })
-        .finally(() => {
-          if (active) setLoading(false);
-        });
+  const fetchData = useCallback(async () => {
+    if (!loadData) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await loadData();
+      setData(res);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
     }
-    return () => {
-      active = false;
-    };
   }, [loadData]);
 
+  useEffect(() => {
+    fetchData();
+  }, [fetchData, retryCount]);
+
+  const handleRetry = () => setRetryCount((prev) => prev + 1);
+
   if (loading) {
-    return <div data-testid="settings-loading">Loading settings...</div>;
+    return <div data-testid="settings-loading" aria-busy="true">Loading settings...</div>;
+  }
+
+  if (error) {
+    return (
+      <ErrorBanner
+        variant="error"
+        title={copy.settings?.errorTitle || "Unable to load settings"}
+        description={copy.settings?.errorDescription || "An unexpected error occurred. Please try again."}
+        actionLabel={copy.settings?.errorActionLabel || "Try again"}
+        onAction={handleRetry}
+      />
+    );
+  }
+
+  // Assume data is empty if it's null or an empty object.
+  if (!data || Object.keys(data).length === 0) {
+    return (
+      <EmptyState
+        title={copy.settings?.emptyStateTitle || "No settings found"}
+        description={copy.settings?.emptyStateDescription || "There are no settings to display."}
+      />
+    );
   }
 
   return (
