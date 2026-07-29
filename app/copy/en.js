@@ -254,7 +254,28 @@
  * @property {Object} settings.errors - Validation error messages
  * @property {string} settings.errors.required
  * @property {string} settings.errors.displayNameTooShort
+ * @property {string} settings.errors.displayNameTooLong
+ * @property {string} settings.errors.emailTooLong
  * @property {string} settings.errors.invalidEmail
+ * @property {string} settings.copyIdentifier
+ * @property {string} settings.toastCopySuccessMsg
+ * @property {string} settings.toastCopySuccessTitle
+ * @property {string} settings.toastCopyErrorMsg
+ * @property {string} settings.toastCopyErrorTitle
+ * @property {string} settings.errorStatus
+ * @property {string} settings.loadStatus
+ * @property {string} settings.showStatus
+ * @property {string} settings.noMatch
+ * @property {string} settings.empty
+ * @property {string} settings.loadMore
+ * @property {string} settings.densityLabel
+ * @property {string} settings.densityDescription
+ * @property {string} settings.exportGroupLabel
+ * @property {string} settings.exportCSVLabel
+ * @property {string} settings.exportJSONLabel
+ * @property {string} settings.exportAnnounceCSV
+ * @property {string} settings.exportAnnounceJSON
+ * @property {string} settings.exportEmpty
  */
 
 /** @type {CopyDictionary} */
@@ -461,10 +482,77 @@ export const copy = {
   settings: {
     title: "Settings",
     description: "Manage your display and notification preferences.",
-    lastUpdatedPrefix: "Last updated",
-    currencyLabel: "Display currency",
-    emailNotificationsLabel: "Email notifications",
-    emailNotificationsHint: "Receive email updates about your invoices and investments.",
+    pageTitle: "Settings",
+    pageSub:
+      "Manage your profile preferences. Updates are saved locally to this browser and apply to this device only.",
+    editAction: "Edit",
+    editActionLabel: "Edit {field}",
+    saveAction: "Save",
+    saveActionLabel: "Save {field}",
+    cancelAction: "Cancel",
+    cancelActionLabel: "Cancel editing {field}",
+    emptyValue: "Not set",
+    savedAnnouncement: "{label} saved.",
+    cancelledAnnouncement: "Edit cancelled. {label} unchanged.",
+    invalidAnnouncement: "{label} not saved: {error}",
+    subtext: "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
+    emptyState: "No preferences available. Connect your wallet to unlock settings.",
+    errorTitle: "Unable to load settings",
+    errorDescription: "Unable to load settings right now.",
+    errorStatus: "Unable to load settings.",
+    retryAction: "Try again",
+    searchPlaceholder: "Search preferences\u2026",
+    filterLegend: "Settings filters",
+    filterHelp: "Use the category selector or the search box to narrow the list. Paging is reset whenever a filter changes.",
+    filterCategory: "Category:",
+    filterSearch: "Search:",
+    allCategories: "All categories",
+    clearFilters: "Reset filters",
+    noMatchFilter: "No preferences match the active filters.",
+    listAriaLabel: "Settings list",
+    loadingAriaLabel: "Loading settings",
+    loadMore: "Load more",
+    loadMoreAriaLabel: "Load more preferences",
+    endOfList: "You have reached the end of the list.",
+    announceNoSettings: "No settings available",
+    announceLoaded: "{count} preferences loaded",
+    announceFiltered: "{matched} of {total} preferences match",
+    announceNoMatch: "No preferences match",
+    announceShowing: "Showing {shown} of {total} preferences",
+    fields: {
+      displayName: {
+        label: "Display name",
+        description: "Shown next to your activity across LiquiFact.",
+        placeholder: "e.g. Acme Treasury",
+      },
+      email: {
+        label: "Email",
+        description: "Used for invoice notifications only. Never displayed publicly.",
+        placeholder: "name@example.com",
+      },
+    },
+    errors: {
+      required: "This field cannot be empty.",
+      displayNameTooShort: "Display name must be at least 2 characters.",
+      displayNameTooLong: "Display name must be 100 characters or fewer.",
+      emailTooLong: "Email must be 254 characters or fewer.",
+      invalidEmail: "Please enter a valid email address.",
+    },
+    copyIdentifier: "Reference ID",
+    toastCopySuccessMsg: "Reference ID copied to clipboard.",
+    toastCopySuccessTitle: "Copied!",
+    toastCopyErrorMsg: "Unable to copy \u2014 please copy manually.",
+    toastCopyErrorTitle: "Copy failed",
+    noMatch: "No preferences match the active filters",
+    empty: "No preferences available. Connect your wallet or adjust your filters.",
+    densityLabel: "Display density",
+    densityDescription: "Adjust the spacing of settings controls.",
+    exportGroupLabel: "Export settings",
+    exportCSVLabel: "Export the current settings view as a CSV file",
+    exportJSONLabel: "Export the current settings view as a JSON file",
+    exportAnnounceCSV: "Settings exported as CSV.",
+    exportAnnounceJSON: "Settings exported as JSON.",
+    exportEmpty: "No settings to export \u2014 adjust filters or wait for settings to load.",
   },
   layout: {
     backToHome: "\u2190 LiquiFact",
@@ -608,62 +696,5 @@ export const copy = {
     statusCompleted: "Completed",
     statusCurrent: "Current",
     statusPending: "Pending",
-  },
-  settings: {
-    title: "Settings",
-    subtext:
-      "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
-    emptyState: "No preferences available. Connect your wallet to unlock settings.",
-    errorTitle: "Unable to load settings",
-    errorDescription: "Unable to load settings right now.",
-    errorStatus: "Unable to load settings.",
-    retryAction: "Try again",
-    searchPlaceholder: "Search preferences…",
-    filterLegend: "Settings filters",
-    filterHelp:
-      "Use the category selector or the search box to narrow the list. Paging is reset whenever a filter changes.",
-    filterCategory: "Category:",
-    filterSearch: "Search:",
-    allCategories: "All categories",
-    clearFilters: "Reset filters",
-    noMatchFilter: "No preferences match the active filters.",
-    listAriaLabel: "Settings list",
-    loadingAriaLabel: "Loading settings",
-    loadMore: "Load more",
-    loadMoreAriaLabel: "Load more preferences",
-    endOfList: "You have reached the end of the list.",
-    announceNoSettings: "No settings available",
-    announceLoaded: "{count} preferences loaded",
-    announceFiltered: "{matched} of {total} preferences match",
-    announceNoMatch: "No preferences match",
-    announceShowing: "Showing {shown} of {total} preferences",
-    pageTitle: "Settings",
-    pageSub:
-      "Manage your profile preferences. Updates are saved locally to this browser and apply to this device only.",
-    editAction: "Edit",
-    editActionLabel: "Edit {field}",
-    saveAction: "Save",
-    saveActionLabel: "Save {field}",
-    cancelAction: "Cancel",
-    cancelActionLabel: "Cancel editing {field}",
-    emptyValue: "Not set",
-    savedAnnouncement: "{label} saved.",
-    cancelledAnnouncement: "Edit cancelled. {label} unchanged.",
-    invalidAnnouncement: "{label} not saved: {error}",
-    fields: {
-      displayName: {
-        label: "Display name",
-        description: "Shown next to your activity across LiquiFact.",
-        placeholder: "e.g. Acme Treasury",
-      },
-      email: {
-        label: "Email",
-        description: "Used for invoice notifications only. Never displayed publicly.",
-        placeholder: "name@example.com",
-      },
-    },
-  },
-  nav: {
-    announceNavigation: "Navigated to {label}",
   },
 };
