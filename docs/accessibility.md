@@ -41,9 +41,7 @@ a consistent, high‑contrast focus indicator.
 **Automated checks:**
   - Class‑presence test in `components/focus-ring.a11y.test.tsx`
   - WCAG AA contrast verification in `app/globals.contrast-ratio.test.tsx`
-  - Keyboard traversal test (Tab order) using `@testing-library/user-event`
-
-### Roving Tabindex for Filter Chips (issue #466)
+  - Keyboard traversal test (Tab order) using `@testing-library/user-event`### Roving Tabindex for Filter Chips (issue #466)
 
 The marketplace currency filter chips (`components/InvoiceFilters.jsx`) implement a **roving tabindex** pattern conforming to the [ARIA Authoring Practices Guide (APG) toolbar pattern](https://www.w3.org/WAI/ARIA/apg/patterns/toolbar/).
 
@@ -87,6 +85,40 @@ The marketplace currency filter chips (`components/InvoiceFilters.jsx`) implemen
   - wrap-around behavior at both ends
   - `aria-pressed` correctness across keyboard and mouse interactions
   - focus-ring class presence (compatible with `focus-ring.a11y.test.tsx`)
+
+### Marketplace Sort Controls – aria-sort (issue #468)
+
+The marketplace sort controls in `components/InvoiceFilters.jsx` expose the current
+sort state programmatically through the `aria-sort` attribute on direction toggle buttons.
+
+**Direction toggle `aria-sort` values:**
+
+| State                          | `aria-sort` value | Button state |
+| ------------------------------ | ----------------- | ------------ |
+| Column is active, dir = `asc`  | `ascending`       | Enabled      |
+| Column is active, dir = `desc` | `descending`      | Enabled      |
+| Column is **not** active       | `none`            | Disabled     |
+
+Only `amount` and `yield` columns have direction toggles.
+Maturity sorting is available via the select dropdown but does not have its own
+direction toggle, so no `aria-sort` is set to `ascending`/`descending` for maturity.
+
+**Sort announcement live region:**
+
+A dedicated polite live region (`role="status"`, `aria-live="polite"`, `aria-atomic="true"`)
+with `data-testid="sort-live-region"` announces sort changes to screen readers without
+duplicating the results-summary announcement in `app/invest/page.js`. The announcement
+format is:
+
+```
+Sorted by {Column}, {ascending|descending}
+```
+
+Examples:
+- `"Sorted by Amount, ascending"`
+- `"Sorted by Yield, descending"`
+
+The region is empty when no sort column is active.
 
 ### Pagination Announcements (issue #276)
 
