@@ -123,7 +123,7 @@ describe("NavMenu memoization", () => {
     it("mobile menu is absent by default", () => {
       render(<NavMenu />);
       expect(
-        screen.queryByRole("navigation", { name: /mobile navigation/i }),
+        screen.queryByRole("navigation", { name: /mobile navigation/i })
       ).not.toBeInTheDocument();
     });
 
@@ -131,9 +131,7 @@ describe("NavMenu memoization", () => {
       const user = userEvent.setup();
       render(<NavMenu />);
       await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
-      expect(
-        screen.getByRole("navigation", { name: /mobile navigation/i }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("navigation", { name: /mobile navigation/i })).toBeInTheDocument();
     });
 
     it("mobile menu contains the same three links as the desktop nav", async () => {
@@ -256,7 +254,7 @@ describe("NavMenu memoization", () => {
       const desktopNav = screen.getByRole("navigation", { name: /main navigation/i });
       expect(desktopNav.querySelector("[aria-current='page']")).toHaveAttribute(
         "href",
-        "/invoices",
+        "/invoices"
       );
 
       // Open mobile menu (changes `open` and `visible` state — not pathname)
@@ -265,7 +263,7 @@ describe("NavMenu memoization", () => {
       // Desktop nav should still show the same active link
       expect(desktopNav.querySelector("[aria-current='page']")).toHaveAttribute(
         "href",
-        "/invoices",
+        "/invoices"
       );
     });
 
@@ -289,9 +287,7 @@ describe("NavMenu memoization", () => {
       await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
 
       const mobileNav = screen.getByRole("navigation", { name: /mobile navigation/i });
-      const mobileCurrentLinks = Array.from(
-        mobileNav.querySelectorAll("[aria-current='page']"),
-      );
+      const mobileCurrentLinks = Array.from(mobileNav.querySelectorAll("[aria-current='page']"));
       expect(mobileCurrentLinks).toHaveLength(1);
       expect(mobileCurrentLinks[0]).toHaveAttribute("href", "/invest");
     });
@@ -318,12 +314,10 @@ describe("NavMenu memoization", () => {
 
       for (let i = 0; i < 3; i++) {
         await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
-        expect(
-          screen.getByRole("navigation", { name: /mobile navigation/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole("navigation", { name: /mobile navigation/i })).toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: /close navigation menu/i }));
         expect(
-          screen.queryByRole("navigation", { name: /mobile navigation/i }),
+          screen.queryByRole("navigation", { name: /mobile navigation/i })
         ).not.toBeInTheDocument();
       }
     });
@@ -373,7 +367,7 @@ describe("NavMenu memoization", () => {
       expect(nav.querySelector("[aria-current='page']")).toHaveAttribute("href", "/invoices");
       // Mobile menu should not be open after a pathname change
       expect(
-        screen.queryByRole("navigation", { name: /mobile navigation/i }),
+        screen.queryByRole("navigation", { name: /mobile navigation/i })
       ).not.toBeInTheDocument();
     });
 
@@ -396,7 +390,7 @@ describe("NavMenu memoization", () => {
 
       // Menu should have closed (openPathname no longer matches new pathname)
       expect(
-        screen.queryByRole("navigation", { name: /mobile navigation/i }),
+        screen.queryByRole("navigation", { name: /mobile navigation/i })
       ).not.toBeInTheDocument();
 
       // Re-open; now both navs should show /invest as active

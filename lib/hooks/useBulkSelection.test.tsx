@@ -111,10 +111,9 @@ describe("useBulkSelection", () => {
   });
 
   it("auto-prunes selection when an item id disappears between renders", () => {
-    const { result, rerender } = renderHook(
-      ({ items }) => useBulkSelection(items),
-      { initialProps: { items: INVOICES } }
-    );
+    const { result, rerender } = renderHook(({ items }) => useBulkSelection(items), {
+      initialProps: { items: INVOICES },
+    });
     act(() => result.current.selectAll());
     expect(result.current.selectedCount).toBe(3);
 
@@ -145,13 +144,7 @@ describe("useBulkSelection", () => {
   });
 
   it("skips entries without a string id", () => {
-    const bad = [
-      { id: "ok" },
-      { id: "" },
-      { id: null },
-      { issuer: "no id" },
-      null,
-    ];
+    const bad = [{ id: "ok" }, { id: "" }, { id: null }, { issuer: "no id" }, null];
     const { result } = renderHook(({ items }) => useBulkSelection(items), {
       initialProps: { items: bad },
     });

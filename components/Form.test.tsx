@@ -13,9 +13,7 @@ describe("Form Component", () => {
   });
 
   it("applies default classes and additional className", () => {
-    const { container } = render(
-      <Form onSubmit={() => {}} className="custom-class" />
-    );
+    const { container } = render(<Form onSubmit={() => {}} className="custom-class" />);
     const formElement = container.querySelector("form");
     expect(formElement).toHaveClass("rounded-xl", "border", "bg-slate-900/50", "custom-class");
   });

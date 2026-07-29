@@ -29,7 +29,7 @@ export default function WatchlistSection() {
     <ErrorBoundary FallbackComponent={WatchlistSectionFallback}>
       <section className="mb-12">
         <h2 className="text-xl font-bold text-slate-100 mb-4">Your Watchlists</h2>
-        
+
         {/* Watchlist creation form */}
         <div className="mb-8 max-w-md">
           <WatchlistInput onSubmit={handleCreateWatchlist} />
@@ -38,7 +38,7 @@ export default function WatchlistSection() {
         {/* Watchlists display */}
         {watchlists.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
-            You don't have any watchlists yet. Create one above to start shortlisting invoices.
+            You don&apos;t have any watchlists yet. Create one above to start shortlisting invoices.
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -55,7 +55,7 @@ export default function WatchlistSection() {
                   </button>
                 </div>
                 <p className="text-sm text-slate-400">
-                  {wl.invoiceIds.length} {wl.invoiceIds.length === 1 ? 'invoice' : 'invoices'}
+                  {wl.invoiceIds.length} {wl.invoiceIds.length === 1 ? "invoice" : "invoices"}
                 </p>
               </div>
             ))}

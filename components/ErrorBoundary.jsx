@@ -30,9 +30,12 @@ export default class ErrorBoundary extends React.Component {
   }
 
   handleRetry = () => {
-    this.setState((s) => ({ hasError: false, error: null, errorInfo: null, instanceId: s.instanceId + 1 }), () => {
-      if (typeof this.props.onRetry === "function") this.props.onRetry();
-    });
+    this.setState(
+      (s) => ({ hasError: false, error: null, errorInfo: null, instanceId: s.instanceId + 1 }),
+      () => {
+        if (typeof this.props.onRetry === "function") this.props.onRetry();
+      }
+    );
   };
 
   componentDidUpdate(_, prevState) {
@@ -53,9 +56,17 @@ export default class ErrorBoundary extends React.Component {
 
     if (hasError) {
       return (
-        <div role="alert" aria-live="assertive" className="error-boundary-fallback" data-testid="error-boundary-fallback">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="error-boundary-fallback"
+          data-testid="error-boundary-fallback"
+        >
           <h2>{fallbackTitle || "Something went wrong"}</h2>
-          <p>{fallbackDescription || "We encountered an unexpected error while rendering this section. You can try again."}</p>
+          <p>
+            {fallbackDescription ||
+              "We encountered an unexpected error while rendering this section. You can try again."}
+          </p>
           <div>
             <button
               ref={this.retryButtonRef}

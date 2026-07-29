@@ -56,10 +56,8 @@ export function MarketplaceProvider({ children, invoices, setInvoices }) {
           // Flip status immediately.
           setInvoices((prev) =>
             Array.isArray(prev)
-              ? prev.map((inv) =>
-                  inv.id === id ? { ...inv, status: "Funded" } : inv,
-                )
-              : prev,
+              ? prev.map((inv) => (inv.id === id ? { ...inv, status: "Funded" } : inv))
+              : prev
           );
 
           return snapshot;
@@ -67,14 +65,12 @@ export function MarketplaceProvider({ children, invoices, setInvoices }) {
         rollback: (id, snapshot) => {
           if (!snapshot) return;
           setInvoices((prev) =>
-            Array.isArray(prev)
-              ? prev.map((inv) => (inv.id === id ? snapshot : inv))
-              : prev,
+            Array.isArray(prev) ? prev.map((inv) => (inv.id === id ? snapshot : inv)) : prev
           );
         },
       });
     },
-    [fund, invoices, setInvoices],
+    [fund, invoices, setInvoices]
   );
 
   const value = useMemo(
@@ -84,14 +80,10 @@ export function MarketplaceProvider({ children, invoices, setInvoices }) {
       pendingIds,
       fundInvoice,
     }),
-    [invoices, setInvoices, pendingIds, fundInvoice],
+    [invoices, setInvoices, pendingIds, fundInvoice]
   );
 
-  return (
-    <MarketplaceContext.Provider value={value}>
-      {children}
-    </MarketplaceContext.Provider>
-  );
+  return <MarketplaceContext.Provider value={value}>{children}</MarketplaceContext.Provider>;
 }
 
 /**

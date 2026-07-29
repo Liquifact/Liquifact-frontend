@@ -92,10 +92,7 @@ describe("BulkActionsToolbar", () => {
   it("renders the selectAll aria-label with replacements", () => {
     renderToolbar({ selectedCount: 5, visibleCount: 12 });
     const cb = screen.getByTestId("bulk-select-all");
-    expect(cb).toHaveAttribute(
-      "aria-label",
-      "Select all invoices. Currently 5 of 12 selected."
-    );
+    expect(cb).toHaveAttribute("aria-label", "Select all invoices. Currently 5 of 12 selected.");
   });
 
   it("calls onToggleSelectAll when the select-all checkbox is clicked", () => {
@@ -164,10 +161,7 @@ describe("BulkActionsToolbar", () => {
   it("renders the delete button aria label with count replacement", () => {
     renderToolbar({ selectedCount: 7 });
     const btn = screen.getByTestId("bulk-delete");
-    expect(btn).toHaveAttribute(
-      "aria-label",
-      "Delete 7 selected invoices after confirmation"
-    );
+    expect(btn).toHaveAttribute("aria-label", "Delete 7 selected invoices after confirmation");
     expect(btn).toHaveTextContent("Delete");
   });
 

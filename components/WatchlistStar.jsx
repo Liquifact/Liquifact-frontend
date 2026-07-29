@@ -8,16 +8,19 @@ export default function WatchlistStar({ invoiceId }) {
 
   // Find if it's in any watchlist
   const isStarred = useMemo(() => {
-    return watchlists.some(wl => wl.invoiceIds.includes(invoiceId));
+    return watchlists.some((wl) => wl.invoiceIds.includes(invoiceId));
   }, [watchlists, invoiceId]);
 
-  const handleToggle = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Toggle in the first watchlist by default (null will map to the first id)
-    toggleInvoice(null, invoiceId);
-  }, [invoiceId, toggleInvoice]);
+  const handleToggle = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Toggle in the first watchlist by default (null will map to the first id)
+      toggleInvoice(null, invoiceId);
+    },
+    [invoiceId, toggleInvoice]
+  );
 
   return (
     <button

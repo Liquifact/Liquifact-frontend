@@ -69,15 +69,14 @@ describe("normalizeSettings", () => {
   });
 
   it("drops non-string fields", () => {
-    expect(normalizeSettings({ displayName: 42, email: null })).toEqual(
-      DEFAULT_SETTINGS
-    );
+    expect(normalizeSettings({ displayName: 42, email: null })).toEqual(DEFAULT_SETTINGS);
   });
 
   it("returns full shape when given populated values", () => {
-    expect(
-      normalizeSettings({ displayName: "Sam", email: "sam@x.com" })
-    ).toEqual({ displayName: "Sam", email: "sam@x.com" });
+    expect(normalizeSettings({ displayName: "Sam", email: "sam@x.com" })).toEqual({
+      displayName: "Sam",
+      email: "sam@x.com",
+    });
   });
 });
 
@@ -183,9 +182,7 @@ describe("SettingsPage", () => {
     await user.click(screen.getByRole("button", { name: /save email/i }));
 
     await waitFor(() =>
-      expect(screen.getByTestId("settings-email-display")).toHaveTextContent(
-        "ops@liquifact.com"
-      )
+      expect(screen.getByTestId("settings-email-display")).toHaveTextContent("ops@liquifact.com")
     );
     const stored = JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) || "{}");
     expect(stored.email).toBe("ops@liquifact.com");
@@ -200,9 +197,7 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
 
     await waitFor(() =>
-      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent(
-        "Stored"
-      )
+      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Stored")
     );
     expect(screen.getByTestId("settings-email-display")).toHaveTextContent("stored@x.com");
     // Click edit on the stored name to ensure editing hydrates correctly.
@@ -242,9 +237,7 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
 
     await waitFor(() =>
-      expect(screen.getByTestId("settings-email-display")).toHaveTextContent(
-        "old@liquifact.com"
-      )
+      expect(screen.getByTestId("settings-email-display")).toHaveTextContent("old@liquifact.com")
     );
 
     await user.click(screen.getByRole("button", { name: /edit email/i }));
@@ -282,9 +275,7 @@ describe("SettingsPage", () => {
     await user.type(screen.getByTestId("settings-display-name-input"), "Acme Treasury");
     await user.click(screen.getByRole("button", { name: /save display name/i }));
     await waitFor(() =>
-      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent(
-        "Acme Treasury"
-      )
+      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Acme Treasury")
     );
 
     // Email
@@ -292,9 +283,7 @@ describe("SettingsPage", () => {
     await user.type(screen.getByTestId("settings-email-input"), "treasury@acme.com");
     await user.click(screen.getByRole("button", { name: /save email/i }));
     await waitFor(() =>
-      expect(screen.getByTestId("settings-email-display")).toHaveTextContent(
-        "treasury@acme.com"
-      )
+      expect(screen.getByTestId("settings-email-display")).toHaveTextContent("treasury@acme.com")
     );
 
     const stored = JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) ?? "{}");
@@ -313,9 +302,7 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
 
     await waitFor(() =>
-      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent(
-        "Initial"
-      )
+      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Initial")
     );
 
     fireEvent.click(screen.getByTestId("settings-display-name-edit"));
@@ -329,9 +316,7 @@ describe("SettingsPage", () => {
     });
 
     await waitFor(() =>
-      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent(
-        "Updated"
-      )
+      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Updated")
     );
   });
 });

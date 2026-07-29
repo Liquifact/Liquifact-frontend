@@ -6,6 +6,7 @@ import CopyButton from "./CopyButton";
 import { formatCurrency, formatPercent } from "../lib/format/currency";
 import { formatInvoiceDate as formatDate } from "../lib/format/date";
 import { copy } from "@/app/copy/en";
+import { useFormAnnouncer } from "@/lib/hooks/useFormAnnouncer";
 
 /**
  * InvoiceDetail
@@ -27,6 +28,7 @@ export default function InvoiceDetail({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [announcement, announce] = useFormAnnouncer(300);
 
   const fetchInvoice = async (isRetry = false) => {
     try {
@@ -51,6 +53,20 @@ export default function InvoiceDetail({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Announce invoice detail changes (issuer + status) via polite live region.
+  // Debounce prevents spamming on rapid updates; no announcement fires on mount.
+  useEffect(() => {
+    if (invoice) {
+      announce(`Loaded invoice from ${invoice.issuer}, status: ${invoice.status}`);
+    }
+  }, [invoice, announce]);
+
+  useEffect(() => {
+    if (error) {
+      announce(`Failed to load invoice: ${error.message}`);
+    }
+  }, [error, announce]);
+
   if (loading) {
     return (
       <div
@@ -70,6 +86,16 @@ export default function InvoiceDetail({
 
   return (
     <div className="p-6 bg-white rounded shadow invoice-detail-container">
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="invoice-detail-announcement"
+        className="sr-only"
+      >
+        {announcement}
+      </div>
+
       {error && (
         <ErrorBanner
           title="Could not load invoice details"
@@ -122,9 +148,7 @@ export default function InvoiceDetail({
             <div>
               <dt className="text-sm font-medium text-gray-500">Estimated yield</dt>
               <dd className="mt-1 text-lg font-semibold text-gray-900">
-                {invoice.yieldValue != null
-                  ? formatPercent(invoice.yieldValue)
-                  : invoice.yield}
+                {invoice.yieldValue != null ? formatPercent(invoice.yieldValue) : invoice.yield}
               </dd>
             </div>
 
@@ -153,5 +177,3 @@ export default function InvoiceDetail({
     </div>
   );
 }
-
-

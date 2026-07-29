@@ -54,9 +54,7 @@ describe("InvoicesLoading", () => {
 
   it("contains at least the sr-only loading announcement from UploadSkeleton", () => {
     render(<InvoicesLoading />);
-    expect(
-      screen.getByText(/upload form loading, please wait/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/upload form loading, please wait/i)).toBeInTheDocument();
   });
 
   it("has no axe accessibility violations", async () => {

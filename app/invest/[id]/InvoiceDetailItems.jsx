@@ -116,7 +116,6 @@ export default function InvoiceDetailItems({
   onBulkExport = defaultDetailBulkExport,
   toast: toastApi = null,
 }) {
-
   const [items, setItems] = useState(() =>
     Array.isArray(initialItems) ? initialItems.slice() : []
   );
@@ -240,9 +239,7 @@ export default function InvoiceDetailItems({
               data-selected={checked ? "true" : "false"}
               className={[
                 "flex items-center gap-3 rounded-lg border p-3 transition-colors",
-                checked
-                  ? "border-cyan-700/60 bg-cyan-950/30"
-                  : "border-slate-800 bg-slate-950/40",
+                checked ? "border-cyan-700/60 bg-cyan-950/30" : "border-slate-800 bg-slate-950/40",
               ].join(" ")}
             >
               <label className="inline-flex items-center gap-3 cursor-pointer min-w-0 flex-1">

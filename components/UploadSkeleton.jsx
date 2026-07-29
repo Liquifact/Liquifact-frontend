@@ -25,11 +25,7 @@
  */
 export default function UploadSkeleton({ isBusy = true }) {
   return (
-    <div
-      data-testid="upload-skeleton"
-      aria-busy={isBusy ? "true" : "false"}
-      className="w-full"
-    >
+    <div data-testid="upload-skeleton" aria-busy={isBusy ? "true" : "false"} className="w-full">
       {/* Decorative skeleton shapes — hidden from screen readers */}
       <div aria-hidden="true" className="space-y-4">
         {/* ---- Requirements notice (mirrors FileConstraintNotice) ---- */}

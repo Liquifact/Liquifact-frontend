@@ -16,6 +16,10 @@ LiquiFact Frontend is committed to meeting **WCAG 2.1 AA** accessibility sta
 
 The `UploadZone` component (`components/UploadZone.jsx`) implements a comprehensive accessibility contract covering drag-and-drop, file validation, and upload progress. Full documentation is available in [docs/upload-a11y.md](upload-a11y.md).
 
+### Invoice Detail Accessibility
+
+The invoice-detail components (`InvoiceDetailClient`, `InvoiceDetailItems`, `InvoiceDetailExport`, and related shared components) implement comprehensive accessibility contracts covering inline editing, bulk selection, export, and confirmation dialogs. Full documentation is available in [docs/invoice-detail-a11y.md](invoice-detail-a11y.md).
+
 ### Focus‑Ring Audit
 
 A comprehensive focus‑ring audit was performed across all interactive components to ensure
