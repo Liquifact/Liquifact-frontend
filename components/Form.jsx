@@ -1,5 +1,4 @@
-import React, { useId } from "react";
-import { toErrorList } from "@/lib/validation/forms";
+import React from "react";
 
 /**
  * A generic form wrapper component that applies consistent styling
@@ -17,29 +16,7 @@ import { toErrorList } from "@/lib/validation/forms";
  * @param {Object|null} [props.errors] - Map of field name to error message
  * @param {string} [props.errorSummaryTitle] - Heading for the error summary
  */
-export default function Form({
-  onSubmit,
-  children,
-  className = "",
-  noValidate = true,
-  errors = null,
-  errorSummaryTitle = "Please fix the following before continuing:",
-  ...props
-}) {
-  const summaryId = useId();
-  const errorList = toErrorList(errors);
-  const hasErrors = errorList.length > 0;
-
-  const handleSubmit = (event) => {
-    // Block submission while the form is known to be invalid. The server-side
-    // checks still run; this only avoids a guaranteed-failing round trip.
-    if (hasErrors) {
-      event.preventDefault();
-      return;
-    }
-    if (onSubmit) onSubmit(event);
-  };
-
+export default function Form({ onSubmit, children, className = "", noValidate = true, ...props }) {
   return (
     <form
       onSubmit={handleSubmit}
