@@ -130,7 +130,7 @@ export default function CopyButton({
       </button>
 
       {/* Polite live region so assistive technology announces the confirmation */}
-      <span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+      <span aria-live="polite" aria-atomic="true" className="sr-only">
         {copied ? "Copied!" : ""}
       </span>
     </span>

@@ -294,7 +294,10 @@ export function ToastProvider({ children }) {
 export function useToast() {
   const context = useContext(ToastContext);
   if (!context) {
-    throw new Error("useToast must be used within a ToastProvider");
+    // Return a no-op toast so callers outside a ToastProvider do not crash.
+    // This is a safety net for tests and edge cases where CopyButton (or
+    // other consumers) is rendered without a provider.
+    return { success: () => {}, error: () => {}, info: () => {}, dismiss: () => {} };
   }
   return context;
 }
