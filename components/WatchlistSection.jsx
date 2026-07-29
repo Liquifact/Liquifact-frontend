@@ -1,6 +1,6 @@
 "use client";
 
-import { ErrorBoundary } from "react-error-boundary";
+import ErrorBoundary from "./ErrorBoundary";
 import { copy } from "@/app/copy/en";
 import ErrorBanner from "./ErrorBanner";
 import WatchlistInput from "./WatchlistInput";
