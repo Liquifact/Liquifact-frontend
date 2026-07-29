@@ -50,6 +50,97 @@ function loadMockInvoices() {
   return Promise.resolve(MOCK_INVOICES);
 }
 
+/**
+ * Writes `text` to the clipboard. Falls back to the legacy execCommand API
+ * for browsers that do not expose navigator.clipboard.
+ * @param {string} text
+ */
+async function copyToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  // execCommand fallback for environments without the Clipboard API.
+  const el = document.createElement("textarea");
+  el.value = text;
+  el.setAttribute("readonly", "");
+  el.style.cssText = "position:fixed;left:-9999px;top:-9999px";
+  document.body.appendChild(el);
+  el.select();
+  document.execCommand("copy");
+  document.body.removeChild(el);
+}
+
+/**
+ * UploadIdCopyButton
+ *
+ * Renders the upload identifier as monospace text with an adjacent copy
+ * button. Clicking copies the id via the Clipboard API (with execCommand
+ * fallback) and shows a success or error toast.
+ *
+ * @param {{ id: string }} props
+ */
+function UploadIdCopyButton({ id }) {
+  const toast = useToast();
+  const [copying, setCopying] = useState(false);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    return () => clearTimeout(timerRef.current);
+  }, []);
+
+  const handleCopy = useCallback(async () => {
+    if (copying) return;
+    setCopying(true);
+    try {
+      await copyToClipboard(id);
+      toast.success(
+        copy.invoices.copyIdSuccessMsg,
+        copy.invoices.copyIdSuccessTitle
+      );
+    } catch {
+      toast.error(
+        copy.invoices.copyIdErrorMsg,
+        copy.invoices.copyIdErrorTitle
+      );
+    } finally {
+      timerRef.current = setTimeout(() => setCopying(false), 1500);
+    }
+  }, [id, copying, toast]);
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <span
+        className="font-mono text-xs text-slate-300 break-all"
+        title={id}
+        aria-label={`Upload identifier: ${id}`}
+      >
+        {id}
+      </span>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label={copy.invoices.copyIdAriaLabel.replace("{id}", id)}
+        title={copying ? "Copied!" : copy.invoices.copyIdButton}
+        className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded text-slate-500 hover:text-slate-300 focus-ring transition-colors"
+      >
+        {copying ? (
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        )}
+        <span className="sr-only">{copying ? "Copied!" : copy.invoices.copyIdButton}</span>
+      </button>
+    </div>
+  );
+}
+
+
 function getInvoiceAnnouncement(items) {
   if (!Array.isArray(items)) {
     return "";
@@ -147,7 +238,9 @@ export const InvoiceListItem = memo(function InvoiceListItem({ invoice }) {
         </div>
         <div>
           <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Reference</dt>
-          <dd className="mt-2 text-sm text-slate-200">{invoice.id}</dd>
+          <dd className="mt-2 text-sm text-slate-200">
+            <UploadIdCopyButton id={invoice.id} />
+          </dd>
         </div>
       </dl>
     </li>
@@ -654,7 +747,9 @@ export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisti
                         <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">
                           Reference
                         </dt>
-                        <dd className="mt-2 text-sm text-slate-200">{invoice.id}</dd>
+                        <dd className="mt-2 text-sm text-slate-200">
+                          <UploadIdCopyButton id={invoice.id} />
+                        </dd>
                       </div>
                     </dl>
                   </div>

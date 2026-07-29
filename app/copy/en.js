@@ -121,6 +121,12 @@
  * @property {string} invoices.announceEditStarted
  * @property {string} invoices.announceEditSuccess
  * @property {string} invoices.announceEditCancelled
+ * @property {string} invoices.copyIdButton
+ * @property {string} invoices.copyIdAriaLabel
+ * @property {string} invoices.copyIdSuccessTitle
+ * @property {string} invoices.copyIdSuccessMsg
+ * @property {string} invoices.copyIdErrorTitle
+ * @property {string} invoices.copyIdErrorMsg
  * @property {Object} layout - Layout copy
  * @property {string} layout.backToHome
  * @property {string} layout.connectWallet
@@ -478,6 +484,12 @@ export const copy = {
     announceEditStarted: "Editing invoice {id}.",
     announceEditSuccess: "Invoice {id} updated successfully.",
     announceEditCancelled: "Editing cancelled for invoice {id}.",
+    copyIdButton: "Copy ID",
+    copyIdAriaLabel: "Copy upload identifier {id}",
+    copyIdSuccessTitle: "ID copied",
+    copyIdSuccessMsg: "Upload identifier copied to clipboard.",
+    copyIdErrorTitle: "Copy failed",
+    copyIdErrorMsg: "Could not copy the upload identifier to clipboard.",
   },
   settings: {
     title: "Settings",
