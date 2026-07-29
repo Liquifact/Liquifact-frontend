@@ -2,6 +2,11 @@ import "@testing-library/jest-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import InvoiceList from "./InvoiceList";
+jest.mock("../lib/exportInvoices", () => ({
+  downloadInvoices: jest.fn(),
+}));
+import { downloadInvoices } from "../lib/exportInvoices";
+
 
 const mockToast = { success: jest.fn(), error: jest.fn(), info: jest.fn() };
 jest.mock("./ToastProvider", () => ({
@@ -557,5 +562,59 @@ describe("InvoiceList - Bulk selection", () => {
       await waitFor(() => expect(screen.getByText("New Upload.pdf")).toBeInTheDocument());
       expect(screen.getByText("Pending tokenization")).toBeInTheDocument();
     });
+  });
+});
+
+describe("InvoiceList - Export", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("does not render export buttons while loading or on empty view", async () => {
+    render(<InvoiceList loadInvoices={jest.fn().mockResolvedValue([])} />);
+    await waitFor(() => expect(screen.queryByText(/loading/i)).not.toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: /export csv/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /export json/i })).not.toBeInTheDocument();
+  });
+
+  it("exports the currently rendered invoices as CSV", async () => {
+    const invoices = createMockInvoices(2);
+    render(<InvoiceList loadInvoices={jest.fn().mockResolvedValue(invoices)} />);
+    await waitForLoad();
+
+    fireEvent.click(screen.getByRole("button", { name: /export csv/i }));
+
+    expect(downloadInvoices).toHaveBeenCalledTimes(1);
+    expect(downloadInvoices).toHaveBeenCalledWith(invoices, "csv");
+  });
+
+  it("exports the currently rendered invoices as JSON", async () => {
+    const invoices = createMockInvoices(3);
+    render(<InvoiceList loadInvoices={jest.fn().mockResolvedValue(invoices)} />);
+    await waitForLoad();
+
+    fireEvent.click(screen.getByRole("button", { name: /export json/i }));
+
+    expect(downloadInvoices).toHaveBeenCalledTimes(1);
+    expect(downloadInvoices).toHaveBeenCalledWith(invoices, "json");
+  });
+
+  it("export includes optimistic invoices merged into the current view", async () => {
+    const loaded = createMockInvoices(1);
+    render(
+      <InvoiceList
+        loadInvoices={jest.fn().mockResolvedValue(loaded)}
+        optimisticInvoices={[
+          { id: "upload-1", issuer: "New Co", amount: "Pending", currency: "USD", dueDate: "Pending", yield: "Pending", status: "Pending tokenization" },
+        ]}
+      />
+    );
+    await waitFor(() => expect(screen.getByText("New Co")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /export csv/i }));
+
+    const exported = downloadInvoices.mock.calls[0][0];
+    expect(exported.some((inv) => inv.issuer === "New Co")).toBe(true);
+    expect(exported.some((inv) => inv.issuer === "Company 1")).toBe(true);
   });
 });
