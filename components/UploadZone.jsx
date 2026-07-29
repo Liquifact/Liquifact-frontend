@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { env } from "../lib/config/env";
 import { copy } from "../app/copy/en";
 import { validatePdfFile, sanitizeFilename } from "../lib/validation/pdf";
+import { announce } from "../lib/a11y/liveRegion";
 // `ProgressBar` is reserved for a future determinate-progress UI driven by
 // the parent; the current `status === "uploading"` block renders its own
 // accessibility-friendly progressbar so we don't import it here yet.
@@ -197,6 +198,7 @@ function UploadZone({ onUploadSuccess, progress }) {
         await new Promise((r) => setTimeout(r, tokenizationDelay));
       }
       setStatus("success");
+      announce(copy.uploadZone.statusSuccess);
       if (typeof onUploadSuccess === "function") {
         onUploadSuccess({
           id: `upload-${Date.now()}-${sanitizeFilename(file.name)}`,
@@ -209,7 +211,9 @@ function UploadZone({ onUploadSuccess, progress }) {
         });
       }
     } catch (err) {
-      setError(err.message || copy.uploadZone.errorUploadFailed);
+      const errorMsg = err.message || copy.uploadZone.errorUploadFailed;
+      setError(errorMsg);
+      announce(errorMsg);
       setStatus("idle");
     }
   }
