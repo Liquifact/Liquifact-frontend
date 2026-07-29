@@ -126,6 +126,14 @@ describe("Watchlist Component — States and Interactions", () => {
       expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
     });
 
+    it("passes axe accessibility checks in the empty state", async () => {
+      const { container } = render(<Watchlist items={[]} loading={false} />);
+
+      const results = await axe(container);
+
+      expect(results).toHaveNoViolations();
+    });
+
     it("supports keyboard navigation to the CTA link in empty state", async () => {
       const user = userEvent.setup();
       render(<Watchlist items={[]} />);
@@ -173,6 +181,19 @@ describe("Watchlist Component — States and Interactions", () => {
       expect(screen.queryByText("Your watchlist is empty")).not.toBeInTheDocument();
       expect(screen.queryByText("Acme Corp")).not.toBeInTheDocument();
       expect(screen.queryByRole("list", { name: "Watchlist items" })).not.toBeInTheDocument();
+    });
+
+    it("passes axe accessibility checks in the error state", async () => {
+      const { container } = render(
+        <Watchlist
+          error="Failed to fetch watchlist from server"
+          onRetry={jest.fn()}
+        />
+      );
+
+      const results = await axe(container);
+
+      expect(results).toHaveNoViolations();
     });
   });
 
