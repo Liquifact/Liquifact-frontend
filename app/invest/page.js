@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import ErrorBanner from "@/components/ErrorBanner";
@@ -26,10 +26,10 @@ import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
 import { exportAsCSV, exportAsJSON } from "@/utils/export";
-import useBulkSelection from "@/lib/hooks/useBulkSelection";
+import Button from "@/components/Button";
 import DensityToggle from "@/components/DensityToggle";
 import { useDensity } from "@/lib/hooks/useDensity";
-import { useToast } from "@/components/ToastProvider";
+import { useToast, ToastContext } from "@/components/ToastProvider";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
@@ -284,12 +284,7 @@ export function InvestMarketplace({
   onBulkDelete = async () => {},
   toast: propToast,
 }) {
-  let router;
-  try {
-    router = useRouter();
-  } catch {
-    router = null;
-  }
+  const router = useRouter();
   const searchParams = useSearchParams();
   const searchParamsValue = searchParams ?? new URLSearchParams();
   const searchParamsString = searchParamsValue.toString();
@@ -297,22 +292,16 @@ export function InvestMarketplace({
   const initialUrlState = parseFiltersFromSearchParams(searchParamsValue, DEFAULT_FILTERS);
 
   const { watchlists } = useWatchlist();
+  const [density, setDensity] = useDensity();
   // Toast is optional — bulk handlers no-op toast when provider is absent (unit tests).
-  const toastApi = null;
-
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const [pendingDeleteIds, setPendingDeleteIds] = useState(null);
   const [bulkRunning, setBulkRunning] = useState({ export: false, delete: false });
-  let contextToast;
-  try {
-    contextToast = useToast();
-  } catch {
-    contextToast = null;
-  }
+  const contextToast = useContext(ToastContext);
   const toastApi = propToast || contextToast;
-  const bulkLabels = copy.invest.bulkActions ?? {};
+  const bulkLabels = useMemo(() => copy.invest.bulkActions ?? {}, []);
   // Filter state
   const [searchQuery, setSearchQuery] = useState(initialUrlState.searchQuery);
   const [loadError, setLoadError] = useState("");
@@ -711,13 +700,31 @@ export function InvestMarketplace({
         </h1>
         <p className="text-slate-400 mb-8">{copy.invest.subtext}</p>
 
-        {/* Search input */}
-        <div className="mb-4">
-          <InvoiceSearch
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label={copy.invest.searchPlaceholder}
-          />
+        {/* Search input and Export actions */}
+        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex-1 max-w-sm">
+            <InvoiceSearch
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label={copy.invest.searchPlaceholder}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => exportAsCSV(filteredInvoices.map(toExportRecord), `marketplace-${Date.now()}.csv`)}
+              aria-label="Export marketplace view as CSV"
+            >
+              Export CSV
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => exportAsJSON(filteredInvoices.map(toExportRecord), `marketplace-${Date.now()}.json`)}
+              aria-label="Export marketplace view as JSON"
+            >
+              Export JSON
+            </Button>
+          </div>
         </div>
 
         {/* Status legend filter chip row */}

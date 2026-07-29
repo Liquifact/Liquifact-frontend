@@ -31,6 +31,7 @@ export function SettingsContent({ loadData, children, ...props }) {
   }, [loadData]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
   }, [fetchData, retryCount]);
 

@@ -319,7 +319,6 @@ describe("WalletProvider hydrating flag", () => {
   // We import useWallet directly inside the component to avoid a top-level
   // circular require issue in tests.
   function HydratingProbe() {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { useWallet } = require("./WalletProvider");
     const { hydrating, state } = useWallet();
     return (
