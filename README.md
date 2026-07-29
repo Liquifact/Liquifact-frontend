@@ -58,6 +58,12 @@ For a step-by-step diagram of how `/invest/[id]` fetches, transforms, and
 renders an invoice (including the RSC/client boundary split), see the
 [Invoice-detail data flow](docs/invoice-detail-flow.md).
 
+For a visual diagram of how upload loads and renders data (fetch → transform → render),
+see the [Upload data flow](docs/upload-data-flow.md).
+
+For a visual diagram of how settings loads, edits, and persists data (fetch → transform → render),
+see the [Settings data flow](docs/settings-data-flow.md).
+
 ---
 
 ## API Integration
