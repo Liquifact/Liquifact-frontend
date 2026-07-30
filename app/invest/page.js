@@ -15,8 +15,13 @@ import InvoiceFilters, {
 import BulkActionsToolbar from "@/components/BulkActionsToolbar";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import NavMenu from "@/components/NavMenu";
-import WatchlistSection from "@/components/WatchlistSection";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import MarketplaceErrorBoundary from "@/components/MarketplaceErrorBoundary";
+import { useSettingsAnnouncer } from "@/components/useSettingsAnnouncer";
 import { useWatchlist } from "@/lib/hooks/useWatchlist";
+import useBulkSelection from "@/lib/hooks/useBulkSelection";
+import { INVOICE_STATUSES } from "@/lib/types/invoice";
+import { reportError } from "@/lib/observability/reportError";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
@@ -283,8 +288,14 @@ export function InvestMarketplace({
   
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const [pendingDeleteIds, setPendingDeleteIds] = useState(null);
+  const [bulkRunning, setBulkRunning] = useState({ export: false, delete: false });
+  const contextToast = useContext(ToastContext);
+  const toastApi = propToast || contextToast;
+  const bulkLabels = useMemo(() => copy.invest.bulkActions ?? {}, []);
   // Filter state
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialUrlState.searchQuery);
   const [loadError, setLoadError] = useState("");
   const [filters, setFilters] = useState(initialUrlState.filters);
   const [debouncedSearch, setDebouncedSearch] = useState(initialUrlState.searchQuery);
@@ -372,15 +383,18 @@ export function InvestMarketplace({
   }, [setInvoices, setLoadError, setRetryKey]);
 
   /** Toggle a status chip: add if absent, remove if present. */
-  const handleStatusToggle = useCallback((status) => {
-    setFilters((prev) => {
-      const current = Array.isArray(prev.statuses) ? prev.statuses : [];
-      const next = current.includes(status)
-        ? current.filter((s) => s !== status)
-        : [...current, status];
-      return { ...prev, statuses: next };
-    });
-  }, [setFilters]);
+  const handleStatusToggle = useCallback(
+    (status) => {
+      setFilters((prev) => {
+        const current = Array.isArray(prev.statuses) ? prev.statuses : [];
+        const next = current.includes(status)
+          ? current.filter((s) => s !== status)
+          : [...current, status];
+        return { ...prev, statuses: next };
+      });
+    },
+    [setFilters]
+  );
 
   /** Clear all status chips. */
   const handleClearStatuses = useCallback(() => {
@@ -410,7 +424,7 @@ export function InvestMarketplace({
     clearTimeout(urlUpdateTimerRef.current);
     urlUpdateTimerRef.current = setTimeout(() => {
       committedSearchRef.current = next;
-      router.replace(`?${next}`, { scroll: false });
+      router?.replace(`?${next}`, { scroll: false });
     }, URL_SYNC_DEBOUNCE_MS);
     return () => clearTimeout(urlUpdateTimerRef.current);
   }, [filters, debouncedSearch, router]);
@@ -458,7 +472,7 @@ export function InvestMarketplace({
       list = list.filter((inv) => filters.statuses.includes(inv.status));
     }
     if (filters.watchlistOnly) {
-      const allStarredIds = new Set(watchlists.flatMap(wl => wl.invoiceIds));
+      const allStarredIds = new Set(watchlists.flatMap((wl) => wl.invoiceIds));
       list = list.filter((inv) => allStarredIds.has(inv.id));
     }
     return applySortToList(list, filters);
@@ -586,52 +600,58 @@ export function InvestMarketplace({
     }
   }, [allState, clearSelection, selectAllInvoices]);
 
-  const handleRequestDelete = useCallback(() => {
+  const handleRequestDelete = () => {
     // Snapshot the selection so the user can't race the dialog by tapping a
     // row between opening and confirming. The hook will also prune stale
     // ids on the next render, which keeps confirm/cancel honest.
     setPendingDeleteIds(new Set(selectedIds));
-  }, [selectedIds]);
+  };
 
-  const handleCancelDelete = useCallback(() => {
+  const handleCancelDelete = () => {
     setPendingDeleteIds(null);
-  }, []);
+  };
 
-  const handleConfirmDelete = useCallback(async () => {
+  const handleConfirmDelete = async () => {
     const idsToDelete = pendingDeleteIds;
     if (!idsToDelete || idsToDelete.size === 0) {
       setPendingDeleteIds(null);
       return;
     }
     setBulkRunning((prev) => ({ ...prev, delete: true }));
+
+    // Snapshot the current list for rollback
+    const snapshot = invoices;
+
+    // Optimistically remove from the visible list so the UI stays in sync
+    // with the (mock) backend. The selection hook will prune selection
+    // immediately because the row ids are no longer in the list.
+    setInvoices((currentList) => {
+      if (!Array.isArray(currentList)) return currentList;
+      return currentList.filter((inv) => !idsToDelete.has(inv.id));
+    });
+
     try {
       await onBulkDelete(idsToDelete);
 
-      // Optimistically remove from the visible list so the UI stays in sync
-      // with the (mock) backend. The selection hook will prune selection
-      // immediately because the row ids are no longer in the list.
-      setInvoices((currentList) => {
-        if (!Array.isArray(currentList)) return currentList;
-        return currentList.filter((inv) => !idsToDelete.has(inv.id));
-      });
-
       const plural = idsToDelete.size === 1 ? "" : "s";
-      const successMsg = bulkLabels.deleteSuccessMsg
+      const successMsg = (bulkLabels.deleteSuccessMsg || "Removed {count} invoice{plural}.")
         .replace("{count}", String(idsToDelete.size))
         .replace("{plural}", plural);
-      toastApi?.success(successMsg, bulkLabels.deleteSuccessTitle);
+      toastApi?.success(successMsg, bulkLabels.deleteSuccessTitle || "Invoices removed");
 
       setPendingDeleteIds(null);
     } catch {
-      toastApi?.error(bulkLabels.deleteErrorMsg, bulkLabels.deleteErrorTitle);
+      const errorMsg = (bulkLabels.deleteErrorMsg || "Failed to remove selected invoices.")
+        .replace("{count}", String(idsToDelete.size));
+      toastApi?.error(errorMsg, bulkLabels.deleteErrorTitle || "Delete failed");
     } finally {
       setBulkRunning((prev) => ({ ...prev, delete: false }));
     }
-  }, [pendingDeleteIds, onBulkDelete, bulkLabels, toastApi]);
+  };
 
   const handleExport = useCallback(() => {
     if (selectedIds.size === 0) {
-      toastApi?.info(bulkLabels.exportEmptyMsg, bulkLabels.exportSuccessTitle);
+      toastApi?.info(bulkLabels.exportEmptyMsg || "No invoices selected", bulkLabels.exportSuccessTitle || "Export");
       return;
     }
     setBulkRunning((prev) => ({ ...prev, export: true }));
@@ -642,20 +662,14 @@ export function InvestMarketplace({
       const result = onBulkExport(selectedSlice) || { count: selectedSlice.length };
       const exportCount = result.count ?? selectedSlice.length;
       const plural = exportCount === 1 ? "" : "s";
-      const msg = bulkLabels.exportSuccessMsg
+      const msg = (bulkLabels.exportSuccessMsg || "Exported {count} invoice{plural}.")
         .replace("{count}", String(exportCount))
         .replace("{plural}", plural);
-      toastApi?.success(msg, bulkLabels.exportSuccessTitle);
+      toastApi?.success(msg, bulkLabels.exportSuccessTitle || "Export complete");
     } finally {
       setBulkRunning((prev) => ({ ...prev, export: false }));
     }
-  }, [
-    selectedIds,
-    filteredInvoices,
-    onBulkExport,
-    bulkLabels,
-    toastApi,
-  ]);
+  }, [selectedIds, filteredInvoices, onBulkExport, bulkLabels, toastApi]);
 
   // const visibleInvoices = filteredInvoices.slice(0, visibleCount);
 
@@ -678,40 +692,30 @@ export function InvestMarketplace({
         </h1>
         <p className="text-slate-400 mb-8">{copy.invest.subtext}</p>
 
-        {/*
-          ACCESSIBILITY DESIGN (Issue #91):
-          - We wrap the filter group in a <fieldset> with `aria-disabled="true"` to announce the preview/disabled
-            state to screen readers while keeping all controls discoverable in the tab order (unlike native `disabled`).
-          - `aria-describedby` programmatically links the fieldset to the visible "Soon" badge, ensuring that
-            assistive technologies announce the "coming soon" status when users navigate to the filters.
-          - We use a no-op handler structure (passing empty handlers) and CSS `pointer-events-none` to prevent
-            interaction while keeping the controls focusable.
-          - `opacity-60` is applied only to the inner controls container to ensure the "Soon" label itself stays
-            fully opaque for maximum contrast (WCAG AA compliant).
-        */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-          <InvoiceSearch
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label={copy.invest.searchPlaceholder}
-          />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => exportAsCSV(filteredInvoices, "invoices_export.csv")}
-              disabled={filteredInvoices.length === 0}
-              className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        {/* Search input and Export actions */}
+        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex-1 max-w-sm">
+            <InvoiceSearch
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label={copy.invest.searchPlaceholder}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => exportAsCSV(filteredInvoices.map(toExportRecord), `marketplace-${Date.now()}.csv`)}
+              aria-label="Export marketplace view as CSV"
             >
               Export CSV
-            </button>
-            <button
-              type="button"
-              onClick={() => exportAsJSON(filteredInvoices, "invoices_export.json")}
-              disabled={filteredInvoices.length === 0}
-              className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => exportAsJSON(filteredInvoices.map(toExportRecord), `marketplace-${Date.now()}.json`)}
+              aria-label="Export marketplace view as JSON"
             >
               Export JSON
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -734,7 +738,7 @@ export function InvestMarketplace({
           >
             {copy.invest.filterSoonLabel}
           </div>
-          <div          className="flex flex-wrap gap-4 items-center pointer-events-none opacity-60">
+          <div className="flex flex-wrap gap-4 items-center pointer-events-none opacity-60">
             {/* InvoiceFilters only — search moved above */}
             <InvoiceFilters
               filters={filters}
@@ -758,18 +762,20 @@ export function InvestMarketplace({
           deleting={bulkRunning.delete}
         />
 
-        {/* Error state – retryable */}
-        {loadError ? (
-         <div role="alert" aria-live="assertive">
-          <ErrorBanner
-            title={copy.invest.errorTitle}
-            description={loadError}
-            actionLabel={copy.invest.retryAction}
-            onAction={reload}
-          />
-         </div>
-        ) : invoices === null ? (
-          <div role="status" aria-live="polite" aria-label="Loading marketplace invoices">
+        {/* Error state – retryable.
+            ErrorBanner already exposes role="alert" + aria-live="assertive".
+            Do not wrap it in another alert — nested alerts confuse AT and RTL. */}
+        <div aria-busy={invoices === null}>
+          {loadError ? (
+            <div role="alert" aria-live="assertive">
+              <ErrorBanner
+                title={copy.invest.errorTitle}
+                description={loadError}
+                actionLabel={copy.invest.retryAction}
+                onAction={reload}
+              />
+            </div>
+          ) : invoices === null ? (
             <InvoiceListSkeleton rows={3} />
           </div>
         ) : invoices.length === 0 ? (
@@ -859,22 +865,22 @@ export function InvestMarketplace({
         open={deleteDialogOpen}
         onClose={handleCancelDelete}
         onConfirm={handleConfirmDelete}
-        title={bulkLabels.deleteConfirmTitle}
+        title={bulkLabels.deleteConfirmTitle || "Delete selected invoices?"}
         description={
           pendingDeleteIds
-            ? bulkLabels.deleteConfirmBody
+            ? (bulkLabels.deleteConfirmBody || "You are about to permanently delete {count} invoice{plural}.")
                 .replace("{count}", String(pendingDeleteIds.size))
                 .replace("{plural}", pendingDeleteIds.size === 1 ? "" : "s")
             : ""
         }
         confirmLabel={
           pendingDeleteIds
-            ? bulkLabels.deleteConfirmConfirmLabel
+            ? (bulkLabels.deleteConfirmConfirmLabel || "Delete {count} invoice{plural}")
                 .replace("{count}", String(pendingDeleteIds.size))
                 .replace("{plural}", pendingDeleteIds.size === 1 ? "" : "s")
             : "Delete"
         }
-        cancelLabel={bulkLabels.deleteConfirmCancelLabel}
+        cancelLabel={bulkLabels.deleteConfirmCancelLabel || "Cancel"}
         variant="danger"
         confirmLoading={bulkRunning.delete}
       />

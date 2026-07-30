@@ -45,11 +45,28 @@ New to the codebase? Start with the
 App Router routes (and their loading/error files), the mock-vs-live data layers,
 and where wallet/toast/theme state lives.
 
+For the theme preference flow, token consumption, current limitations, and safe
+customization steps, see the
+[Theme theming guide](docs/theme-theming.md).
+
 For the exact invoice fixture shape, formatted-versus-raw value rules, and the
 API migration seam, see the [Invoice data contract](docs/invoice-data.md).
 
 For marketplace component usage, props, and common patterns, see the
 [Marketplace usage guide](docs/marketplace.md).
+
+For invoice-detail component usage, props, and examples, see the
+[Invoice detail usage guide](docs/invoice-detail-usage.md).
+
+For a step-by-step diagram of how `/invest/[id]` fetches, transforms, and
+renders an invoice (including the RSC/client boundary split), see the
+[Invoice-detail data flow](docs/invoice-detail-flow.md).
+
+For a visual diagram of how upload loads and renders data (fetch → transform → render),
+see the [Upload data flow](docs/upload-data-flow.md).
+
+For a visual diagram of how settings loads, edits, and persists data (fetch → transform → render),
+see the [Settings data flow](docs/settings-data-flow.md).
 
 ---
 
@@ -57,7 +74,9 @@ For marketplace component usage, props, and common patterns, see the
 
 For frontend/backend contract details see:
 
-docs/api-integration.md
+[docs/api-integration.md](docs/api-integration.md)
+
+For the current Invest marketplace component props and usage reference, see [docs/marketplace-api.md](docs/marketplace-api.md).
 
 ---
 
@@ -139,6 +158,8 @@ export function getInvoiceLoadAnnouncement(invoices, { filterActive, filteredCou
 ```
 
 Both `filterActive` and `filteredCount` are computed inside `InvestMarketplace` from live state (`hasAnyActiveFilters(filters, debouncedSearch)` and `filteredInvoices.length`) and are passed in explicitly — the function itself has no implicit dependencies on component state.
+
+For a concise component-by-component API reference, see [docs/marketplace-api.md](docs/marketplace-api.md).
 
 ### Error recovery
 

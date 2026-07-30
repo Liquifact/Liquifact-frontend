@@ -6,10 +6,14 @@ import FormsView from "./FormsView";
 expect.extend(toHaveNoViolations);
 
 describe("FormsView a11y", () => {
+  it("has no accessibility violations in loading state", async () => {
+    const { container } = render(<FormsView status="loading" />);
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
   it("has no accessibility violations in loaded state", async () => {
-    const { container } = render(
-      <FormsView status="loaded" data={[{ title: "Form 1" }]} />
-    );
+    const { container } = render(<FormsView status="loaded" data={[{ title: "Form 1" }]} />);
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
@@ -28,3 +32,4 @@ describe("FormsView a11y", () => {
     expect(results).toHaveNoViolations();
   });
 });
+

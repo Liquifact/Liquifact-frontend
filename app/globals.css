@@ -27,6 +27,14 @@
   --color-border: #1e293b; /* slate-800 */
   --color-primary: #22d3ee; /* cyan-400  */
   --color-focus-ring: #22d3ee; /* cyan-400 — 10:1 against slate-950 */
+  --market-card-padding: 1.25rem;
+  --market-card-gap: 1rem;
+  --market-card-title-font-size: 0.95rem;
+  --market-card-title-font-weight: 600;
+  --market-card-title-line-height: 1.4;
+  --market-card-meta-font-size: 0.875rem;
+  --market-card-meta-line-height: 1.5;
+  --market-card-meta-letter-spacing: 0.01em;
 }
 
 /* ── Light theme ───────────────────────────────────────────────────────────── */
@@ -38,6 +46,14 @@
   --color-border: #e2e8f0; /* slate-200 */
   --color-primary: #0891b2; /* cyan-600  — stays legible on white */
   --color-focus-ring: #0891b2; /* cyan-600 — 3.5:1 against slate-50 */
+  --market-card-padding: 1.25rem;
+  --market-card-gap: 1rem;
+  --market-card-title-font-size: 0.95rem;
+  --market-card-title-font-weight: 600;
+  --market-card-title-line-height: 1.4;
+  --market-card-meta-font-size: 0.875rem;
+  --market-card-meta-line-height: 1.5;
+  --market-card-meta-letter-spacing: 0.01em;
 }
 
 @theme inline {
@@ -168,6 +184,12 @@ body {
   .invoice-detail-section {
     transition: none;
   }
+
+  /* Wallet status copy button and dot transitions */
+  .wallet-copy-btn,
+  .wallet-status-dot {
+    transition: none;
+  }
 }
 
 /* ── Accessibility: high contrast ──────────────────────────────────────────── */
@@ -182,6 +204,82 @@ body {
   .opacity-60          → marketplace "Soon" filters wrapper (issue #689)
 */
 @media (forced-colors: active) {
+
+  /* Dashboard — preserve readable surfaces, non-colour cues, and focus. */
+  .dashboard-page {
+    background-color: Canvas;
+    color: CanvasText;
+  }
+
+  .dashboard-link-card,
+  .dashboard-api-panel,
+  .dashboard-status-panel {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-link-card {
+    border-color: LinkText;
+  }
+
+  .dashboard-link-title {
+    color: LinkText;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-muted-text,
+  .dashboard-status-summary,
+  .dashboard-status-key,
+  .dashboard-status-value,
+  .dashboard-status-message,
+  .dashboard-details-summary,
+  .dashboard-raw-response {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-action {
+    border: 2px solid ButtonText;
+    background-color: ButtonFace;
+    color: ButtonText;
+    opacity: 1;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-action:disabled {
+    border-color: GrayText;
+    color: GrayText;
+    opacity: 1;
+  }
+
+  .dashboard-status-badge {
+    border: 2px solid ButtonText;
+    background-color: ButtonFace;
+    color: ButtonText;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-focus:focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 3px;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-page [data-testid="health-status-skeleton"] [aria-hidden="true"] {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-page [data-testid="health-status-skeleton"] [aria-hidden="true"] div {
+    background-color: CanvasText;
+    forced-color-adjust: none;
+  }
+
   .upload-dropzone {
     border: 2px solid CanvasText;
     background-color: Canvas;
@@ -226,9 +324,78 @@ body {
     color: CanvasText;
     forced-color-adjust: none;
   }
+
+  /* Wallet components */
+  .wallet-status-dot {
+    forced-color-adjust: none;
+  }
+
+  .wallet-address-text {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .wallet-balance-text {
+    color: GrayText;
+    forced-color-adjust: none;
+  }
+
+  .wallet-helper-text {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .wallet-skeleton-text-primary,
+  .wallet-skeleton-text-secondary,
+  .wallet-skeleton-btn {
+    border: 1px solid CanvasText;
+    background-color: Canvas;
+  }
 }
 
 @media (prefers-contrast: more) {
+
+  /* Dashboard — strengthen contrast without changing normal-mode layout. */
+  .dashboard-link-card,
+  .dashboard-api-panel,
+  .dashboard-status-panel {
+    border-width: 2px;
+    border-color: var(--color-fg);
+    background-color: var(--color-surface);
+  }
+
+  .dashboard-link-title {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+  }
+
+  .dashboard-muted-text,
+  .dashboard-status-summary,
+  .dashboard-status-key,
+  .dashboard-status-value,
+  .dashboard-status-message,
+  .dashboard-details-summary,
+  .dashboard-raw-response {
+    color: var(--color-fg);
+  }
+
+  .dashboard-action {
+    border: 2px solid var(--color-fg);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+    opacity: 1;
+  }
+
+  .dashboard-status-badge {
+    border-width: 2px;
+  }
+
+  .dashboard-focus:focus-visible {
+    outline-width: 3px;
+    outline-offset: 3px;
+  }
+
   .upload-dropzone {
     border-color: #e2e8f0; /* slate-200 — far stronger than the default slate-700 */
   }
@@ -271,6 +438,25 @@ body {
     background-color: #0f172a; /* slate-900 — fully opaque */
     color: #cbd5e1; /* slate-300 — stronger than slate-300 */
   }
+
+  /* Wallet components */
+  .wallet-address-text {
+    color: #f1f5f9; /* slate-100 */
+  }
+
+  .wallet-balance-text,
+  .wallet-helper-text {
+    color: #cbd5e1; /* slate-300 */
+  }
+
+  .wallet-skeleton-text-primary,
+  .wallet-skeleton-btn {
+    background-color: #475569; /* slate-600 */
+  }
+
+  .wallet-skeleton-text-secondary {
+    background-color: #334155; /* slate-700 */
+  }
 }
 
 /* ── Print stylesheet ──────────────────────────────────────────────────────── */
@@ -297,12 +483,22 @@ body {
   --settings-section-padding: 1.5rem;
   --settings-section-gap: 1.5rem;
   --settings-list-gap: 0.75rem;
+  /* Wallet view density tokens */
+  --wallet-panel-padding: 1rem;
+  --wallet-panel-gap: 0.75rem;
+  --wallet-meta-font-size: 0.75rem;
+  --wallet-address-font-size: 0.875rem;
 }
 
 [data-density="compact"] {
   --settings-section-padding: 1rem;
   --settings-section-gap: 1rem;
   --settings-list-gap: 0.5rem;
+  /* Wallet view density tokens */
+  --wallet-panel-padding: 0.5rem;
+  --wallet-panel-gap: 0.375rem;
+  --wallet-meta-font-size: 0.6875rem;
+  --wallet-address-font-size: 0.75rem;
 }
 
 @media print {

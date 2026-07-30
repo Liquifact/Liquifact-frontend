@@ -8,11 +8,14 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 
 - [EmptyState](#emptystate)
 - [ErrorBanner](#errorbanner)
+- [OfflineBanner](#offlinebanner)
 - [Footer](#footer)
 - [Form](#form)
 - [FundAmountInput](#fundamountinput)
 - [Hooks](#hooks)
 - [InvoiceCard](#invoicecard)
+- [InvoiceDetail](#invoicedetail)
+- [InvoiceDetailSkeleton](#invoicedetailskeleton)
 - [InvoiceFilters](#invoicefilters)
 - [InvoiceList](#invoicelist)
 - [InvoiceListSkeleton](#invoicelistskeleton)
@@ -145,6 +148,38 @@ Displays a structured error message with a variant label, title, description, op
 
 ---
 
+## OfflineBanner
+
+A persistent banner displayed when the browser loses network connectivity. When the connection is restored, a transient success notification is shown via the toast system.
+
+**File:** `components/OfflineBanner.jsx`
+
+### Behaviour
+
+- **Offline:** renders a fixed-position amber banner at the top of the viewport reading "You are offline — some features may be unavailable."
+- **Reconnection:** when the browser transitions from offline to online, fires a `success` toast with the title "Back online" and message "Your network connection has been restored."
+- **Online (stable):** renders nothing — no banner, no toast.
+
+### Dependencies
+
+- `useNetworkStatus` — SSR-safe hook from `lib/hooks/useNetworkStatus.js`
+- `useToast` — from the `ToastProvider` context (must be rendered inside a `<ToastProvider>`)
+
+### Accessibility
+
+- The offline banner uses `role="alert"` and `aria-live="assertive"` so screen readers announce the offline state immediately when it appears.
+- The reconnection toast uses the existing toast system, which announces via `aria-live="polite"`.
+- A warning triangle icon is present as a visual cue but marked `aria-hidden="true"` — the text alone conveys the meaning (WCAG 2.1 §1.4.1).
+
+### Example
+
+```jsx
+// Mounted in app/layout.js inside ToastProvider
+<OfflineBanner />
+```
+
+---
+
 ## Footer
 
 Site footer with navigation links (Docs, System Status, Contact Support). Links are sourced from the `app/copy/en.js` copy file.
@@ -190,6 +225,11 @@ Marketplace invoice card for the Invest list. The entire card is a single naviga
 - Nested `StatusPill` exposes `role="status"` and `aria-label="Status: …"` (text + tone; not colour-only).
 - Focus indicator: `focus-visible:ring-2` cyan outline (see Known Limitations in `docs/accessibility.md` for `.focus-ring` alignment).
 
+### Design tokens
+
+- Card spacing and typography now follow the shared marketplace-card tokens defined in `app/globals.css` (`--market-card-padding`, `--market-card-gap`, and the title/meta typography tokens).
+- These values keep the marketplace card layout consistent across the shared `InvoiceCard` component and the `/invest` list experience.
+
 > **Note:** `/invest` currently renders inline list rows rather than mounting `InvoiceCard`. Prefer this component when consolidating list markup so a11y and layout stay in sync with `InvoiceListSkeleton`.
 
 ### Example
@@ -201,6 +241,58 @@ import InvoiceCard from "@/components/InvoiceCard";
   <InvoiceCard invoice={invoice} />
 </li>
 ```
+
+---
+
+## InvoiceDetail
+
+A presentational component that renders the full details of an invoice. It manages its own loading/error state via an injectable `loadInvoice` prop.
+
+**File:** `components/InvoiceDetail.jsx`
+
+### Props
+
+| Prop          | Type                                            | Required | Description                                                         |
+| ------------- | ----------------------------------------------- | -------- | ------------------------------------------------------------------- |
+| `id`          | `string`                                        | Yes      | The unique invoice identifier.                                      |
+| `loadInvoice` | `(id: string) => Promise<Invoice>`              | Yes      | An async function that resolves to an invoice object or throws.     |
+
+### Named exports
+
+| Export                     | Description                                                                         |
+| -------------------------- | ----------------------------------------------------------------------------------- |
+| `default` (`InvoiceDetail`) | The main detail component                                                           |
+
+### Example
+
+```jsx
+import InvoiceDetail from "@/components/InvoiceDetail";
+
+async function fetchInvoice(id) {
+  const res = await fetch(`/api/invoices/${id}`);
+  if (!res.ok) throw new Error("Not found");
+  return res.json();
+}
+
+<InvoiceDetail
+  id="12345"
+  loadInvoice={fetchInvoice}
+/>
+```
+
+---
+
+## InvoiceDetailSkeleton
+
+A presentational skeleton component used as a loading state while fetching invoice details. Its dimensions and structure mirror the actual detail layout to prevent layout shift.
+
+**File:** `components/InvoiceDetailSkeleton.jsx`
+
+### Named exports
+
+| Export                           | Description                               |
+| -------------------------------- | ----------------------------------------- |
+| `default` (`InvoiceDetailSkeleton`) | The main skeleton component               |
 
 ---
 
@@ -578,49 +670,69 @@ Drag-and-drop (or click-to-browse) PDF invoice upload form. Validates the file c
 
 **File:** `components/UploadZone.jsx`
 
+> **Full API reference:** [docs/upload-api.md](docs/upload-api.md) — props table, named
+> exports, upload states, all validation rules, error messages, `ProgressBar` details,
+> `onUploadSuccess` payload shape, and complete usage examples.
+
 ### Props
 
-None — API endpoint is read from `NEXT_PUBLIC_API_URL` (falls back to `http://localhost:3001`).
+| Prop              | Type       | Required | Default     | Description |
+| ----------------- | ---------- | -------- | ----------- | ----------- |
+| `onUploadSuccess` | `function` | No       | `undefined` | Called after upload and server tokenization complete. Receives an optimistic invoice object. See [docs/upload-api.md#onuploadsuccess-payload](docs/upload-api.md#onuploadsuccess-payload). |
+| `progress`        | `number`   | No       | `undefined` | Upload progress `0–100`. When supplied, shows a determinate `ProgressBar`; omit for indeterminate spinner. |
 
-### Exported constants
+### Named exports
 
-| Export             | Description                                                     |
-| ------------------ | --------------------------------------------------------------- |
-| `MAX_UPLOAD_BYTES` | Numeric constant limiting file size to 10 MB (in bytes)         |
-| `FILE_CONSTRAINTS` | Object with `accept`, `mimeType`, `maxSizeMb`, `maxSizeBytes`   |
-| `Spinner`          | Small inline SVG spinner used internally; re-exported for reuse |
+| Export             | Description |
+| ------------------ | ----------- |
+| `default`          | The `UploadZone` component |
+| `FILE_CONSTRAINTS` | Frozen object: `{ accept, mimeType, maxSizeMb, maxSizeBytes }` |
+| `Spinner`          | Small inline SVG spinner — re-exported for use in other components |
 
 ### Upload states
 
-| State        | Description                                             |
-| ------------ | ------------------------------------------------------- |
-| `idle`       | Waiting for a file or ready to submit                   |
-| `uploading`  | `fetch` in progress; submit button disabled             |
-| `tokenizing` | Upload succeeded; waiting for server tokenization delay |
-| `success`    | Invoice queued; informational status shown              |
+| State        | Description |
+| ------------ | ----------- |
+| `"idle"`     | Waiting for a file or ready to submit |
+| `"uploading"`| `fetch` in progress; submit button disabled; spinner or `ProgressBar` shown |
+| `"tokenizing"` | Upload succeeded; waiting for server tokenization delay |
+| `"success"`  | Invoice queued; success message and reset button shown |
 
 ### Validation rules
 
-- **Type:** only `application/pdf` accepted; any other MIME type is rejected.
-- **Size:** file must be ≤ 10 MB (`MAX_UPLOAD_BYTES`). Validation is checked immediately upon file selection via `FILE_CONSTRAINTS`, and additionally enforced before the network `fetch` is triggered to ensure safety.
+- **MIME type:** only `application/pdf` accepted.
+- **Size:** file must be ≤ 10 MB (`FILE_CONSTRAINTS.maxSizeBytes`).
+- **Non-empty:** 0-byte files are rejected.
+- **Magic bytes:** first 5 bytes must equal `%PDF-` (deep validation via `lib/validation/pdf.js`).
+- **Extension:** file name must end with `.pdf`.
 
 ### Accessibility
 
-- Drop zone renders as `role="button"` with `tabIndex={0}`; activates on `Enter` and `Space`.
-- Errors use `role="alert"` with `aria-live="assertive"`.
-- Progress messages use `role="status"` with `aria-live="polite"`.
-- Upload button carries `aria-disabled` in addition to the native `disabled` attribute.
+- Drop zone is `role="button"` / `tabIndex={0}`; activates on `Enter` and `Space`.
+- Errors use `role="alert"` / `aria-live="assertive"`.
+- Progress and status messages use `role="status"` / `aria-live="polite"`.
+- Submit button carries both `disabled` and `aria-disabled`.
+- Full a11y contract: [docs/upload-a11y.md](docs/upload-a11y.md).
 
 ### Example
 
 ```jsx
 import UploadZone from "@/components/UploadZone";
+import InvoiceList from "@/components/InvoiceList";
+import { useState } from "react";
 
 export default function InvoicePage() {
+  const [optimisticInvoices, setOptimisticInvoices] = useState([]);
+
   return (
     <main>
       <h1>Upload Invoice</h1>
-      <UploadZone />
+      <UploadZone
+        onUploadSuccess={(invoice) =>
+          setOptimisticInvoices((prev) => [invoice, ...prev])
+        }
+      />
+      <InvoiceList optimisticInvoices={optimisticInvoices} />
     </main>
   );
 }
@@ -1061,6 +1173,49 @@ deriveExpectedYield(10000, 10000, 8.2); // 820 (full amount)
 ## Hooks
 
 Reusable React hooks that live under `lib/hooks/`. Hooks are the canonical home for shared persistence and behaviour so any feature can adopt the same contract without re-implementing edge cases (SSR safety, quota errors, type preservation).
+
+### `useNetworkStatus`
+
+SSR-safe hook that tracks the browser's online/offline status by subscribing to the `online` and `offline` events on `window`.
+
+**File:** `lib/hooks/useNetworkStatus.js`
+
+#### Signature
+
+```js
+const isOnline = useNetworkStatus();
+```
+
+| Returns    | Type      | Description                                        |
+| ---------- | --------- | -------------------------------------------------- |
+| `isOnline` | `boolean` | `true` when the browser reports a network connection, `false` when offline. Always `true` during SSR. |
+
+#### SSR-safety contract
+
+- **Initial render always returns `true`** — the hook never reads `navigator.onLine` during render. This keeps React hydration deterministic in a Next.js app router context.
+- The actual `navigator.onLine` read happens inside `useEffect` after mount on the client.
+- Event listeners are registered after mount and cleaned up on unmount — no stale handlers leak across navigations or hot-reloads.
+
+#### Behaviour
+
+- Listens to `window` `online` and `offline` events. When the browser fires `offline`, the hook sets `isOnline` to `false`; when `online` fires, it sets `isOnline` to `true`.
+- Does NOT subscribe to `focus` or `visibilitychange` — only the standard `online`/`offline` API events are used, eliminating false re-connection announcements on tab switches.
+- Callers that need to detect the transition (e.g. show a reconnected toast) should track the previous value via `useRef`.
+
+#### Example
+
+```jsx
+'use client';
+
+import { useNetworkStatus } from '@/lib/hooks/useNetworkStatus';
+
+function MyComponent() {
+  const isOnline = useNetworkStatus();
+  return <span>{isOnline ? 'Online' : 'Offline'}</span>;
+}
+```
+
+---
 
 ### `useLocalStorage`
 

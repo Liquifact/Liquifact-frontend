@@ -15,7 +15,9 @@ import {
   connectFreighter,
   getFreighterNetwork,
   assertExpectedNetwork,
+  InvalidProviderError,
 } from "../lib/wallet/freighter";
+import { announce } from "../lib/a11y/liveRegion";
 
 /**
  * Read the toast API when available. Returns null when WalletProvider is
@@ -32,6 +34,7 @@ export const WALLET_STATES = {
   CONNECTED: "connected",
   ERROR: "error",
   WRONG_NETWORK: "wrong_network",
+  INVALID_PROVIDER: "invalid_provider",
   NO_WALLET: "no_wallet",
 };
 
@@ -209,7 +212,8 @@ export function WalletProvider({ children }) {
     if (
       state === WALLET_STATES.DISCONNECTED ||
       state === WALLET_STATES.ERROR ||
-      state === WALLET_STATES.WRONG_NETWORK
+      state === WALLET_STATES.WRONG_NETWORK ||
+      state === WALLET_STATES.INVALID_PROVIDER
     ) {
       clearStoredSnapshot();
     }
@@ -220,22 +224,53 @@ export function WalletProvider({ children }) {
     setError(null);
 
     try {
-      const isInstalled = await isFreighterConnected();
+      let isInstalled;
+      try {
+        isInstalled = await isFreighterConnected();
+      } catch (providerErr) {
+        if (providerErr instanceof InvalidProviderError) {
+          setState(WALLET_STATES.INVALID_PROVIDER);
+          setWalletData(null);
+          setError(providerErr.message);
+          toast?.error(providerErr.message, "Unverified wallet provider");
+          announce("Wallet connection failed");
+          return {
+            outcome: "invalid_provider",
+            message: providerErr.message,
+          };
+        }
+        throw providerErr;
+      }
+
       if (!isInstalled) {
         setState(WALLET_STATES.NO_WALLET);
         setWalletData(null);
         toast?.error("No Stellar wallet detected. Install one to continue.", "No wallet");
+        announce("Wallet connection failed");
         return {
           outcome: "no_wallet",
           message: "No Stellar wallet detected. Install one to continue.",
         };
       }
 
-      const address = await connectFreighter();
+      let address;
+      try {
+        address = await connectFreighter();
+      } catch (providerErr) {
+        if (providerErr instanceof InvalidProviderError) {
+          setState(WALLET_STATES.INVALID_PROVIDER);
+          setWalletData(null);
+          setError(providerErr.message);
+          toast?.error(providerErr.message, "Unverified wallet provider");
+          announce("Wallet connection failed");
+          return {
+            outcome: "invalid_provider",
+            message: providerErr.message,
+          };
+        }
+        throw providerErr;
+      }
 
-      // Hard gate: block if Freighter is on an unexpected network.
-      // assertExpectedNetwork treats an unreadable network as a mismatch so we
-      // never silently fall through to a connected state on the wrong ledger.
       try {
         await assertExpectedNetwork();
       } catch (networkErr) {
@@ -243,6 +278,7 @@ export function WalletProvider({ children }) {
         setWalletData(null);
         setError(networkErr.message);
         toast?.error(networkErr.message, "Wrong network");
+        announce("Wallet connection failed");
         return {
           outcome: "wrong_network",
           message: networkErr.message,
@@ -259,6 +295,7 @@ export function WalletProvider({ children }) {
       };
       setWalletData(data);
       toast?.success("Wallet connected successfully.", "Wallet connected");
+      announce("Wallet connected successfully");
       return { outcome: "success" };
     } catch (err) {
       setState(WALLET_STATES.ERROR);
@@ -266,6 +303,7 @@ export function WalletProvider({ children }) {
       const errMsg = err.message || "Failed to connect to wallet. Please try again.";
       setError(errMsg);
       toast?.error(errMsg, "Connection failed");
+      announce("Wallet connection failed");
       return {
         outcome: "error",
         message: errMsg,
@@ -278,6 +316,7 @@ export function WalletProvider({ children }) {
     setWalletData(null);
     setError(null);
     clearStoredSnapshot();
+    announce("Wallet disconnected");
   }, []);
 
   const value = useMemo(

@@ -54,14 +54,16 @@ function renderWithRealProvider() {
  * Render WalletStatus with a fixed context value (bypasses real provider).
  * Used to assert behaviour for a specific `hydrating` value.
  */
-function renderWithContext(overrides: Partial<{
-  state: string;
-  walletData: object | null;
-  error: string | null;
-  hydrating: boolean;
-  connect: jest.Mock;
-  disconnect: jest.Mock;
-}> = {}) {
+function renderWithContext(
+  overrides: Partial<{
+    state: string;
+    walletData: object | null;
+    error: string | null;
+    hydrating: boolean;
+    connect: jest.Mock;
+    disconnect: jest.Mock;
+  }> = {}
+) {
   const contextValue = {
     state: WALLET_STATES.DISCONNECTED,
     walletData: null,
@@ -157,7 +159,11 @@ describe("WalletStatus with hydrating=false", () => {
   });
 
   it("shows the retry button for ERROR state", () => {
-    renderWithContext({ hydrating: false, state: WALLET_STATES.ERROR, error: "Connection failed." });
+    renderWithContext({
+      hydrating: false,
+      state: WALLET_STATES.ERROR,
+      error: "Connection failed.",
+    });
     expect(screen.getByRole("button", { name: /retry connection/i })).toBeInTheDocument();
   });
 
@@ -286,7 +292,11 @@ describe("Full hydration lifecycle — persisted snapshot (rehydration)", () => 
 
 describe("Error state after hydration", () => {
   it("renders error UI (not skeleton) when hydrating=false and state=ERROR", () => {
-    renderWithContext({ hydrating: false, state: WALLET_STATES.ERROR, error: "Connection failed." });
+    renderWithContext({
+      hydrating: false,
+      state: WALLET_STATES.ERROR,
+      error: "Connection failed.",
+    });
 
     expect(screen.queryByTestId("wallet-skeleton")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /retry connection/i })).toBeInTheDocument();
@@ -309,7 +319,6 @@ describe("WalletProvider hydrating flag", () => {
   // We import useWallet directly inside the component to avoid a top-level
   // circular require issue in tests.
   function HydratingProbe() {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { useWallet } = require("./WalletProvider");
     const { hydrating, state } = useWallet();
     return (

@@ -57,6 +57,8 @@ loads); `error.js` is the route error boundary; `not-found.js` backs
                                          (data via InvestMarketplace → fetchInvestableInvoices)
 /invest/[id]     app/invest/[id]/page → NavMenu, StatusPill, WalletStatus, Button,
                                          ErrorBanner (data via getInvoiceById)
+                                         See the [Invoice Detail Data Flow diagram](invoice-detail-data-flow.md)
+                                         for the full fetch → transform → render pipeline.
 ```
 
 Shared presentational components live in `components/` and are framework-route
@@ -147,6 +149,7 @@ All permanent reference material for this frontend belongs in `docs/`:
 | `docs/configuration.md` | Every `NEXT_PUBLIC_*` env variable, validation rules, defaults |
 | `docs/design-tokens.md` | CSS custom properties, Tailwind token mapping |
 | `docs/accessibility.md` | Accessibility statement and WCAG notes — includes [marketplace roles, keyboard, and focus](accessibility.md#marketplace-accessibility-issue-692) |
+| `docs/wallet-api-reference.md` | Wallet component API reference — props, hook shape, utility exports |
 | `docs/wallet-developer-guide.md` | Stellar / Freighter integration guide |
 | `docs/wallet-data-flow.md` | Wallet data-flow diagrams (fetch → transform → render) |
 | `docs/observability.md` | `reportError` sink and pluggable observability |
@@ -154,6 +157,10 @@ All permanent reference material for this frontend belongs in `docs/`:
 | `docs/security.md` | CSP policy rationale and threat model |
 | `docs/getting-started.md` | Onboarding walkthrough for new contributors |
 | `docs/marketplace-data-flow.md` | Marketplace data-flow diagram (fetch -> transform -> render) |
+<<<<<<< HEAD
+=======
+| `docs/invoice-detail-data-flow.md` | Invoice detail data-flow diagram (fetch → transform → render → client islands) |
+>>>>>>> pr-892
 | `docs/settings-api.md` | Settings component props/API reference and minimal usage examples |
 | `docs/issue-334-cpu-budget-median-throttling.md` | Archived: CPU budget fix for median price oracle (contracts context) |
 | `docs/issue-334-flow-diagram.md` | Archived: Flow diagram for Issue #334 buffer truncation |

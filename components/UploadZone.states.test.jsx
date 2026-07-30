@@ -22,6 +22,17 @@ import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import UploadZone from "./UploadZone";
 import { validatePdfFile } from "../lib/validation/pdf";
 
+// Prevent the singleton liveRegion from being created in document.body and
+// bleeding across tests. The `announce` call happens asynchronously (debounced),
+// so without this mock the global role="status" div created by liveRegion.js
+// causes "Found multiple elements with role=status" / "toBeNull" failures in
+// the state-exclusivity helpers defined in this file.
+jest.mock("../lib/a11y/liveRegion", () => ({
+  announce: jest.fn(),
+  ensureLiveRegion: jest.fn(),
+  resetAnnouncer: jest.fn(),
+}));
+
 jest.mock("../lib/validation/pdf", () => {
   const actual = jest.requireActual("../lib/validation/pdf");
   return {
@@ -386,15 +397,12 @@ describe("UploadZone — states & interactions", () => {
       );
     });
 
-    // Note (potential defect): after success, the submit button's `disabled`
-    // and `aria-disabled` states are derived solely from `!file || isProcessing`.
-    // Once the upload completes (status === "success"), `isProcessing` is false,
-    // so the submit button is rendered as enabled — yet clicking it is a no-op
-    // because handleSubmit guards with `status !== "idle"`. The button is
-    // therefore visually actionable but functionally inert. This may be a
-    // UX/a11y defect; it is NOT being fixed in this PR per the issue
-    // guideline "Do not change behaviour unless a defect is found (note it)."
-    it("documents current behavior: submit button is rendered enabled after success", async () => {
+    // The submit button was previously enabled but functionally inert in the
+    // success state (handleSubmit guards with `status !== "idle"` but the
+    // button was not disabled via `disabled` / `aria-disabled`). This defect
+    // has been fixed: the submit button is now properly disabled when
+    // `status === "success"`, matching the UX contract documented in the README.
+    it("submit button is disabled after success (defect fix: was enabled-but-inert)", async () => {
       mockFetchOk();
       render(<UploadZone />);
       selectFile(createMockFile());
@@ -404,7 +412,8 @@ describe("UploadZone — states & interactions", () => {
         expect(screen.getByRole("status")).toHaveTextContent(/queued for tokenization/i)
       );
       const submit = screen.getByRole("button", { name: /upload & tokenize invoice/i });
-      expect(submit).toBeEnabled(); // Documents the current (questionable) state.
+      expect(submit).toBeDisabled();
+      expect(submit).toHaveAttribute("aria-disabled", "true");
     });
   });
 

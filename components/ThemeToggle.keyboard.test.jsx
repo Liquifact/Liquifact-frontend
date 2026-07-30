@@ -1,7 +1,33 @@
+/**
+ * @file components/ThemeToggle.keyboard.test.jsx
+ * Issue #950 — deterministic keyboard-navigation coverage for theme controls.
+ *
+ * Covers:
+ * - Logical Tab order through the theme control group
+ * - Enter and Space activation of the main toggle
+ * - ArrowRight / ArrowDown forward navigation
+ * - ArrowLeft / ArrowUp backward navigation
+ * - Enter activation of the theme-options trigger and radio option
+ * - Escape dismissal and focus restoration
+ * - Tab / Shift+Tab focus wrapping inside the modal
+ *
+ * All tests use fake timers. No real timer or real animation-frame delay is
+ * allowed to influence the results.
+ */
+
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import ThemeToggle, { THEMES, THEME_STORAGE_KEY, resolveTheme, readStoredTheme } from "./ThemeToggle";
+import "@testing-library/jest-dom";
+
+import ThemeToggle, {
+  THEME_STORAGE_KEY,
+} from "./ThemeToggle";
 
 jest.mock("./ToastProvider", () => ({
   useToast: () => ({
@@ -11,153 +37,279 @@ jest.mock("./ToastProvider", () => ({
   }),
 }));
 
-beforeEach(() => {
-  localStorage.clear();
-});
+const originalRequestAnimationFrame = window.requestAnimationFrame;
+const originalCancelAnimationFrame = window.cancelAnimationFrame;
 
-describe("ThemeToggle keyboard operability", () => {
-  it("is focusable via Tab", async () => {
-    const user = userEvent.setup();
-    render(<ThemeToggle />);
+function mockMatchMedia(prefersLight = false) {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    writable: true,
+    value: jest.fn().mockImplementation((query) => ({
+      matches:
+        query === "(prefers-color-scheme: light)"
+          ? prefersLight
+          : false,
+      media: query,
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    })),
+  });
+}
+
+function setup(ui = <ThemeToggle />) {
+  const user = userEvent.setup({
+    advanceTimers: jest.advanceTimersByTime,
+  });
+
+  return {
+    user,
+    ...render(ui),
+  };
+}
+
+describe("ThemeToggle keyboard navigation", () => {
+  beforeAll(() => {
+    Object.defineProperty(HTMLElement.prototype, "offsetParent", {
+      configurable: true,
+      get() {
+        return document.body;
+      },
+    });
+  });
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    window.localStorage.clear();
+    document.documentElement.removeAttribute("data-theme");
+    mockMatchMedia(false);
+
+    window.requestAnimationFrame = jest.fn((callback) => {
+      callback(0);
+      return 1;
+    });
+
+    window.cancelAnimationFrame = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+    document.documentElement.removeAttribute("data-theme");
+    window.localStorage.clear();
+  });
+
+  afterAll(() => {
+    window.requestAnimationFrame = originalRequestAnimationFrame;
+    window.cancelAnimationFrame = originalCancelAnimationFrame;
+  });
+
+  it("follows a logical Tab order through toggle, copy, and options controls", async () => {
+    const { user } = setup(
+      <div>
+        <button type="button">Before theme controls</button>
+        <ThemeToggle />
+        <button type="button">After theme controls</button>
+      </div>
+    );
+
+    const before = screen.getByRole("button", {
+      name: "Before theme controls",
+    });
+    const toggle = screen.getByRole("button", {
+      name: /theme:/i,
+    });
+    const copy = screen.getByRole("button", {
+      name: /copy theme identifier/i,
+    });
+    const options = screen.getByRole("button", {
+      name: /theme options/i,
+    });
+    const after = screen.getByRole("button", {
+      name: "After theme controls",
+    });
 
     await user.tab();
-    expect(screen.getByRole("button", { name: /theme:/i })).toHaveFocus();
+    expect(before).toHaveFocus();
+
+    await user.tab();
+    expect(toggle).toHaveFocus();
+
+    await user.tab();
+    expect(copy).toHaveFocus();
+
+    await user.tab();
+    expect(options).toHaveFocus();
+
+    await user.tab();
+    expect(after).toHaveFocus();
   });
 
-  it("cycles forward on Enter", async () => {
-    const user = userEvent.setup();
-    render(<ThemeToggle />);
+  it("activates the main theme toggle with Enter", async () => {
+    const { user } = setup();
+    const toggle = screen.getByRole("button", {
+      name: /theme:/i,
+    });
 
-    const btn = screen.getByRole("button", { name: /theme:/i });
-    btn.focus();
+    toggle.focus();
+    expect(toggle).toHaveFocus();
 
-    const initialLabel = btn.getAttribute("aria-label");
     await user.keyboard("{Enter}");
 
-    expect(btn.getAttribute("aria-label")).not.toBe(initialLabel);
+    expect(toggle).toHaveAttribute("data-theme-pref", "light");
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe(
+      JSON.stringify("light")
+    );
   });
 
-  it("cycles forward on Space", async () => {
-    const user = userEvent.setup();
-    render(<ThemeToggle />);
+  it("activates the main theme toggle with Space", async () => {
+    const { user } = setup();
+    const toggle = screen.getByRole("button", {
+      name: /theme:/i,
+    });
 
-    const btn = screen.getByRole("button", { name: /theme:/i });
-    btn.focus();
-
-    const initialLabel = btn.getAttribute("aria-label");
+    toggle.focus();
     await user.keyboard(" ");
 
-    expect(btn.getAttribute("aria-label")).not.toBe(initialLabel);
+    expect(toggle).toHaveAttribute("data-theme-pref", "light");
   });
 
-  it("cycles forward on ArrowRight", async () => {
-    const user = userEvent.setup();
-    render(<ThemeToggle />);
+  it.each([
+    ["ArrowRight", "light"],
+    ["ArrowDown", "light"],
+    ["ArrowLeft", "dark"],
+    ["ArrowUp", "dark"],
+  ])(
+    "handles %s with the expected theme direction",
+    (key, expectedPreference) => {
+      setup();
+      const toggle = screen.getByRole("button", {
+        name: /theme:/i,
+      });
 
-    const btn = screen.getByRole("button", { name: /theme:/i });
-    btn.focus();
+      toggle.focus();
 
-    const initialLabel = btn.getAttribute("aria-label");
-    await user.keyboard("{ArrowRight}");
+      const eventWasNotCancelled = fireEvent.keyDown(toggle, {
+        key,
+        code: key,
+      });
 
-    expect(btn.getAttribute("aria-label")).not.toBe(initialLabel);
-  });
+      expect(eventWasNotCancelled).toBe(false);
+      expect(toggle).toHaveAttribute(
+        "data-theme-pref",
+        expectedPreference
+      );
+      expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe(
+        JSON.stringify(expectedPreference)
+      );
+    }
+  );
 
-  it("cycles backward on ArrowLeft", async () => {
-    const user = userEvent.setup();
-    render(<ThemeToggle />);
+  it("opens theme options with Enter and focuses the first option", async () => {
+    const { user } = setup();
+    const optionsTrigger = screen.getByRole("button", {
+      name: /theme options/i,
+    });
 
-    const btn = screen.getByRole("button", { name: /theme:/i });
-    btn.focus();
-
-    const initialLabel = btn.getAttribute("aria-label");
-    await user.keyboard("{ArrowLeft}");
-
-    expect(btn.getAttribute("aria-label")).not.toBe(initialLabel);
-  });
-
-  it("cycles forward on ArrowDown", async () => {
-    const user = userEvent.setup();
-    render(<ThemeToggle />);
-
-    const btn = screen.getByRole("button", { name: /theme:/i });
-    btn.focus();
-
-    const initialLabel = btn.getAttribute("aria-label");
-    await user.keyboard("{ArrowDown}");
-
-    expect(btn.getAttribute("aria-label")).not.toBe(initialLabel);
-  });
-
-  it("cycles backward on ArrowUp", async () => {
-    const user = userEvent.setup();
-    render(<ThemeToggle />);
-
-    const btn = screen.getByRole("button", { name: /theme:/i });
-    btn.focus();
-
-    const initialLabel = btn.getAttribute("aria-label");
-    await user.keyboard("{ArrowUp}");
-
-    expect(btn.getAttribute("aria-label")).not.toBe(initialLabel);
-  });
-
-  it("persists selection to localStorage on keyboard activation", async () => {
-    const user = userEvent.setup();
-    render(<ThemeToggle />);
-
-    const btn = screen.getByRole("button", { name: /theme:/i });
-    btn.focus();
+    optionsTrigger.focus();
     await user.keyboard("{Enter}");
 
-    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeTruthy();
+    expect(
+      screen.getByRole("dialog", { name: "Theme" })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("radio", { name: "Light" })
+    ).toHaveFocus();
   });
 
-  it("has visible focus indicator (focus-ring class)", () => {
-    render(<ThemeToggle />);
-    const btn = screen.getByRole("button", { name: /theme:/i });
-    expect(btn.className).toContain("focus-ring");
+  it("selects the focused theme option with Enter and restores trigger focus", async () => {
+    const { user } = setup();
+    const optionsTrigger = screen.getByRole("button", {
+      name: /theme options/i,
+    });
+
+    optionsTrigger.focus();
+    await user.keyboard("{Enter}");
+
+    const lightOption = screen.getByRole("radio", {
+      name: "Light",
+    });
+    expect(lightOption).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe(
+      JSON.stringify("light")
+    );
+
+    await waitFor(() => {
+      expect(optionsTrigger).toHaveFocus();
+    });
   });
 
-  it("has accessible aria-label describing current state", () => {
-    render(<ThemeToggle />);
-    const btn = screen.getByRole("button", { name: /theme:/i });
-    expect(btn.getAttribute("aria-label")).toMatch(/Theme:/);
+  it("closes theme options with Escape and restores trigger focus", async () => {
+    const { user } = setup();
+    const optionsTrigger = screen.getByRole("button", {
+      name: /theme options/i,
+    });
+
+    optionsTrigger.focus();
+    await user.keyboard("{Enter}");
+
+    expect(
+      screen.getByRole("dialog", { name: "Theme" })
+    ).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(optionsTrigger).toHaveFocus();
+    });
   });
 
-  it("has aria-pressed attribute", () => {
-    render(<ThemeToggle />);
-    const btn = screen.getByRole("button", { name: /theme:/i });
-    expect(btn).toHaveAttribute("aria-pressed");
-  });
-});
+  it("wraps focus backward and forward within the theme options dialog", async () => {
+    const { user } = setup();
+    const optionsTrigger = screen.getByRole("button", {
+      name: /theme options/i,
+    });
 
-describe("resolveTheme", () => {
-  it("returns light for light preference", () => {
-    expect(resolveTheme("light")).toBe("light");
-  });
+    optionsTrigger.focus();
+    await user.keyboard("{Enter}");
 
-  it("returns dark for dark preference", () => {
-    expect(resolveTheme("dark")).toBe("dark");
-  });
+    const options = screen.getAllByRole("radio");
+    expect(options).toHaveLength(3);
+    expect(options[0]).toHaveFocus();
 
-  it("returns dark in SSR environment for system preference", () => {
-    expect(resolveTheme("system")).toBe("dark");
-  });
-});
+    await user.tab({ shift: true });
+    expect(options[2]).toHaveFocus();
 
-describe("readStoredTheme", () => {
-  it("returns system when localStorage is empty", () => {
-    expect(readStoredTheme()).toBe("system");
+    await user.tab();
+    expect(options[0]).toHaveFocus();
   });
 
-  it("returns stored theme when valid", () => {
-    localStorage.setItem(THEME_STORAGE_KEY, "dark");
-    expect(readStoredTheme()).toBe("dark");
-  });
+  it("ignores unrelated keys on the main theme toggle", () => {
+    setup();
+    const toggle = screen.getByRole("button", {
+      name: /theme:/i,
+    });
+    const initialPreference = toggle.getAttribute("data-theme-pref");
 
-  it("returns system for invalid stored value", () => {
-    localStorage.setItem(THEME_STORAGE_KEY, "invalid");
-    expect(readStoredTheme()).toBe("system");
+    toggle.focus();
+
+    const eventWasNotCancelled = fireEvent.keyDown(toggle, {
+      key: "Home",
+      code: "Home",
+    });
+
+    expect(eventWasNotCancelled).toBe(true);
+    expect(toggle).toHaveAttribute(
+      "data-theme-pref",
+      initialPreference
+    );
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
   });
 });

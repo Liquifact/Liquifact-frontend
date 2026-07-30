@@ -1,11 +1,26 @@
 import React from "react";
 import { render, screen, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import ThemeToggle from "./ThemeToggle";
-import { THEME_STORAGE_KEY } from "./ThemeToggle";
+import ThemeToggle, { THEME_STORAGE_KEY } from "./ThemeToggle";
+
+jest.mock("./ToastProvider", () => ({
+  useToast: () => ({
+    success: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+  }),
+}));
+
+jest.mock("./ToastProvider", () => ({
+  useToast: () => ({
+    success: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+  }),
+}));
 
 // This file explicitly covers the theme loading, empty, error, and success state transitions
-// as requested by issue #795. The "system" theme is the fallback for loading/empty/error states.
+// as requested by issue #795. The "auto" theme is the fallback for loading/empty/error states.
 
 describe("theme's state transitions (loading->success/empty/error)", () => {
   beforeEach(() => {
@@ -17,16 +32,16 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
       },
       writable: true,
     });
-    
+
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: jest.fn().mockImplementation(() => ({
-        matches: false, // system resolves to dark
+        matches: false, // auto resolves to dark
         addEventListener: jest.fn(),
         removeEventListener: jest.fn(),
       })),
     });
-    
+
     document.documentElement.removeAttribute("data-theme");
   });
 
@@ -37,10 +52,10 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
 
     render(<ThemeToggle />);
     const btn = screen.getByRole("button");
-    
+
     // During loading (SSR), it falls back to 'system'
     expect(btn).toHaveAttribute("data-theme-pref", "system");
-    
+
     // Restore window
     global.window = originalWindow;
   });
@@ -49,7 +64,7 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
     // Local storage is empty
     render(<ThemeToggle />);
     const btn = screen.getByRole("button");
-    
+
     // With empty preferences, it falls back to 'system'
     expect(btn).toHaveAttribute("data-theme-pref", "system");
   });
@@ -67,7 +82,7 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
 
     render(<ThemeToggle />);
     const btn = screen.getByRole("button");
-    
+
     // Error state falls back to 'system' safely
     expect(btn).toHaveAttribute("data-theme-pref", "system");
   });
@@ -77,7 +92,8 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
     Object.defineProperty(window, "localStorage", {
       value: {
         getItem: jest.fn((key) => {
-          if (key === THEME_STORAGE_KEY) return "light";
+          // useLocalStorage uses JSON.parse, so values must be JSON-encoded
+          if (key === THEME_STORAGE_KEY) return JSON.stringify("light");
           return null;
         }),
         setItem: jest.fn(),
@@ -86,16 +102,16 @@ describe("theme's state transitions (loading->success/empty/error)", () => {
     });
 
     render(<ThemeToggle />);
-    
+
     // Initial success state from localStorage
-    let btn = screen.getByRole("button");
+    let btn = screen.getByRole("button", { name: /theme:/i });
     expect(btn).toHaveAttribute("data-theme-pref", "light");
-    
+
     // Verify UI transition
     await act(async () => {
       btn.click();
     });
-    
+
     // Transitions correctly to the next state
     expect(btn).toHaveAttribute("data-theme-pref", "dark");
   });

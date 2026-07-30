@@ -13,7 +13,7 @@ export default function InvoiceDetailError({ error, reset }) {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
       <main className="max-w-4xl mx-auto py-12" id="main-content">
-        <ErrorBanner 
+        <ErrorBanner
           variant="server"
           title={copy.error?.title || "Something went wrong"}
           description={error?.message || copy.error?.description}

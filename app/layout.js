@@ -1,15 +1,14 @@
 import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import "./globals.css";
 import Footer from "../components/Footer";
 import { ToastProvider } from "../components/ToastProvider";
+import OfflineBanner from "../components/OfflineBanner";
+import MarketplaceShortcut from "../components/MarketplaceShortcut";
 import { WalletProvider } from "../components/WalletProvider";
 import ThemeToggle, { THEME_STORAGE_KEY, THEMES } from "../components/ThemeToggle";
 import ShortcutHelpDialog from "../components/ShortcutHelpDialog";
 import { copy } from "./copy/en";
-import { MARKETPLACE_SHORTCUT_KEY, createShortcutMatcher } from "../lib/shortcuts";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -90,6 +89,7 @@ export default async function RootLayout({ children }) {
           Skip to content
         </a>
         <ToastProvider>
+          <OfflineBanner />
           <WalletProvider>{children}</WalletProvider>
           {/* Theme toggle — fixed to top-right, above all other content */}
           <div className="fixed top-3 right-16 z-50 md:right-20">

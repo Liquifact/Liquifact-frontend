@@ -78,8 +78,12 @@ function renderAt(pathname = "/") {
  */
 function navigateWithFakeTimers(rerender, pathname, ms = ANNOUNCE_DEBOUNCE_MS + 10) {
   mockCurrentPathname = pathname;
-  act(() => { rerender(<NavMenu />); });
-  act(() => { jest.advanceTimersByTime(ms); });
+  act(() => {
+    rerender(<NavMenu />);
+  });
+  act(() => {
+    jest.advanceTimersByTime(ms);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -135,19 +139,25 @@ describe("NavMenu — aria-live navigation announcements (#550)", () => {
 
     it("live region stays empty after the debounce delay on initial mount", () => {
       renderAt("/");
-      act(() => { jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS + 50); });
+      act(() => {
+        jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS + 50);
+      });
       expect(screen.getByTestId("nav-announce")).toHaveTextContent("");
     });
 
     it("live region is empty on mount for /invoices", () => {
       renderAt("/invoices");
-      act(() => { jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS + 50); });
+      act(() => {
+        jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS + 50);
+      });
       expect(screen.getByTestId("nav-announce")).toHaveTextContent("");
     });
 
     it("live region is empty on mount for /invest", () => {
       renderAt("/invest");
-      act(() => { jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS + 50); });
+      act(() => {
+        jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS + 50);
+      });
       expect(screen.getByTestId("nav-announce")).toHaveTextContent("");
     });
   });
@@ -170,7 +180,9 @@ describe("NavMenu — aria-live navigation announcements (#550)", () => {
     it("announces 'Navigated to Home' when navigating back to /", () => {
       const { rerender } = renderAt("/invoices");
       // Flush mount — no announcement expected
-      act(() => { jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS + 50); });
+      act(() => {
+        jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS + 50);
+      });
       navigateWithFakeTimers(rerender, "/");
       expect(screen.getByTestId("nav-announce")).toHaveTextContent("Navigated to Home");
     });
@@ -207,16 +219,24 @@ describe("NavMenu — aria-live navigation announcements (#550)", () => {
 
       // / → /invoices: advance only part of the debounce window
       mockCurrentPathname = "/invoices";
-      act(() => { rerender(<NavMenu />); });
-      act(() => { jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS - 50); });
+      act(() => {
+        rerender(<NavMenu />);
+      });
+      act(() => {
+        jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS - 50);
+      });
 
       // Timer for /invoices is still pending — no announcement yet
       expect(screen.getByTestId("nav-announce")).toHaveTextContent("");
 
       // Rapid second update: the /invoices timer is cancelled, new timer started
       mockCurrentPathname = "/invest";
-      act(() => { rerender(<NavMenu />); });
-      act(() => { jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS + 50); });
+      act(() => {
+        rerender(<NavMenu />);
+      });
+      act(() => {
+        jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS + 50);
+      });
 
       // Only the final destination (/invest) should be announced
       expect(screen.getByTestId("nav-announce")).toHaveTextContent("Navigated to Invest");
@@ -226,9 +246,13 @@ describe("NavMenu — aria-live navigation announcements (#550)", () => {
       const { rerender } = renderAt("/");
 
       mockCurrentPathname = "/invoices";
-      act(() => { rerender(<NavMenu />); });
+      act(() => {
+        rerender(<NavMenu />);
+      });
       // Advance time but NOT past the full debounce yet
-      act(() => { jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS - 10); });
+      act(() => {
+        jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS - 10);
+      });
 
       expect(screen.getByTestId("nav-announce")).toHaveTextContent("");
     });
@@ -239,7 +263,9 @@ describe("NavMenu — aria-live navigation announcements (#550)", () => {
       expect(screen.getByTestId("nav-announce")).toHaveTextContent("Navigated to Invoices");
 
       // Extra time should not trigger additional updates
-      act(() => { jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS * 3); });
+      act(() => {
+        jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS * 3);
+      });
       expect(screen.getByTestId("nav-announce")).toHaveTextContent("Navigated to Invoices");
     });
   });
@@ -250,22 +276,22 @@ describe("NavMenu — aria-live navigation announcements (#550)", () => {
     it("falls back to the raw pathname when no NAV_LINKS entry matches", () => {
       const { rerender } = renderAt("/");
       navigateWithFakeTimers(rerender, "/invest/abc-123");
-      expect(screen.getByTestId("nav-announce")).toHaveTextContent(
-        "Navigated to /invest/abc-123",
-      );
+      expect(screen.getByTestId("nav-announce")).toHaveTextContent("Navigated to /invest/abc-123");
     });
 
     it("falls back for a deeply nested unknown route", () => {
       const { rerender } = renderAt("/");
       navigateWithFakeTimers(rerender, "/invoices/detail/xyz/789");
       expect(screen.getByTestId("nav-announce")).toHaveTextContent(
-        "Navigated to /invoices/detail/xyz/789",
+        "Navigated to /invoices/detail/xyz/789"
       );
     });
 
     it("does not announce on mount even for unknown pathnames", () => {
       renderAt("/some/unknown/path");
-      act(() => { jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS + 50); });
+      act(() => {
+        jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS + 50);
+      });
       expect(screen.getByTestId("nav-announce")).toHaveTextContent("");
     });
   });
@@ -282,8 +308,12 @@ describe("NavMenu — aria-live navigation announcements (#550)", () => {
       expect(firstAnnouncement).toBe("Navigated to Invoices");
 
       // Re-render with the same pathname (simulates unrelated state change)
-      act(() => { rerender(<NavMenu />); });
-      act(() => { jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS + 50); });
+      act(() => {
+        rerender(<NavMenu />);
+      });
+      act(() => {
+        jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS + 50);
+      });
 
       // Announcement should remain — no new timer was set
       expect(screen.getByTestId("nav-announce")).toHaveTextContent(firstAnnouncement);
@@ -323,11 +353,9 @@ describe("NavMenu — aria-live navigation announcements (#550)", () => {
     it("replaces {label} correctly", () => {
       expect(copy.nav.announceNavigation.replace("{label}", "Home")).toBe("Navigated to Home");
       expect(copy.nav.announceNavigation.replace("{label}", "Invoices")).toBe(
-        "Navigated to Invoices",
+        "Navigated to Invoices"
       );
-      expect(copy.nav.announceNavigation.replace("{label}", "Invest")).toBe(
-        "Navigated to Invest",
-      );
+      expect(copy.nav.announceNavigation.replace("{label}", "Invest")).toBe("Navigated to Invest");
     });
   });
 
@@ -345,13 +373,15 @@ describe("NavMenu — aria-live navigation announcements (#550)", () => {
       jest.useRealTimers();
       const { container, rerender } = renderAt("/");
       mockCurrentPathname = "/invoices";
-      act(() => { rerender(<NavMenu />); });
+      act(() => {
+        rerender(<NavMenu />);
+      });
       // Wait for the real debounce to fire
       await waitFor(
         () => {
           expect(screen.getByTestId("nav-announce")).toHaveTextContent("Navigated to Invoices");
         },
-        { timeout: ANNOUNCE_DEBOUNCE_MS + 300 },
+        { timeout: ANNOUNCE_DEBOUNCE_MS + 300 }
       );
       const results = await axe(container);
       expect(results).toHaveNoViolations();

@@ -44,7 +44,11 @@ jest.mock("next/link", () => {
 // Mock StatusPill
 jest.mock("./StatusPill", () => {
   return function MockStatusPill({ status }: { status: string }) {
-    return <span role="status" data-testid="status-pill">{status}</span>;
+    return (
+      <span role="status" data-testid="status-pill">
+        {status}
+      </span>
+    );
   };
 });
 
@@ -122,6 +126,14 @@ describe("Watchlist Component — States and Interactions", () => {
       expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
     });
 
+    it("passes axe accessibility checks in the empty state", async () => {
+      const { container } = render(<Watchlist items={[]} loading={false} />);
+
+      const results = await axe(container);
+
+      expect(results).toHaveNoViolations();
+    });
+
     it("supports keyboard navigation to the CTA link in empty state", async () => {
       const user = userEvent.setup();
       render(<Watchlist items={[]} />);
@@ -170,6 +182,19 @@ describe("Watchlist Component — States and Interactions", () => {
       expect(screen.queryByText("Acme Corp")).not.toBeInTheDocument();
       expect(screen.queryByRole("list", { name: "Watchlist items" })).not.toBeInTheDocument();
     });
+
+    it("passes axe accessibility checks in the error state", async () => {
+      const { container } = render(
+        <Watchlist
+          error="Failed to fetch watchlist from server"
+          onRetry={jest.fn()}
+        />
+      );
+
+      const results = await axe(container);
+
+      expect(results).toHaveNoViolations();
+    });
   });
 
   // ===========================================================================
@@ -185,8 +210,12 @@ describe("Watchlist Component — States and Interactions", () => {
       const itemsList = screen.getByRole("list", { name: "Watchlist items" });
       expect(itemsList).toBeInTheDocument();
 
-      expect(screen.getByRole("link", { name: "View details for invoice inv-101 from Acme Corp" })).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "View details for invoice inv-102 from Global Logistics" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "View details for invoice inv-101 from Acme Corp" })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "View details for invoice inv-102 from Global Logistics" })
+      ).toBeInTheDocument();
 
       const liveStatus = screen.getByTestId("watchlist-status");
       expect(liveStatus).toHaveTextContent("2 invoices in watchlist");
@@ -204,6 +233,64 @@ describe("Watchlist Component — States and Interactions", () => {
       const { container } = render(<Watchlist items={MOCK_ITEMS} />);
       const results = await axe(container);
       expect(results).toHaveNoViolations();
+    });
+
+    it("does not announce on initial mount and announces after later updates", () => {
+      jest.useFakeTimers();
+      const { rerender } = render(<Watchlist items={[MOCK_ITEMS[0]]} />);
+      const liveRegion = screen.getByTestId("watchlist-status");
+
+      expect(liveRegion).toHaveTextContent("");
+
+      rerender(<Watchlist items={MOCK_ITEMS} />);
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(liveRegion).toHaveTextContent("2 invoices in watchlist");
+      jest.useRealTimers();
+    });
+
+    it("debounces rapid successive updates and announces the latest message", () => {
+      jest.useFakeTimers();
+      const { rerender } = render(<Watchlist items={[MOCK_ITEMS[0]]} />);
+      const liveRegion = screen.getByTestId("watchlist-status");
+
+      rerender(<Watchlist items={MOCK_ITEMS} />);
+      rerender(
+        <Watchlist
+          items={[...MOCK_ITEMS, { id: "inv-103", issuer: "Northwind", status: "Open" }]}
+        />
+      );
+
+      expect(liveRegion).toHaveTextContent("");
+
+      act(() => {
+        jest.advanceTimersByTime(299);
+      });
+      expect(liveRegion).toHaveTextContent("");
+
+      act(() => {
+        jest.advanceTimersByTime(1);
+      });
+      expect(liveRegion).toHaveTextContent("3 invoices in watchlist");
+      jest.useRealTimers();
+    });
+
+    it("announces when the watchlist becomes empty", () => {
+      jest.useFakeTimers();
+      const { rerender } = render(<Watchlist items={MOCK_ITEMS} />);
+      const liveRegion = screen.getByTestId("watchlist-status");
+
+      expect(liveRegion).toHaveTextContent("");
+
+      rerender(<Watchlist items={[]} />);
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(liveRegion).toHaveTextContent("Your watchlist is empty");
+      jest.useRealTimers();
     });
   });
 
@@ -286,11 +373,7 @@ describe("Watchlist Component — States and Interactions", () => {
       const onRemoveItemMock = jest.fn();
 
       render(
-        <Watchlist
-          items={MOCK_ITEMS}
-          onClearAll={onClearAllMock}
-          onRemoveItem={onRemoveItemMock}
-        />
+        <Watchlist items={MOCK_ITEMS} onClearAll={onClearAllMock} onRemoveItem={onRemoveItemMock} />
       );
 
       const clearBtn = screen.getByRole("button", { name: "Clear all watchlist items" });
@@ -301,6 +384,153 @@ describe("Watchlist Component — States and Interactions", () => {
 
       await user.tab();
       expect(searchInput).toHaveFocus();
+    });
+
+    it("follows a logical tab order through all visible controls", async () => {
+      const user = userEvent.setup();
+      const onClearAllMock = jest.fn();
+      const onToggleStarMock = jest.fn();
+      const onRemoveItemMock = jest.fn();
+
+      render(
+        <Watchlist
+          items={MOCK_ITEMS}
+          onClearAll={onClearAllMock}
+          onToggleStar={onToggleStarMock}
+          onRemoveItem={onRemoveItemMock}
+        />
+      );
+
+      const clearBtn = screen.getByRole("button", { name: "Clear all watchlist items" });
+      const searchInput = screen.getByRole("searchbox", { name: "Search watchlist" });
+      const selectAllCheckbox = screen.getByRole("checkbox", { name: "Select all watchlist items" });
+      const item1Checkbox = screen.getByRole("checkbox", { name: /Select invoice inv-101 from Acme Corp/ });
+      const starBtn = screen.getByRole("button", { name: /Remove invoice inv-101 from watchlist/ });
+      const issuerLink = screen.getByRole("link", { name: /View details for invoice inv-101/ });
+      const removeBtn = screen.getByRole("button", { name: /Remove Acme Corp from watchlist/ });
+
+      await user.tab();
+      expect(clearBtn).toHaveFocus();
+
+      await user.tab();
+      expect(searchInput).toHaveFocus();
+
+      await user.tab();
+      expect(selectAllCheckbox).toHaveFocus();
+
+      await user.tab();
+      expect(item1Checkbox).toHaveFocus();
+
+      await user.tab();
+      expect(starBtn).toHaveFocus();
+
+      await user.tab();
+      expect(issuerLink).toHaveFocus();
+
+      await user.tab();
+      expect(removeBtn).toHaveFocus();
+    });
+
+    it("activates Clear watchlist button on Enter", async () => {
+      const user = userEvent.setup();
+      const onClearAllMock = jest.fn();
+      render(<Watchlist items={MOCK_ITEMS} onClearAll={onClearAllMock} />);
+
+      const clearBtn = screen.getByRole("button", { name: "Clear all watchlist items" });
+      clearBtn.focus();
+      expect(clearBtn).toHaveFocus();
+
+      await user.keyboard("{Enter}");
+      expect(onClearAllMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("activates Clear watchlist button on Space", async () => {
+      const user = userEvent.setup();
+      const onClearAllMock = jest.fn();
+      render(<Watchlist items={MOCK_ITEMS} onClearAll={onClearAllMock} />);
+
+      const clearBtn = screen.getByRole("button", { name: "Clear all watchlist items" });
+      clearBtn.focus();
+      expect(clearBtn).toHaveFocus();
+
+      await user.keyboard(" ");
+      expect(onClearAllMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("activates star toggle on Enter", async () => {
+      const user = userEvent.setup();
+      const onToggleStarMock = jest.fn();
+      render(<Watchlist items={MOCK_ITEMS} onToggleStar={onToggleStarMock} />);
+
+      const starBtn = screen.getByRole("button", { name: /Remove invoice inv-101 from watchlist/ });
+      starBtn.focus();
+      expect(starBtn).toHaveFocus();
+
+      await user.keyboard("{Enter}");
+      expect(onToggleStarMock).toHaveBeenCalledWith("inv-101");
+    });
+
+    it("activates star toggle on Space", async () => {
+      const user = userEvent.setup();
+      const onToggleStarMock = jest.fn();
+      render(<Watchlist items={MOCK_ITEMS} onToggleStar={onToggleStarMock} />);
+
+      const starBtn = screen.getByRole("button", { name: /Remove invoice inv-101 from watchlist/ });
+      starBtn.focus();
+      expect(starBtn).toHaveFocus();
+
+      await user.keyboard(" ");
+      expect(onToggleStarMock).toHaveBeenCalledWith("inv-101");
+    });
+
+    it("activates Remove button on Enter", async () => {
+      const user = userEvent.setup();
+      const onRemoveItemMock = jest.fn();
+      render(<Watchlist items={MOCK_ITEMS} onRemoveItem={onRemoveItemMock} />);
+
+      const removeBtn = screen.getByRole("button", { name: /Remove Acme Corp from watchlist/ });
+      removeBtn.focus();
+      expect(removeBtn).toHaveFocus();
+
+      await user.keyboard("{Enter}");
+      expect(onRemoveItemMock).toHaveBeenCalledWith("inv-101");
+    });
+
+    it("activates Remove button on Space", async () => {
+      const user = userEvent.setup();
+      const onRemoveItemMock = jest.fn();
+      render(<Watchlist items={MOCK_ITEMS} onRemoveItem={onRemoveItemMock} />);
+
+      const removeBtn = screen.getByRole("button", { name: /Remove Acme Corp from watchlist/ });
+      removeBtn.focus();
+      expect(removeBtn).toHaveFocus();
+
+      await user.keyboard(" ");
+      expect(onRemoveItemMock).toHaveBeenCalledWith("inv-101");
+    });
+
+    it("activates issuer link on Enter", async () => {
+      const user = userEvent.setup();
+      render(<Watchlist items={MOCK_ITEMS} />);
+
+      const issuerLink = screen.getByRole("link", { name: /View details for invoice inv-101/ });
+      issuerLink.focus();
+      expect(issuerLink).toHaveFocus();
+
+      await user.keyboard("{Enter}");
+      expect(issuerLink).toHaveAttribute("href", "/invest/inv-101");
+    });
+
+    it("shows visible focus ring on interactive controls", async () => {
+      const user = userEvent.setup();
+      const onClearAllMock = jest.fn();
+      render(<Watchlist items={MOCK_ITEMS} onClearAll={onClearAllMock} />);
+
+      const clearBtn = screen.getByRole("button", { name: "Clear all watchlist items" });
+      await user.tab();
+      expect(clearBtn).toHaveFocus();
+
+      expect(clearBtn.className).toContain("focus-ring");
     });
   });
 });

@@ -116,7 +116,6 @@ export default function InvoiceDetailItems({
   onBulkExport = defaultDetailBulkExport,
   toast: toastApi = null,
 }) {
-
   const [items, setItems] = useState(() =>
     Array.isArray(initialItems) ? initialItems.slice() : []
   );
@@ -240,9 +239,7 @@ export default function InvoiceDetailItems({
               data-selected={checked ? "true" : "false"}
               className={[
                 "flex items-center gap-3 rounded-lg border p-3 transition-colors",
-                checked
-                  ? "border-cyan-700/60 bg-cyan-950/30"
-                  : "border-slate-800 bg-slate-950/40",
+                checked ? "border-cyan-700/60 bg-cyan-950/30" : "border-slate-800 bg-slate-950/40",
               ].join(" ")}
             >
               <label className="inline-flex items-center gap-3 cursor-pointer min-w-0 flex-1">
@@ -252,7 +249,7 @@ export default function InvoiceDetailItems({
                   onChange={() => toggle(item.id)}
                   aria-label={checkboxAria}
                   data-testid={`detail-item-checkbox-${item.id}`}
-                  className="h-4 w-4 flex-shrink-0 rounded border-slate-600 bg-slate-900 text-cyan-500 accent-cyan-400 focus:ring-cyan-400"
+                  className="h-4 w-4 flex-shrink-0 rounded border-slate-600 bg-slate-900 text-cyan-500 accent-cyan-400 focus-ring"
                 />
                 <span className="min-w-0">
                   <span className="block text-sm font-medium text-slate-100 truncate">

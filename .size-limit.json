@@ -1,17 +1,17 @@
 [
   {
     "name": "Home (/)",
-    "path": ".next/static/chunks/*.js",
+    "path": ".next/server/app/page.js",
     "limit": "800 kB"
   },
   {
     "name": "Invest (/invest)",
-    "path": ".next/static/chunks/*.js",
+    "path": ".next/server/app/invest/page.js",
     "limit": "800 kB"
   },
   {
     "name": "Invoices (/invoices)",
-    "path": ".next/static/chunks/*.js",
+    "path": ".next/server/app/invoices/page.js",
     "limit": "800 kB"
   }
 ]

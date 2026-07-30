@@ -4,6 +4,11 @@ import { axe, toHaveNoViolations } from "jest-axe";
 import UploadZone from "./UploadZone";
 import { validatePdfFile } from "../lib/validation/pdf";
 
+const mockAnnounce = jest.fn();
+jest.mock("../lib/a11y/liveRegion", () => ({
+  announce: (...args) => mockAnnounce(...args),
+}));
+
 jest.mock("../lib/validation/pdf", () => {
   const actual = jest.requireActual("../lib/validation/pdf");
   return {
@@ -34,6 +39,7 @@ const ORIGINAL_ENV = process.env;
 
 beforeEach(() => {
   jest.useFakeTimers();
+  mockAnnounce.mockClear();
   process.env = {
     ...ORIGINAL_ENV,
     NEXT_PUBLIC_API_URL: "https://api.mock-liquifact.org",
@@ -83,7 +89,10 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
         target: { files: [file] },
       });
-      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+      });
 
       const status = screen.getByRole("status");
       expect(status).toHaveAttribute("role", "status");
@@ -98,7 +107,10 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
         target: { files: [file] },
       });
-      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+      });
 
       const progressbar = screen.getByRole("progressbar");
       expect(progressbar).toHaveAttribute("role", "progressbar");
@@ -123,11 +135,15 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
         target: { files: [file] },
       });
-      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
 
-      const spinner = screen.getByRole("img", { name: /uploading/i });
-      expect(spinner).toHaveAttribute("role", "img");
-      expect(spinner).toHaveAttribute("aria-label");
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+      });
+
+      const spinners = screen.getAllByRole("img", { name: /loading/i });
+      expect(spinners.length).toBeGreaterThan(0);
+      expect(spinners[0]).toHaveAttribute("role", "img");
+      expect(spinners[0]).toHaveAttribute("aria-label");
     });
 
     it("submit button has aria-disabled when no file is selected", () => {
@@ -145,9 +161,13 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
         target: { files: [file] },
       });
+
       fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
 
-      const submitBtn = screen.getByRole("button", { name: /upload & tokenize invoice/i });
+      // Once uploading begins the button label changes to "Uploading invoice..."
+      // (spinner text + copy.uploadZone.submitUploading). We look it up by its
+      // new accessible name so the query reflects the actual in-flight state.
+      const submitBtn = screen.getByRole("button", { name: /uploading invoice/i });
       expect(submitBtn).toBeDisabled();
       expect(submitBtn).toHaveAttribute("aria-disabled", "true");
     });
@@ -201,7 +221,11 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
         target: { files: [file] },
       });
-      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+        await Promise.resolve();
+      });
 
       await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
     });
@@ -222,9 +246,9 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
         target: { files: [file] },
       });
-      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
 
       await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
         await Promise.resolve();
         jest.runAllTimers();
       });
@@ -234,9 +258,12 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       );
 
       const dropzone = screen.getByRole("button", { name: /drop pdf invoice/i });
-      fireEvent.click(screen.getByRole("button", { name: /upload another invoice/i }));
 
-      expect(document.activeElement).toBe(dropzone);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /upload another invoice/i }));
+      });
+
+      await waitFor(() => expect(document.activeElement).toBe(dropzone));
     });
 
     it("submit button has focus-ring class for visible focus", () => {
@@ -253,9 +280,9 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
         target: { files: [file] },
       });
-      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
 
       await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
         await Promise.resolve();
         jest.runAllTimers();
       });
@@ -271,7 +298,14 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
 
   describe("State Transitions", () => {
     it("idle → uploading → tokenizing → success flow", async () => {
-      mockFetchOk();
+      let resolveFetch;
+      global.fetch = jest.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveFetch = resolve;
+          })
+      );
+
       render(<UploadZone />);
 
       const file = createMockFile();
@@ -279,27 +313,32 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
         target: { files: [file] },
       });
 
-      // Idle state
+      // 1. Idle state
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeEnabled();
 
-      // Uploading state
+      // 2. Uploading state — click fires handleSubmit synchronously, immediately
+      //    switching the component to the "uploading" state before we assert.
       fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
-      expect(screen.getByRole("status")).toHaveTextContent(/uploading/i);
-      expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeDisabled();
 
-      // Tokenizing state
+      expect(screen.getByRole("status")).toHaveTextContent(/uploading/i);
+      // Button label changes to "Uploading invoice..." while in-flight
+      const uploadingBtn = screen.getByRole("button", { name: /uploading invoice/i });
+      expect(uploadingBtn).toBeDisabled();
+
+      // 3. Tokenizing state (resolve fetch response only)
       await act(async () => {
-        await Promise.resolve();
+        resolveFetch({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
       });
 
-      await waitFor(() =>
-        expect(screen.getByRole("status")).toHaveTextContent(/tokenization/i)
-      );
+      await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/tokenization/i));
 
-      // Success state
+      // 4. Success state (advance timers to complete tokenization stage)
       await act(async () => {
-        jest.runAllTimers();
+        jest.runOnlyPendingTimers();
       });
 
       await waitFor(() =>
@@ -344,7 +383,10 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
         target: { files: [createMockFile()] },
       });
-      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+      });
 
       const status = screen.getByRole("status");
       expect(status).toBeInTheDocument();
@@ -358,9 +400,9 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
         target: { files: [createMockFile()] },
       });
-      fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
 
       await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
         await Promise.resolve();
         jest.runAllTimers();
       });
@@ -368,7 +410,74 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       await waitFor(() => {
         const status = screen.getByRole("status");
         expect(status).toBeInTheDocument();
-        expect(status.textContent).toContain("queued for tokenization");
+        expect(status.textContent.toLowerCase()).toContain("queued for tokenization");
+      });
+    });
+
+    it("announces success via polite live region when upload completes", async () => {
+      mockFetchOk();
+      render(<UploadZone />);
+
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [createMockFile()] },
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+        await Promise.resolve();
+        jest.runAllTimers();
+      });
+
+      await waitFor(() => {
+        expect(mockAnnounce).toHaveBeenCalledWith(
+          expect.stringContaining("queued for tokenization")
+        );
+      });
+    });
+
+    it("announces failure via polite live region when upload fails", async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: jest.fn().mockResolvedValue({ message: "Internal server error" }),
+      });
+      render(<UploadZone />);
+
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [createMockFile()] },
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+        await Promise.resolve();
+        jest.runAllTimers();
+      });
+
+      await waitFor(() => {
+        expect(mockAnnounce).toHaveBeenCalledWith(
+          expect.stringMatching(/internal server error|upload failed/i)
+        );
+      });
+    });
+
+    it("announces network failure via polite live region", async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error("Network error"));
+      render(<UploadZone />);
+
+      fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
+        target: { files: [createMockFile()] },
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
+        await Promise.resolve();
+        jest.runAllTimers();
+      });
+
+      await waitFor(() => {
+        expect(mockAnnounce).toHaveBeenCalledWith(
+          expect.stringContaining("Network error")
+        );
       });
     });
   });
@@ -408,8 +517,8 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
       render(<UploadZone />);
 
-      // Check decorative icons in idle state
-      const idleIcons = screen.getAllByText(/\u{1F4C2}/);
+      // Check decorative icons in idle state — component renders 📂 (U+1F4C2 open folder)
+      const idleIcons = screen.getAllByText("\u{1F4C2}");
       idleIcons.forEach((icon) => {
         expect(icon).toHaveAttribute("aria-hidden", "true");
       });
@@ -418,13 +527,15 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       fireEvent.change(screen.getByLabelText(/select pdf invoice file/i), {
         target: { files: [createMockFile()] },
       });
-      const fileIcon = screen.getByText(/\u2705/);
+      const fileIcon = screen.getByText("✅");
       expect(fileIcon).toHaveAttribute("aria-hidden", "true");
 
-      // Upload to check spinner
+      // Upload to check spinner — click without act() so the fetch stays pending
       fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
-      const spinner = screen.getByRole("img", { name: /uploading/i });
-      expect(spinner).toHaveAttribute("aria-label");
+
+      // Spinner's aria-label is "Loading" (copy.uploadZone.spinnerLabel)
+      const spinners = screen.getAllByRole("img", { name: /loading/i });
+      expect(spinners[0]).toHaveAttribute("aria-label");
     });
   });
 });

@@ -62,9 +62,7 @@ async function renderLoaded(props = {}) {
   };
   const result = render(<InvestMarketplace {...userProps} />);
   await waitFor(() =>
-    expect(
-      screen.getByRole("list", { name: /investable invoices/i })
-    ).toBeInTheDocument()
+    expect(screen.getByRole("list", { name: /investable invoices/i })).toBeInTheDocument()
   );
   return result;
 }
@@ -147,7 +145,6 @@ describe("InvestMarketplace — bulk select toolbar", () => {
     expect(selectAll.indeterminate).toBe(false);
   });
 
-
   it("select-all in 'all' state deselects every visible row", async () => {
     await renderLoaded();
     // Build up to the 'all' state in two stages so the toolbar is visible
@@ -198,9 +195,7 @@ describe("InvestMarketplace — bulk select toolbar", () => {
       target: { value: "" },
     });
     await waitFor(() =>
-      expect(
-        screen.getByRole("list", { name: /investable invoices/i })
-      ).toBeInTheDocument()
+      expect(screen.getByRole("list", { name: /investable invoices/i })).toBeInTheDocument()
     );
     expect(screen.queryByTestId("bulk-actions-toolbar")).not.toBeInTheDocument();
     expect(getCheckbox("inv-001")).not.toBeChecked();
@@ -241,7 +236,9 @@ describe("InvestMarketplace — bulk select toolbar", () => {
     expect(
       within(dialog).getByRole("heading", { name: /Delete selected invoices\?/i })
     ).toBeInTheDocument();
-    expect(within(dialog).getByText(/You are about to permanently delete 1 invoice/i)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/You are about to permanently delete 1 invoice/i)
+    ).toBeInTheDocument();
   });
 
   it("Cancelling the dialog closes it without deleting anything", async () => {
@@ -265,9 +262,7 @@ describe("InvestMarketplace — bulk select toolbar", () => {
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: /Delete 1 invoice/i }));
 
-    await waitFor(() =>
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
-    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(onBulkDelete).toHaveBeenCalledTimes(1);
     // inv-002 should be removed from the list
     expect(screen.queryByTestId("invoice-row-inv-002")).not.toBeInTheDocument();
@@ -290,16 +285,29 @@ describe("InvestMarketplace — bulk select toolbar", () => {
     );
   });
 
-  it("A failing delete handler surfaces an error toast and keeps the rows", async () => {
+  it("A failing delete handler surfaces an error toast and rolls back", async () => {
     const toast = { success: jest.fn(), error: jest.fn(), info: jest.fn() };
     const onBulkDelete = jest.fn(async () => {
+      // Simulate slow failure
+      await new Promise((resolve) => setTimeout(resolve, 50));
       throw new Error("backend down");
     });
     await renderLoaded({ toast, onBulkDelete });
+
+    // Select inv-001
     fireEvent.click(getCheckbox("inv-001"));
+
+    // Click Delete
     fireEvent.click(screen.getByTestId("bulk-delete"));
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: /Delete 1 invoice/i }));
+
+    // Assert Optimistic Update: row should be gone
+    await waitFor(() =>
+      expect(screen.queryByTestId("invoice-row-inv-001")).not.toBeInTheDocument()
+    );
+
+    // Assert Rollback after failure
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
     expect(screen.getByTestId("invoice-row-inv-001")).toBeInTheDocument();
   });

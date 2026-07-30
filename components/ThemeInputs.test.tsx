@@ -89,7 +89,9 @@ describe("ThemeInputs — rendering", () => {
     renderComponent();
     expect(screen.getByLabelText("Theme")).toBeInTheDocument();
     expect(screen.getByLabelText("Accent Colour")).toBeInTheDocument();
-    expect(screen.getByText("Light, dark, or follow the operating system setting.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Light, dark, or follow the operating system setting.")
+    ).toBeInTheDocument();
     expect(screen.getByText("Accent colour used throughout the interface.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save theme preferences/i })).toBeInTheDocument();
   });
@@ -98,14 +100,18 @@ describe("ThemeInputs — rendering", () => {
     renderComponent();
     const select = screen.getByLabelText("Theme");
     for (const opt of THEME_OPTIONS) {
-      expect(screen.getByRole("option", { name: opt.charAt(0).toUpperCase() + opt.slice(1) })).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: opt.charAt(0).toUpperCase() + opt.slice(1) })
+      ).toBeInTheDocument();
     }
   });
 
   it("renders all accent colour options in the accent select", () => {
     renderComponent();
     for (const opt of ACCENT_COLOUR_OPTIONS) {
-      expect(screen.getByRole("option", { name: opt.charAt(0).toUpperCase() + opt.slice(1) })).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: opt.charAt(0).toUpperCase() + opt.slice(1) })
+      ).toBeInTheDocument();
     }
   });
 

@@ -101,19 +101,15 @@ export async function copyInvoiceUrl(id) {
  *   Receives `(invoiceId, amount)` and should throw on failure.
  *   Defaults to a mock that resolves immediately (placeholder until Stellar lands).
  */
-export default function FundActions({
-  id,
-  status,
-  maxAmount,
-  currency,
-  yieldValue,
-  performFund,
-}) {
+export default function FundActions({ id, status, maxAmount, currency, yieldValue, performFund }) {
   const { state: walletState, connect } = useWallet();
   const toast = useToast();
   const [isCopying, setIsCopying] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const debounceTimeoutRef = useRef(null);
+  const submissionGuardRef = useRef(false);
+  const idempotencyKeyRef = useRef(null);
+  const currentIntentKeyRef = useRef(null);
   const { pendingIds, fundInvoice } = useMarketplace();
 
   const isFundingPending = pendingIds.has(id);
@@ -129,6 +125,9 @@ export default function FundActions({
   useEffect(() => {
     return () => {
       if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+      submissionGuardRef.current = false;
+      idempotencyKeyRef.current = null;
+      currentIntentKeyRef.current = null;
     };
   }, []);
 
@@ -186,16 +185,35 @@ export default function FundActions({
         return;
       }
 
+      // Generate intent key from invoice id + amount (unique per unique funding attempt)
+      const intentKey = `${id}_${amount}`;
+
+      // SUBMISSION GUARD: block repeat activation of the SAME intent while in-flight
+      if (currentIntentKeyRef.current === intentKey && submissionGuardRef.current) {
+        return;
+      }
+
+      // New intent (or first activation) — allow through
+      currentIntentKeyRef.current = intentKey;
+      submissionGuardRef.current = true;
+
+      // Generate idempotency key per unique intent; reuse on retry
+      if (!idempotencyKeyRef.current || currentIntentKeyRef.current !== intentKey) {
+        idempotencyKeyRef.current = crypto.randomUUID();
+      }
+
       // Default performFund: simulates a successful submission until the
       // real Stellar sign+submit flow lands.
       const action =
         performFund ??
-        (async (_invoiceId, _amount) => {
+        (async (_invoiceId, _amount, _idempotencyKey) => {
           // No-op placeholder — replace with real API call.
         });
 
       try {
-        await fundInvoice(id, amount, action);
+        await fundInvoice(id, amount, (invId, amt) =>
+          action(invId, amt, idempotencyKeyRef.current)
+        );
         const successMsg =
           `Funding request for ${amount} ${currency ?? ""} submitted. Awaiting wallet approval.`.trim();
         toast.success(successMsg, "Funding submitted");
@@ -205,6 +223,8 @@ export default function FundActions({
           `Funding request for ${amount} ${currency ?? ""} failed. Please try again.`.trim();
         toast.error(errorMsg, "Funding failed");
         announce(errorMsg);
+      } finally {
+        submissionGuardRef.current = false;
       }
     },
     [walletState, connect, fundInvoice, id, currency, performFund, toast, announce]
@@ -250,6 +270,7 @@ export default function FundActions({
           disabled={isFundingDisabled}
           className="invoice-detail-action-btn focus-ring rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label={detail.fundButtonLabel}
+          aria-busy={isFundingPending ? "true" : "false"}
         >
           {isFundingPending ? "Funding…" : detail.fundButton}
         </button>

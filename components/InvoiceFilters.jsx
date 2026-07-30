@@ -381,6 +381,19 @@ export function ActiveFilterSummary({
   );
 }
 
+/**
+ * Returns a human-readable sort announcement for the live region.
+ *
+ * @param {string} column - The active sort column (empty string means no sort).
+ * @param {'asc'|'desc'} dir - The sort direction.
+ * @returns {string}
+ */
+export function getSortAnnouncement(column, dir) {
+  if (!column) return "";
+  const columnLabel = column.charAt(0).toUpperCase() + column.slice(1);
+  return `Sorted by ${columnLabel}, ${dir === "asc" ? "ascending" : "descending"}`;
+}
+
 /** Render a small ↑↓ toggle button for asc/desc. */
 function DirectionToggle({ column, filters, onFilterChange }) {
   const { column: activeColumn, dir } = parseSortState(filters);
@@ -400,13 +413,16 @@ function DirectionToggle({ column, filters, onFilterChange }) {
     ? `Sort ${column} ${nextDir === "asc" ? "ascending" : "descending"}`
     : `Sort ${column} direction`;
 
+  const ariaSort = isActive ? (dir === "asc" ? "ascending" : "descending") : "none";
+
   return (
     <button
       type="button"
       onClick={handleToggle}
       disabled={!isActive}
       aria-label={ariaLabel}
-      className={`focus-ring rounded px-2 py-1 text-xs font-mono transition-colors select-none ${
+      aria-sort={ariaSort}
+      className={`focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 rounded px-2 py-1 text-xs font-mono transition-colors select-none ${
         isActive
           ? "bg-cyan-900/40 text-cyan-300 hover:bg-cyan-800/60 border border-cyan-700"
           : "bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
@@ -527,7 +543,15 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
   );
 
   const active = hasActiveFilters(filters);
-  const { column: activeColumn } = parseSortState(filters);
+  const { column: activeColumn, dir: activeDir } = parseSortState(filters);
+
+  // Polite live region announcement for sort changes (distinct from the
+  // results-summary region in app/invest/page.js). Derived via useMemo so
+  // the live region only updates when the sort column or direction changes.
+  const sortAnnouncement = useMemo(
+    () => getSortAnnouncement(activeColumn, activeDir),
+    [activeColumn, activeDir]
+  );
 
   // Roving tabindex state for currency filter chips
   const [focusedCurrencyIndex, setFocusedCurrencyIndex] = useState(0);
@@ -560,6 +584,18 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
     : null;
 
   return (
+    <>
+    {/* Polite live region – announces sort changes to screen readers without
+        duplicating the results-summary announcement in app/invest/page.js */}
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      className="sr-only"
+      data-testid="sort-live-region"
+    >
+      {sortAnnouncement}
+    </div>
     <div className="flex flex-wrap gap-4 items-center">
       <div className="flex flex-col gap-1">
         <fieldset className="flex items-center gap-2 border-none p-0 m-0">
@@ -606,17 +642,12 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
             {effYieldMaxError}
           </p>
         )}
+        {effMaturityToError && (
+          <p id={maturityToErrorId} role="alert" aria-live="polite" className="text-xs text-red-400">
+            {effMaturityToError}
+          </p>
+        )}
       </div>
-
-      <label className="flex items-center gap-2 text-sm text-slate-300">
-        <input
-          type="checkbox"
-          checked={filters.watchlistOnly || false}
-          onChange={(e) => handleChange("watchlistOnly", e.target.checked)}
-          className="rounded border-slate-700 bg-slate-800/50 text-cyan-500 focus:ring-cyan-500"
-        />
-        Watchlist Only
-      </label>
 
       <div
         role="toolbar"
@@ -750,7 +781,7 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
         type="button"
         onClick={onClearFilters}
         disabled={!active}
-        className={`focus-ring ml-auto rounded-lg border px-4 py-2 text-sm transition-colors ${
+        className={`focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 ml-auto rounded-lg border px-4 py-2 text-sm transition-colors ${
           active
             ? "border-slate-600 bg-slate-800/50 text-cyan-400 hover:bg-slate-700"
             : "border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
@@ -760,5 +791,6 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
         Clear Filters
       </button>
     </div>
+    </>
   );
 }

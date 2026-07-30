@@ -19,6 +19,7 @@ describe("DEFAULT_FILTERS", () => {
       sort: "",
       sortDir: "desc",
       statuses: [],
+      watchlistOnly: false,
     });
   });
 });

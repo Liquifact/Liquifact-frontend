@@ -225,9 +225,15 @@ export default function NavMenu() {
    */
   const navItems = useMemo(
     () => NAV_LINKS.map((link) => ({ ...link, isActive: pathname === link.href })),
-    [pathname],
+    [pathname]
   );
 
+  const isHomePage = pathname === "/" || pathname === "/home";
+
+  /**
+   * True when the current route is the home page.
+   * Used both in brandLabel and in the brand link's aria-current attribute.
+   */
   const isHomePage = pathname === "/" || pathname === "/home";
 
   /**
@@ -316,17 +322,17 @@ export default function NavMenu() {
         {/* Brand */}
         <Link
           href="/"
-          aria-current={isHomePage ? "page" : undefined} 
+          aria-current={isHomePage ? "page" : undefined}
           className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline focus-ring rounded"
         >
-            {isHomePage ? (
-              "LiquiFact"
-            ) : (
-              <>
-                <span aria-hidden="true">← </span> {/* CHANGED */}
-                LiquiFact
-              </>
-            )}
+          {isHomePage ? (
+            "LiquiFact"
+          ) : (
+            <>
+              <span aria-hidden="true">← </span> {/* CHANGED */}
+              LiquiFact
+            </>
+          )}
         </Link>
 
         {/* Desktop nav — only re-renders when pathname changes */}
@@ -401,9 +407,7 @@ export default function NavMenu() {
       </div>
 
       {/* Mobile dropdown — absolutely positioned so it overlays page content */}
-      {open && (
-        <MobileMenu navItems={navItems} visible={visible} menuRef={menuRef} />
-      )}
+      {open && <MobileMenu navItems={navItems} visible={visible} menuRef={menuRef} />}
 
       {/* Polite live region — announces route changes to screen-reader users.
           Kept visually hidden (sr-only) so it never affects layout.

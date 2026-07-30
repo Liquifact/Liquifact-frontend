@@ -34,6 +34,18 @@ import { ALL_STATES } from "../lib/hooks/useBulkSelection";
  * component — the parent owns all side effects (delete API call, file
  * download, toast, etc.).
  */
+const DEFAULT_LABELS = {
+  toolbarAria: "Bulk actions toolbar",
+  selectAllAria: "Select all {total} invoices",
+  selectAllLabel: "Select all ({selected}/{total})",
+  selectedCount: "{selected} of {total} invoices selected.",
+  clearSelection: "Clear",
+  exportAction: "Export",
+  exportingAction: "Exporting...",
+  deleteAction: "Delete",
+  deletingAction: "Deleting...",
+};
+
 export default function BulkActionsToolbar({
   selectedCount,
   visibleCount,
@@ -46,9 +58,10 @@ export default function BulkActionsToolbar({
   exporting = false,
   deleting = false,
 }) {
+  const safeLabels = { ...DEFAULT_LABELS, ...labels };
   const toolbarRef = useRef(null);
   const selectAllRef = useRef(null);
-  const toolbarId = useId();
+  const statusId = useId();
 
   // Keep the select-all checkbox's `indeterminate` flag in sync with the
   // tri-state value. `indeterminate` is a DOM property (not an HTML
@@ -81,18 +94,11 @@ export default function BulkActionsToolbar({
     <section
       ref={toolbarRef}
       role="toolbar"
-      aria-labelledby={`${toolbarId}-label`}
-      aria-controls={`${toolbarId}-list`}
-      id={toolbarId}
+      aria-label={safeLabels?.toolbarAria}
       data-testid="bulk-actions-toolbar"
       onKeyDown={handleToolbarKeyDown}
       className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-cyan-700/50 bg-cyan-950/40 p-3 shadow-sm focus-within:ring-2 focus-within:ring-cyan-400"
     >
-      {/* Visually-hidden label so SR users hear the toolbar context */}
-      <h2 id={`${toolbarId}-label`} className="sr-only">
-        {labels.toolbarLabel}
-      </h2>
-
       {/* Tri-state select-all checkbox */}
       <label className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-100 hover:bg-slate-900/60 focus-within:ring-2 focus-within:ring-cyan-400 cursor-pointer">
         <input
@@ -101,18 +107,17 @@ export default function BulkActionsToolbar({
           checked={allState === ALL_STATES.ALL}
           // Mixed state mirrors `aria-checked="mixed"` semantics.
           aria-checked={ariaChecked}
-          aria-label={labels.selectAllAria
+          aria-label={safeLabels?.selectAllAria
             .replace("{selected}", String(selectedCount))
             .replace("{total}", String(visibleCount))}
           data-testid="bulk-select-all"
           onChange={() => onToggleSelectAll?.()}
-          className="h-4 w-4 rounded border-slate-500 bg-slate-900 text-cyan-500 accent-cyan-400 focus:ring-cyan-400"
+          className="h-4 w-4 rounded border-slate-500 bg-slate-900 text-cyan-500 accent-cyan-400 focus-ring"
         />
         <span className="font-medium">
-          {labels.selectAllLabel.replace("{selected}", String(selectedCount)).replace(
-            "{total}",
-            String(visibleCount)
-          )}
+          {labels.selectAllLabel
+            .replace("{selected}", String(selectedCount))
+            .replace("{total}", String(visibleCount))}
         </span>
       </label>
 
@@ -124,19 +129,19 @@ export default function BulkActionsToolbar({
         data-testid="bulk-selection-count"
         className="sr-only"
       >
-        {labels.selectedCount
-          .replace("{selected}", String(selectedCount))
-          .replace("{total}", String(visibleCount))}
+        {safeLabels?.selectedCount
+          ?.replace("{selected}", String(selectedCount))
+          ?.replace("{total}", String(visibleCount))}
       </p>
 
       <Button
         type="button"
         variant="secondary"
         onClick={onClearSelection}
-        aria-label={labels.clearButton}
+        aria-label={safeLabels?.clearButton || "Clear selection"}
         data-testid="bulk-clear"
       >
-        {labels.clearButton}
+        {safeLabels?.clearButton || "Clear"}
       </Button>
 
       <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -145,23 +150,20 @@ export default function BulkActionsToolbar({
           variant="secondary"
           onClick={onExport}
           loading={exporting}
-          aria-label={labels.exportButtonAria}
+          aria-label={safeLabels?.exportButtonAria || "Export selected invoices"}
           data-testid="bulk-export"
         >
-          {labels.exportButton}
+          {safeLabels?.exportButton || "Export"}
         </Button>
         <Button
           type="button"
           variant="danger"
           onClick={onRequestDelete}
           loading={deleting}
-          aria-label={labels.deleteButtonAria.replace(
-            "{count}",
-            String(selectedCount)
-          )}
+          aria-label={labels.deleteButtonAria.replace("{count}", String(selectedCount))}
           data-testid="bulk-delete"
         >
-          {labels.deleteButton.replace("{count}", String(selectedCount))}
+          {(safeLabels?.deleteButton || "Delete ({count})").replace("{count}", String(selectedCount))}
         </Button>
       </div>
     </section>
