@@ -1,0 +1,2612 @@
+]633;E;for f in   app/page.js   app/page.a11y.test.tsx   app/page.test.tsx   app/page.health-render.test.jsx   app/page.dashboard-skeleton.test.jsx   app/globals.css   app/globals.contrast.test.tsx   app/globals.contrast-ratio.test.tsx   app/invest/reduced-motion-contrast.test.tsx   components/Button.jsx   components/Button.test.tsx   components/HealthStatusSkeleton.jsx   components/NavMenu.jsx\x3b do   if [ -f "$f" ]\x3b then     printf '\\n===== %s =====\\n' "$f"\x3b     cat "$f"\x3b   fi\x3b done > issue-954-source-files.txt;8ced7a74-2699-45c4-8ced-5ca946e45eba]633;C
+===== app/page.js =====
+"use client";
+
+import Link from "next/link";
+import { useRef, useState, useEffect } from "react";
+import NavMenu from "../components/NavMenu";
+import { copy } from "./copy/en";
+import { getHealth } from "../lib/api/health";
+import { env } from "../lib/config/env";
+import { extractKnownFields, safeJsonStringify } from "../lib/format/safeJson";
+import HealthStatusSkeleton from "../components/HealthStatusSkeleton";
+
+const API_URL = env.apiUrl;
+
+// Status mapping to visual states
+// Maps getHealth return values to badge styles and labels
+const getStatusConfig = (status) => {
+  switch (status) {
+    case "connected":
+      return {
+        label: copy.home.healthStatus.connected,
+        badgeClass: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+        icon: "✓",
+      };
+    case "degraded":
+      return {
+        label: copy.home.healthStatus.degraded,
+        badgeClass: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+        icon: "⚠",
+      };
+    case "unreachable":
+      return {
+        label: copy.home.healthStatus.unreachable,
+        badgeClass: "bg-red-500/10 text-red-400 border-red-500/20",
+        icon: "✕",
+      };
+    default:
+      return {
+        label: status,
+        badgeClass: "bg-slate-500/10 text-slate-400 border-slate-500/20",
+        icon: "?",
+      };
+  }
+};
+
+export default function Home() {
+  const [health, setHealth] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const abortRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  const checkApi = async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setLoading(true);
+    try {
+      const result = await getHealth(API_URL, { signal: controller.signal });
+      if (controller.signal.aborted) return;
+      setHealth(result);
+    } catch (err) {
+      if (err?.name === "AbortError") return;
+    } finally {
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      {/* Shared site header for the home page and the rest of the app. */}
+      <NavMenu />
+
+      <main id="main-content" className="max-w-4xl mx-auto px-6 py-16">
+        <h1 className="text-4xl font-bold tracking-tight mb-4">{copy.home.heroTitle}</h1>
+        <p className="text-slate-400 text-lg mb-12 max-w-2xl">{copy.home.heroSub}</p>
+
+        <div className="grid gap-6 sm:grid-cols-2 mb-12">
+          <Link
+            href="/invoices"
+            aria-label={copy.home.boxBusinessAriaLabel}
+            className="block rounded-xl border border-slate-700 bg-slate-900/50 p-6 hover:border-cyan-500/50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+          >
+            <h2 className="text-lg font-semibold text-cyan-400 mb-2">
+              {copy.home.boxBusinessTitle}
+            </h2>
+            <p className="text-slate-400 text-sm">{copy.home.boxBusinessSub}</p>
+          </Link>
+          <Link
+            href="/invest"
+            aria-label={copy.home.boxInvestAriaLabel}
+            className="block rounded-xl border border-slate-700 bg-slate-900/50 p-6 hover:border-cyan-500/50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+          >
+            <h2 className="text-lg font-semibold text-cyan-400 mb-2">{copy.home.boxInvestTitle}</h2>
+            <p className="text-slate-400 text-sm">{copy.home.boxInvestSub}</p>
+          </Link>
+        </div>
+
+        <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-6">
+          <p className="text-sm font-medium text-slate-400 mb-2">{copy.home.apiStatus}</p>
+          <button
+            type="button"
+            onClick={checkApi}
+            disabled={loading}
+            aria-label={copy.home.checkApiHealth}
+            className="rounded-lg cursor-pointer bg-slate-800 px-4 py-3 text-sm font-medium hover:bg-slate-700 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+          >
+            {loading ? copy.home.checking : copy.home.checkApiHealth}
+          </button>
+
+          {loading && <HealthStatusSkeleton />}
+
+          {!loading && health && (
+            <div className="mt-4">
+              {/* Structured health status card with color-coded badge */}
+              {/* Status changes are announced politely via aria-live="polite" */}
+              <div
+                role="status"
+                aria-live="polite"
+                className="rounded-lg border border-slate-700 bg-slate-800/50 p-4"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  {/* Color-coded badge with icon and text - not color-only for accessibility */}
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${getStatusConfig(health.status).badgeClass}`}
+                  >
+                    <span aria-hidden="true">{getStatusConfig(health.status).icon}</span>
+                    <span>{getStatusConfig(health.status).label}</span>
+                  </span>
+                </div>
+
+                {/* Structured summary for recognized fields */}
+                <div className="text-xs text-slate-300 space-y-1 mb-3">
+                  {Object.entries(extractKnownFields(health.details || health)).map(
+                    ([key, value]) => (
+                      <div key={key}>
+                        <span className="text-slate-500 font-semibold">{key}:</span>{" "}
+                        <span className="text-slate-300">{String(value)}</span>
+                      </div>
+                    )
+                  )}
+                </div>
+
+                <p className="text-sm text-slate-300">{health.message}</p>
+
+                {/* Raw response — always shown behind an expandable section */}
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-sm text-slate-400 hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400">
+                    {copy.home.healthStatus.rawResponse}
+                  </summary>
+                  <pre className="mt-2 text-xs text-slate-400 bg-slate-900/50 p-3 rounded overflow-x-auto">
+                    {safeJsonStringify(health.details ?? health)}
+                  </pre>
+                </details>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+===== app/page.a11y.test.tsx =====
+import "@testing-library/jest-dom";
+import { render, screen } from "@testing-library/react";
+import { axe } from "jest-axe";
+
+import Home from "./page";
+import { getHealth } from "../lib/api/health";
+
+jest.mock("next/navigation", () => ({
+  usePathname: () => "/",
+}));
+
+jest.mock("../components/WalletStatusLazy", () => ({
+  __esModule: true,
+  default: function MockWalletStatusLazy() {
+    return <button type="button">Connect Wallet</button>;
+  },
+}));
+
+jest.mock("../lib/api/health", () => ({
+  __esModule: true,
+  getHealth: jest.fn(),
+}));
+
+jest.mock("../components/NavMenu", () => {
+  return function MockNavMenu() {
+    return <div data-testid="nav-menu">NavMenu</div>;
+  };
+});
+
+describe("Home Page Accessibility", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("passes axe smoke test", async () => {
+    const { container } = render(<Home />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("has exactly one h1 containing the hero title", () => {
+    render(<Home />);
+    const h1 = screen.getByRole("heading", { level: 1 });
+    expect(h1).toBeTruthy();
+    expect(h1.textContent).toMatch(/global invoice liquidity network/i);
+  });
+
+  it("has exactly two h2 headings (CTA cards only)", () => {
+    render(<Home />);
+    const h2s = screen.getAllByRole("heading", { level: 2 });
+    expect(h2s).toHaveLength(2);
+  });
+
+  it("does not have a heading for API status", () => {
+    render(<Home />);
+    const apiStatusHeading = screen.queryByRole("heading", { name: /api status/i });
+    expect(apiStatusHeading).toBeNull();
+  });
+
+  it("CTA link for businesses has a descriptive aria-label", () => {
+    render(<Home />);
+    const businessLink = screen.getByRole("link", { name: /for businesses/i });
+    expect(businessLink).toBeTruthy();
+    expect(businessLink.getAttribute("href")).toBe("/invoices");
+  });
+
+  it("CTA link for investors has a descriptive aria-label", () => {
+    render(<Home />);
+    const investLink = screen.getByRole("link", { name: /for investors/i });
+    expect(investLink).toBeTruthy();
+    expect(investLink.getAttribute("href")).toBe("/invest");
+  });
+
+  it("h1 appears before h2 headings in DOM order", () => {
+    render(<Home />);
+    const headings = Array.from(document.querySelectorAll("h1, h2"));
+    expect(headings[0].tagName).toBe("H1");
+    expect(headings[1].tagName).toBe("H2");
+    expect(headings[2].tagName).toBe("H2");
+  });
+});
+
+===== app/page.test.tsx =====
+import "@testing-library/jest-dom";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+
+import Home from "./page";
+import { getHealth } from "../lib/api/health";
+
+jest.mock("next/navigation", () => ({
+  usePathname: () => "/",
+}));
+
+jest.mock("../components/WalletStatusLazy", () => ({
+  __esModule: true,
+  default: function MockWalletStatusLazy() {
+    return <button type="button">Connect Wallet</button>;
+  },
+}));
+
+// IMPORTANT: mock before tests
+jest.mock("../lib/api/health", () => ({
+  __esModule: true,
+  getHealth: jest.fn(),
+}));
+
+// Mock NavMenu to avoid WalletStatus pre-existing bugs
+jest.mock("../components/NavMenu", () => {
+  return function MockNavMenu() {
+    return <div data-testid="nav-menu">NavMenu</div>;
+  };
+});
+
+const mockGetHealth = getHealth as jest.Mock;
+
+describe("Home Page Health Check", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("verifies mock", () => {
+    expect(jest.isMockFunction(getHealth)).toBe(true);
+  });
+
+  it("renders the health check button", () => {
+    render(<Home />);
+
+    expect(
+      screen.getByRole("button", {
+        name: /check backend health/i,
+      })
+    ).toBeTruthy();
+  });
+
+  it("disables button while loading", async () => {
+    mockGetHealth.mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                status: "connected",
+                message: "Backend is healthy",
+              }),
+            100
+          )
+        )
+    );
+
+    render(<Home />);
+
+    const button = screen.getByRole("button", {
+      name: /check backend health/i,
+    });
+
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(button).toBeDisabled();
+    });
+
+    expect(screen.getByText(/checking/i)).toBeTruthy();
+  });
+
+  it("renders connected state with green badge", async () => {
+    mockGetHealth.mockResolvedValue({
+      status: "connected",
+      message: "Backend is healthy",
+      details: {
+        status: "ok",
+      },
+    });
+
+    render(<Home />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /check backend health/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/backend is healthy/i)).toBeTruthy();
+    });
+
+    // Assert the "Connected" badge is rendered
+    expect(screen.getAllByText(/connected/i).length).toBeGreaterThan(0);
+  });
+
+  it("renders degraded state with amber badge", async () => {
+    mockGetHealth.mockResolvedValue({
+      status: "degraded",
+      message: "Backend responded with 500",
+      details: {
+        error: "Internal Server Error",
+      },
+    });
+
+    render(<Home />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /check backend health/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/backend responded with 500/i)).toBeTruthy();
+    });
+
+    // Assert the "Degraded" badge is rendered
+    expect(screen.getAllByText(/degraded/i).length).toBeGreaterThan(0);
+  });
+
+  it("renders unreachable state with red badge", async () => {
+    mockGetHealth.mockResolvedValue({
+      status: "unreachable",
+      message: "Health check timed out",
+    });
+
+    render(<Home />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /check backend health/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/health check timed out/i).length).toBeGreaterThan(0);
+    });
+
+    // Assert the "Unreachable" badge is rendered
+    expect(screen.getAllByText(/unreachable/i).length).toBeGreaterThan(0);
+  });
+
+  it("renders raw response details", async () => {
+    mockGetHealth.mockResolvedValue({
+      status: "degraded",
+      message: "Backend responded with 500",
+      details: {
+        error: "Internal Server Error",
+      },
+    });
+
+    render(<Home />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /check backend health/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/raw response/i)).toBeTruthy();
+    });
+  });
+
+  it("renders distinct visual state for each status", async () => {
+    // Test connected state
+    mockGetHealth.mockResolvedValue({
+      status: "connected",
+      message: "Backend is healthy",
+    });
+
+    render(<Home />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /check backend health/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/connected/i).length).toBeGreaterThan(0);
+    });
+
+    // Test degraded state
+    mockGetHealth.mockResolvedValue({
+      status: "degraded",
+      message: "Backend responded with 500",
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /check backend health/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/degraded/i).length).toBeGreaterThan(0);
+    });
+
+    // Test unreachable state
+    mockGetHealth.mockResolvedValue({
+      status: "unreachable",
+      message: "Health check timed out",
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /check backend health/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/unreachable/i).length).toBeGreaterThan(0);
+    });
+  });
+
+  it("announces status updates politely", async () => {
+    mockGetHealth.mockResolvedValue({
+      status: "connected",
+      message: "Backend is healthy",
+      details: {
+        status: "ok",
+      },
+    });
+
+    render(<Home />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /check backend health/i,
+      })
+    );
+
+    const statusRegion = await screen.findByRole("status");
+
+    expect(statusRegion.getAttribute("aria-live")).toBe("polite");
+  });
+});
+
+===== app/page.health-render.test.jsx =====
+import "@testing-library/jest-dom";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import Home from "./page";
+
+jest.mock("next/navigation", () => ({
+  usePathname: () => "/",
+}));
+
+jest.mock("../components/WalletStatusLazy", () => ({
+  __esModule: true,
+  default: function MockWalletStatusLazy() {
+    return <button type="button">Connect Wallet</button>;
+  },
+}));
+
+jest.mock("next/link", () => {
+  function MockLink({ href, children, ...props }) {
+    return (
+      <a href={href} {...props}>
+        {children}
+      </a>
+    );
+  }
+  return {
+    __esModule: true,
+    default: MockLink,
+  };
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
+function mockFetchOnce(responseBody, ok = true) {
+  global.fetch = jest.fn().mockResolvedValueOnce({
+    ok,
+    json: jest.fn().mockResolvedValueOnce(responseBody),
+  });
+}
+
+async function clickCheckHealth() {
+  fireEvent.click(screen.getByRole("button", { name: /check backend health/i }));
+  await waitFor(() => expect(screen.queryByText(/checking/i)).not.toBeInTheDocument());
+}
+
+describe.skip("Home health render", () => {
+  it("renders recognized fields in a structured summary", async () => {
+    mockFetchOnce({ status: "ok", message: "All good", version: "1.2.3" });
+    render(<Home />);
+
+    await clickCheckHealth();
+
+    const status = screen.getByRole("status");
+    expect(within(status).getByText(/connected/i)).toBeInTheDocument();
+    expect(within(status).getByText(/All good/i)).toBeInTheDocument();
+  });
+
+  it("omits recognized fields that are missing", async () => {
+    mockFetchOnce({ status: "ok" });
+    render(<Home />);
+
+    await clickCheckHealth();
+
+    const status = screen.getByRole("status");
+    expect(within(status).getByText(/connected/i)).toBeInTheDocument();
+    expect(within(status).queryByText(/All good/i)).not.toBeInTheDocument();
+  });
+
+  it("renders raw payload inside a collapsed details element", async () => {
+    mockFetchOnce({ status: "ok", message: "healthy" });
+    render(<Home />);
+
+    await clickCheckHealth();
+
+    const details = document.querySelector("details");
+    expect(details).toBeInTheDocument();
+    expect(details).not.toHaveAttribute("open");
+
+    expect(screen.getByText(/view details/i)).toBeInTheDocument();
+  });
+
+  it("renders payload as text content, not HTML", async () => {
+    mockFetchOnce({ status: "ok" });
+    render(<Home />);
+
+    await clickCheckHealth();
+
+    const pre = document.querySelector("pre");
+    expect(pre).toBeInTheDocument();
+    expect(pre).not.toHaveAttribute("dangerouslySetInnerHTML");
+  });
+
+  it("does not truncate long payloads", async () => {
+    const largePayload = {
+      status: "ok",
+      data: "x".repeat(5000),
+    };
+    mockFetchOnce(largePayload);
+    render(<Home />);
+    await clickCheckHealth();
+
+    const pre = document.querySelector("pre");
+    expect(pre.textContent).not.toMatch(/…\(truncated\)$/);
+    expect(pre.textContent.length).toBeGreaterThan(5000);
+  });
+
+  it("does not add depth limit text for nested payloads", async () => {
+    const deep = { a: { b: { c: { d: { e: { f: { g: "deep" } } } } } } };
+    mockFetchOnce(deep);
+    render(<Home />);
+    await clickCheckHealth();
+
+    const pre = document.querySelector("pre");
+    expect(pre.textContent).not.toContain("[Depth limit reached]");
+    expect(pre.textContent).toContain('"g": "deep"');
+  });
+
+  it("does not render health section before check", () => {
+    render(<Home />);
+
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByText(/view details/i)).not.toBeInTheDocument();
+  });
+});
+
+===== app/page.dashboard-skeleton.test.jsx =====
+import "@testing-library/jest-dom";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { axe } from "jest-axe";
+import Home from "./page";
+import { getHealth } from "../lib/api/health";
+
+jest.mock("next/navigation", () => ({
+  usePathname: () => "/",
+}));
+
+jest.mock("../components/WalletStatusLazy", () => ({
+  __esModule: true,
+  default: function MockWalletStatusLazy() {
+    return <button type="button">Connect Wallet</button>;
+  },
+}));
+
+jest.mock("next/link", () => {
+  function MockLink({ href, children, ...props }) {
+    return (
+      <a href={href} {...props}>
+        {children}
+      </a>
+    );
+  }
+  return { __esModule: true, default: MockLink };
+});
+
+jest.mock("../lib/api/health", () => ({
+  getHealth: jest.fn(),
+}));
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
+describe("Home dashboard loading skeleton", () => {
+  it("shows the skeleton (not blank content) while the health check is in flight", async () => {
+    let resolveHealth;
+    getHealth.mockReturnValue(
+      new Promise((resolve) => {
+        resolveHealth = resolve;
+      })
+    );
+
+    render(<Home />);
+    fireEvent.click(screen.getByRole("button", { name: /check backend health/i }));
+
+    const skeleton = await screen.findByTestId("health-status-skeleton");
+    expect(skeleton).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByText(/loading api status/i)).toBeInTheDocument();
+
+    resolveHealth({ status: "connected", message: "All good" });
+    await waitFor(() => expect(skeleton).not.toBeInTheDocument());
+    expect(screen.getAllByText("All good").length).toBeGreaterThan(0);
+  });
+
+  it("has no axe accessibility violations while the skeleton is shown", async () => {
+    getHealth.mockReturnValue(new Promise(() => {}));
+
+    render(<Home />);
+    fireEvent.click(screen.getByRole("button", { name: /check backend health/i }));
+
+    await screen.findByTestId("health-status-skeleton");
+    const results = await axe(document.body);
+    expect(results).toHaveNoViolations();
+  });
+});
+
+===== app/globals.css =====
+@import "tailwindcss";
+
+/*
+  LiquiFact global theming tokens.
+  Theme is driven by a `data-theme` attribute set on <html> by the
+  ThemeToggle component (and the pre-paint inline script in layout.js).
+
+  Supported values: data-theme="dark" | data-theme="light"
+
+  Token mapping:
+  - --color-bg         : page background
+  - --color-fg         : primary text
+  - --color-muted      : secondary / muted text
+  - --color-surface    : card / panel background
+  - --color-border     : subtle border colour
+  - --color-primary    : cyan brand accent (#22d3ee / cyan-400)
+  - --color-focus-ring : focus-visible outline colour (high-contrast in both themes)
+*/
+
+/* ── Dark theme (default — matches existing slate-950 palette) ─────────────── */
+:root,
+[data-theme="dark"] {
+  --color-bg: #020617; /* slate-950 */
+  --color-fg: #f1f5f9; /* slate-100 */
+  --color-muted: #94a3b8; /* slate-400 */
+  --color-surface: #0f172a; /* slate-900 */
+  --color-border: #1e293b; /* slate-800 */
+  --color-primary: #22d3ee; /* cyan-400  */
+  --color-focus-ring: #22d3ee; /* cyan-400 — 10:1 against slate-950 */
+  --market-card-padding: 1.25rem;
+  --market-card-gap: 1rem;
+  --market-card-title-font-size: 0.95rem;
+  --market-card-title-font-weight: 600;
+  --market-card-title-line-height: 1.4;
+  --market-card-meta-font-size: 0.875rem;
+  --market-card-meta-line-height: 1.5;
+  --market-card-meta-letter-spacing: 0.01em;
+}
+
+/* ── Light theme ───────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --color-bg: #f8fafc; /* slate-50  */
+  --color-fg: #0f172a; /* slate-900 */
+  --color-muted: #64748b; /* slate-500 */
+  --color-surface: #ffffff; /* white     */
+  --color-border: #e2e8f0; /* slate-200 */
+  --color-primary: #0891b2; /* cyan-600  — stays legible on white */
+  --color-focus-ring: #0891b2; /* cyan-600 — 3.5:1 against slate-50 */
+  --market-card-padding: 1.25rem;
+  --market-card-gap: 1rem;
+  --market-card-title-font-size: 0.95rem;
+  --market-card-title-font-weight: 600;
+  --market-card-title-line-height: 1.4;
+  --market-card-meta-font-size: 0.875rem;
+  --market-card-meta-line-height: 1.5;
+  --market-card-meta-letter-spacing: 0.01em;
+}
+
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-foreground: var(--color-fg);
+  --color-muted: var(--color-muted);
+  --color-primary: var(--color-primary);
+  --color-focus-ring: var(--color-focus-ring);
+
+  /* Geist fonts (provided by app/layout.js via next/font) */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-geist-sans);
+}
+
+body {
+  margin: 0;
+}
+
+/* Skip-to-content: off-screen until focused, then anchors to top-left of viewport.
+   Only visible to keyboard users (on first Tab press). Mouse users never see it. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 1rem;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 9999;
+  padding: 0.5rem 1rem;
+  background: var(--color-primary);
+  color: var(--color-bg);
+  font-weight: 600;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.skip-link:focus-visible {
+  left: 1rem;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  outline: 2px solid var(--color-bg);
+  outline-offset: 2px;
+}
+
+/*
+  Reusable focus ring — high-contrast outline driven by --color-focus-ring.
+  Apply the .focus-ring class to any interactive element (button, link, input, toggle)
+  that needs a consistent, theme-aware focus-visible indicator.
+
+  The colour token --color-focus-ring is set in both dark and light theme blocks
+  above and is verified by the WCAG contrast harness in
+  app/globals.contrast-ratio.test.tsx.
+*/
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  outline-style: solid;
+  border-radius: 0.25rem;
+}
+
+/* ── Accessibility: reduced motion ─────────────────────────────────────────── */
+/*
+  Disables non-essential animation/transition for users who have requested
+  reduced motion at the OS level. Tailwind's `motion-reduce:` variant covers
+  a few components explicitly (e.g. UploadZone's progress bar and spinner);
+  this global rule is the safety net for everything else that renders
+  `animate-*`/`transition-*` utility classes without an explicit override.
+
+  The class-specific rules below complement the universal wildcard by
+  explicitly zeroing out the most-common Tailwind animation/transition
+  utilities.  They are required by the CSS-source integrity tests in
+  app/invest/reduced-motion-contrast.test.tsx (issue #689) and serve as
+  reliable hooks for components that can't add `motion-reduce:` inline.
+
+  invoice-detail-* classes target InvoiceDetailClient.jsx and FundActions.jsx
+  specifically (issue #31) — they suppress the `transition-colors` buttons
+  and the low-opacity background fills that are illegible under reduced
+  motion preference.
+*/
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Tailwind animation utilities — explicit overrides required by test harness */
+  .animate-pulse {
+    animation: none;
+  }
+
+  .animate-spin {
+    animation: none;
+  }
+
+  /* Tailwind transition utilities — explicit overrides required by test harness */
+  .transition {
+    transition: none;
+  }
+
+  .transition-colors {
+    transition: none;
+  }
+
+  .transition-all {
+    transition: none;
+  }
+
+  /* Invoice-detail action buttons — suppress hover color transitions */
+  .invoice-detail-action-btn {
+    transition: none;
+  }
+
+  /* Invoice-detail section — suppress any background-color transitions
+     on the surface panel (bg-slate-900/50 hover or focus effects) */
+  .invoice-detail-section {
+    transition: none;
+  }
+
+  /* Wallet status copy button and dot transitions */
+  .wallet-copy-btn,
+  .wallet-status-dot {
+    transition: none;
+  }
+}
+
+/* ── Accessibility: high contrast ──────────────────────────────────────────── */
+/*
+  Strengthens low-opacity decorative fills/borders that are hard to read
+  under Windows High Contrast Mode (forced-colors) or a user's OS-level
+  "increase contrast" preference. Scoped via utility classes rather than
+  every existing selector.
+
+  .upload-*            → UploadZone component (issue #699)
+  .invoice-detail-*    → InvoiceDetailClient + FundActions (issue #31)
+  .opacity-60          → marketplace "Soon" filters wrapper (issue #689)
+*/
+@media (forced-colors: active) {
+  .upload-dropzone {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+  }
+
+  .upload-subtle-panel {
+    border-color: CanvasText;
+    background-color: Canvas;
+  }
+
+  /* Invoice-detail summary section — replace semi-transparent bg with system Canvas */
+  .invoice-detail-section {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  /* Definition-list terms → GrayText for correct semantic mapping */
+  .invoice-detail-dt {
+    color: GrayText;
+    forced-color-adjust: none;
+  }
+
+  /* Definition-list values → CanvasText so they are never lost */
+  .invoice-detail-dd {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  /* Action buttons — replace semi-transparent fills with ButtonFace/ButtonText */
+  .invoice-detail-action-btn {
+    background-color: ButtonFace;
+    color: ButtonText;
+    border: 1px solid ButtonText;
+    forced-color-adjust: none;
+  }
+
+  /* Disclaimer note — same surface treatment as the section */
+  .invoice-detail-disclaimer {
+    border: 1px solid CanvasText;
+    background-color: Canvas;
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  /* Wallet components */
+  .wallet-status-dot {
+    forced-color-adjust: none;
+  }
+
+  .wallet-address-text {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .wallet-balance-text {
+    color: GrayText;
+    forced-color-adjust: none;
+  }
+
+  .wallet-helper-text {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .wallet-skeleton-text-primary,
+  .wallet-skeleton-text-secondary,
+  .wallet-skeleton-btn {
+    border: 1px solid CanvasText;
+    background-color: Canvas;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .upload-dropzone {
+    border-color: #e2e8f0; /* slate-200 — far stronger than the default slate-700 */
+  }
+
+  .upload-subtle-panel {
+    border-color: #67e8f9; /* cyan-300 */
+    background-color: rgba(8, 145, 178, 0.18); /* cyan-600, opaque enough to read */
+  }
+
+  .upload-muted-text {
+    color: #cbd5e1; /* slate-300 — far stronger than slate-500 */
+  }
+
+  /* Marketplace "Soon" filters — remove opacity so controls are legible (issue #689) */
+  .opacity-60 {
+    opacity: 1;
+  }
+
+  /* Invoice-detail: strengthen the low-opacity surface and muted text */
+  .invoice-detail-section {
+    border-color: #cbd5e1; /* slate-300 */
+    background-color: #0f172a; /* slate-900 — fully opaque */
+  }
+
+  .invoice-detail-dt {
+    color: #94a3b8; /* slate-400 — stronger than slate-500 */
+  }
+
+  .invoice-detail-dd {
+    color: #f1f5f9; /* slate-100 — maximum legibility */
+  }
+
+  .invoice-detail-action-btn {
+    border-color: #67e8f9; /* cyan-300 — stronger than slate-700 */
+    color: #f1f5f9;
+  }
+
+  .invoice-detail-disclaimer {
+    border-color: #475569; /* slate-600 — stronger than slate-800 */
+    background-color: #0f172a; /* slate-900 — fully opaque */
+    color: #cbd5e1; /* slate-300 — stronger than slate-300 */
+  }
+
+  /* Wallet components */
+  .wallet-address-text {
+    color: #f1f5f9; /* slate-100 */
+  }
+
+  .wallet-balance-text,
+  .wallet-helper-text {
+    color: #cbd5e1; /* slate-300 */
+  }
+
+  .wallet-skeleton-text-primary,
+  .wallet-skeleton-btn {
+    background-color: #475569; /* slate-600 */
+  }
+
+  .wallet-skeleton-text-secondary {
+    background-color: #334155; /* slate-700 */
+  }
+}
+
+/* ── Print stylesheet ──────────────────────────────────────────────────────── */
+/*
+   Renders the invoice detail page as a clean, ink-friendly document.
+   - Hides interactive chrome: nav header, wallet button, back link, fund button,
+     disclaimer note, and the on-screen print button.
+   - Forces a white background and dark text to save ink.
+   - Marks elements with .no-print to opt out of the printed output.
+*/
+/* ── Density spacing tokens ─────────────────────────────────────────────────── */
+/*
+   Density is driven by a `data-density` attribute set on <html> by the
+   DensityToggle component via the useDensity hook.
+
+   Supported values: data-density="comfortable" | data-density="compact"
+
+   Settings page reads these variables to control section padding, gap,
+   and heading margins.
+*/
+
+:root,
+[data-density="comfortable"] {
+  --settings-section-padding: 1.5rem;
+  --settings-section-gap: 1.5rem;
+  --settings-list-gap: 0.75rem;
+  /* Wallet view density tokens */
+  --wallet-panel-padding: 1rem;
+  --wallet-panel-gap: 0.75rem;
+  --wallet-meta-font-size: 0.75rem;
+  --wallet-address-font-size: 0.875rem;
+}
+
+[data-density="compact"] {
+  --settings-section-padding: 1rem;
+  --settings-section-gap: 1rem;
+  --settings-list-gap: 0.5rem;
+  /* Wallet view density tokens */
+  --wallet-panel-padding: 0.5rem;
+  --wallet-panel-gap: 0.375rem;
+  --wallet-meta-font-size: 0.6875rem;
+  --wallet-address-font-size: 0.75rem;
+}
+
+@media print {
+  /* Switch to a light, ink-friendly palette */
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  /* Hide interactive/navigation chrome */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Ensure invoice summary section prints with visible borders */
+  .print-invoice-section {
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+  }
+
+  /* Definition list terms and values */
+  .print-invoice-section dt {
+    color: #64748b !important;
+  }
+
+  .print-invoice-section dd {
+    color: #0f172a !important;
+  }
+
+  /* Remove decorative backgrounds from the page wrapper */
+  .print-page-wrapper {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+}
+
+===== app/globals.contrast.test.tsx =====
+import fs from "fs";
+import path from "path";
+import { render } from "@testing-library/react";
+import { axe, toHaveNoViolations } from "jest-axe";
+
+import "./globals.css";
+
+expect.extend(toHaveNoViolations);
+
+const cssSource = fs.readFileSync(path.join(__dirname, "globals.css"), "utf8");
+const extractToken = (name) => {
+  const match = new RegExp(`${name}:\\s*(#(?:[0-9a-f]{6}))`, "i").exec(cssSource);
+  return match ? match[1].toLowerCase() : null;
+};
+
+function parseHexColor(value) {
+  const normalized = value.trim().toLowerCase();
+  const match = normalized.match(/^#([0-9a-f]{6})$/);
+  if (!match) {
+    throw new Error(`Unsupported color format: ${value}`);
+  }
+  const hex = match[1];
+  return [0, 2, 4].map((index) => parseInt(hex.slice(index, index + 2), 16));
+}
+
+function relativeLuminance([r, g, b]) {
+  const transform = (channel) => {
+    const value = channel / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * transform(r) + 0.7152 * transform(g) + 0.0722 * transform(b);
+}
+
+function contrastRatio(foreground, background) {
+  const fg = relativeLuminance(parseHexColor(foreground));
+  const bg = relativeLuminance(parseHexColor(background));
+  const lighter = Math.max(fg, bg);
+  const darker = Math.min(fg, bg);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function ContrastFixture() {
+  return (
+    <div className="bg-slate-950 text-slate-100 p-4">
+      <p data-testid="body-text" className="text-slate-100">
+        Body text
+      </p>
+      <p data-testid="muted-text" className="text-slate-400">
+        Muted text
+      </p>
+    </div>
+  );
+}
+
+describe.skip("globals.css theming + WCAG contrast smoke", () => {
+  it("has no basic axe accessibility violations in a dark-themed fixture", async () => {
+    const { container } = render(<ContrastFixture />);
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  it("ensures foreground and muted tokens meet WCAG AA contrast on the dark background", () => {
+    const bg = extractToken("--color-bg");
+    const foreground = extractToken("--color-foreground");
+    const muted = extractToken("--color-muted");
+
+    expect(bg).toBe("#020617");
+    expect(foreground).toBe("#f1f5f9");
+    expect(muted).toBe("#94a3b8");
+
+    expect(contrastRatio(foreground || "", bg || "")).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(muted || "", bg || "")).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+===== app/globals.contrast-ratio.test.tsx =====
+/**
+ * WCAG 2.1 AA contrast-ratio harness for LiquiFact theme token pairings.
+ *
+ * Design intent
+ * ─────────────
+ * Token values are sourced directly from app/globals.css — no duplicated
+ * constants here. If a token value changes in the stylesheet this file
+ * catches it automatically; if someone adds a new --color-* token without
+ * a corresponding pair test the coverage-guard test at the bottom fails.
+ *
+ * Thresholds used
+ * ───────────────
+ *   Normal text  → 4.5 : 1  (WCAG 2.1 AA, < 18pt / < 14pt bold)
+ *   Large text   → 3.0 : 1  (WCAG 2.1 AA, ≥ 18pt or ≥ 14pt bold)
+ *   UI element   → 3.0 : 1  (WCAG 2.1 AA, non-text contrast)
+ */
+
+import fs from "fs";
+import path from "path";
+
+// ── CSS source (loaded once) ──────────────────────────────────────────────────
+
+const CSS_PATH = path.join(__dirname, "globals.css");
+const cssSource = fs.readFileSync(CSS_PATH, "utf8");
+
+// ── Token extraction (no hardcoded hex constants) ─────────────────────────────
+
+/**
+ * Reads a CSS custom-property value from the loaded stylesheet.
+ * Throws clearly if the token is absent so mis-spellings surface immediately.
+ */
+function extractToken(name: string): string {
+  const match = new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})`, "i").exec(cssSource);
+  if (!match) throw new Error(`Token "${name}" not found in globals.css`);
+  return match[1].toLowerCase();
+}
+
+/**
+ * Returns every --color-* token that is *defined* (has a value) in the CSS.
+ * Used by the coverage guard to detect tokens added without a pair test.
+ */
+function extractAllColorTokenNames(): string[] {
+  const pattern = /--(color-[\w-]+)\s*:\s*#[0-9a-fA-F]{3,6}/g;
+  const names = [...cssSource.matchAll(pattern)].map((m) => `--${m[1]}`);
+  return [...new Set(names)];
+}
+
+// ── WCAG 2.1 math ─────────────────────────────────────────────────────────────
+
+function parseHexColor(hex: string): [number, number, number] {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
+  if (!m) throw new Error(`parseHexColor: unsupported format "${hex}"`);
+  return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+}
+
+function linearise(channel: number): number {
+  const v = channel / 255;
+  return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+}
+
+function relativeLuminance([r, g, b]: [number, number, number]): number {
+  return 0.2126 * linearise(r) + 0.7152 * linearise(g) + 0.0722 * linearise(b);
+}
+
+function contrastRatio(fg: string, bg: string): number {
+  const l1 = relativeLuminance(parseHexColor(fg));
+  const l2 = relativeLuminance(parseHexColor(bg));
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+// ── Token pair registry ───────────────────────────────────────────────────────
+
+const NORMAL_TEXT = 4.5;
+const LARGE_TEXT = 3.0;
+const UI_ELEMENT = 3.0;
+
+interface TokenPair {
+  name: string;
+  fg: string; // --color-* variable name
+  bg: string; // --color-* variable name
+  threshold: number;
+  context: string;
+}
+
+const TOKEN_PAIRS: TokenPair[] = [
+  {
+    name: "body text on page background",
+    fg: "--color-fg",
+    bg: "--color-bg",
+    threshold: NORMAL_TEXT,
+    context: "Default html/body text (slate-100 on slate-950) across all routes",
+  },
+  {
+    name: "muted text on page background",
+    fg: "--color-muted",
+    bg: "--color-bg",
+    threshold: NORMAL_TEXT,
+    context: "Sub-labels, helper text, card metadata (slate-400 on slate-950)",
+  },
+  {
+    name: "primary brand colour on background (normal text)",
+    fg: "--color-primary",
+    bg: "--color-bg",
+    threshold: NORMAL_TEXT,
+    context: "Cyan-400 used as foreground: nav links, card headings, badge labels",
+  },
+  {
+    name: "background text on primary surface (skip-link)",
+    fg: "--color-bg",
+    bg: "--color-primary",
+    threshold: NORMAL_TEXT,
+    context: ".skip-link renders --color-bg text on a --color-primary background",
+  },
+  {
+    name: "primary brand colour on background (large text)",
+    fg: "--color-primary",
+    bg: "--color-bg",
+    threshold: LARGE_TEXT,
+    context: "Cyan-400 section headings ≥ 18 pt — large-text threshold applies",
+  },
+  {
+    name: "muted text on background (large text)",
+    fg: "--color-muted",
+    bg: "--color-bg",
+    threshold: LARGE_TEXT,
+    context: "Upper-case tracking labels on cards; conservative: tested at normal-text threshold",
+  },
+  {
+    name: "primary focus ring against page background (UI element)",
+    fg: "--color-primary",
+    bg: "--color-bg",
+    threshold: UI_ELEMENT,
+    context: "focus-visible outline (--color-primary) against the slate-950 page surface",
+  },
+  {
+    name: "focus-ring dedicated token against page background (UI element)",
+    fg: "--color-focus-ring",
+    bg: "--color-bg",
+    threshold: UI_ELEMENT,
+    context: ".focus-ring outline colour against page background — ensures >= 3:1 in both themes",
+  },
+  {
+    name: "surface background token (value guard)",
+    fg: "--color-surface",
+    bg: "--color-bg",
+    threshold: 1.0,
+    context:
+      "Card/panel surface against page background — intentionally subtle, just verifies token exists",
+  },
+  {
+    name: "border token against page background (value guard)",
+    fg: "--color-border",
+    bg: "--color-bg",
+    threshold: 1.0,
+    context: "Subtle border colour against page background — intentionally subdued",
+  },
+];
+
+// ── WCAG math unit tests ──────────────────────────────────────────────────────
+
+describe("WCAG math helpers", () => {
+  describe("parseHexColor", () => {
+    it("parses white correctly", () => {
+      expect(parseHexColor("#ffffff")).toEqual([255, 255, 255]);
+    });
+
+    it("parses black correctly", () => {
+      expect(parseHexColor("#000000")).toEqual([0, 0, 0]);
+    });
+
+    it("is case-insensitive", () => {
+      expect(parseHexColor("#AABBCC")).toEqual([170, 187, 204]);
+    });
+
+    it("throws for a shorthand hex", () => {
+      expect(() => parseHexColor("#fff")).toThrow(/unsupported format/i);
+    });
+
+    it("throws for a colour name", () => {
+      expect(() => parseHexColor("white")).toThrow(/unsupported format/i);
+    });
+
+    it("throws for an empty string", () => {
+      expect(() => parseHexColor("")).toThrow(/unsupported format/i);
+    });
+  });
+
+  describe("relativeLuminance", () => {
+    it("returns 1 for pure white", () => {
+      expect(relativeLuminance([255, 255, 255])).toBeCloseTo(1, 5);
+    });
+
+    it("returns 0 for pure black", () => {
+      expect(relativeLuminance([0, 0, 0])).toBeCloseTo(0, 5);
+    });
+
+    it("returns a value strictly between 0 and 1 for mid-gray", () => {
+      const l = relativeLuminance([128, 128, 128]);
+      expect(l).toBeGreaterThan(0);
+      expect(l).toBeLessThan(1);
+    });
+
+    it("uses the linearisation branch for low-channel values (≤ 0.03928)", () => {
+      // Channel 9 / 255 ≈ 0.03529 which falls below the 0.03928 threshold
+      const l = relativeLuminance([9, 9, 9]);
+      const expected =
+        0.2126 * (9 / 255 / 12.92) + 0.7152 * (9 / 255 / 12.92) + 0.0722 * (9 / 255 / 12.92);
+      expect(l).toBeCloseTo(expected, 8);
+    });
+
+    it("uses the gamma branch for high-channel values (> 0.03928)", () => {
+      // Channel 255 is well above the threshold
+      const l = relativeLuminance([255, 0, 0]);
+      // Red channel only: 0.2126 * ((1 + 0.055)/1.055)^2.4 = 0.2126 * 1^2.4 = 0.2126
+      expect(l).toBeCloseTo(0.2126, 3);
+    });
+  });
+
+  describe("contrastRatio", () => {
+    it("returns 21 for black text on white background", () => {
+      expect(contrastRatio("#000000", "#ffffff")).toBeCloseTo(21, 0);
+    });
+
+    it("returns 21 for white text on black background", () => {
+      expect(contrastRatio("#ffffff", "#000000")).toBeCloseTo(21, 0);
+    });
+
+    it("returns exactly 1 for identical colours", () => {
+      expect(contrastRatio("#5a5a5a", "#5a5a5a")).toBeCloseTo(1, 5);
+    });
+
+    it("is always ≥ 1", () => {
+      expect(contrastRatio("#334455", "#667788")).toBeGreaterThanOrEqual(1);
+    });
+
+    it("is symmetric — fg/bg order does not change the ratio", () => {
+      const a = contrastRatio("#22d3ee", "#020617");
+      const b = contrastRatio("#020617", "#22d3ee");
+      expect(a).toBeCloseTo(b, 10);
+    });
+
+    it("is always ≤ 21", () => {
+      expect(contrastRatio("#ffffff", "#000001")).toBeLessThanOrEqual(21);
+    });
+  });
+});
+
+// ── Token extraction unit tests ───────────────────────────────────────────────
+
+describe("extractToken (reads app/globals.css — no hardcoded hex constants)", () => {
+  it("returns a valid lowercase hex string for --color-bg", () => {
+    expect(extractToken("--color-bg")).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it("returns a valid lowercase hex string for --color-fg", () => {
+    expect(extractToken("--color-fg")).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it("returns a valid lowercase hex string for --color-muted", () => {
+    expect(extractToken("--color-muted")).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it("returns a valid lowercase hex string for --color-primary", () => {
+    expect(extractToken("--color-primary")).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it("throws with a clear message for an unknown token", () => {
+    expect(() => extractToken("--color-does-not-exist")).toThrow(/not found in globals\.css/i);
+  });
+
+  it("extractAllColorTokenNames returns at least the core theme tokens", () => {
+    const names = extractAllColorTokenNames();
+    expect(names).toContain("--color-bg");
+    expect(names).toContain("--color-primary");
+    expect(names).toContain("--color-fg");
+    expect(names).toContain("--color-muted");
+  });
+});
+
+// ── Per-pair AA contrast assertions (data-driven) ─────────────────────────────
+
+describe("WCAG AA contrast — token pair harness", () => {
+  for (const pair of TOKEN_PAIRS) {
+    it(`"${pair.name}" ≥ ${pair.threshold}:1 — ${pair.context}`, () => {
+      const fgHex = extractToken(pair.fg);
+      const bgHex = extractToken(pair.bg);
+      const ratio = contrastRatio(fgHex, bgHex);
+      // Surface the actual ratio in the failure message for easy debugging
+      expect(ratio).toBeGreaterThanOrEqual(pair.threshold);
+    });
+  }
+
+  it("registry contains all required pair types", () => {
+    const hasNormalText = TOKEN_PAIRS.some((p) => p.threshold === NORMAL_TEXT);
+    const hasLargeText = TOKEN_PAIRS.some((p) => p.threshold === LARGE_TEXT);
+    const hasUIElement = TOKEN_PAIRS.some((p) => p.threshold === UI_ELEMENT);
+    expect(hasNormalText).toBe(true);
+    expect(hasLargeText).toBe(true);
+    expect(hasUIElement).toBe(true);
+  });
+});
+
+// ── Forced-colors (Windows High Contrast) assertions ─────────────────────────
+/**
+ * These tests verify the @media (forced-colors: active) block present in
+ * globals.css satisfies three requirements from issue #467:
+ *
+ *   1. The block exists and maps surfaces / text / borders to correct system
+ *      color keywords so the OS palette is applied with the right semantics.
+ *   2. focus-ring and status pill elements opt out of automatic replacement
+ *      via forced-color-adjust: none so their explicit outlines / borders
+ *      survive the forced-colors override.
+ *   3. StatusPill always exposes a visible text label — status is never
+ *      conveyed by colour alone (WCAG 1.4.1 Use of Color).
+ *
+ * NOTE: jsdom does not evaluate @media queries at runtime, so we inspect the
+ * CSS source text directly.  For StatusPill label tests we render the
+ * component and assert on the DOM.
+ */
+
+describe("forced-colors: globals.css @media (forced-colors: active) block", () => {
+  it("contains a @media (forced-colors: active) rule", () => {
+    expect(cssSource).toMatch(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i);
+  });
+
+  // ── System color keyword coverage ──────────────────────────────────────
+
+  it("maps background surfaces to Canvas", () => {
+    expect(cssSource).toMatch(/forced-colors.*Canvas/s);
+  });
+
+  it("maps foreground text to CanvasText", () => {
+    expect(cssSource).toMatch(/forced-colors.*CanvasText/s);
+  });
+
+  it("maps muted / disabled text to GrayText", () => {
+    expect(cssSource).toMatch(/forced-colors.*GrayText/s);
+  });
+
+  it("maps the primary brand / link colour to LinkText", () => {
+    expect(cssSource).toMatch(/forced-colors.*LinkText/s);
+  });
+
+  it("maps focus ring to Highlight", () => {
+    expect(cssSource).toMatch(/forced-colors.*Highlight/s);
+  });
+
+  it("maps interactive control surfaces to ButtonFace", () => {
+    expect(cssSource).toMatch(/forced-colors.*ButtonFace/s);
+  });
+
+  it("maps interactive control text to ButtonText", () => {
+    expect(cssSource).toMatch(/forced-colors.*ButtonText/s);
+  });
+
+  // ── forced-color-adjust: none — opt-out elements ─────────────────────
+
+  it("applies forced-color-adjust: none to the focus ring", () => {
+    // Verify .focus-ring appears inside the forced-colors @media rule.
+    // We check the full source (not a sliced block) because bracket-balanced
+    // extraction is brittle with nested rule-sets.  The structural tests above
+    // already confirm the @media block exists; these selectively check that
+    // each required selector is present somewhere after the @media declaration.
+    const afterFc = cssSource.slice(
+      cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i)
+    );
+    expect(afterFc).toMatch(/\.focus-ring/);
+    expect(afterFc).toMatch(/forced-color-adjust\s*:\s*none/);
+  });
+
+  it("applies forced-color-adjust: none to status pill elements ([data-status])", () => {
+    const afterFc = cssSource.slice(
+      cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i)
+    );
+    expect(afterFc).toMatch(/\[data-status\]/);
+    expect(afterFc).toMatch(/forced-color-adjust\s*:\s*none/);
+  });
+
+  // ── Skip-link ─────────────────────────────────────────────────────────
+
+  it("styles .skip-link with ButtonFace background and ButtonText border inside forced-colors", () => {
+    const afterFc = cssSource.slice(
+      cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i)
+    );
+    expect(afterFc).toMatch(/\.skip-link/);
+    expect(afterFc).toMatch(/ButtonFace/);
+    expect(afterFc).toMatch(/ButtonText/);
+  });
+
+  // ── StatusPill — Highlight outline on :focus-visible ─────────────────
+
+  it("sets Highlight outline on .focus-ring:focus-visible inside forced-colors", () => {
+    const afterFc = cssSource.slice(
+      cssSource.search(/@media\s*\(\s*forced-colors\s*:\s*active\s*\)/i)
+    );
+    expect(afterFc).toMatch(/\.focus-ring:focus-visible/);
+    expect(afterFc).toMatch(/outline\s*:\s*[^;]*Highlight/);
+  });
+});
+
+// ── StatusPill non-color cue (renders text label regardless of color) ─────────
+/**
+ * These tests document the requirement that StatusPill never conveys status
+ * through colour alone — the visible text label is always present so it
+ * survives forced-colors mode where all author-defined colours are stripped.
+ *
+ * This mirrors the WCAG 1.4.1 contract.  The tests live here (alongside the
+ * contrast harness) so the full colour-accessibility story is in one place.
+ */
+import React from "react";
+import { render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import StatusPill from "@/components/StatusPill";
+import { INVOICE_STATUSES, STATUS_PILL_MAP } from "@/lib/types/invoice";
+
+describe("StatusPill — non-color cue (WCAG 1.4.1 / forced-colors readiness)", () => {
+  it("renders a visible text label for every known status", () => {
+    for (const status of Object.values(INVOICE_STATUSES)) {
+      const { unmount } = render(<StatusPill status={status} />);
+      const pill = screen.getByRole("status", { hidden: true });
+      // Text content must be non-empty
+      expect(pill.textContent?.trim().length).toBeGreaterThan(0);
+      // Text content must match the STATUS_PILL_MAP label
+      expect(pill).toHaveTextContent(STATUS_PILL_MAP[status].label);
+      unmount();
+    }
+  });
+
+  it("renders the Unknown label for an unrecognised status value", () => {
+    render(<StatusPill status={"UNRECOGNISED" as unknown as string} />);
+    const pill = screen.getByRole("status", { hidden: true });
+    expect(pill).toHaveTextContent(STATUS_PILL_MAP.Unknown.label);
+    expect(pill.textContent?.trim().length).toBeGreaterThan(0);
+  });
+
+  it("the visible text matches aria-label for every known status (colour-independent signal)", () => {
+    for (const status of Object.values(INVOICE_STATUSES)) {
+      const { unmount } = render(<StatusPill status={status} />);
+      const pill = screen.getByRole("status", { hidden: true });
+      const visibleText = pill.textContent?.trim() ?? "";
+      const ariaLabel = pill.getAttribute("aria-label") ?? "";
+      // aria-label includes the visible text so AT and sighted users see the same word
+      expect(ariaLabel).toContain(visibleText);
+      unmount();
+    }
+  });
+
+  it("renders data-status attribute so CSS [data-status] rule can apply forced-colors override", () => {
+    for (const status of Object.values(INVOICE_STATUSES)) {
+      const { unmount } = render(<StatusPill status={status} />);
+      const pill = screen.getByRole("status", { hidden: true });
+      expect(pill).toHaveAttribute("data-status", status);
+      unmount();
+    }
+  });
+
+  it("Unknown fallback renders data-status='Unknown' for CSS targeting", () => {
+    render(<StatusPill status={null as unknown as string} />);
+    const pill = screen.getByRole("status", { hidden: true });
+    expect(pill).toHaveAttribute("data-status", "Unknown");
+  });
+});
+
+// ── Stylesheet coverage guard ─────────────────────────────────────────────────
+
+describe("globals.css token coverage", () => {
+  it("every --color-* token defined in globals.css appears in at least one TOKEN_PAIR", () => {
+    const defined = extractAllColorTokenNames();
+    const covered = new Set(TOKEN_PAIRS.flatMap((p) => [p.fg, p.bg]));
+    const missing = defined.filter((t) => !covered.has(t));
+
+    // If this fails: add a TOKEN_PAIR entry for each token listed in `missing`.
+    expect(missing).toEqual([]);
+  });
+
+  it("globals.css is readable and non-empty", () => {
+    expect(cssSource.length).toBeGreaterThan(0);
+    expect(cssSource).toContain("@theme inline");
+  });
+
+  it("all core design tokens are present in the stylesheet", () => {
+    const required = ["--color-bg", "--color-primary", "--color-fg", "--color-muted"];
+    for (const token of required) {
+      expect(cssSource).toContain(token);
+    }
+  });
+});
+
+===== app/invest/reduced-motion-contrast.test.tsx =====
+/**
+ * Issue #689 — Marketplace `prefers-reduced-motion` + `prefers-contrast`
+ * support in `app/globals.css`.
+ *
+ * Two complementary test surfaces:
+ *
+ * 1. **CSS source integrity** — jsdom cannot evaluate @media queries itself,
+ *    and the project's `__mocks__/style.js` stub discards real CSS.
+ *    These tests read `app/globals.css` as text, extract the body of each
+ *    matching @media block via a brace-balanced character walker, and
+ *    assert that the rules the issue requires are present.
+ *
+ * 2. **Component DOM smoke** — verifies that the marketplace "Soon"
+ *    filters wrapper continues to use Tailwind's `opacity-60` utility
+ *    (the very class the high-contrast media block overrides), that the
+ *    wrapper remains inside the marketplace fieldset, and that
+ *    jest-axe is happy with the result.
+ */
+
+import fs from "fs";
+import path from "path";
+import React from "react";
+import { render, screen } from "@testing-library/react";
+import { axe, toHaveNoViolations } from "jest-axe";
+
+import { InvestMarketplace } from "./page";
+import { WalletProvider } from "@/components/WalletProvider";
+import { ToastProvider } from "@/components/ToastProvider";
+
+expect.extend(toHaveNoViolations);
+
+// next/navigation hooks used by InvestMarketplace via useSearchParams.
+jest.mock("next/navigation", () => ({
+  usePathname: () => "/invest",
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ replace: jest.fn() }),
+}));
+
+// ── Source-loading helpers ────────────────────────────────────────────────────
+
+const GLOBALS_CSS_PATH = path.join(__dirname, "..", "globals.css");
+
+/** Escape a literal string for safe use inside a RegExp. */
+function escapeRegExp(literal: string): string {
+  return literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Returns the cumulative body of every `@media (...) { … }` block whose
+ * media-query list contains `featureFragment` (e.g.
+ * `"prefers-reduced-motion: reduce"`).
+ *
+ * Uses a brace-balanced character walker so inner `{ … }` rules inside
+ * the @media body do not truncate the captured text.
+ *
+ * Throws if no matching block exists — surfaces mis-spellings immediately.
+ */
+function extractMediaBlock(source: string, featureFragment: string): string {
+  const startPattern = new RegExp(
+    `@media\\s*\\([^)]*${escapeRegExp(featureFragment)}[^)]*\\)\\s*\\{`,
+    "g"
+  );
+  const openIndices: number[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = startPattern.exec(source)) !== null) {
+    // Index of the `{` character that opens the @media body.
+    openIndices.push(match.index + match[0].length - 1);
+  }
+  if (openIndices.length === 0) {
+    throw new Error(`CSS media block "${featureFragment}" not found in globals.css`);
+  }
+
+  const bodies = openIndices.map((openIdx) => {
+    let depth = 1;
+    let i = openIdx + 1;
+    while (i < source.length && depth > 0) {
+      const ch = source[i];
+      if (ch === "{") depth++;
+      else if (ch === "}") depth--;
+      i++;
+    }
+    if (depth !== 0) {
+      throw new Error(`Unbalanced braces inside @media block opened at ${openIdx}`);
+    }
+    return source.slice(openIdx + 1, i - 1);
+  });
+
+  return bodies.join("\n\n");
+}
+
+/** Returns the CSS source with every `@media { … }` block stripped. */
+function stripMediaBlocks(source: string): string {
+  // Same brace-balanced approach so nested rules are not truncated.
+  const stripped: string[] = [];
+  const startPattern = /@media\s*\([^)]*\)\s*\{/g;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+  while ((match = startPattern.exec(source)) !== null) {
+    stripped.push(source.slice(cursor, match.index));
+    let depth = 1;
+    let i = match.index + match[0].length;
+    while (i < source.length && depth > 0) {
+      if (source[i] === "{") depth++;
+      else if (source[i] === "}") depth--;
+      i++;
+    }
+    cursor = i;
+    startPattern.lastIndex = i;
+  }
+  stripped.push(source.slice(cursor));
+  return stripped.join("");
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+describe("Issue #689 — Marketplace reduced-motion support (CSS source)", () => {
+  let cssSource: string;
+
+  beforeAll(() => {
+    cssSource = fs.readFileSync(GLOBALS_CSS_PATH, "utf8");
+  });
+
+  it("globals.css contains an @media (prefers-reduced-motion: reduce) block", () => {
+    expect(cssSource).toMatch(/@media\s*\(\s*prefers-reduced-motion:\s*reduce\s*\)/);
+  });
+
+  it("the reduced-motion block disables .animate-pulse and .animate-spin", () => {
+    const block = extractMediaBlock(cssSource, "prefers-reduced-motion: reduce");
+    expect(block).toMatch(/\.animate-pulse\b/);
+    expect(block).toMatch(/\.animate-spin\b/);
+    expect(block).toMatch(/\banimation:\s*none\b/);
+  });
+
+  it("the reduced-motion block suppresses Tailwind transition utilities", () => {
+    const block = extractMediaBlock(cssSource, "prefers-reduced-motion: reduce");
+    expect(block).toMatch(/\.transition\b/);
+    expect(block).toMatch(/\.transition-colors\b/);
+    expect(block).toMatch(/\.transition-all\b/);
+    expect(block).toMatch(/\btransition:\s*none\b/);
+  });
+
+  it("the reduced-motion block does NOT touch .focus-ring (a11y-essential)", () => {
+    const block = extractMediaBlock(cssSource, "prefers-reduced-motion: reduce");
+    // Focus ring is a separate concern — must remain styled under reduced motion.
+    expect(block).not.toMatch(/\.focus-ring\b/);
+  });
+
+  it("the reduced-motion block sits in globals.css below the Tailwind import", () => {
+    const tailwindIndex = cssSource.indexOf('@import "tailwindcss"');
+    const reducedMotionIndex = cssSource.search(
+      /@media\s*\(\s*prefers-reduced-motion:\s*reduce\s*\)/
+    );
+    expect(tailwindIndex).toBeGreaterThanOrEqual(0);
+    expect(reducedMotionIndex).toBeGreaterThan(tailwindIndex);
+  });
+});
+
+describe("Issue #689 — Marketplace high-contrast support (CSS source)", () => {
+  let cssSource: string;
+
+  beforeAll(() => {
+    cssSource = fs.readFileSync(GLOBALS_CSS_PATH, "utf8");
+  });
+
+  it("globals.css contains an @media (prefers-contrast: more) block", () => {
+    expect(cssSource).toMatch(/@media\s*\(\s*prefers-contrast:\s*more\s*\)/);
+  });
+
+  it("the high-contrast block overrides Tailwind's .opacity-60 utility", () => {
+    const block = extractMediaBlock(cssSource, "prefers-contrast: more");
+    expect(block).toMatch(/\.opacity-60\b/);
+    expect(block).toMatch(/\bopacity:\s*1\b/);
+  });
+
+  it("the .opacity-60 override is NOT repeated outside any media block", () => {
+    // Pin the rule to its @media context so future refactors can't regress it
+    // back to a permanent full-opacity (which would defeat the visual "Soon:" cue).
+    const stripped = stripMediaBlocks(cssSource);
+    expect(stripped).not.toMatch(/\.opacity-60\s*\{\s*opacity:\s*1\b/);
+  });
+});
+
+describe("Issue #689 — Marketplace DOM still uses opacity-60 utility", () => {
+  const loadInvoices = () => Promise.resolve([]);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  function renderMarketplace() {
+    return render(
+      <ToastProvider>
+        <WalletProvider>
+          <InvestMarketplace loadInvoices={loadInvoices} />
+        </WalletProvider>
+      </ToastProvider>
+    );
+  }
+
+  it("renders the 'Soon:' filters wrapper with the Tailwind opacity-60 utility", () => {
+    renderMarketplace();
+    const fieldset = screen.getByRole("group", { name: /Marketplace Filters/i });
+    const wrapper = fieldset.querySelector(".opacity-60");
+    expect(wrapper).not.toBeNull();
+    // The wrapper must STILL be non-interactive so removing opacity under
+    // high-contrast does not accidentally enable the controls.
+    expect(wrapper?.className).toMatch(/\bpointer-events-none\b/);
+  });
+
+  it("passes jest-axe with no accessibility violations (smoke regression guard)", async () => {
+    const { container } = renderMarketplace();
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+});
+
+===== components/Button.jsx =====
+"use client";
+
+import { forwardRef } from "react";
+import Spinner from "./Spinner";
+
+/**
+ * @typedef {'primary' | 'secondary' | 'warning' | 'external' | 'danger'} ButtonVariant
+ */
+
+/**
+ * Shared Button component — unifies all button markup across the app.
+ *
+ * Replaces copy-pasted buttons in:
+ *   - app/page.js (cyan CTA pill)
+ *   - app/invest/page.js (disabled filter buttons)
+ *   - components/UploadZone.jsx (submit button + inline spinner)
+ *   - components/WalletStatus.jsx (variant switch buttons + inline spinner)
+ *   - components/ErrorBanner.jsx (action button)
+ *
+ * All variants share one consistent focus-visible outline (cyan-400, 2px,
+ * offset 2px) replacing the divergent focus:ring vs focus-visible:outline
+ * styles that existed before.
+ *
+ * @param {Object} props
+ * @param {ButtonVariant} [props.variant='primary'] — Visual style.
+ * @param {boolean} [props.loading=false] — Renders Spinner and sets aria-busy.
+ * @param {boolean} [props.disabled=false] — Disables interaction.
+ * @param {React.ReactNode} [props.children] — Button content.
+ * @param {string} [props.className] — Additional Tailwind classes.
+ * @param {React.Ref<HTMLButtonElement>} ref — Forwarded ref.
+ */
+
+const Button = forwardRef(function Button(
+  { variant = "primary", loading = false, disabled = false, children, className = "", ...rest },
+  ref
+) {
+  const isDisabled = disabled || loading;
+
+  // Base styles shared by every variant (focus-ring class centralized in globals.css)
+  const baseStyles =
+    "inline-flex items-center justify-center gap-2 rounded-full px-4 py-3 " +
+    "text-sm font-medium transition-all duration-200 " +
+    "focus-ring disabled:opacity-50 disabled:cursor-not-allowed";
+  const disabledClasses = isDisabled ? "opacity-50 cursor-not-allowed" : "";
+
+  // Variant-specific styles
+  const variantStyles = {
+    primary: "bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 active:bg-cyan-500/40",
+    secondary: "border border-slate-600 text-slate-300 hover:bg-slate-800 active:bg-slate-700",
+    warning: "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 active:bg-amber-500/40",
+    external: "bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 active:bg-violet-500/40",
+    danger: "bg-red-500/20 text-red-400 hover:bg-red-500/30 active:bg-red-500/40",
+  };
+
+  const combinedClassName =
+    `${baseStyles} ${variantStyles[variant]} ${disabledClasses} ${className} cursor-pointer`.trim();
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      disabled={isDisabled}
+      aria-busy={loading}
+      className={combinedClassName}
+      {...rest}
+    >
+      {loading && <Spinner className="-ml-1 h-4 w-4" />}
+      {children}
+    </button>
+  );
+});
+
+export default Button;
+
+===== components/Button.test.tsx =====
+import React from "react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { axe, toHaveNoViolations } from "jest-axe";
+import "@testing-library/jest-dom";
+
+import Button from "./Button";
+import Spinner from "./Spinner";
+
+expect.extend(toHaveNoViolations);
+
+describe("Button", () => {
+  it("renders children", () => {
+    render(<Button>Click me</Button>);
+    expect(screen.getByRole("button", { name: /click me/i })).toBeInTheDocument();
+  });
+
+  it("forwards ref", () => {
+    const ref = React.createRef<HTMLButtonElement>();
+    render(<Button ref={ref}>Ref test</Button>);
+    expect(ref.current).toBeInstanceOf(HTMLButtonElement);
+  });
+
+  it("forwards additional props", () => {
+    render(<Button data-testid="my-btn">Props test</Button>);
+    expect(screen.getByTestId("my-btn")).toBeInTheDocument();
+  });
+
+  describe("variants", () => {
+    const variants = ["primary", "secondary", "warning", "external", "danger"] as const;
+
+    it.each(variants)("renders %s variant without visual regressions", (variant) => {
+      const { container } = render(<Button variant={variant}>{variant}</Button>);
+      expect(container.firstChild).toMatchSnapshot();
+    });
+
+    it.each(variants)("applies %s variant styles", (variant) => {
+      render(<Button variant={variant}>{variant}</Button>);
+      const btn = screen.getByRole("button");
+      // Each variant has a distinct background/token class
+      expect(btn.className).toContain(
+        variant === "primary"
+          ? "bg-cyan-500/20"
+          : variant === "secondary"
+            ? "border-slate-600"
+            : variant === "warning"
+              ? "bg-amber-500/20"
+              : variant === "external"
+                ? "bg-violet-500/20"
+                : "bg-red-500/20"
+      );
+    });
+  });
+
+  it("has consistent focus-ring class across all variants", () => {
+    const variants = ["primary", "secondary", "warning", "external", "danger"] as const;
+    for (const variant of variants) {
+      const { unmount } = render(<Button variant={variant}>{variant}</Button>);
+      const btn = screen.getByRole("button");
+      expect(btn.className).toContain("focus-ring");
+      unmount();
+    }
+  });
+
+  it("is disabled when disabled prop is true", () => {
+    render(<Button disabled>Disabled</Button>);
+    expect(screen.getByRole("button")).toBeDisabled();
+    expect(screen.getByRole("button")).toHaveClass("disabled:opacity-50");
+    expect(screen.getByRole("button")).toHaveClass("disabled:cursor-not-allowed");
+  });
+
+  it("is disabled and shows spinner when loading", () => {
+    render(<Button loading>Loading</Button>);
+    const btn = screen.getByRole("button");
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("button").querySelector("svg")).toBeInTheDocument();
+  });
+
+  it("does not show spinner when not loading", () => {
+    render(<Button>Not loading</Button>);
+    expect(screen.getByRole("button").querySelector("svg")).not.toBeInTheDocument();
+  });
+
+  it("calls onClick when clicked", async () => {
+    const user = userEvent.setup();
+    const handleClick = jest.fn();
+    render(<Button onClick={handleClick}>Click</Button>);
+    await user.click(screen.getByRole("button"));
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call onClick when disabled", async () => {
+    const user = userEvent.setup();
+    const handleClick = jest.fn();
+    render(
+      <Button onClick={handleClick} disabled>
+        Click
+      </Button>
+    );
+    await user.click(screen.getByRole("button"));
+    expect(handleClick).not.toHaveBeenCalled();
+  });
+
+  it("does not call onClick when loading", async () => {
+    const user = userEvent.setup();
+    const handleClick = jest.fn();
+    render(
+      <Button onClick={handleClick} loading>
+        Click
+      </Button>
+    );
+    await user.click(screen.getByRole("button"));
+    expect(handleClick).not.toHaveBeenCalled();
+  });
+
+  it("has no accessibility violations", async () => {
+    const { container } = render(<Button>Accessible</Button>);
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  it("has no a11y violations when loading", async () => {
+    const { container } = render(<Button loading>Loading</Button>);
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  it("has no a11y violations when disabled", async () => {
+    const { container } = render(<Button disabled>Disabled</Button>);
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+});
+
+describe("Spinner", () => {
+  it("renders an animated SVG", () => {
+    render(<Spinner />);
+    const svg = document.querySelector("svg");
+    expect(svg).toBeInTheDocument();
+    expect(svg).toHaveClass("animate-spin");
+  });
+
+  it("is aria-hidden", () => {
+    render(<Spinner />);
+    const svg = document.querySelector("svg");
+    expect(svg).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("accepts custom className", () => {
+    render(<Spinner className="h-8 w-8" />);
+    const svg = document.querySelector("svg");
+    expect(svg).toHaveClass("h-8");
+    expect(svg).toHaveClass("w-8");
+  });
+});
+
+===== components/HealthStatusSkeleton.jsx =====
+/**
+ * @file components/HealthStatusSkeleton.jsx
+ * Loading skeleton for the home page API health status card.
+ *
+ * Mirrors the layout of the health status card rendered in app/page.js
+ * (status badge, summary lines, message line, details toggle) so there is
+ * no layout shift when the real content mounts.
+ *
+ * Accessibility notes:
+ * - The decorative shapes are wrapped in aria-hidden="true" so screen
+ *   readers skip them.
+ * - The sibling <span className="sr-only"> announces the busy state to
+ *   assistive technology.
+ * - The wrapping element exposes aria-busy="true" while isBusy is true.
+ *
+ * @see app/page.js — canonical health status card markup
+ */
+
+export default function HealthStatusSkeleton({ isBusy = true }) {
+  return (
+    <div
+      data-testid="health-status-skeleton"
+      aria-busy={isBusy ? "true" : "false"}
+      className="mt-4"
+    >
+      <div
+        aria-hidden="true"
+        className="rounded-lg border border-slate-700 bg-slate-800/50 p-4 animate-pulse"
+      >
+        <div className="flex items-center gap-3 mb-3">
+          <div className="h-6 w-24 rounded-md bg-slate-700" />
+        </div>
+        <div className="space-y-2 mb-3">
+          <div className="h-3 w-40 rounded bg-slate-700" />
+          <div className="h-3 w-32 rounded bg-slate-700" />
+        </div>
+        <div className="h-4 w-56 rounded bg-slate-700 mb-3" />
+        <div className="h-3 w-20 rounded bg-slate-700" />
+      </div>
+      <span className="sr-only">Loading API status…</span>
+    </div>
+  );
+}
+
+===== components/NavMenu.jsx =====
+"use client";
+
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+// Lazy-load WalletStatus so the wallet chunk (Stellar/Freighter SDK) is not
+// in the initial JS bundle. The placeholder prevents CLS while the chunk
+// downloads. ssr: false avoids "window is not defined" during server render.
+import WalletStatusLazy from "./WalletStatusLazy";
+import NetworkBadge from "./NetworkBadge";
+import { copy } from "../app/copy/en";
+
+/**
+ * @typedef {Object} NavLink
+ * @property {string} href - The route path.
+ * @property {string} label - The display label.
+ */
+
+/** @type {NavLink[]} */
+const NAV_LINKS = [
+  { href: "/", label: "Home" },
+  { href: "/invoices", label: "Invoices" },
+  { href: "/invest", label: "Invest" },
+  { href: "/settings", label: "Settings" },
+];
+
+/**
+ * Debounce delay (ms) for the navigation announcement.
+ * Rapid route changes (e.g. prefetch-driven navigations) are collapsed into a
+ * single announcement so the live region is not spammed.
+ */
+export const ANNOUNCE_DEBOUNCE_MS = 200;
+
+// ---------------------------------------------------------------------------
+// Memoized sub-components
+// ---------------------------------------------------------------------------
+
+/**
+ * A single navigation link. Wrapped in React.memo so it only re-renders when
+ * its own props change (href, label, isActive, or the variant used for
+ * desktop vs. mobile styling).
+ *
+ * @param {{ href: string, label: string, isActive: boolean, variant: "desktop" | "mobile" }} props
+ */
+const NavLinkItem = memo(function NavLinkItem({ href, label, isActive, variant }) {
+  const desktopClass = isActive
+    ? "text-cyan-400"
+    : "text-slate-300 hover:text-cyan-400 active:text-cyan-300";
+
+  const mobileClass = isActive
+    ? "text-cyan-400 bg-slate-800/60"
+    : "text-slate-300 hover:text-cyan-400 hover:bg-slate-800/40 active:text-cyan-300 active:bg-slate-800/50";
+
+  return (
+    <Link
+      href={href}
+      aria-current={isActive ? "page" : undefined}
+      className={
+        variant === "desktop"
+          ? `text-sm font-medium transition-colors focus-ring rounded ${desktopClass}`
+          : `rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-ring ${mobileClass}`
+      }
+    >
+      {label}
+    </Link>
+  );
+});
+
+/**
+ * Desktop navigation bar. Memoized — only re-renders when the active
+ * pathname changes (via the `navItems` derived array).
+ *
+ * @param {{ navItems: Array<{ href: string, label: string, isActive: boolean }> }} props
+ */
+const DesktopNav = memo(function DesktopNav({ navItems }) {
+  return (
+    <nav aria-label="Main navigation" className="hidden md:flex items-center gap-6">
+      {navItems.map(({ href, label, isActive }) => (
+        <NavLinkItem key={href} href={href} label={label} isActive={isActive} variant="desktop" />
+      ))}
+      {/* Stellar network badge — tells users which ledger is configured */}
+      <NetworkBadge />
+      {/* Lazy-loaded wallet UI — chunk fetched on demand, not in initial bundle */}
+      <WalletStatusLazy />
+    </nav>
+  );
+});
+
+/**
+ * Mobile dropdown menu. Memoized — only re-renders when the active pathname
+ * changes or the visibility transition state changes.
+ *
+ * @param {{ navItems: Array<{ href: string, label: string, isActive: boolean }>, visible: boolean, menuRef: React.RefObject }} props
+ */
+const MobileMenu = memo(function MobileMenu({ navItems, visible, menuRef }) {
+  return (
+    <nav
+      id="mobile-menu"
+      ref={menuRef}
+      tabIndex={-1}
+      aria-label="Mobile navigation"
+      style={{
+        transition: "opacity 0.2s ease, transform 0.2s ease",
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(-6px)",
+      }}
+      className="md:hidden absolute left-0 right-0 top-full z-50 border-b border-slate-800 bg-slate-950/95 backdrop-blur-sm px-6 py-3 flex flex-col gap-1"
+    >
+      {navItems.map(({ href, label, isActive }) => (
+        <NavLinkItem key={href} href={href} label={label} isActive={isActive} variant="mobile" />
+      ))}
+    </nav>
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
+/**
+ * NavMenu — responsive site navigation.
+ *
+ * Renders links inline on desktop (md+). On mobile, hides links behind a
+ * hamburger toggle button with full ARIA disclosure semantics
+ * (aria-expanded, aria-controls). The mobile dropdown is absolutely
+ * positioned so it overlays page content rather than pushing it down.
+ * Closes on Escape, on navigation, and returns focus to the toggle button
+ * when dismissed.
+ *
+ * The wallet UI is lazy-loaded via next/dynamic so the Stellar wallet SDK
+ * does not ship in the initial bundle for pages that don't need it
+ * immediately (e.g. the static home page).
+ *
+ * ## Memoization strategy
+ *
+ * NavMenu manages two pieces of volatile state — `openPathname` (the mobile
+ * toggle) and `visible` (the enter/exit CSS transition flag). Neither should
+ * cause the link rows or the desktop nav to re-render.
+ *
+ * - `navItems` — derived via `useMemo`, recomputed only when `pathname`
+ *   changes. Passed into `DesktopNav` and `MobileMenu` as a stable array.
+ * - `DesktopNav` / `MobileMenu` — wrapped in `React.memo` so they bail out
+ *   when their props are reference-equal across renders.
+ * - `NavLinkItem` — wrapped in `React.memo`; each link re-renders only when
+ *   its own `isActive` flag, `href`, or `label` changes.
+ * - `toggle` — wrapped in `useCallback` with `[pathname]` dependency.
+ * - `brandLabel` — derived via `useMemo` so it isn't recomputed on every
+ *   render caused by `open`/`visible` state changes.
+ */
+export default function NavMenu() {
+  const pathname = usePathname();
+  const toggleRef = useRef(null);
+  const menuRef = useRef(null);
+
+  const [openPathname, setOpenPathname] = useState(null);
+  const open = openPathname !== null && openPathname === pathname;
+
+  // Drive the CSS enter/exit transition.
+  // Both branches use async callbacks so setState is never called
+  // synchronously inside the effect body (avoids react-hooks/set-state-in-effect).
+  const [visible, setVisible] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Navigation announcement (aria-live, polite)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Text injected into the sr-only live region. Empty string = nothing
+   * announced (initial mount and any state where there is no matching label).
+   */
+  const [announcement, setAnnouncement] = useState("");
+
+  /**
+   * Tracks whether this is the very first render so we never announce on mount
+   * (the user is already on the page — no navigation has occurred).
+   */
+  const isMounted = useRef(false);
+
+  /**
+   * Holds the debounce timer handle so it can be cancelled on rapid updates
+   * or on unmount.
+   */
+  const announceTimer = useRef(null);
+
+  useEffect(() => {
+    // Skip the initial mount: no navigation has occurred yet.
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
+    }
+
+    // Cancel any pending announcement from a previous rapid update.
+    if (announceTimer.current !== null) {
+      clearTimeout(announceTimer.current);
+    }
+
+    // Find the label for the current pathname (e.g. "Home", "Invoices", …).
+    // If the pathname does not match a known route (e.g. an invoice detail
+    // page) we still announce with the raw pathname so the user is not left
+    // completely in the dark.
+    const matchedLink = NAV_LINKS.find((link) => link.href === pathname);
+    const label = matchedLink ? matchedLink.label : pathname;
+
+    announceTimer.current = setTimeout(() => {
+      setAnnouncement(copy.nav.announceNavigation.replace("{label}", label));
+      announceTimer.current = null;
+    }, ANNOUNCE_DEBOUNCE_MS);
+
+    return () => {
+      if (announceTimer.current !== null) {
+        clearTimeout(announceTimer.current);
+        announceTimer.current = null;
+      }
+    };
+  }, [pathname]);
+
+  // ---------------------------------------------------------------------------
+  // Derived / memoized data — stable across open/visible state changes
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Pre-compute the active flag for every link so the comparison runs once
+   * per pathname change rather than inline on every render.
+   */
+  const navItems = useMemo(
+    () => NAV_LINKS.map((link) => ({ ...link, isActive: pathname === link.href })),
+    [pathname]
+  );
+
+  /**
+   * True when the current route is the home page.
+   * Used both in brandLabel and in the brand link's aria-current attribute.
+   */
+  const isHomePage = pathname === "/" || pathname === "/home";
+
+  /**
+   * Brand label depends only on the current pathname, not on open/visible.
+   */
+  const brandLabel = useMemo(() => {
+    return isHomePage ? "LiquiFact" : "← LiquiFact";
+  }, [isHomePage]);
+
+  // ---------------------------------------------------------------------------
+  // Effects
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (open) {
+      const raf = requestAnimationFrame(() => setVisible(true));
+      return () => cancelAnimationFrame(raf);
+    }
+
+    const t = setTimeout(() => setVisible(false), 0);
+    return () => clearTimeout(t);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    // Mobile-only disclosure: when the panel opens, place focus on the first
+    // available menu link so keyboard users land inside the revealed content.
+    const raf = requestAnimationFrame(() => {
+      const firstFocusable = menuRef.current?.querySelector("a[href], button:not([disabled])");
+      firstFocusable?.focus();
+      if (!firstFocusable) {
+        menuRef.current?.focus();
+      }
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [open]);
+
+  // Close on Escape and return focus to toggle
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setOpenPathname(null);
+        toggleRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
+
+  // Close when clicking outside the header
+  useEffect(() => {
+    if (!open) return;
+
+    const handleClickOutside = (e) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target) &&
+        toggleRef.current &&
+        !toggleRef.current.contains(e.target)
+      ) {
+        setOpenPathname(null);
+        toggleRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  const toggle = useCallback(() => {
+    setOpenPathname((prev) => (prev === null ? pathname : null));
+  }, [pathname]);
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
+  return (
+    <header className="relative sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-sm px-6 py-4">
+      <div className="flex items-center justify-between">
+        {/* Brand */}
+        <Link
+          href="/"
+          aria-current={isHomePage ? "page" : undefined}
+          className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline focus-ring rounded"
+        >
+          {isHomePage ? (
+            "LiquiFact"
+          ) : (
+            <>
+              <span aria-hidden="true">← </span> {/* CHANGED */}
+              LiquiFact
+            </>
+          )}
+        </Link>
+
+        {/* Desktop nav — only re-renders when pathname changes */}
+        <DesktopNav navItems={navItems} />
+
+        <div className="flex items-center gap-3">
+          {/* Network badge — visible on mobile too, alongside the wallet button */}
+          <NetworkBadge className="md:hidden" />
+          {/* Wallet button — lazy-loaded on mobile too */}
+          <div className="md:hidden">
+            <WalletStatusLazy />
+          </div>
+
+          {/* Mobile hamburger */}
+          <button
+            ref={toggleRef}
+            type="button"
+            aria-expanded={open}
+            aria-controls="mobile-menu"
+            aria-label={open ? "Close navigation menu" : "Open navigation menu"}
+            onClick={toggle}
+            className="md:hidden rounded-lg p-2 text-slate-300 hover:text-cyan-400 hover:bg-slate-800 active:text-cyan-300 active:bg-slate-700 transition-colors focus-ring"
+          >
+            {/* Animated hamburger → X morphing in place */}
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <line
+                x1="3"
+                y1="6"
+                x2="21"
+                y2="6"
+                style={{
+                  transformOrigin: "12px 6px",
+                  transition: "transform 0.25s ease",
+                  transform: open ? "translateY(6px) rotate(45deg)" : "none",
+                }}
+              />
+              <line
+                x1="3"
+                y1="12"
+                x2="21"
+                y2="12"
+                style={{
+                  transition: "opacity 0.2s ease",
+                  opacity: open ? 0 : 1,
+                }}
+              />
+              <line
+                x1="3"
+                y1="18"
+                x2="21"
+                y2="18"
+                style={{
+                  transformOrigin: "12px 18px",
+                  transition: "transform 0.25s ease",
+                  transform: open ? "translateY(-6px) rotate(-45deg)" : "none",
+                }}
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile dropdown — absolutely positioned so it overlays page content */}
+      {open && <MobileMenu navItems={navItems} visible={visible} menuRef={menuRef} />}
+
+      {/* Polite live region — announces route changes to screen-reader users.
+          Kept visually hidden (sr-only) so it never affects layout.
+          Empty on mount so no announcement fires before any navigation occurs.
+          aria-atomic ensures the full string is read, not just the changed part. */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="nav-announce"
+        className="sr-only"
+      >
+        {announcement}
+      </div>
+    </header>
+  );
+}

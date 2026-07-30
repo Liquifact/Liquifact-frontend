@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState, useId, useCallback } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { formatRelativeTime } from "../lib/format/date";
 import CopyButton from "./CopyButton";
 import ThemeOptionsModal from "./ThemeOptionsModal";
+import ThemeSkeleton, { THEME_CONTROL_FRAME_CLASS } from "./ThemeSkeleton";
 import { useLocalStorage } from "../lib/hooks/useLocalStorage";
+import { useHydrated } from "../lib/hooks/useHydrated";
 import { useToast } from "./ToastProvider";
 
 /**
@@ -129,24 +131,26 @@ export default function ThemeToggle({ className = "" }) {
   // and reads from storage inside a useEffect after mount, preventing hydration
   // mismatches. The setter is referentially stable (safe for dep-arrays).
   const [preference, setPreference] = useLocalStorage(THEME_STORAGE_KEY, "auto");
+  const isHydrated = useHydrated();
 
   // Keep data-theme in sync whenever the preference state changes.
   useEffect(() => {
+    if (!isHydrated) return;
     applyTheme(preference);
-  }, [preference]);
+  }, [isHydrated, preference]);
 
   // While in "auto" mode, subscribe to the OS prefers-color-scheme change
   // event so the rendered theme follows the OS in real-time. The listener
   // is cleaned up on unmount or whenever the preference leaves "auto".
   useEffect(() => {
-    if (preference !== "auto") return;
+    if (!isHydrated || preference !== "auto") return;
     if (typeof window === "undefined" || !window.matchMedia) return;
 
     const mq = window.matchMedia("(prefers-color-scheme: light)");
     const handler = () => applyTheme("auto");
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
-  }, [preference]);
+  }, [isHydrated, preference]);
 
   // When the preference was last changed. Bootstrapped to "now" on a user's
   // very first visit (nothing stored yet) so the UI always has a timestamp
@@ -349,8 +353,15 @@ export default function ThemeToggle({ className = "" }) {
     }
   };
 
+  if (!isHydrated) {
+    return <ThemeSkeleton variant="control" />;
+  }
+
   return (
-    <>
+    <div
+      data-testid="theme-toggle-content"
+      className={THEME_CONTROL_FRAME_CLASS}
+    >
       <button
         id="theme-toggle"
         type="button"
@@ -420,6 +431,6 @@ export default function ThemeToggle({ className = "" }) {
         onSelect={handleSelectFromModal}
         titleId={titleId}
       />
-    </>
+    </div>
   );
 }
