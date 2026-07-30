@@ -5,6 +5,7 @@ import Footer from "../components/Footer";
 import { ToastProvider } from "../components/ToastProvider";
 import OfflineBanner from "../components/OfflineBanner";
 import MarketplaceShortcut from "../components/MarketplaceShortcut";
+import InvoiceDetailShortcut from "../components/InvoiceDetailShortcut";
 import { WalletProvider } from "../components/WalletProvider";
 import ThemeToggle, { THEME_STORAGE_KEY, THEMES } from "../components/ThemeToggle";
 import ShortcutHelpDialog from "../components/ShortcutHelpDialog";
@@ -98,6 +99,8 @@ export default async function RootLayout({ children }) {
         </ToastProvider>
         {/* Marketplace shortcut — listens for `m` keystrokes to navigate to /invest */}
         <MarketplaceShortcut />
+        {/* Invoice detail shortcut — listens for `i` keystrokes to navigate to /invest */}
+        <InvoiceDetailShortcut />
         {/* Shortcut help dialog — listens for `?` keystrokes to surface every
             registered keyboard shortcut. Mounted here so the gesture works
             on every page. The dialog markup only renders while open. */}
