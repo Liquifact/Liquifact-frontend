@@ -204,6 +204,82 @@ body {
   .opacity-60          → marketplace "Soon" filters wrapper (issue #689)
 */
 @media (forced-colors: active) {
+
+  /* Dashboard — preserve readable surfaces, non-colour cues, and focus. */
+  .dashboard-page {
+    background-color: Canvas;
+    color: CanvasText;
+  }
+
+  .dashboard-link-card,
+  .dashboard-api-panel,
+  .dashboard-status-panel {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-link-card {
+    border-color: LinkText;
+  }
+
+  .dashboard-link-title {
+    color: LinkText;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-muted-text,
+  .dashboard-status-summary,
+  .dashboard-status-key,
+  .dashboard-status-value,
+  .dashboard-status-message,
+  .dashboard-details-summary,
+  .dashboard-raw-response {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-action {
+    border: 2px solid ButtonText;
+    background-color: ButtonFace;
+    color: ButtonText;
+    opacity: 1;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-action:disabled {
+    border-color: GrayText;
+    color: GrayText;
+    opacity: 1;
+  }
+
+  .dashboard-status-badge {
+    border: 2px solid ButtonText;
+    background-color: ButtonFace;
+    color: ButtonText;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-focus:focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 3px;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-page [data-testid="health-status-skeleton"] [aria-hidden="true"] {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-page [data-testid="health-status-skeleton"] [aria-hidden="true"] div {
+    background-color: CanvasText;
+    forced-color-adjust: none;
+  }
+
   .upload-dropzone {
     border: 2px solid CanvasText;
     background-color: Canvas;
@@ -278,6 +354,48 @@ body {
 }
 
 @media (prefers-contrast: more) {
+
+  /* Dashboard — strengthen contrast without changing normal-mode layout. */
+  .dashboard-link-card,
+  .dashboard-api-panel,
+  .dashboard-status-panel {
+    border-width: 2px;
+    border-color: var(--color-fg);
+    background-color: var(--color-surface);
+  }
+
+  .dashboard-link-title {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+  }
+
+  .dashboard-muted-text,
+  .dashboard-status-summary,
+  .dashboard-status-key,
+  .dashboard-status-value,
+  .dashboard-status-message,
+  .dashboard-details-summary,
+  .dashboard-raw-response {
+    color: var(--color-fg);
+  }
+
+  .dashboard-action {
+    border: 2px solid var(--color-fg);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+    opacity: 1;
+  }
+
+  .dashboard-status-badge {
+    border-width: 2px;
+  }
+
+  .dashboard-focus:focus-visible {
+    outline-width: 3px;
+    outline-offset: 3px;
+  }
+
   .upload-dropzone {
     border-color: #e2e8f0; /* slate-200 — far stronger than the default slate-700 */
   }
