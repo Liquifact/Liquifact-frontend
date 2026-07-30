@@ -45,6 +45,10 @@ New to the codebase? Start with the
 App Router routes (and their loading/error files), the mock-vs-live data layers,
 and where wallet/toast/theme state lives.
 
+For the theme preference flow, token consumption, current limitations, and safe
+customization steps, see the
+[Theme theming guide](docs/theme-theming.md).
+
 For the exact invoice fixture shape, formatted-versus-raw value rules, and the
 API migration seam, see the [Invoice data contract](docs/invoice-data.md).
 
