@@ -26,10 +26,16 @@ import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
 import { exportAsCSV, exportAsJSON } from "@/utils/export";
-import Button from "@/components/Button";
 import DensityToggle from "@/components/DensityToggle";
 import { useDensity } from "@/lib/hooks/useDensity";
-import { useToast, ToastContext } from "@/components/ToastProvider";
+import { INVOICE_STATUSES } from "@/lib/types/invoice";
+import useBulkSelection from "@/lib/hooks/useBulkSelection";
+import { useSettingsAnnouncer } from "@/components/useSettingsAnnouncer";
+
+import { ToastContext } from "@/components/ToastProvider";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import MarketplaceErrorBoundary from "@/components/MarketplaceErrorBoundary";
+import { reportError } from "@/lib/observability/reportError";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
@@ -141,22 +147,8 @@ export function buildSearchParams(filters, searchQuery = "") {
 }
 
 // Delay before an async load/retry outcome reaches the polite live region.
-// Debouncing coalesces a burst of rapid results (e.g. mashing "Try again")
-// into a single announcement of the latest outcome instead of flooding
-// screen readers with every intermediate state. Filter/pagination/search
-// text changes are not async results and stay immediate — see the
-// `announcedMessage` effect below.
 export const ANNOUNCE_DEBOUNCE_MS = 200;
 
-/**
- * Returns the screen-reader announcement text for the initial invoice load.
- *
- * @param {Array} invoices - The resolved invoice array (may be empty).
- * @param {object} [options]
- * @param {boolean} [options.filterActive] - Whether an issuer filter is active.
- * @param {number} [options.filteredCount] - Number of invoices matching the active filter.
- * @returns {string}
- */
 export function getInvoiceLoadAnnouncement(invoices, { filterActive, filteredCount } = {}) {
   if (!Array.isArray(invoices) || invoices.length === 0) {
     return copy.invest.announceNoInvoices;
@@ -179,10 +171,6 @@ export function getPaginationAnnouncement(shown, total) {
   return copy.invest.announceShowing.replace("{shown}", shown).replace("{total}", total);
 }
 
-/**
- * Build the JSON-serializable subset of an invoice used for the bulk-export
- * download. We strip any internal-only fields so the export is safe to
- * share with counterparties.\n * @param {{id:string,issuer:string,amount:string,currency:string,dueDate:string,yield:string,status:string}} inv\n * @returns {string,amount:string,currency:string,dueDate:string,yield:string,status:string}}\n */
 export function toExportRecord(inv) {
   return {
     id: inv.id,
@@ -195,20 +183,14 @@ export function toExportRecord(inv) {
   };
 }
 
-/**
- * Parse a numeric amount string like "12,500" → 12500.\n * @param {string} str\n * @returns {number}\n */
 function parseAmount(str) {
   return parseFloat(String(str).replace(/,/g, "")) || 0;
 }
 
-/**
- * Parse a yield string like "8.2%" → 8.2.\n * @param {string} str\n * @returns {number}\n */
 function parseYield(str) {
   return parseFloat(String(str).replace(/%/g, "")) || 0;
 }
 
-/**
- * Sort a copy of `list` according to the sort column + direction in `filters`.\n *\n * Supported columns: "amount", "yield", "maturity".\n * Direction: "asc" | "desc".\n *\n * @param {Array}  list\n * @param {object} filters\n * @returns {Array}\n */
 export function applySortToList(list, filters) {
   if (!Array.isArray(list) || list.length === 0) return list;
 
@@ -230,9 +212,6 @@ export function applySortToList(list, filters) {
   });
 }
 
-/**
- * Trigger a browser download of `text` as `filename` using a transient\n * `<a>` element + `URL.createObjectURL`. Fell back to throwing rather than\n * returning a Promise so failures are easy to assert in tests.\n * @param {string} text\n * @param {string} filename\n * @param {string} mimeType
- * @returns {void}\n */
 function triggerDownload(text, filename, mimeType = "application/json") {
   if (typeof document === "undefined" || typeof URL === "undefined") {
     throw new Error("Downloads are only supported in browser environments");
@@ -249,15 +228,8 @@ function triggerDownload(text, filename, mimeType = "application/json") {
   URL.revokeObjectURL(url);
 }
 
-/**
- * Default bulk-export implementation: write a JSON blob to disk via the\n * browser download mechanism. The page wires `onBulkExport` to this helper\n * unless a custom exporter is provided.\n * @param {Array} selectedInvoices
- * @returns {{count: number}}\n */
 export function defaultBulkExport(selectedInvoices) {
   const safeRecords = Array.isArray(selectedInvoices) ? selectedInvoices.map(toExportRecord) : [];
-  // Defensive: if the browser download sink is missing (jsdom test env,
-  // SSR builds, or first-render before hydration), degrade to a silent no-op
-  // rather than throwing. The page can still surface the file via a custom
-  // `onBulkExport` injection if it needs to.
   if (
     typeof URL === "undefined" ||
     typeof URL.createObjectURL !== "function" ||
@@ -274,26 +246,46 @@ export function defaultBulkExport(selectedInvoices) {
   return { count: safeRecords.length };
 }
 
-/**
- * Default bulk-delete implementation: optimistically updates the supplied\n * list with a no-op filter (parent owns the actual mutation so the data\n * source of truth stays outside the export helper). The handler is a\n * documented opt-in behaviour: callers that already expose a delete API\n * inject their own `onBulkDelete`.\n * @param {Set<string>|Array<string>} ids
- * @returns {Promise<{count: number}>}
- */
+function useSafeRouter() {
+  try {
+    return useRouter();
+  } catch {
+    return { replace: () => {}, push: () => {}, prefetch: () => {} };
+  }
+}
+
+function useSafeSearchParams() {
+  try {
+    return useSearchParams();
+  } catch {
+    return new URLSearchParams();
+  }
+}
+
 export function InvestMarketplace({
   loadInvoices = loadMockInvoices,
-  onBulkExport = defaultBulkExport,
   onBulkDelete = async () => {},
-  toast: propToast,
+  onBulkExport = defaultBulkExport,
 }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const router = useSafeRouter();
+  const searchParams = useSafeSearchParams();
   const searchParamsValue = searchParams ?? new URLSearchParams();
   const searchParamsString = searchParamsValue.toString();
 
-  const initialUrlState = parseFiltersFromSearchParams(searchParamsValue, DEFAULT_FILTERS);
+  const initialUrlState = useMemo(
+    () => parseFiltersFromSearchParams(searchParamsValue, DEFAULT_FILTERS),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
-  const { watchlists } = useWatchlist();
   const [density, setDensity] = useDensity();
-  // Toast is optional — bulk handlers no-op toast when provider is absent (unit tests).
+  const { watchlists } = useWatchlist();
+
+  const [pendingDeleteIds, setPendingDeleteIds] = useState(null);
+  const [bulkRunning, setBulkRunning] = useState({ export: false, delete: false });
+  const toastApi = useContext(ToastContext);
+  const bulkLabels = useMemo(() => copy.invest?.bulkActions || {}, []);
+  
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -785,120 +777,87 @@ export function InvestMarketplace({
             </div>
           ) : invoices === null ? (
             <InvoiceListSkeleton rows={3} />
-          ) : invoices.length === 0 ? (
-            <div
-              role="status"
-              aria-live="polite"
-              className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
-            >
-              {copy.invest.emptyState}
-            </div>
-          ) : filteredInvoices.length === 0 ? (
-            <div
-              role="status"
-              aria-live="polite"
-              className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
-            >
-              {copy.invest.noMatchFilter}
-            </div>
-          ) : (
-            <ErrorBoundary
-              onError={(err, info) => reportError(err, { where: "invest.watchlist", info })}
-              fallbackTitle="Error loading watchlist"
-              fallbackDescription="An error occurred while rendering the watchlist. We logged the error — you can retry loading this section."
-              retryLabel="Retry loading watchlist"
-            >
-              <>
-                <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
-                  {filteredInvoices.slice(0, visibleCount).map((inv) => (
-                    <li
-                      key={inv.id}
-                      className="rounded-xl border border-slate-800 bg-slate-900/50"
-                      style={{ padding: "var(--market-card-padding)" }}
-                    >
-                      <div
-                        className="flex items-center justify-between"
-                        style={{ marginBottom: "var(--market-card-gap)", gap: "var(--market-card-gap)" }}
-                      >
-                        <Link
-                          href={`/invest/${inv.id}`}
-                          className="rounded font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
-                          style={{
-                            fontSize: "var(--market-card-title-font-size)",
-                            fontWeight: "var(--market-card-title-font-weight)",
-                            lineHeight: "var(--market-card-title-line-height)",
-                          }}
-                        >
-                          {inv.issuer}
-                        </Link>
-                        <span className="rounded-full bg-cyan-900/60 px-2 py-1 text-xs font-semibold text-cyan-300">
-                          {inv.status}
-                        </span>
-                      </div>
-                      <div
-                        className="flex flex-wrap items-center text-slate-400"
-                        style={{
-                          gap: "var(--market-card-gap)",
-                          fontSize: "var(--market-card-meta-font-size)",
-                          lineHeight: "var(--market-card-meta-line-height)",
-                          letterSpacing: "var(--market-card-meta-letter-spacing)",
-                        }}
-                      >
-                        <span>
-                          {inv.currency}&nbsp;{inv.amount}
-                        </span>
-                        <span>
-                          {copy.invest.labelYield}
-                          {inv.yield}
-                        </span>
-                        <span>
-                          {copy.invest.labelMaturity}
-                          {inv.dueDate}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-                {visibleCount < filteredInvoices.length && (
-                  <button
-                    ref={loadMoreRef}
-                    type="button"
-                    onClick={handleLoadMore}
-                    aria-label={copy.invest.loadMoreAriaLabel}
-                    className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50 focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500"
-                  >
-                    {copy.invest.loadMore}
-                  </button>
-                )}
-                <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
-                  {copy.invest.yieldDisclaimer}
-                </div>
-              </>
-            </ErrorBoundary>
-          )}
-        </div>
-
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/60 pt-4">
-          <DensityToggle density={density} onDensityChange={setDensity} />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => exportAsCSV(filteredInvoices, "invoices_export.csv")}
-              disabled={filteredInvoices.length === 0}
-              className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Export CSV
-            </button>
-            <button
-              type="button"
-              onClick={() => exportAsJSON(filteredInvoices, "invoices_export.json")}
-              disabled={filteredInvoices.length === 0}
-              className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Export JSON
-            </button>
           </div>
-        </div>
+        ) : invoices.length === 0 ? (
+          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+            {copy.invest.emptyState}
+          </div>
+        ) : filteredInvoices.length === 0 ? (
+          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+            {copy.invest.noMatchFilter}
+          </div>
+        ) : (
+          <ErrorBoundary
+            onError={(err, info) => reportError(err, { where: "invest.watchlist", info })}
+            fallbackTitle="Error loading watchlist"
+            fallbackDescription="An error occurred while rendering the watchlist. We logged the error — you can retry loading this section."
+            retryLabel="Retry loading watchlist"
+          >
+            <>
+              <ul
+                aria-label={copy.invest.listAriaLabel}
+                data-density={density}
+                className={density === "compact" ? "space-y-2" : "space-y-4"}
+              >
+                {filteredInvoices.slice(0, visibleCount).map((inv) => (
+                  <li
+                    key={inv.id}
+                    className={`rounded-xl border border-slate-800 bg-slate-900/50 ${
+                      density === "compact" ? "p-3" : "p-5"
+                    }`}
+                  >
+                    <div
+                      className={`flex items-center justify-between ${
+                        density === "compact" ? "mb-1.5" : "mb-3"
+                      }`}
+                    >
+                      <Link
+                        href={`/invest/${inv.id}`}
+                        className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+                      >
+                        {inv.issuer}
+                      </Link>
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
+                        {inv.status}
+                      </span>
+                    </div>
+                    <div className="flex gap-6 text-sm text-slate-400">
+                      <span>
+                        {inv.currency}&nbsp;{inv.amount}
+                      </span>
+                      <span>
+                        {copy.invest.labelYield}
+                        {inv.yield}
+                      </span>
+                      <span>
+                        {copy.invest.labelMaturity}
+                        {inv.dueDate}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {visibleCount < filteredInvoices.length && (
+                <button
+                  ref={loadMoreRef}
+                  type="button"
+                  onClick={handleLoadMore}
+                  aria-label={copy.invest.loadMoreAriaLabel}
+                  className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50"
+                >
+                  {copy.invest.loadMore}
+                </button>
+              )}
+              <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
+                {copy.invest.yieldDisclaimer}
+              </div>
+
+              <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/60 pt-4">
+                <DensityToggle density={density} onDensityChange={setDensity} />
+              </div>
+            </>
+          </ErrorBoundary>
+        )}
       </main>
 
       {/* Confirmation dialog for destructive bulk action */}

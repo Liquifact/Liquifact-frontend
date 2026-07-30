@@ -1,10 +1,11 @@
 /**
  * @file app/invest/density.test.tsx
  *
- * Tests for the Marketplace Density Toggle feature (`feature/marketplace-density-toggle`).
+ * Unit and accessibility tests for marketplace density toggle integration (`feature/marketplace-42-density`).
  * Verifies that DensityToggle is integrated into InvestMarketplace, updates the
- * display density state ("comfortable" vs "compact"), sets `data-density` on the list,
- * applies responsive spacing/padding, persists to localStorage, and meets WCAG standards.
+ * display density state ("comfortable" vs "compact"), sets `data-density` on the
+ * list, applies spacing/padding, persists to localStorage, falls back on invalid values,
+ * and meets WCAG standards.
  */
 
 import "@testing-library/jest-dom";
@@ -113,6 +114,18 @@ describe("Marketplace Density Toggle", () => {
 
     const list = screen.getByRole("list", { name: /investable invoices/i });
     expect(list).toHaveAttribute("data-density", "compact");
+  });
+
+  it("falls back safely to comfortable density when stored value is invalid", async () => {
+    localStorage.setItem(DENSITY_STORAGE_KEY, "invalid-density-value");
+
+    renderMarketplaceWithProviders();
+
+    const comfortableBtn = await screen.findByRole("button", { name: /switch to comfortable density/i });
+    expect(comfortableBtn).toHaveAttribute("aria-pressed", "true");
+
+    const list = screen.getByRole("list", { name: /investable invoices/i });
+    expect(list).toHaveAttribute("data-density", "comfortable");
   });
 
   it("passes axe accessibility checks with DensityToggle present", async () => {

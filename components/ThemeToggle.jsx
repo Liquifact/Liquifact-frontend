@@ -190,8 +190,6 @@ export default function ThemeToggle({ className = "" }) {
     writeThemeUpdatedAt(now);
   };
 
-  const handleClick = () => cycleTheme("next");
-
   const handleKeyDown = (e) => {
     if (e.key === "ArrowRight" || e.key === "ArrowDown") {
       e.preventDefault();

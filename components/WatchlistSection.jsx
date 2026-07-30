@@ -1,7 +1,8 @@
 "use client";
 
 import ErrorBoundary from "./ErrorBoundary";
-import EmptyState from "./EmptyState";
+import { copy } from "@/app/copy/en";
+import ErrorBanner from "./ErrorBanner";
 import WatchlistInput from "./WatchlistInput";
 import { useWatchlist } from "@/lib/hooks/useWatchlist";
 import { useHydrated } from "@/lib/hooks/useHydrated";
