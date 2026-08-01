@@ -38,6 +38,14 @@ Part of the LiquiFact stack: **frontend** (this repo) | **backend** (Express API
 
 ---
 
+## Documentation
+
+Browse every guide under `docs/` from the
+[documentation index](docs/README.md) — guides are grouped by audience
+(getting started, building features, operating, and contributing).
+
+---
+
 ## Architecture
 
 New to the codebase? Start with the
