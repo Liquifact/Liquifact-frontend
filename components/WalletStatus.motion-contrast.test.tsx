@@ -86,6 +86,25 @@ describe("globals.css — wallet accessibility overrides", () => {
       "border: 1px solid CanvasText",
       "background-color: Canvas",
     ]);
+    expectRule(block, ".wallet-status", [
+      "background-color: Canvas",
+      "color: CanvasText",
+      "forced-color-adjust: none",
+    ]);
+    expectRule(block, ".wallet-status .wallet-status-dot", [
+      "border: 1px solid CanvasText",
+      "forced-color-adjust: none",
+    ]);
+    expectRule(block, ".wallet-status .wallet-copy-btn", [
+      "color: ButtonText",
+      "forced-color-adjust: none",
+    ]);
+    expectRule(block, '.wallet-status button[type="button"]', [
+      "border: 2px solid ButtonText",
+      "background-color: ButtonFace",
+      "color: ButtonText",
+      "forced-color-adjust: none",
+    ]);
   });
 
   it("defines prefers-contrast overrides for wallet selectors", () => {
@@ -96,6 +115,14 @@ describe("globals.css — wallet accessibility overrides", () => {
     expectRule(block, ".wallet-skeleton-text-primary", ["background-color: #475569"]);
     expectRule(block, ".wallet-skeleton-text-secondary", ["background-color: #334155"]);
     expectRule(block, ".wallet-skeleton-btn", ["background-color: #475569"]);
+    expectRule(block, ".wallet-status .wallet-status-dot", ["border: 1px solid var(--color-fg)"]);
+    expectRule(block, ".wallet-status .wallet-copy-btn", ["color: var(--color-fg)"]);
+    expectRule(block, '.wallet-status button[type="button"]', [
+      "border: 2px solid var(--color-fg)",
+      "background-color: var(--color-surface)",
+      "color: var(--color-fg)",
+      "opacity: 1",
+    ]);
   });
 });
 
@@ -158,6 +185,12 @@ describe("WalletStatus — accessibility hooks and classes", () => {
     renderWithState(WALLET_STATES.CONNECTING);
     const helperText = screen.getByText("Connecting wallet...");
     expect(helperText.className).toContain("wallet-helper-text");
+  });
+
+  it("carries the wallet-status scope class on the root wrapper", () => {
+    const { container } = renderWithState(WALLET_STATES.CONNECTED);
+    const root = container.querySelector(".wallet-status");
+    expect(root).toBeInTheDocument();
   });
 
   it("carries hooks and motion-reduce classes when CONNECTED", () => {

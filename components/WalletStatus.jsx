@@ -255,7 +255,7 @@ export default function WalletStatus() {
   const helperTextId = config.showAddress ? undefined : "wallet-helper-text";
 
   return (
-    <div className="flex flex-row-reverse items-center justify-end gap-4">
+    <div className="wallet-status flex flex-row-reverse items-center justify-end gap-4">
       {/*
        * Wallet action button.
        * Placed first in the DOM for sensible focus order, but visually on the right

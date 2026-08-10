@@ -351,6 +351,41 @@ body {
     border: 1px solid CanvasText;
     background-color: Canvas;
   }
+
+  /* Wallet — #939 wallet-status scope */
+  .wallet-status {
+    background-color: Canvas;
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .wallet-status .wallet-status-dot {
+    border: 1px solid CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .wallet-status .wallet-copy-btn {
+    color: ButtonText;
+    forced-color-adjust: none;
+  }
+
+  .wallet-status .wallet-copy-btn:hover {
+    color: Highlight;
+  }
+
+  .wallet-status button[type="button"] {
+    border: 2px solid ButtonText;
+    background-color: ButtonFace;
+    color: ButtonText;
+    opacity: 1;
+    forced-color-adjust: none;
+  }
+
+  .wallet-status button[type="button"]:disabled {
+    border-color: GrayText;
+    color: GrayText;
+    opacity: 1;
+  }
 }
 
 @media (prefers-contrast: more) {
@@ -456,6 +491,28 @@ body {
 
   .wallet-skeleton-text-secondary {
     background-color: #334155; /* slate-700 */
+  }
+
+  /* Wallet — #939 wallet-status scope */
+  .wallet-status .wallet-status-dot {
+    border: 1px solid var(--color-fg);
+  }
+
+  .wallet-status .wallet-copy-btn {
+    color: var(--color-fg);
+  }
+
+  .wallet-status button[type="button"] {
+    border: 2px solid var(--color-fg);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+    opacity: 1;
+  }
+
+  .wallet-status button[type="button"]:disabled {
+    color: var(--color-muted);
+    border-color: var(--color-muted);
+    opacity: 1;
   }
 }
 
