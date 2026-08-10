@@ -49,6 +49,10 @@ For the dashboard theme flow, token usage, current limitations, and safe
 customization steps, see the
 [Dashboard theming guide](docs/dashboard-theming.md).
 
+For how the upload view consumes theme tokens and supports high-contrast and
+reduced-motion modes, see the
+[Upload theming guide](docs/upload-theming.md).
+
 For the exact invoice fixture shape, formatted-versus-raw value rules, and the
 API migration seam, see the [Invoice data contract](docs/invoice-data.md).
 
