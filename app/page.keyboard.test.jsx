@@ -4,9 +4,17 @@ import userEvent from "@testing-library/user-event";
 
 import Home from "./page";
 import { getHealth } from "../lib/api/health";
+import {
+  DASHBOARD_INVOICE_SHORTCUT_KEY,
+  DASHBOARD_INVEST_SHORTCUT_KEY,
+  DASHBOARD_HEALTH_SHORTCUT_KEY,
+} from "../lib/shortcuts";
+
+const mockPush = jest.fn();
 
 jest.mock("next/navigation", () => ({
   usePathname: () => "/",
+  useRouter: () => ({ push: mockPush }),
 }));
 
 jest.mock("../components/WalletStatusLazy", () => ({
@@ -159,5 +167,64 @@ describe("dashboard keyboard navigation", () => {
     ).not.toBeInTheDocument();
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(toggle).toHaveFocus();
+  });
+});
+
+describe("dashboard keyboard shortcuts", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    getHealth.mockReset();
+    getHealth.mockResolvedValue({
+      status: "connected",
+      message: "Backend connected",
+      details: { status: "ok" },
+    });
+    mockPush.mockClear();
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  });
+
+  it("renders the discoverable shortcut hint", () => {
+    render(<Home />);
+    expect(
+      screen.getByTestId("dashboard-shortcut-hint")
+    ).toBeInTheDocument();
+  });
+
+  it(`press "${DASHBOARD_INVOICE_SHORTCUT_KEY}" navigates to invoices`, async () => {
+    const user = setupUser();
+    render(<Home />);
+    await user.keyboard(DASHBOARD_INVOICE_SHORTCUT_KEY);
+    expect(mockPush).toHaveBeenCalledWith("/invoices");
+  });
+
+  it(`press "${DASHBOARD_INVEST_SHORTCUT_KEY}" navigates to invest`, async () => {
+    const user = setupUser();
+    render(<Home />);
+    await user.keyboard(DASHBOARD_INVEST_SHORTCUT_KEY);
+    expect(mockPush).toHaveBeenCalledWith("/invest");
+  });
+
+  it(`press "${DASHBOARD_HEALTH_SHORTCUT_KEY}" triggers health check`, async () => {
+    const user = setupUser();
+    render(<Home />);
+    await user.keyboard(DASHBOARD_HEALTH_SHORTCUT_KEY);
+    expect(getHealth).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not fire shortcuts when focus is inside an input", async () => {
+    const user = setupUser();
+    render(<Home />);
+    // Add an input to the page temporarily — the shortcut matcher should
+    // ignore keydown when an editable element is focused.
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+    await user.keyboard(DASHBOARD_INVOICE_SHORTCUT_KEY);
+    expect(mockPush).not.toHaveBeenCalled();
+    document.body.removeChild(input);
   });
 });

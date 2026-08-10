@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState, useEffect } from "react";
 import NavMenu from "../components/NavMenu";
 import { copy } from "./copy/en";
@@ -8,6 +9,12 @@ import { getHealth } from "../lib/api/health";
 import { env } from "../lib/config/env";
 import { extractKnownFields, safeJsonStringify } from "../lib/format/safeJson";
 import HealthStatusSkeleton from "../components/HealthStatusSkeleton";
+import {
+  DASHBOARD_INVOICE_SHORTCUT_KEY,
+  DASHBOARD_INVEST_SHORTCUT_KEY,
+  DASHBOARD_HEALTH_SHORTCUT_KEY,
+  createShortcutMatcher,
+} from "../lib/shortcuts";
 
 const API_URL = env.apiUrl;
 
@@ -43,9 +50,12 @@ const getStatusConfig = (status) => {
 };
 
 export default function Home() {
+  const router = useRouter();
   const [health, setHealth] = useState(null);
   const [loading, setLoading] = useState(false);
   const abortRef = useRef(null);
+  const invoicesLinkRef = useRef(null);
+  const investLinkRef = useRef(null);
 
   useEffect(() => {
     return () => {
@@ -72,6 +82,28 @@ export default function Home() {
     }
   };
 
+  useEffect(() => {
+    const handlers = [
+      createShortcutMatcher(DASHBOARD_INVOICE_SHORTCUT_KEY, (event) => {
+        event.preventDefault();
+        invoicesLinkRef.current?.focus();
+        router.push("/invoices");
+      }),
+      createShortcutMatcher(DASHBOARD_INVEST_SHORTCUT_KEY, (event) => {
+        event.preventDefault();
+        investLinkRef.current?.focus();
+        router.push("/invest");
+      }),
+      createShortcutMatcher(DASHBOARD_HEALTH_SHORTCUT_KEY, (event) => {
+        event.preventDefault();
+        checkApi();
+      }),
+    ];
+    handlers.forEach((handler) => document.addEventListener("keydown", handler));
+    return () =>
+      handlers.forEach((handler) => document.removeEventListener("keydown", handler));
+  }, [router, checkApi]);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       {/* Shared site header for the home page and the rest of the app. */}
@@ -81,8 +113,24 @@ export default function Home() {
         <h1 className="text-4xl font-bold tracking-tight mb-4">{copy.home.heroTitle}</h1>
         <p className="text-slate-400 text-lg mb-12 max-w-2xl">{copy.home.heroSub}</p>
 
+        <p
+          data-testid="dashboard-shortcut-hint"
+          className="mb-6 text-xs text-slate-500"
+        >
+          <span className="sr-only">Keyboard shortcuts: </span>
+          <kbd className="px-1.5 py-0.5 rounded border border-slate-600 bg-slate-800 text-slate-300">{DASHBOARD_INVOICE_SHORTCUT_KEY}</kbd>{" "}
+          invoices ·{" "}
+          <kbd className="px-1.5 py-0.5 rounded border border-slate-600 bg-slate-800 text-slate-300">{DASHBOARD_INVEST_SHORTCUT_KEY}</kbd>{" "}
+          invest ·{" "}
+          <kbd className="px-1.5 py-0.5 rounded border border-slate-600 bg-slate-800 text-slate-300">{DASHBOARD_HEALTH_SHORTCUT_KEY}</kbd>{" "}
+          health ·{" "}
+          <kbd className="px-1.5 py-0.5 rounded border border-slate-600 bg-slate-800 text-slate-300">?</kbd>{" "}
+          help
+        </p>
+
         <div className="grid gap-6 sm:grid-cols-2 mb-12">
           <Link
+            ref={invoicesLinkRef}
             href="/invoices"
             aria-label={copy.home.boxBusinessAriaLabel}
             className="block rounded-xl border border-slate-700 bg-slate-900/50 p-6 hover:border-cyan-500/50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
@@ -93,6 +141,7 @@ export default function Home() {
             <p className="text-slate-400 text-sm">{copy.home.boxBusinessSub}</p>
           </Link>
           <Link
+            ref={investLinkRef}
             href="/invest"
             aria-label={copy.home.boxInvestAriaLabel}
             className="block rounded-xl border border-slate-700 bg-slate-900/50 p-6 hover:border-cyan-500/50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
