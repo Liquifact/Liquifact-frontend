@@ -351,6 +351,68 @@ body {
     border: 1px solid CanvasText;
     background-color: Canvas;
   }
+
+  /* Theme components — replace semi-transparent surfaces with system Canvas */
+  .theme-form-panel,
+  .theme-modal-dialog {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  .theme-modal-backdrop {
+    background-color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  .theme-form-title,
+  .theme-modal-title {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .theme-form-label {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .theme-form-helper {
+    color: GrayText;
+    forced-color-adjust: none;
+  }
+
+  .theme-option-selected {
+    border: 2px solid Highlight;
+    background-color: ButtonFace;
+    color: ButtonText;
+    forced-color-adjust: none;
+  }
+
+  .theme-option-unselected {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .theme-toggle-button,
+  .theme-options-button {
+    border: 2px solid transparent;
+    background-color: transparent;
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .theme-toggle-button:hover,
+  .theme-options-button:hover {
+    background-color: ButtonFace;
+    border-color: ButtonText;
+  }
+
+  .theme-updated-at {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
 }
 
 @media (prefers-contrast: more) {
@@ -456,6 +518,49 @@ body {
 
   .wallet-skeleton-text-secondary {
     background-color: #334155; /* slate-700 */
+  }
+
+  /* Theme components — strengthen low-opacity surfaces and muted text */
+  .theme-form-panel,
+  .theme-modal-dialog {
+    border-color: #475569; /* slate-600 — stronger than slate-800 */
+    background-color: #0f172a; /* slate-900 — fully opaque */
+  }
+
+  .theme-modal-backdrop {
+    background-color: rgba(15, 23, 42, 0.85); /* slate-900, more opaque than normal */
+  }
+
+  .theme-form-title,
+  .theme-modal-title {
+    color: #f1f5f9; /* slate-100 — maximum legibility */
+  }
+
+  .theme-form-label {
+    color: #cbd5e1; /* slate-300 — stronger than slate-300 */
+  }
+
+  .theme-form-helper {
+    color: #94a3b8; /* slate-400 — stronger than slate-500 */
+  }
+
+  .theme-option-selected {
+    border-color: #67e8f9; /* cyan-300 */
+    background-color: rgba(6, 182, 212, 0.25); /* cyan-500, opaque enough */
+    color: #f1f5f9; /* slate-100 */
+  }
+
+  .theme-option-unselected {
+    border-color: #475569; /* slate-600 */
+    color: #e2e8f0; /* slate-200 — stronger than slate-200 */
+  }
+
+  .theme-toggle-button {
+    color: #cbd5e1; /* slate-300 — stronger than slate-300 */
+  }
+
+  .theme-updated-at {
+    color: #cbd5e1; /* slate-300 — stronger than slate-400 */
   }
 }
 

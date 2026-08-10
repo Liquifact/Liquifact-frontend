@@ -100,7 +100,7 @@ export default function ThemeOptionsModal({ open, onClose, preference, onSelect,
           onClose();
         }
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm theme-modal-backdrop"
       data-testid="theme-options-backdrop"
     >
       <div
@@ -110,9 +110,9 @@ export default function ThemeOptionsModal({ open, onClose, preference, onSelect,
         aria-labelledby={titleId}
         tabIndex={-1}
         onKeyDown={handleDialogKeyDown}
-        className="focus-ring relative w-full max-w-xs rounded-2xl border border-slate-700 bg-slate-900 p-6 text-slate-100 shadow-2xl"
+        className="focus-ring relative w-full max-w-xs rounded-2xl border border-slate-700 bg-slate-900 p-6 text-slate-100 shadow-2xl theme-modal-dialog"
       >
-        <h2 id={titleId} className="text-lg font-semibold text-slate-50">
+        <h2 id={titleId} className="text-lg font-semibold text-slate-50 theme-modal-title">
           Theme
         </h2>
 
@@ -127,8 +127,8 @@ export default function ThemeOptionsModal({ open, onClose, preference, onSelect,
               className={[
                 "focus-ring rounded-lg border px-4 py-2 text-left text-sm transition-colors",
                 preference === opt.value
-                  ? "border-cyan-500 bg-cyan-900/30 text-cyan-300"
-                  : "border-slate-700 text-slate-200 hover:border-slate-600 hover:bg-slate-800",
+                  ? "border-cyan-500 bg-cyan-900/30 text-cyan-300 theme-option-selected"
+                  : "border-slate-700 text-slate-200 hover:border-slate-600 hover:bg-slate-800 theme-option-unselected",
               ].join(" ")}
             >
               {opt.label}

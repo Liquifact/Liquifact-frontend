@@ -98,12 +98,12 @@ export default function ThemeInputs({
     <form
       onSubmit={handleSubmit}
       noValidate
-      className="rounded-xl border border-slate-800 bg-slate-900/50 p-6"
+      className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 theme-form-panel"
     >
-      <h3 className="text-lg font-semibold text-slate-100 mb-4">Theme Preferences</h3>
+      <h3 className="text-lg font-semibold text-slate-100 mb-4 theme-form-title">Theme Preferences</h3>
 
       <div className="mb-4">
-        <label htmlFor={themeId} className="block text-sm font-medium text-slate-300 mb-1">
+        <label htmlFor={themeId} className="block text-sm font-medium text-slate-300 mb-1 theme-form-label">
           Theme
         </label>
         <select
@@ -131,7 +131,7 @@ export default function ThemeInputs({
             </option>
           ))}
         </select>
-        <p id={themeHelperId} className="mt-1 text-xs text-slate-500">
+        <p id={themeHelperId} className="mt-1 text-xs text-slate-500 theme-form-helper">
           Light, dark, or follow the operating system setting.
         </p>
         {visibleThemeError && (
@@ -147,7 +147,7 @@ export default function ThemeInputs({
       </div>
 
       <div className="mb-6">
-        <label htmlFor={accentId} className="block text-sm font-medium text-slate-300 mb-1">
+        <label htmlFor={accentId} className="block text-sm font-medium text-slate-300 mb-1 theme-form-label">
           Accent Colour
         </label>
         <select
@@ -177,7 +177,7 @@ export default function ThemeInputs({
             </option>
           ))}
         </select>
-        <p id={accentHelperId} className="mt-1 text-xs text-slate-500">
+        <p id={accentHelperId} className="mt-1 text-xs text-slate-500 theme-form-helper">
           Accent colour used throughout the interface.
         </p>
         {visibleAccentError && (

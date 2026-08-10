@@ -375,6 +375,7 @@ export default function ThemeToggle({ className = "" }) {
           "text-slate-300 hover:text-cyan-400 hover:bg-slate-800",
           "dark:text-slate-300 dark:hover:text-cyan-400",
           "focus-ring",
+          "theme-toggle-button",
           className,
         ]
           .filter(Boolean)
@@ -392,7 +393,7 @@ export default function ThemeToggle({ className = "" }) {
       {updatedAt && (
         <span
           id="theme-updated-at"
-          className="text-xs text-slate-400 dark:text-slate-400"
+          className="text-xs text-slate-400 dark:text-slate-400 theme-updated-at"
           title={`Theme last updated ${absoluteUpdatedAt}`}
         >
           {formatRelativeTime(updatedAt)}
@@ -404,7 +405,7 @@ export default function ThemeToggle({ className = "" }) {
         aria-label="Theme options"
         aria-haspopup="dialog"
         onClick={openModal}
-        className="ml-2 rounded-lg p-2 transition-colors text-slate-300 hover:text-cyan-400 hover:bg-slate-800 dark:text-slate-300 dark:hover:text-cyan-400 focus-ring"
+        className="ml-2 rounded-lg p-2 transition-colors text-slate-300 hover:text-cyan-400 hover:bg-slate-800 dark:text-slate-300 dark:hover:text-cyan-400 focus-ring theme-options-button"
       >
         <svg
           width="16"
