@@ -49,6 +49,10 @@ For the dashboard theme flow, token usage, current limitations, and safe
 customization steps, see the
 [Dashboard theming guide](docs/dashboard-theming.md).
 
+For the marketplace theme flow, card tokens, fixed-utility limitation, and safe
+customization steps, see the
+[Marketplace theming guide](docs/marketplace-theming.md).
+
 For the exact invoice fixture shape, formatted-versus-raw value rules, and the
 API migration seam, see the [Invoice data contract](docs/invoice-data.md).
 
