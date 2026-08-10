@@ -49,6 +49,10 @@ For the dashboard theme flow, token usage, current limitations, and safe
 customization steps, see the
 [Dashboard theming guide](docs/dashboard-theming.md).
 
+For the invoice detail theme flow, token usage, CSS accessibility hooks, and
+customization steps, see the
+[Invoice detail theming guide](docs/invoice-detail-theming.md).
+
 For the exact invoice fixture shape, formatted-versus-raw value rules, and the
 API migration seam, see the [Invoice data contract](docs/invoice-data.md).
 
