@@ -8,6 +8,7 @@ import ThemeSkeleton, { THEME_CONTROL_FRAME_CLASS } from "./ThemeSkeleton";
 import { useLocalStorage } from "../lib/hooks/useLocalStorage";
 import { useHydrated } from "../lib/hooks/useHydrated";
 import { useToast } from "./ToastProvider";
+import { THEME_SHORTCUT_KEY, createShortcutMatcher } from "../lib/shortcuts";
 
 /**
  * The three theme options the user can cycle through.
@@ -190,6 +191,8 @@ export default function ThemeToggle({ className = "" }) {
     writeThemeUpdatedAt(now);
   };
 
+  const handleClick = () => cycleTheme("next");
+
   const handleKeyDown = (e) => {
     if (e.key === "ArrowRight" || e.key === "ArrowDown") {
       e.preventDefault();
@@ -214,6 +217,21 @@ export default function ThemeToggle({ className = "" }) {
       active instanceof HTMLElement && active !== document.body ? active : optionsButtonRef.current;
     setModalOpen(true);
   }, []);
+
+  // Global `t` shortcut: pressing `t` anywhere on the page (except inside an
+  // editable control) opens the theme options dialog. The matcher and key are
+  // imported from the shared registry (`lib/shortcuts.js`) so the
+  // ShortcutHelpDialog renders this shortcut from the same source of truth.
+  // The modal's own Escape handler closes it; focus is restored to whatever
+  // triggered the shortcut via the existing modal-close effect.
+  useEffect(() => {
+    const handler = createShortcutMatcher(THEME_SHORTCUT_KEY, (event) => {
+      event.preventDefault();
+      openModal();
+    });
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [openModal]);
 
   const closeModal = useCallback(() => {
     setModalOpen(false);

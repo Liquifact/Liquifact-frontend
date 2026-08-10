@@ -312,4 +312,66 @@ describe("ThemeToggle keyboard navigation", () => {
     );
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
   });
+
+  // ── Global `t` shortcut (Issue #948) ──────────────────────────────────
+
+  it("opens the theme options dialog when pressing t globally", async () => {
+    setup();
+
+    fireEvent.keyDown(document, {
+      key: "t",
+      code: "KeyT",
+    });
+
+    expect(
+      screen.getByRole("dialog", { name: "Theme" })
+    ).toBeInTheDocument();
+  });
+
+  it("does not open theme options when pressing t inside an editable element", () => {
+    setup();
+
+    // Create an input and focus it
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+
+    fireEvent.keyDown(document, {
+      key: "t",
+      code: "KeyT",
+    });
+
+    expect(
+      screen.queryByRole("dialog", { name: "Theme" })
+    ).not.toBeInTheDocument();
+
+    document.body.removeChild(input);
+  });
+
+  it("does not open theme options when pressing t with a modifier key", () => {
+    setup();
+
+    fireEvent.keyDown(document, {
+      key: "t",
+      code: "KeyT",
+      ctrlKey: true,
+    });
+
+    expect(
+      screen.queryByRole("dialog", { name: "Theme" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not open theme options for other keys", () => {
+    setup();
+
+    fireEvent.keyDown(document, {
+      key: "r",
+      code: "KeyR",
+    });
+
+    expect(
+      screen.queryByRole("dialog", { name: "Theme" })
+    ).not.toBeInTheDocument();
+  });
 });
