@@ -14,6 +14,14 @@ import { copy } from "../copy/en";
 import { useLocalStorage } from "../../lib/hooks/useLocalStorage";
 import { loadMockSettings, getCategoryList } from "./lib";
 import { exportAsCSV, exportAsJSON } from "../../utils/export";
+import {
+  SETTINGS_SEARCH_SHORTCUT_KEY,
+  SETTINGS_FILTER_SHORTCUT_KEY,
+  SETTINGS_RESET_SHORTCUT_KEY,
+  SETTINGS_LOAD_MORE_SHORTCUT_KEY,
+  SETTINGS_EXPORT_SHORTCUT_KEY,
+  createShortcutMatcher,
+} from "../../lib/shortcuts";
 
 export { getCategoryList, getCategoryList as getCategories };
 
@@ -295,6 +303,12 @@ export function SettingsPage({ loadSettings }) {
   const [exportAnnouncement, setExportAnnouncement] = useState("");
   const { success: toastSuccess, error: toastError } = useToast();
 
+  // Refs for keyboard-shortcut focus targets (issue #943).
+  const searchInputRef = useRef(null);
+  const categoryFilterRef = useRef(null);
+  const exportGroupRef = useRef(null);
+  const loadMoreRef = useRef(null);
+
   const debouncedQuery = useDebounce(filters.query, SEARCH_DEBOUNCE_MS);
   const activeFilters = useMemo(
     () => ({ category: filters.category, query: debouncedQuery }),
@@ -357,6 +371,57 @@ export function SettingsPage({ loadSettings }) {
   const loadMore = useCallback(() => {
     setVisibleCount((prev) => prev + PAGE_SIZE);
   }, []);
+
+  /**
+   * Keyboard shortcuts for the settings page primary actions (issue #943).
+   *
+   *   - `s` — focus the search input
+   *   - `f` — focus the category filter
+   *   - `r` — reset active filters (only when a filter is active)
+   *   - `l` — focus the Load more button (only when more rows exist)
+   *   - `e` — focus the export buttons
+   *
+   * All listeners use `createShortcutMatcher`, which bails out when the
+   * focus is inside an editable element so typing is never hijacked.
+   */
+  useEffect(() => {
+    const handlers = [
+      createShortcutMatcher(SETTINGS_SEARCH_SHORTCUT_KEY, (event) => {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }),
+      createShortcutMatcher(SETTINGS_FILTER_SHORTCUT_KEY, (event) => {
+        event.preventDefault();
+        categoryFilterRef.current?.focus();
+      }),
+      createShortcutMatcher(SETTINGS_RESET_SHORTCUT_KEY, (event) => {
+        event.preventDefault();
+        if (isFilterActive) {
+          handleResetFilters();
+        }
+      }),
+      createShortcutMatcher(SETTINGS_LOAD_MORE_SHORTCUT_KEY, (event) => {
+        event.preventDefault();
+        if (hasMore && loadMoreRef.current) {
+          loadMoreRef.current.focus();
+        }
+      }),
+      createShortcutMatcher(SETTINGS_EXPORT_SHORTCUT_KEY, (event) => {
+        event.preventDefault();
+        const first = exportGroupRef.current?.querySelector("button");
+        first?.focus();
+      }),
+    ];
+
+    handlers.forEach((handler) => {
+      document.addEventListener("keydown", handler);
+    });
+    return () => {
+      handlers.forEach((handler) => {
+        document.removeEventListener("keydown", handler);
+      });
+    };
+  }, [isFilterActive, hasMore, handleResetFilters]);
 
   const statusMessage = useMemo(() => {
     if (loading && settings === null) return "";
@@ -460,7 +525,7 @@ export function SettingsPage({ loadSettings }) {
       )}
 
       <div className="flex flex-wrap items-center gap-4">
-        <div role="group" aria-label={copy.settings.exportGroupLabel} className="flex items-center gap-2">
+        <div role="group" aria-label={copy.settings.exportGroupLabel} className="flex items-center gap-2" ref={exportGroupRef}>
           <button
             type="button"
             onClick={handleExportCSV}
@@ -494,6 +559,7 @@ export function SettingsPage({ loadSettings }) {
 
       <div className="flex flex-wrap items-center gap-4">
         <select
+          ref={categoryFilterRef}
           data-testid="settings-category-filter"
           value={filters.category}
           onChange={handleFilterChange("category")}
@@ -507,6 +573,7 @@ export function SettingsPage({ loadSettings }) {
           ))}
         </select>
         <input
+          ref={searchInputRef}
           type="search"
           data-testid="settings-search-filter"
           value={filters.query}
@@ -526,6 +593,30 @@ export function SettingsPage({ loadSettings }) {
           </button>
         )}
       </div>
+
+      <p
+        data-testid="settings-shortcut-hint"
+        className="text-xs text-slate-500"
+        aria-label="Keyboard shortcuts"
+      >
+        Shortcuts:{" "}
+        <kbd className="rounded border border-slate-700 bg-slate-800/60 px-1.5 py-0.5 text-[11px] font-mono text-cyan-300">
+          s
+        </kbd>{" "}
+        search ·{" "}
+        <kbd className="rounded border border-slate-700 bg-slate-800/60 px-1.5 py-0.5 text-[11px] font-mono text-cyan-300">
+          f
+        </kbd>{" "}
+        filter ·{" "}
+        <kbd className="rounded border border-slate-700 bg-slate-800/60 px-1.5 py-0.5 text-[11px] font-mono text-cyan-300">
+          e
+        </kbd>{" "}
+        export ·{" "}
+        <kbd className="rounded border border-slate-700 bg-slate-800/60 px-1.5 py-0.5 text-[11px] font-mono text-cyan-300">
+          ?
+        </kbd>{" "}
+        help
+      </p>
 
       {isLoading ? (
         <div data-testid="settings-loading" aria-busy="true" className="space-y-4">
@@ -607,6 +698,7 @@ export function SettingsPage({ loadSettings }) {
           <div className="flex items-center justify-between">
             {hasMore ? (
               <button
+                ref={loadMoreRef}
                 type="button"
                 onClick={loadMore}
                 data-testid="settings-load-more"
