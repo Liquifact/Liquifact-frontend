@@ -10,6 +10,7 @@ import DensityToggle from "../../components/DensityToggle";
 import { useDensity } from "../../lib/hooks/useDensity";
 import ErrorBanner from "../../components/ErrorBanner";
 import EmptyState from "../../components/EmptyState";
+import SettingsSkeleton from "../../components/SettingsSkeleton";
 import { copy } from "../copy/en";
 import { useLocalStorage } from "../../lib/hooks/useLocalStorage";
 import { loadMockSettings, getCategoryList } from "./lib";
@@ -529,9 +530,7 @@ export function SettingsPage({ loadSettings }) {
 
       {isLoading ? (
         <div data-testid="settings-loading" aria-busy="true" className="space-y-4">
-          <div className="h-10 animate-pulse rounded bg-slate-800" />
-          <div className="h-10 animate-pulse rounded bg-slate-800" />
-          <div className="h-10 animate-pulse rounded bg-slate-800" />
+          <SettingsSkeleton isBusy={true} />
         </div>
       ) : isError ? (
         <ErrorBanner
