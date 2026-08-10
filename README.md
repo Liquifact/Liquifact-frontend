@@ -49,6 +49,10 @@ For the dashboard theme flow, token usage, current limitations, and safe
 customization steps, see the
 [Dashboard theming guide](docs/dashboard-theming.md).
 
+For the wallet subsystem theme flow, density tokens, status colour usage, and
+customization steps, see the
+[Wallet theming guide](docs/wallet-theming.md).
+
 For the exact invoice fixture shape, formatted-versus-raw value rules, and the
 API migration seam, see the [Invoice data contract](docs/invoice-data.md).
 
