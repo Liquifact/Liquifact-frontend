@@ -5,6 +5,7 @@ import NavMenu from "../../components/NavMenu";
 import UploadZone from "../../components/UploadZone";
 import UploadErrorBoundary from "../../components/UploadErrorBoundary";
 import InvoiceList from "../../components/InvoiceList";
+import UploadActionShortcuts from "./UploadActionShortcuts";
 
 export default function InvoicesPage() {
   const [optimisticInvoices, setOptimisticInvoices] = useState([]);
@@ -32,6 +33,7 @@ export default function InvoicesPage() {
             <UploadErrorBoundary>
               <UploadZone onUploadSuccess={handleUploadSuccess} />
             </UploadErrorBoundary>
+            <UploadActionShortcuts />
           </div>
           <div className="lg:col-span-2">
             <InvoiceList optimisticInvoices={optimisticInvoices} />
