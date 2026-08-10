@@ -34,6 +34,7 @@ import { INVALID_VALUE_FALLBACK, formatCurrency, formatAmount } from "@/lib/form
 import { getInvoiceById } from "../lib";
 import FundActions from "./FundActions";
 import { RouteFocus } from "./FocusManager";
+import InvoiceDetailActionShortcuts from "./InvoiceDetailActionShortcuts";
 
 const detail = copy.invest.detail;
 
@@ -201,6 +202,9 @@ export default async function InvoiceDetailPage({ params }) {
           currency={invoice.currency}
           yieldValue={invoice.yieldValue}
         />
+
+        {/* ── Keyboard shortcuts hint ──────────────────────────────── */}
+        <InvoiceDetailActionShortcuts />
       </main>
     </div>
   );
