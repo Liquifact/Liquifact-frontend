@@ -351,6 +351,94 @@ body {
     border: 1px solid CanvasText;
     background-color: Canvas;
   }
+
+  /* Settings — preserve readable surfaces, non-colour cues, and focus. */
+  .settings-page {
+    background-color: Canvas;
+    color: CanvasText;
+  }
+
+  .settings-card,
+  .settings-profile-card,
+  .settings-item,
+  .settings-profile-card [data-row-id] {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .settings-item {
+    border-color: CanvasText;
+  }
+
+  .settings-heading {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .settings-subtitle,
+  .settings-section-description,
+  .settings-status-text,
+  .settings-muted-text,
+  .settings-description,
+  .settings-profile-card [data-row-id] .text-slate-500,
+  .settings-profile-card [data-row-id] .text-slate-300 {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .settings-label {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .settings-section-heading {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .settings-action-btn,
+  .settings-copy-btn,
+  .settings-profile-card [data-row-id] button {
+    border: 2px solid ButtonText;
+    background-color: ButtonFace;
+    color: ButtonText;
+    opacity: 1;
+    forced-color-adjust: none;
+  }
+
+  .settings-action-btn:disabled {
+    border-color: GrayText;
+    color: GrayText;
+    opacity: 1;
+  }
+
+  .settings-select,
+  .settings-search-input {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .settings-select option {
+    color: CanvasText;
+    background-color: Canvas;
+  }
+
+  .settings-skeleton {
+    border: 1px solid CanvasText;
+    background-color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  .settings-action-btn:focus-visible,
+  .settings-copy-btn:focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 3px;
+    forced-color-adjust: none;
+  }
 }
 
 @media (prefers-contrast: more) {
@@ -456,6 +544,55 @@ body {
 
   .wallet-skeleton-text-secondary {
     background-color: #334155; /* slate-700 */
+  }
+
+  /* Settings — strengthen contrast without changing normal-mode layout. */
+  .settings-card,
+  .settings-profile-card,
+  .settings-item,
+  .settings-profile-card [data-row-id] {
+    border-width: 2px;
+    border-color: var(--color-fg);
+    background-color: var(--color-surface);
+  }
+
+  .settings-subtitle,
+  .settings-section-description,
+  .settings-status-text,
+  .settings-description,
+  .settings-profile-card [data-row-id] .text-slate-500 {
+    color: #cbd5e1; /* slate-300 — stronger than default slate-400/500 */
+  }
+
+  .settings-muted-text {
+    color: #cbd5e1; /* slate-300 */
+  }
+
+  .settings-label {
+    color: #f1f5f9; /* slate-100 — maximum legibility */
+  }
+
+  .settings-section-heading,
+  .settings-heading {
+    color: #f1f5f9; /* slate-100 */
+  }
+
+  .settings-action-btn {
+    border: 2px solid var(--color-fg);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+    opacity: 1;
+  }
+
+  .settings-select,
+  .settings-search-input {
+    border-width: 2px;
+    border-color: var(--color-fg);
+    background-color: var(--color-surface);
+  }
+
+  .settings-skeleton {
+    background-color: #475569; /* slate-600 — fully opaque */
   }
 }
 

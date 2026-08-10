@@ -125,7 +125,7 @@ function ProfileSection({ settings, setSettings }) {
   return (
     <section
       aria-labelledby="settings-rows-heading"
-      className="rounded-2xl border border-slate-800 bg-slate-900/30 p-4 sm:p-6"
+      className="settings-profile-card rounded-2xl border border-slate-800 bg-slate-900/30 p-4 sm:p-6"
     >
       <h2 id="settings-rows-heading" className="sr-only">
         {copy.settings.pageTitle}
@@ -214,19 +214,19 @@ function InlineEditRowSimple({ value, label, category, onSave }) {
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
           aria-label={`Edit ${label}`}
-          className="w-full rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          className="settings-search-input w-full rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
         />
         <button
           type="button"
           onClick={save}
-          className="rounded bg-cyan-600 px-3 py-1 text-xs font-medium text-white hover:bg-cyan-500 focus-ring"
+          className="settings-action-btn rounded bg-cyan-600 px-3 py-1 text-xs font-medium text-white hover:bg-cyan-500 focus-ring"
         >
           Save
         </button>
         <button
           type="button"
           onClick={cancel}
-          className="rounded border border-slate-600 px-3 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700 focus-ring"
+          className="settings-action-btn rounded border border-slate-600 px-3 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700 focus-ring"
         >
           Cancel
         </button>
@@ -247,7 +247,7 @@ function InlineEditRowSimple({ value, label, category, onSave }) {
           type="button"
           onClick={enterEdit}
           aria-label={`Edit ${label}`}
-          className="rounded border border-cyan-700/60 bg-cyan-900/20 px-3 py-1 text-xs font-medium text-cyan-300 hover:bg-cyan-900/40 focus-ring"
+          className="settings-action-btn rounded border border-cyan-700/60 bg-cyan-900/20 px-3 py-1 text-xs font-medium text-cyan-300 hover:bg-cyan-900/40 focus-ring"
         >
           Edit
         </button>
@@ -258,15 +258,15 @@ function InlineEditRowSimple({ value, label, category, onSave }) {
   if (typeof value === "string" && value.length > 0) {
     if (value === "enabled" || value === "disabled") {
       return (
-        <span className={`text-sm ${value === "enabled" ? "text-green-400" : "text-slate-500"}`}>
+        <span className={`settings-muted-text text-sm ${value === "enabled" ? "text-green-400" : "text-slate-500"}`}>
           {value}
         </span>
       );
     }
-    return <span className="text-sm text-slate-100">{value}</span>;
+    return <span className="settings-muted-text text-sm text-slate-100">{value}</span>;
   }
 
-  return <span className="text-sm text-slate-500">Not set</span>;
+  return <span className="settings-muted-text text-sm text-slate-500">Not set</span>;
 }
 
 function useDebounce(value, delay) {
@@ -448,11 +448,11 @@ export function SettingsPage({ loadSettings }) {
   const hasNoMatch = !isEmpty && filteredSettings.length === 0;
 
   return (
-    <div className="space-y-8" data-density={density}>
+    <div className="settings-page space-y-8" data-density={density}>
       {!isLoading && !isError && (
-        <section data-testid="settings-density-section" aria-label="Display density" style={{ padding: "var(--settings-section-padding)" }}>
-          <h3 className="text-lg font-semibold text-slate-100">{copy.settings.densityLabel}</h3>
-          <p className="mt-1 text-sm text-slate-400">{copy.settings.densityDescription}</p>
+        <section data-testid="settings-density-section" aria-label="Display density" className="settings-card" style={{ padding: "var(--settings-section-padding)" }}>
+          <h3 className="settings-section-heading text-lg font-semibold text-slate-100">{copy.settings.densityLabel}</h3>
+          <p className="settings-section-description mt-1 text-sm text-slate-400">{copy.settings.densityDescription}</p>
           <div className="mt-3">
             <DensityToggle density={density} onDensityChange={setDensity} />
           </div>
@@ -466,7 +466,7 @@ export function SettingsPage({ loadSettings }) {
             onClick={handleExportCSV}
             data-testid="export-csv-btn"
             aria-label={copy.settings.exportCSVLabel}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 focus-ring transition-colors"
+            className="settings-action-btn inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 focus-ring transition-colors"
           >
             <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -479,7 +479,7 @@ export function SettingsPage({ loadSettings }) {
             onClick={handleExportJSON}
             data-testid="export-json-btn"
             aria-label={copy.settings.exportJSONLabel}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 focus-ring transition-colors"
+            className="settings-action-btn inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 focus-ring transition-colors"
           >
             <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="16 18 22 12 16 6" />
@@ -487,7 +487,7 @@ export function SettingsPage({ loadSettings }) {
             </svg>
           </button>
         </div>
-        <div aria-live="polite" data-testid="export-announce" className="text-sm text-slate-400">
+        <div aria-live="polite" data-testid="export-announce" className="settings-status-text text-sm text-slate-400">
           {exportAnnouncement}
         </div>
       </div>
@@ -498,7 +498,7 @@ export function SettingsPage({ loadSettings }) {
           value={filters.category}
           onChange={handleFilterChange("category")}
           aria-label="Filter by category"
-          className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          className="settings-select rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
         >
           {categories.map((cat) => (
             <option key={cat} value={cat}>
@@ -513,14 +513,14 @@ export function SettingsPage({ loadSettings }) {
           onChange={handleFilterChange("query")}
           placeholder="Search settings..."
           aria-label="Search settings"
-          className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          className="settings-search-input rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
         />
         {isFilterActive && (
           <button
             type="button"
             onClick={handleResetFilters}
             aria-label="Reset filters"
-            className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-400 hover:text-slate-200 focus-ring transition-colors"
+            className="settings-action-btn rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-400 hover:text-slate-200 focus-ring transition-colors"
           >
             Reset filters
           </button>
@@ -529,9 +529,9 @@ export function SettingsPage({ loadSettings }) {
 
       {isLoading ? (
         <div data-testid="settings-loading" aria-busy="true" className="space-y-4">
-          <div className="h-10 animate-pulse rounded bg-slate-800" />
-          <div className="h-10 animate-pulse rounded bg-slate-800" />
-          <div className="h-10 animate-pulse rounded bg-slate-800" />
+          <div className="settings-skeleton h-10 animate-pulse rounded bg-slate-800" />
+          <div className="settings-skeleton h-10 animate-pulse rounded bg-slate-800" />
+          <div className="settings-skeleton h-10 animate-pulse rounded bg-slate-800" />
         </div>
       ) : isError ? (
         <ErrorBanner
@@ -571,12 +571,12 @@ export function SettingsPage({ loadSettings }) {
             {visibleSettings.map((item) => (
               <li
                 key={item.id}
-                className="flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-slate-900/40 p-4"
+                className="settings-item flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-slate-900/40 p-4"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-200">{item.label}</p>
+                  <p className="settings-label text-sm font-medium text-slate-200">{item.label}</p>
                   {item.description && (
-                    <p className="mt-0.5 text-xs text-slate-500">{item.description}</p>
+                    <p className="settings-description mt-0.5 text-xs text-slate-500">{item.description}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
@@ -591,7 +591,7 @@ export function SettingsPage({ loadSettings }) {
                     onClick={() => handleCopy(item.id)}
                     aria-label={`Copy ${copy.settings.copyIdentifier}`}
                     title={`Copy ${copy.settings.copyIdentifier}`}
-                    className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:text-slate-300 focus-ring transition-colors"
+                    className="settings-copy-btn inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:text-slate-300 focus-ring transition-colors"
                   >
                     <svg aria-hidden="true" focusable="false" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -611,12 +611,12 @@ export function SettingsPage({ loadSettings }) {
                 onClick={loadMore}
                 data-testid="settings-load-more"
                 aria-label="Load more preferences"
-                className="rounded-lg border border-cyan-700/60 bg-cyan-900/20 px-4 py-2 text-sm font-medium text-cyan-300 hover:bg-cyan-900/40 focus-ring transition-colors"
+                className="settings-action-btn rounded-lg border border-cyan-700/60 bg-cyan-900/20 px-4 py-2 text-sm font-medium text-cyan-300 hover:bg-cyan-900/40 focus-ring transition-colors"
               >
                 {copy.settings.loadMore}
               </button>
             ) : visibleCount > PAGE_SIZE ? (
-              <p data-testid="settings-end-of-list" className="text-sm text-slate-500">
+              <p data-testid="settings-end-of-list" className="settings-muted-text text-sm text-slate-500">
                 All preferences shown
               </p>
             ) : null}
@@ -624,7 +624,7 @@ export function SettingsPage({ loadSettings }) {
 
           <p
             data-testid="settings-count"
-            className="text-sm text-slate-400"
+            className="settings-status-text text-sm text-slate-400"
             aria-live="polite"
           >
             {getSettingsShowingAnnouncement(visibleSettings.length, filteredSettings.length)}
@@ -643,7 +643,7 @@ export default function SettingsRoute({ loadSettings = loadMockSettings }) {
   const [settings, setSettings] = useLocalStorage(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
+    <div className="settings-page min-h-screen bg-slate-950 text-slate-50">
       <NavMenu />
       <main
         id="main-content"
@@ -653,11 +653,11 @@ export default function SettingsRoute({ loadSettings = loadMockSettings }) {
         <header className="mb-8 space-y-2">
           <h1
             id="settings-heading"
-            className="text-3xl font-bold tracking-tight text-slate-100 sm:text-4xl"
+            className="settings-heading text-3xl font-bold tracking-tight text-slate-100 sm:text-4xl"
           >
             {copy.settings.pageTitle}
           </h1>
-          <p className="text-base text-slate-400">{copy.settings.pageSub}</p>
+          <p className="settings-subtitle text-base text-slate-400">{copy.settings.pageSub}</p>
         </header>
         <div className="space-y-10">
           <ProfileSection settings={settings} setSettings={setSettings} />
