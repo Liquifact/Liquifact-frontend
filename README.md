@@ -49,6 +49,9 @@ For the dashboard theme flow, token usage, current limitations, and safe
 customization steps, see the
 [Dashboard theming guide](docs/dashboard-theming.md).
 
+For how the settings page consumes theme tokens, its density tokens, and safe
+customization steps, see the [Settings theming guide](docs/settings-theming.md).
+
 For the exact invoice fixture shape, formatted-versus-raw value rules, and the
 API migration seam, see the [Invoice data contract](docs/invoice-data.md).
 
