@@ -325,6 +325,59 @@ body {
     forced-color-adjust: none;
   }
 
+  /* Invoice-detail items — bulk-select document list (issue #929) */
+  .invoice-detail-items-section {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  .invoice-detail-items-heading {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .invoice-detail-items-sub {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .invoice-detail-items-row {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  .invoice-detail-items-row[data-selected="true"] {
+    border-color: Highlight;
+    background-color: Highlight;
+    color: HighlightText;
+  }
+
+  /* Invoice-detail export — CSV/JSON buttons (issue #929) */
+  .invoice-detail-export-btn {
+    border: 2px solid ButtonText;
+    background-color: ButtonFace;
+    color: ButtonText;
+    forced-color-adjust: none;
+  }
+
+  .invoice-detail-export-btn:disabled {
+    border-color: GrayText;
+    color: GrayText;
+  }
+
+  /* Invoice-detail timeline — lifecycle stages (issue #929) */
+  .invoice-detail-timeline {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  .invoice-detail-timeline [aria-label] {
+    forced-color-adjust: none;
+  }
+
   /* Wallet components */
   .wallet-status-dot {
     forced-color-adjust: none;
@@ -437,6 +490,48 @@ body {
     border-color: #475569; /* slate-600 — stronger than slate-800 */
     background-color: #0f172a; /* slate-900 — fully opaque */
     color: #cbd5e1; /* slate-300 — stronger than slate-300 */
+  }
+
+  /* Invoice-detail items — bulk-select document list (issue #929) */
+  .invoice-detail-items-section {
+    border-color: #cbd5e1; /* slate-300 */
+    background-color: #0f172a; /* slate-900 — fully opaque */
+  }
+
+  .invoice-detail-items-heading {
+    color: #f1f5f9; /* slate-100 — maximum legibility */
+  }
+
+  .invoice-detail-items-sub {
+    color: #94a3b8; /* slate-400 — stronger than slate-400 */
+  }
+
+  .invoice-detail-items-row {
+    border-color: #475569; /* slate-600 — stronger than slate-800 */
+    background-color: #0f172a; /* slate-900 — fully opaque */
+  }
+
+  .invoice-detail-items-row[data-selected="true"] {
+    border-color: #67e8f9; /* cyan-300 */
+    background-color: rgba(8, 145, 178, 0.18); /* cyan-600, opaque enough to read */
+  }
+
+  /* Invoice-detail export — CSV/JSON buttons (issue #929) */
+  .invoice-detail-export-btn {
+    border-color: #67e8f9; /* cyan-300 — stronger than slate-700 */
+    color: #f1f5f9;
+    background-color: rgba(30, 41, 59, 0.9); /* slate-800, opaque enough */
+  }
+
+  .invoice-detail-export-btn:disabled {
+    color: #64748b; /* slate-500 */
+    border-color: #475569; /* slate-600 */
+  }
+
+  /* Invoice-detail timeline — lifecycle stages (issue #929) */
+  .invoice-detail-timeline {
+    border-color: #cbd5e1; /* slate-300 */
+    background-color: #0f172a; /* slate-900 — fully opaque */
   }
 
   /* Wallet components */

@@ -202,11 +202,48 @@ describe("globals.css — forced-colors block (issue #31)", () => {
     expect(block).toMatch(/\bCanvasText\b/);
   });
 
+  it("maps .invoice-detail-items-section to Canvas background with CanvasText border", () => {
+    const block = extractMediaBlock(cssSource, "forced-colors: active");
+    expect(block).toMatch(/\.invoice-detail-items-section\b/);
+    expect(block).toMatch(/\bCanvas\b/);
+    expect(block).toMatch(/\bCanvasText\b/);
+  });
+
+  it("maps .invoice-detail-items-row to Canvas background with a visible border", () => {
+    const block = extractMediaBlock(cssSource, "forced-colors: active");
+    expect(block).toMatch(/\.invoice-detail-items-row\b/);
+    expect(block).toMatch(/\bCanvas\b/);
+    expect(block).toMatch(/\bCanvasText\b/);
+  });
+
+  it("maps a selected .invoice-detail-items-row to Highlight / HighlightText", () => {
+    const block = extractMediaBlock(cssSource, "forced-colors: active");
+    expect(block).toMatch(/\.invoice-detail-items-row\[data-selected="true"\]/);
+    expect(block).toMatch(/\bHighlight\b/);
+    expect(block).toMatch(/\bHighlightText\b/);
+  });
+
+  it("maps .invoice-detail-export-btn to ButtonFace / ButtonText", () => {
+    const block = extractMediaBlock(cssSource, "forced-colors: active");
+    expect(block).toMatch(/\.invoice-detail-export-btn\b/);
+    expect(block).toMatch(/\bButtonFace\b/);
+    expect(block).toMatch(/\bButtonText\b/);
+  });
+
+  it("maps .invoice-detail-timeline to Canvas background with CanvasText border", () => {
+    const block = extractMediaBlock(cssSource, "forced-colors: active");
+    expect(block).toMatch(/\.invoice-detail-timeline\b/);
+    expect(block).toMatch(/\bCanvas\b/);
+    expect(block).toMatch(/\bCanvasText\b/);
+  });
+
   it("uses forced-color-adjust: none on invoice-detail elements to preserve explicit styling", () => {
     const block = extractMediaBlock(cssSource, "forced-colors: active");
     expect(block).toMatch(/forced-color-adjust\s*:\s*none/);
   });
 });
+
+
 
 // =============================================================================
 // 3. CSS source integrity — @media (prefers-contrast: more)
@@ -248,7 +285,37 @@ describe("globals.css — prefers-contrast: more block (issue #31)", () => {
     expect(block).toMatch(/\bborder-color\b/);
     expect(block).toMatch(/\bbackground-color\b/);
   });
+
+  it("strengthens .invoice-detail-items-section border and background", () => {
+    const block = extractMediaBlock(cssSource, "prefers-contrast: more");
+    expect(block).toMatch(/\.invoice-detail-items-section\b/);
+    expect(block).toMatch(/\bborder-color\b/);
+    expect(block).toMatch(/\bbackground-color\b/);
+  });
+
+  it("strengthens .invoice-detail-items-row border and background", () => {
+    const block = extractMediaBlock(cssSource, "prefers-contrast: more");
+    expect(block).toMatch(/\.invoice-detail-items-row\b/);
+    expect(block).toMatch(/\bborder-color\b/);
+    expect(block).toMatch(/\bbackground-color\b/);
+  });
+
+  it("strengthens .invoice-detail-export-btn border and colour", () => {
+    const block = extractMediaBlock(cssSource, "prefers-contrast: more");
+    expect(block).toMatch(/\.invoice-detail-export-btn\b/);
+    expect(block).toMatch(/\bborder-color\b/);
+    expect(block).toMatch(/\bcolor\b/);
+  });
+
+  it("strengthens .invoice-detail-timeline border and background", () => {
+    const block = extractMediaBlock(cssSource, "prefers-contrast: more");
+    expect(block).toMatch(/\.invoice-detail-timeline\b/);
+    expect(block).toMatch(/\bborder-color\b/);
+    expect(block).toMatch(/\bbackground-color\b/);
+  });
 });
+
+
 
 // =============================================================================
 // 4. InvoiceDetailClient DOM — CSS hook classes

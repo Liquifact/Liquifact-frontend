@@ -202,16 +202,19 @@ export default function InvoiceDetailItems({
 
   const deleteDialogOpen = pendingDeleteIds !== null;
 
+  /* invoice-detail-items-section / -heading / -sub: CSS hooks for
+     @media (forced-colors) and @media (prefers-contrast: more) rules in
+     globals.css (issue #929). */
   return (
     <section
       aria-labelledby="invoice-detail-items-heading"
-      className="no-print mb-6 rounded-xl border border-slate-800 bg-slate-900/50 p-6"
+      className="invoice-detail-items-section no-print mb-6 rounded-xl border border-slate-800 bg-slate-900/50 p-6"
       data-testid="invoice-detail-items"
     >
-      <h2 id="invoice-detail-items-heading" className="text-base font-semibold text-slate-100 mb-4">
+      <h2 id="invoice-detail-items-heading" className="invoice-detail-items-heading text-base font-semibold text-slate-100 mb-4">
         {bulkLabels.sectionHeading}
       </h2>
-      <p className="text-sm text-slate-400 mb-4">{bulkLabels.sectionSub}</p>
+      <p className="invoice-detail-items-sub text-sm text-slate-400 mb-4">{bulkLabels.sectionSub}</p>
 
       <BulkActionsToolbar
         selectedCount={selectedCount}
@@ -238,7 +241,7 @@ export default function InvoiceDetailItems({
               data-testid={`detail-item-row-${item.id}`}
               data-selected={checked ? "true" : "false"}
               className={[
-                "flex items-center gap-3 rounded-lg border p-3 transition-colors",
+                "invoice-detail-items-row flex items-center gap-3 rounded-lg border p-3 transition-colors",
                 checked ? "border-cyan-700/60 bg-cyan-950/30" : "border-slate-800 bg-slate-950/40",
               ].join(" ")}
             >
