@@ -351,6 +351,51 @@ body {
     border: 1px solid CanvasText;
     background-color: Canvas;
   }
+
+  /* Marketplace — replace semi-transparent surfaces with system Canvas colors */
+  .marketplace-card,
+  .marketplace-filters-section,
+  .marketplace-empty-state {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  .marketplace-muted-text,
+  .marketplace-filters-coming-soon {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .marketplace-status-badge {
+    border: 2px solid CanvasText;
+    color: CanvasText;
+    background-color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  .marketplace-load-more {
+    border: 2px solid ButtonText;
+    background-color: ButtonFace;
+    color: ButtonText;
+    forced-color-adjust: none;
+  }
+
+  .marketplace-load-more:hover {
+    background-color: ButtonFace;
+  }
+
+  .marketplace-disclaimer {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .marketplace-divider {
+    border-top-color: CanvasText;
+    forced-color-adjust: none;
+  }
 }
 
 @media (prefers-contrast: more) {
@@ -456,6 +501,41 @@ body {
 
   .wallet-skeleton-text-secondary {
     background-color: #334155; /* slate-700 */
+  }
+
+  /* Marketplace — strengthen low-opacity surfaces and muted text */
+  .marketplace-card,
+  .marketplace-filters-section,
+  .marketplace-empty-state {
+    border-color: #475569; /* slate-600 — stronger than slate-800 */
+    background-color: #0f172a; /* slate-900 — fully opaque */
+  }
+
+  .marketplace-muted-text,
+  .marketplace-filters-coming-soon {
+    color: #cbd5e1; /* slate-300 — stronger than slate-400 */
+  }
+
+  .marketplace-status-badge {
+    border-color: #67e8f9; /* cyan-300 */
+    background-color: rgba(6, 182, 212, 0.25); /* cyan-500, opaque enough */
+    color: #f1f5f9; /* slate-100 */
+  }
+
+  .marketplace-load-more {
+    border-color: #67e8f9; /* cyan-300 */
+    color: #f1f5f9; /* slate-100 */
+    background-color: #0f172a; /* slate-900 */
+  }
+
+  .marketplace-disclaimer {
+    border-color: #475569; /* slate-600 */
+    background-color: #0f172a; /* slate-900 */
+    color: #cbd5e1; /* slate-300 */
+  }
+
+  .marketplace-divider {
+    border-top-color: #475569; /* slate-600 */
   }
 }
 

@@ -28,14 +28,7 @@ import { loadMockInvoices } from "./lib";
 import { exportAsCSV, exportAsJSON } from "@/utils/export";
 import DensityToggle from "@/components/DensityToggle";
 import { useDensity } from "@/lib/hooks/useDensity";
-import { INVOICE_STATUSES } from "@/lib/types/invoice";
-import useBulkSelection from "@/lib/hooks/useBulkSelection";
-import { useSettingsAnnouncer } from "@/components/useSettingsAnnouncer";
-
 import { ToastContext } from "@/components/ToastProvider";
-import ErrorBoundary from "@/components/ErrorBoundary";
-import MarketplaceErrorBoundary from "@/components/MarketplaceErrorBoundary";
-import { reportError } from "@/lib/observability/reportError";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
@@ -289,11 +282,6 @@ export function InvestMarketplace({
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  const [pendingDeleteIds, setPendingDeleteIds] = useState(null);
-  const [bulkRunning, setBulkRunning] = useState({ export: false, delete: false });
-  const contextToast = useContext(ToastContext);
-  const toastApi = propToast || contextToast;
-  const bulkLabels = useMemo(() => copy.invest.bulkActions ?? {}, []);
   // Filter state
   const [searchQuery, setSearchQuery] = useState(initialUrlState.searchQuery);
   const [loadError, setLoadError] = useState("");
@@ -690,7 +678,7 @@ export function InvestMarketplace({
         <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold mb-2 outline-none">
           {copy.invest.title}
         </h1>
-        <p className="text-slate-400 mb-8">{copy.invest.subtext}</p>
+        <p className="text-slate-400 marketplace-muted-text mb-8">{copy.invest.subtext}</p>
 
         {/* Search input and Export actions */}
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -727,14 +715,14 @@ export function InvestMarketplace({
         />
 
         <fieldset
-          className="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
+          className="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6 marketplace-filters-section"
           aria-disabled="true"
           aria-describedby="filters-coming-soon"
         >
           <legend className="sr-only">{copy.invest.filterLegend}</legend>
           <div
             id="filters-coming-soon"
-            className="mb-4 inline-block rounded bg-slate-800 px-2 py-1 text-xs font-semibold tracking-wide text-slate-300"
+            className="mb-4 inline-block rounded bg-slate-800 px-2 py-1 text-xs font-semibold tracking-wide text-slate-300 marketplace-filters-coming-soon"
           >
             {copy.invest.filterSoonLabel}
           </div>
@@ -777,13 +765,12 @@ export function InvestMarketplace({
             </div>
           ) : invoices === null ? (
             <InvoiceListSkeleton rows={3} />
-          </div>
-        ) : invoices.length === 0 ? (
-          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+          ) : invoices.length === 0 ? (
+          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500 marketplace-empty-state">
             {copy.invest.emptyState}
           </div>
         ) : filteredInvoices.length === 0 ? (
-          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+          <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500 marketplace-empty-state">
             {copy.invest.noMatchFilter}
           </div>
         ) : (
@@ -802,7 +789,7 @@ export function InvestMarketplace({
                 {filteredInvoices.slice(0, visibleCount).map((inv) => (
                   <li
                     key={inv.id}
-                    className={`rounded-xl border border-slate-800 bg-slate-900/50 ${
+                    className={`rounded-xl border border-slate-800 bg-slate-900/50 marketplace-card ${
                       density === "compact" ? "p-3" : "p-5"
                     }`}
                   >
@@ -817,11 +804,11 @@ export function InvestMarketplace({
                       >
                         {inv.issuer}
                       </Link>
-                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300 marketplace-status-badge">
                         {inv.status}
                       </span>
                     </div>
-                    <div className="flex gap-6 text-sm text-slate-400">
+                    <div className="flex gap-6 text-sm text-slate-400 marketplace-muted-text">
                       <span>
                         {inv.currency}&nbsp;{inv.amount}
                       </span>
@@ -843,21 +830,22 @@ export function InvestMarketplace({
                   type="button"
                   onClick={handleLoadMore}
                   aria-label={copy.invest.loadMoreAriaLabel}
-                  className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50"
+                  className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50 marketplace-load-more"
                 >
                   {copy.invest.loadMore}
                 </button>
               )}
-              <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
+              <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400 marketplace-muted-text marketplace-disclaimer">
                 {copy.invest.yieldDisclaimer}
               </div>
 
-              <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/60 pt-4">
+              <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/60 pt-4 marketplace-divider">
                 <DensityToggle density={density} onDensityChange={setDensity} />
               </div>
             </>
           </ErrorBoundary>
         )}
+        </div>
       </main>
 
       {/* Confirmation dialog for destructive bulk action */}
