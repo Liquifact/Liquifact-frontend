@@ -121,7 +121,9 @@ describe("Marketplace Density Toggle", () => {
 
     renderMarketplaceWithProviders();
 
-    const comfortableBtn = await screen.findByRole("button", { name: /switch to comfortable density/i });
+    const comfortableBtn = await screen.findByRole("button", {
+      name: /switch to comfortable density/i,
+    });
     expect(comfortableBtn).toHaveAttribute("aria-pressed", "true");
 
     const list = screen.getByRole("list", { name: /investable invoices/i });

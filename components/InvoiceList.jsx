@@ -94,15 +94,9 @@ function UploadIdCopyButton({ id }) {
     setCopying(true);
     try {
       await copyToClipboard(id);
-      toast.success(
-        copy.invoices.copyIdSuccessMsg,
-        copy.invoices.copyIdSuccessTitle
-      );
+      toast.success(copy.invoices.copyIdSuccessMsg, copy.invoices.copyIdSuccessTitle);
     } catch {
-      toast.error(
-        copy.invoices.copyIdErrorMsg,
-        copy.invoices.copyIdErrorTitle
-      );
+      toast.error(copy.invoices.copyIdErrorMsg, copy.invoices.copyIdErrorTitle);
     } finally {
       timerRef.current = setTimeout(() => setCopying(false), 1500);
     }
@@ -125,11 +119,31 @@ function UploadIdCopyButton({ id }) {
         className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded text-slate-500 hover:text-slate-300 focus-ring transition-colors"
       >
         {copying ? (
-          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            aria-hidden="true"
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <polyline points="20 6 9 17 4 12" />
           </svg>
         ) : (
-          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            aria-hidden="true"
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
           </svg>
@@ -139,7 +153,6 @@ function UploadIdCopyButton({ id }) {
     </div>
   );
 }
-
 
 function getInvoiceAnnouncement(items) {
   if (!Array.isArray(items)) {

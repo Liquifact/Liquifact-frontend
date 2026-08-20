@@ -408,13 +408,13 @@ export default function Watchlist({
               >
                 <div className="flex items-start gap-3">
                   <div className="flex items-center h-8">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleToggleSelection(item.id)}
-                        aria-label={`Select invoice ${item.id} from ${issuerName}`}
-                        className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-500 focus-visible:outline-none focus-ring cursor-pointer"
-                      />
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleToggleSelection(item.id)}
+                      aria-label={`Select invoice ${item.id} from ${issuerName}`}
+                      className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-500 focus-visible:outline-none focus-ring cursor-pointer"
+                    />
                   </div>
                   <button
                     type="button"

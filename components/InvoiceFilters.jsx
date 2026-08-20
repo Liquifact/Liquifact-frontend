@@ -585,212 +585,227 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
 
   return (
     <>
-    {/* Polite live region – announces sort changes to screen readers without
+      {/* Polite live region – announces sort changes to screen readers without
         duplicating the results-summary announcement in app/invest/page.js */}
-    <div
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      className="sr-only"
-      data-testid="sort-live-region"
-    >
-      {sortAnnouncement}
-    </div>
-    <div className="flex flex-wrap gap-4 items-center">
-      <div className="flex flex-col gap-1">
-        <fieldset className="flex items-center gap-2 border-none p-0 m-0">
-          <legend className="sr-only">Yield Range</legend>
-          <input
-            type="number"
-            value={filters.yieldMin}
-            onChange={(e) => handleChange("yieldMin", e.target.value)}
-            onBlur={() => markTouched("yieldMin")}
-            placeholder="Min yield"
-            className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none ${
-              effYieldMinError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
-            }`}
-            aria-label="Minimum yield percentage"
-            aria-invalid={effYieldMinError ? "true" : "false"}
-            aria-describedby={effYieldMinError ? yieldMinErrorId : undefined}
-            min="0"
-            step="0.1"
-          />
-          <span className="text-slate-500">-</span>
-          <input
-            type="number"
-            value={filters.yieldMax}
-            onChange={(e) => handleChange("yieldMax", e.target.value)}
-            onBlur={() => markTouched("yieldMax")}
-            placeholder="Max yield"
-            className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none ${
-              effYieldMaxError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
-            }`}
-            aria-label="Maximum yield percentage"
-            aria-invalid={effYieldMaxError ? "true" : "false"}
-            aria-describedby={effYieldMaxError ? yieldMaxErrorId : undefined}
-            min="0"
-            step="0.1"
-          />
-        </fieldset>
-        {effYieldMinError && (
-          <p id={yieldMinErrorId} role="alert" aria-live="polite" className="text-xs text-red-400">
-            {effYieldMinError}
-          </p>
-        )}
-        {effYieldMaxError && (
-          <p id={yieldMaxErrorId} role="alert" aria-live="polite" className="text-xs text-red-400">
-            {effYieldMaxError}
-          </p>
-        )}
-        {effMaturityToError && (
-          <p id={maturityToErrorId} role="alert" aria-live="polite" className="text-xs text-red-400">
-            {effMaturityToError}
-          </p>
-        )}
-      </div>
-
       <div
-        role="toolbar"
-        aria-label="Currency filter"
-        className="flex items-center gap-1"
-        onKeyDown={(e) => {
-          const count = CURRENCIES.length;
-          let next = focusedCurrencyIndex;
-          if (e.key === "ArrowRight") {
-            e.preventDefault();
-            next = (focusedCurrencyIndex + 1) % count;
-          } else if (e.key === "ArrowLeft") {
-            e.preventDefault();
-            next = (focusedCurrencyIndex - 1 + count) % count;
-          } else if (e.key === "Home") {
-            e.preventDefault();
-            next = 0;
-          } else if (e.key === "End") {
-            e.preventDefault();
-            next = count - 1;
-          } else {
-            return;
-          }
-          setFocusedCurrencyIndex(next);
-          currencyRefs.current[next]?.focus();
-        }}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+        data-testid="sort-live-region"
       >
-        {CURRENCIES.map((cur, index) => (
-          <button
-            key={cur}
-            type="button"
-            ref={(el) => {
-              currencyRefs.current[index] = el;
-            }}
-            tabIndex={index === focusedCurrencyIndex ? 0 : -1}
-            onClick={() => {
-              setFocusedCurrencyIndex(index);
-              handleChange("currency", filters.currency === cur ? "" : cur);
-            }}
-            onFocus={() => setFocusedCurrencyIndex(index)}
-            className={`focus-ring rounded-lg border px-3 py-2 text-sm transition-colors ${
-              filters.currency === cur
-                ? "border-cyan-500 bg-cyan-900/30 text-cyan-300"
-                : "border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
-            }`}
-            aria-label={`Filter by ${cur}`}
-            aria-pressed={filters.currency === cur}
-          >
-            {cur}
-          </button>
-        ))}
+        {sortAnnouncement}
       </div>
+      <div className="flex flex-wrap gap-4 items-center">
+        <div className="flex flex-col gap-1">
+          <fieldset className="flex items-center gap-2 border-none p-0 m-0">
+            <legend className="sr-only">Yield Range</legend>
+            <input
+              type="number"
+              value={filters.yieldMin}
+              onChange={(e) => handleChange("yieldMin", e.target.value)}
+              onBlur={() => markTouched("yieldMin")}
+              placeholder="Min yield"
+              className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none ${
+                effYieldMinError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
+              }`}
+              aria-label="Minimum yield percentage"
+              aria-invalid={effYieldMinError ? "true" : "false"}
+              aria-describedby={effYieldMinError ? yieldMinErrorId : undefined}
+              min="0"
+              step="0.1"
+            />
+            <span className="text-slate-500">-</span>
+            <input
+              type="number"
+              value={filters.yieldMax}
+              onChange={(e) => handleChange("yieldMax", e.target.value)}
+              onBlur={() => markTouched("yieldMax")}
+              placeholder="Max yield"
+              className={`w-28 rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none ${
+                effYieldMaxError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
+              }`}
+              aria-label="Maximum yield percentage"
+              aria-invalid={effYieldMaxError ? "true" : "false"}
+              aria-describedby={effYieldMaxError ? yieldMaxErrorId : undefined}
+              min="0"
+              step="0.1"
+            />
+          </fieldset>
+          {effYieldMinError && (
+            <p
+              id={yieldMinErrorId}
+              role="alert"
+              aria-live="polite"
+              className="text-xs text-red-400"
+            >
+              {effYieldMinError}
+            </p>
+          )}
+          {effYieldMaxError && (
+            <p
+              id={yieldMaxErrorId}
+              role="alert"
+              aria-live="polite"
+              className="text-xs text-red-400"
+            >
+              {effYieldMaxError}
+            </p>
+          )}
+          {effMaturityToError && (
+            <p
+              id={maturityToErrorId}
+              role="alert"
+              aria-live="polite"
+              className="text-xs text-red-400"
+            >
+              {effMaturityToError}
+            </p>
+          )}
+        </div>
 
-      <div className="flex flex-col gap-1">
-        <fieldset className="flex items-center gap-2 border-none p-0 m-0">
-          <legend className="sr-only">Maturity Date Range</legend>
-          <input
-            type="date"
-            value={filters.maturityFrom}
-            onChange={(e) => handleChange("maturityFrom", e.target.value)}
-            onBlur={() => markTouched("maturityFrom")}
-            className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] ${
-              effMaturityFromError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
-            }`}
-            aria-label="Maturity date from"
-            aria-invalid={effMaturityFromError ? "true" : "false"}
-            aria-describedby={effMaturityFromError ? maturityFromErrorId : undefined}
-          />
-          <span className="text-slate-500">-</span>
-          <input
-            type="date"
-            value={filters.maturityTo}
-            onChange={(e) => handleChange("maturityTo", e.target.value)}
-            onBlur={() => markTouched("maturityTo")}
-            className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] ${
-              effMaturityToError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
-            }`}
-            aria-label="Maturity date to"
-            aria-invalid={effMaturityToError ? "true" : "false"}
-            aria-describedby={effMaturityToError ? maturityToErrorId : undefined}
-          />
-        </fieldset>
-        {effMaturityFromError && (
-          <p
-            id={maturityFromErrorId}
-            role="alert"
-            aria-live="polite"
-            className="text-xs text-red-400"
-          >
-            {effMaturityFromError}
-          </p>
-        )}
-        {effMaturityToError && (
-          <p
-            id={maturityToErrorId}
-            role="alert"
-            aria-live="polite"
-            className="text-xs text-red-400"
-          >
-            {effMaturityToError}
-          </p>
-        )}
-      </div>
-
-      <fieldset className="flex items-center gap-2 border-none p-0 m-0">
-        <legend className="sr-only">Sort Options</legend>
-        <select
-          value={activeColumn}
-          onChange={(e) => handleSortColumnChange(e.target.value)}
-          className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500"
-          aria-label="Sort options"
+        <div
+          role="toolbar"
+          aria-label="Currency filter"
+          className="flex items-center gap-1"
+          onKeyDown={(e) => {
+            const count = CURRENCIES.length;
+            let next = focusedCurrencyIndex;
+            if (e.key === "ArrowRight") {
+              e.preventDefault();
+              next = (focusedCurrencyIndex + 1) % count;
+            } else if (e.key === "ArrowLeft") {
+              e.preventDefault();
+              next = (focusedCurrencyIndex - 1 + count) % count;
+            } else if (e.key === "Home") {
+              e.preventDefault();
+              next = 0;
+            } else if (e.key === "End") {
+              e.preventDefault();
+              next = count - 1;
+            } else {
+              return;
+            }
+            setFocusedCurrencyIndex(next);
+            currencyRefs.current[next]?.focus();
+          }}
         >
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
+          {CURRENCIES.map((cur, index) => (
+            <button
+              key={cur}
+              type="button"
+              ref={(el) => {
+                currencyRefs.current[index] = el;
+              }}
+              tabIndex={index === focusedCurrencyIndex ? 0 : -1}
+              onClick={() => {
+                setFocusedCurrencyIndex(index);
+                handleChange("currency", filters.currency === cur ? "" : cur);
+              }}
+              onFocus={() => setFocusedCurrencyIndex(index)}
+              className={`focus-ring rounded-lg border px-3 py-2 text-sm transition-colors ${
+                filters.currency === cur
+                  ? "border-cyan-500 bg-cyan-900/30 text-cyan-300"
+                  : "border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+              }`}
+              aria-label={`Filter by ${cur}`}
+              aria-pressed={filters.currency === cur}
+            >
+              {cur}
+            </button>
           ))}
-        </select>
+        </div>
 
-        {SORTABLE_COLUMNS.map((col) => (
-          <DirectionToggle
-            key={col}
-            column={col}
-            filters={{ ...filters, sort: activeColumn }}
-            onFilterChange={onFilterChange}
-          />
-        ))}
-      </fieldset>
+        <div className="flex flex-col gap-1">
+          <fieldset className="flex items-center gap-2 border-none p-0 m-0">
+            <legend className="sr-only">Maturity Date Range</legend>
+            <input
+              type="date"
+              value={filters.maturityFrom}
+              onChange={(e) => handleChange("maturityFrom", e.target.value)}
+              onBlur={() => markTouched("maturityFrom")}
+              className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] ${
+                effMaturityFromError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
+              }`}
+              aria-label="Maturity date from"
+              aria-invalid={effMaturityFromError ? "true" : "false"}
+              aria-describedby={effMaturityFromError ? maturityFromErrorId : undefined}
+            />
+            <span className="text-slate-500">-</span>
+            <input
+              type="date"
+              value={filters.maturityTo}
+              onChange={(e) => handleChange("maturityTo", e.target.value)}
+              onBlur={() => markTouched("maturityTo")}
+              className={`rounded-lg border bg-slate-800/50 px-3 py-2 text-sm text-slate-300 focus:outline-none [color-scheme:dark] ${
+                effMaturityToError ? "border-red-500" : "border-slate-700 focus:border-cyan-500"
+              }`}
+              aria-label="Maturity date to"
+              aria-invalid={effMaturityToError ? "true" : "false"}
+              aria-describedby={effMaturityToError ? maturityToErrorId : undefined}
+            />
+          </fieldset>
+          {effMaturityFromError && (
+            <p
+              id={maturityFromErrorId}
+              role="alert"
+              aria-live="polite"
+              className="text-xs text-red-400"
+            >
+              {effMaturityFromError}
+            </p>
+          )}
+          {effMaturityToError && (
+            <p
+              id={maturityToErrorId}
+              role="alert"
+              aria-live="polite"
+              className="text-xs text-red-400"
+            >
+              {effMaturityToError}
+            </p>
+          )}
+        </div>
 
-      <button
-        type="button"
-        onClick={onClearFilters}
-        disabled={!active}
-        className={`focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 ml-auto rounded-lg border px-4 py-2 text-sm transition-colors ${
-          active
-            ? "border-slate-600 bg-slate-800/50 text-cyan-400 hover:bg-slate-700"
-            : "border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
-        }`}
-        aria-label="Clear all filters"
-      >
-        Clear Filters
-      </button>
-    </div>
+        <fieldset className="flex items-center gap-2 border-none p-0 m-0">
+          <legend className="sr-only">Sort Options</legend>
+          <select
+            value={activeColumn}
+            onChange={(e) => handleSortColumnChange(e.target.value)}
+            className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-300 focus:outline-none focus:border-cyan-500"
+            aria-label="Sort options"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+
+          {SORTABLE_COLUMNS.map((col) => (
+            <DirectionToggle
+              key={col}
+              column={col}
+              filters={{ ...filters, sort: activeColumn }}
+              onFilterChange={onFilterChange}
+            />
+          ))}
+        </fieldset>
+
+        <button
+          type="button"
+          onClick={onClearFilters}
+          disabled={!active}
+          className={`focus-ring focus-visible:ring-2 focus-visible:ring-cyan-500 ml-auto rounded-lg border px-4 py-2 text-sm transition-colors ${
+            active
+              ? "border-slate-600 bg-slate-800/50 text-cyan-400 hover:bg-slate-700"
+              : "border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+          }`}
+          aria-label="Clear all filters"
+        >
+          Clear Filters
+        </button>
+      </div>
     </>
   );
 }

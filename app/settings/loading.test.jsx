@@ -49,9 +49,7 @@ describe("SettingsLoading", () => {
 
   it("contains the sr-only loading announcement from ThemeSkeleton", () => {
     render(<SettingsLoading />);
-    expect(
-      screen.getByText(/theme settings loading, please wait/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/theme settings loading, please wait/i)).toBeInTheDocument();
   });
 
   it("has multiple animate-pulse elements", () => {

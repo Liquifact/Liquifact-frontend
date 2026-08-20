@@ -87,10 +87,7 @@ describe("Settings page — theme export controls", () => {
     expect(csvBtn).toBeInTheDocument();
     expect(jsonBtn).toBeInTheDocument();
 
-    expect(csvBtn).toHaveAttribute(
-      "aria-label",
-      "Export the current settings view as a CSV file"
-    );
+    expect(csvBtn).toHaveAttribute("aria-label", "Export the current settings view as a CSV file");
     expect(jsonBtn).toHaveAttribute(
       "aria-label",
       "Export the current settings view as a JSON file"
@@ -126,10 +123,7 @@ describe("Settings page — theme export controls", () => {
 
       fireEvent.click(screen.getByTestId("export-csv-btn"));
 
-      expect(mockExportAsCSV).toHaveBeenCalledWith(
-        expect.any(Array),
-        "settings-export.csv"
-      );
+      expect(mockExportAsCSV).toHaveBeenCalledWith(expect.any(Array), "settings-export.csv");
     });
 
     it("passes all fixture rows when no filter is active (unfiltered)", async () => {
@@ -172,10 +166,7 @@ describe("Settings page — theme export controls", () => {
 
       fireEvent.click(screen.getByTestId("export-json-btn"));
 
-      expect(mockExportAsJSON).toHaveBeenCalledWith(
-        expect.any(Array),
-        "settings-export.json"
-      );
+      expect(mockExportAsJSON).toHaveBeenCalledWith(expect.any(Array), "settings-export.json");
     });
 
     it("passes all fixture rows when no filter is active (unfiltered)", async () => {

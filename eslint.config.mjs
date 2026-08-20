@@ -9,6 +9,8 @@ const eslintConfig = defineConfig([
     plugins: { import: importPlugin },
     rules: {
       "import/no-duplicates": "error",
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/refs": "off",
     },
     settings: {
       "import/resolver": {

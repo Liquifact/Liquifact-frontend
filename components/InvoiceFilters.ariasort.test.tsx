@@ -179,22 +179,14 @@ describe("aria-sort on DirectionToggle buttons", () => {
 
       // Verify only one non-none
       const toggles = [amountToggle, yieldToggle];
-      const activeToggles = toggles.filter(
-        (t) => t.getAttribute("aria-sort") !== "none"
-      );
+      const activeToggles = toggles.filter((t) => t.getAttribute("aria-sort") !== "none");
       expect(activeToggles).toHaveLength(1);
     });
   });
 
   describe("no column selected", () => {
-    it("all toggles have aria-sort=\"none\" when no sort column is selected", () => {
-      render(
-        <InvoiceFilters
-          filters={BASE}
-          onFilterChange={() => {}}
-          onClearFilters={() => {}}
-        />
-      );
+    it('all toggles have aria-sort="none" when no sort column is selected', () => {
+      render(<InvoiceFilters filters={BASE} onFilterChange={() => {}} onClearFilters={() => {}} />);
 
       SORTABLE_COLUMNS.forEach((col) => {
         const toggle = screen.getByLabelText(`Sort ${col} direction`);
@@ -203,7 +195,7 @@ describe("aria-sort on DirectionToggle buttons", () => {
       });
     });
 
-    it("all toggles have aria-sort=\"none\" when sort column is maturity (non-sortable)", () => {
+    it('all toggles have aria-sort="none" when sort column is maturity (non-sortable)', () => {
       render(
         <InvoiceFilters
           filters={filtersWith({ sort: "maturity", sortDir: "desc" })}
@@ -225,13 +217,7 @@ describe("aria-sort on DirectionToggle buttons", () => {
 
 describe("sort announcement live region", () => {
   it('renders with role="status" and aria-live="polite"', () => {
-    render(
-      <InvoiceFilters
-        filters={BASE}
-        onFilterChange={() => {}}
-        onClearFilters={() => {}}
-      />
-    );
+    render(<InvoiceFilters filters={BASE} onFilterChange={() => {}} onClearFilters={() => {}} />);
     const region = screen.getByTestId("sort-live-region");
     expect(region).toHaveAttribute("role", "status");
     expect(region).toHaveAttribute("aria-live", "polite");
@@ -240,13 +226,7 @@ describe("sort announcement live region", () => {
   });
 
   it("region is empty when no sort column is active", () => {
-    render(
-      <InvoiceFilters
-        filters={BASE}
-        onFilterChange={() => {}}
-        onClearFilters={() => {}}
-      />
-    );
+    render(<InvoiceFilters filters={BASE} onFilterChange={() => {}} onClearFilters={() => {}} />);
     const region = screen.getByTestId("sort-live-region");
     expect(region).toHaveTextContent("");
   });
@@ -386,13 +366,7 @@ describe("sort announcement live region", () => {
     let region = screen.getByTestId("sort-live-region");
     expect(region).toHaveTextContent("Sorted by Amount, descending");
 
-    rerender(
-      <InvoiceFilters
-        filters={BASE}
-        onFilterChange={() => {}}
-        onClearFilters={() => {}}
-      />
-    );
+    rerender(<InvoiceFilters filters={BASE} onFilterChange={() => {}} onClearFilters={() => {}} />);
 
     region = screen.getByTestId("sort-live-region");
     expect(region).toHaveTextContent("");
@@ -458,10 +432,7 @@ describe("aria-sort interaction integration", () => {
       "aria-sort",
       "ascending"
     );
-    expect(screen.getByLabelText("Sort yield direction")).toHaveAttribute(
-      "aria-sort",
-      "none"
-    );
+    expect(screen.getByLabelText("Sort yield direction")).toHaveAttribute("aria-sort", "none");
 
     // Change to yield column
     fireEvent.change(screen.getByLabelText("Sort options"), {
@@ -593,5 +564,4 @@ describe("aria-sort edge cases", () => {
     region = screen.getByTestId("sort-live-region");
     expect(region).toHaveTextContent("Sorted by Yield, descending");
   });
-
 });

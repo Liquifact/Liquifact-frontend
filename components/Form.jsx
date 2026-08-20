@@ -16,9 +16,19 @@ import React from "react";
  * @param {Object|null} [props.errors] - Map of field name to error message
  * @param {string} [props.errorSummaryTitle] - Heading for the error summary
  */
-export default function Form({ onSubmit, children, className = "", noValidate = true, errors = null, errorSummaryTitle = "Please fix the following errors:", ...props }) {
+export default function Form({
+  onSubmit,
+  children,
+  className = "",
+  noValidate = true,
+  errors = null,
+  errorSummaryTitle = "Please fix the following errors:",
+  ...props
+}) {
   const summaryId = "form-errors-summary";
-  const errorList = errors ? Object.entries(errors).map(([field, message]) => ({ field, message })) : [];
+  const errorList = errors
+    ? Object.entries(errors).map(([field, message]) => ({ field, message }))
+    : [];
   const hasErrors = errorList.length > 0;
 
   const handleSubmit = (e) => {

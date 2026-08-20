@@ -228,8 +228,6 @@ export default function NavMenu() {
     [pathname]
   );
 
-  const isHomePage = pathname === "/" || pathname === "/home";
-
   /**
    * True when the current route is the home page.
    * Used both in brandLabel and in the brand link's aria-current attribute.

@@ -38,7 +38,11 @@ export function SettingsContent({ loadData, children, ...props }) {
   const handleRetry = () => setRetryCount((prev) => prev + 1);
 
   if (loading) {
-    return <div data-testid="settings-loading" aria-busy="true">Loading settings...</div>;
+    return (
+      <div data-testid="settings-loading" aria-busy="true">
+        Loading settings...
+      </div>
+    );
   }
 
   if (error) {
@@ -46,7 +50,9 @@ export function SettingsContent({ loadData, children, ...props }) {
       <ErrorBanner
         variant="error"
         title={copy.settings?.errorTitle || "Unable to load settings"}
-        description={copy.settings?.errorDescription || "An unexpected error occurred. Please try again."}
+        description={
+          copy.settings?.errorDescription || "An unexpected error occurred. Please try again."
+        }
         actionLabel={copy.settings?.errorActionLabel || "Try again"}
         onAction={handleRetry}
       />

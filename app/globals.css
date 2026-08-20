@@ -204,7 +204,6 @@ body {
   .opacity-60          → marketplace "Soon" filters wrapper (issue #689)
 */
 @media (forced-colors: active) {
-
   /* Dashboard — preserve readable surfaces, non-colour cues, and focus. */
   .dashboard-page {
     background-color: Canvas;
@@ -354,7 +353,6 @@ body {
 }
 
 @media (prefers-contrast: more) {
-
   /* Dashboard — strengthen contrast without changing normal-mode layout. */
   .dashboard-link-card,
   .dashboard-api-panel,

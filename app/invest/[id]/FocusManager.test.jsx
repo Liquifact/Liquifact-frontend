@@ -27,7 +27,7 @@ describe("FocusManager", () => {
       const button = document.createElement("button");
       document.body.appendChild(button);
       button.focus();
-      
+
       const main = document.createElement("main");
       main.id = "main-content";
       document.body.appendChild(main);
@@ -85,7 +85,7 @@ describe("FocusManager", () => {
       // Focus should loop to the last element
       expect(document.activeElement).toBe(last);
     });
-    
+
     it("does not trap focus when isActive is false", () => {
       const { getByTestId } = render(
         <DialogFocusTrap isActive={false}>

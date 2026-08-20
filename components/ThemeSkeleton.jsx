@@ -16,8 +16,7 @@
  * @see app/settings/page.js
  */
 
-export const THEME_CONTROL_FRAME_CLASS =
-  "inline-flex h-9 w-[15rem] items-center";
+export const THEME_CONTROL_FRAME_CLASS = "inline-flex h-9 w-[15rem] items-center";
 
 /**
  * ThemeSkeleton — placeholder shown while theme content loads.
@@ -26,10 +25,7 @@ export const THEME_CONTROL_FRAME_CLASS =
  * @param {boolean} [props.isBusy=true]
  * @param {"page"|"control"} [props.variant="page"]
  */
-export default function ThemeSkeleton({
-  isBusy = true,
-  variant = "page",
-}) {
+export default function ThemeSkeleton({ isBusy = true, variant = "page" }) {
   if (variant === "control") {
     return (
       <div
@@ -40,10 +36,7 @@ export default function ThemeSkeleton({
         aria-busy={isBusy ? "true" : "false"}
         className={THEME_CONTROL_FRAME_CLASS}
       >
-        <div
-          aria-hidden="true"
-          className="flex h-9 w-full items-center gap-2"
-        >
+        <div aria-hidden="true" className="flex h-9 w-full items-center gap-2">
           <div className="h-9 w-9 shrink-0 rounded-lg bg-slate-800 animate-pulse" />
           <div className="h-8 w-8 shrink-0 rounded-lg bg-slate-800 animate-pulse" />
           <div className="h-3 min-w-0 flex-1 rounded bg-slate-800 animate-pulse" />

@@ -7,6 +7,7 @@ import WatchlistInput from "./WatchlistInput";
 import { useWatchlist } from "@/lib/hooks/useWatchlist";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 import { reportError } from "@/lib/observability/reportError";
+import EmptyState from "@/components/EmptyState";
 
 /**
  * Loading placeholder shown only for the brief post-mount window before the

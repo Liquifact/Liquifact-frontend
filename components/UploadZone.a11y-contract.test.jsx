@@ -475,9 +475,7 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       });
 
       await waitFor(() => {
-        expect(mockAnnounce).toHaveBeenCalledWith(
-          expect.stringContaining("Network error")
-        );
+        expect(mockAnnounce).toHaveBeenCalledWith(expect.stringContaining("Network error"));
       });
     });
   });

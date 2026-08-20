@@ -33,7 +33,6 @@ export const THEME_UPDATED_STORAGE_KEY = "liquifact-theme-updated-at";
 /** How often the displayed "last updated" text re-renders to stay fresh, in ms. */
 export const THEME_UPDATED_TICK_MS = 60_000;
 
-
 /**
  * Read the persisted "theme last changed" timestamp from localStorage.
  * Safe to call from the browser only.
@@ -219,10 +218,13 @@ export default function ThemeToggle({ className = "" }) {
     setModalOpen(false);
   }, []);
 
-  const handleSelectFromModal = useCallback((pref) => {
-    setPreference(pref);
-    setModalOpen(false);
-  }, [setPreference]);
+  const handleSelectFromModal = useCallback(
+    (pref) => {
+      setPreference(pref);
+      setModalOpen(false);
+    },
+    [setPreference]
+  );
 
   // Restore focus to whatever triggered the modal once it closes.
   useEffect(() => {
@@ -356,10 +358,7 @@ export default function ThemeToggle({ className = "" }) {
   }
 
   return (
-    <div
-      data-testid="theme-toggle-content"
-      className={THEME_CONTROL_FRAME_CLASS}
-    >
+    <div data-testid="theme-toggle-content" className={THEME_CONTROL_FRAME_CLASS}>
       <button
         id="theme-toggle"
         type="button"

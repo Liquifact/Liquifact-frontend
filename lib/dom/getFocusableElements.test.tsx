@@ -46,13 +46,7 @@ describe("getFocusableElements", () => {
     container.querySelectorAll("*").forEach((el) => makeVisible(el as HTMLElement));
 
     const found = getFocusableElements(container);
-    expect(found.map((el) => el.tagName)).toEqual([
-      "BUTTON",
-      "A",
-      "INPUT",
-      "SELECT",
-      "TEXTAREA",
-    ]);
+    expect(found.map((el) => el.tagName)).toEqual(["BUTTON", "A", "INPUT", "SELECT", "TEXTAREA"]);
   });
 
   it("excludes disabled form controls even when otherwise visible", () => {

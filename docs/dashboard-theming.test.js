@@ -3,16 +3,12 @@ import path from "path";
 
 const ROOT_DIR = path.resolve(__dirname, "..");
 
-const readFile = (...segments) =>
-  fs.readFileSync(path.join(ROOT_DIR, ...segments), "utf8");
+const readFile = (...segments) => fs.readFileSync(path.join(ROOT_DIR, ...segments), "utf8");
 
-const escapeRegExp = (value) =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const extractValue = (block, token) => {
-  const match = block.match(
-    new RegExp(`${escapeRegExp(token)}\\s*:\\s*([^;]+);`)
-  );
+  const match = block.match(new RegExp(`${escapeRegExp(token)}\\s*:\\s*([^;]+);`));
 
   if (!match) {
     throw new Error(`Missing ${token} in theme source.`);
@@ -33,18 +29,12 @@ describe("dashboard theming guide", () => {
     guide = readFile("docs", "dashboard-theming.md");
     readme = readFile("README.md");
 
-    darkTheme = css.match(
-      /:root,\s*\[data-theme="dark"\]\s*\{([\s\S]*?)\n\}/
-    )?.[1];
-    lightTheme = css.match(
-      /\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/
-    )?.[1];
+    darkTheme = css.match(/:root,\s*\[data-theme="dark"\]\s*\{([\s\S]*?)\n\}/)?.[1];
+    lightTheme = css.match(/\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/)?.[1];
   });
 
   it("is linked from the documentation index", () => {
-    expect(readme).toContain(
-      "[Dashboard theming guide](docs/dashboard-theming.md)"
-    );
+    expect(readme).toContain("[Dashboard theming guide](docs/dashboard-theming.md)");
   });
 
   it("matches the current light and dark palette tokens", () => {
@@ -103,11 +93,8 @@ describe("dashboard theming guide", () => {
       "--font-mono: var(--font-geist-mono)",
     ].forEach((mapping) => expect(css).toContain(mapping));
 
-    [
-      "bg-slate-950",
-      "text-slate-100",
-      "bg-slate-900/50",
-      "text-slate-400",
-    ].forEach((utility) => expect(guide).toContain(utility));
+    ["bg-slate-950", "text-slate-100", "bg-slate-900/50", "text-slate-400"].forEach((utility) =>
+      expect(guide).toContain(utility)
+    );
   });
 });

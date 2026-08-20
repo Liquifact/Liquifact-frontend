@@ -34,6 +34,9 @@ import { INVALID_VALUE_FALLBACK, formatCurrency, formatAmount } from "@/lib/form
 import { getInvoiceById } from "../lib";
 import FundActions from "./FundActions";
 import { RouteFocus } from "./FocusManager";
+import InvoiceDetailClient from "./InvoiceDetailClient";
+import InvoiceDetailItems, { buildInvoiceDetailItems } from "./InvoiceDetailItems";
+import InvoiceDetailExport from "./InvoiceDetailExport";
 
 const detail = copy.invest.detail;
 

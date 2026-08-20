@@ -105,7 +105,6 @@ afterEach(() => {
 // ── Tests ─────────────────────────────────────────────────────────────────
 
 describe("UploadZone — state transitions (Issue #51)", () => {
-
   // ── 1. Idle state ────────────────────────────────────────────────────────
 
   describe("1. Idle state", () => {
@@ -177,14 +176,19 @@ describe("UploadZone — state transitions (Issue #51)", () => {
     });
 
     it("oversized file → alert mentions size limit", () => {
-      const big = new File([new ArrayBuffer(11 * 1024 * 1024)], "big.pdf", { type: "application/pdf" });
+      const big = new File([new ArrayBuffer(11 * 1024 * 1024)], "big.pdf", {
+        type: "application/pdf",
+      });
       render(<UploadZone />);
       selectFile(big);
       expect(screen.getByRole("alert")).toHaveTextContent(/exceeds/i);
     });
 
     it("invalid PDF magic bytes → alert with validation reason", async () => {
-      validatePdfFile.mockResolvedValueOnce({ valid: false, reason: "File content does not match PDF format" });
+      validatePdfFile.mockResolvedValueOnce({
+        valid: false,
+        reason: "File content does not match PDF format",
+      });
       render(<UploadZone />);
       selectFile(makePdf("fake.pdf"));
       await waitFor(() =>
@@ -208,9 +212,7 @@ describe("UploadZone — state transitions (Issue #51)", () => {
       render(<UploadZone />);
       selectFile(makePdf());
       clickSubmit();
-      await waitFor(() =>
-        expect(screen.getByRole("alert")).toHaveTextContent(/internal failure/i)
-      );
+      await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/internal failure/i));
       expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeEnabled();
     });
 
@@ -372,7 +374,9 @@ describe("UploadZone — state transitions (Issue #51)", () => {
       selectFile(makePdf());
       clickSubmit();
       await waitFor(() =>
-        expect(screen.getByRole("button", { name: copy.uploadZone.resetAriaLabel })).toBeInTheDocument()
+        expect(
+          screen.getByRole("button", { name: copy.uploadZone.resetAriaLabel })
+        ).toBeInTheDocument()
       );
     });
   });
@@ -422,7 +426,9 @@ describe("UploadZone — state transitions (Issue #51)", () => {
       selectFile(makePdf());
       clickSubmit();
       await waitFor(() =>
-        expect(screen.getByRole("button", { name: copy.uploadZone.resetAriaLabel })).toBeInTheDocument()
+        expect(
+          screen.getByRole("button", { name: copy.uploadZone.resetAriaLabel })
+        ).toBeInTheDocument()
       );
     });
 
@@ -531,12 +537,16 @@ describe("UploadZone — state transitions (Issue #51)", () => {
 
       expect(screen.getByRole("status")).toHaveTextContent(/uploading invoice/i);
 
-      await act(async () => { await Promise.resolve(); });
+      await act(async () => {
+        await Promise.resolve();
+      });
       await waitFor(() =>
         expect(screen.getByRole("status")).toHaveTextContent(/pending tokenization/i)
       );
 
-      await act(async () => { jest.advanceTimersByTime(500); });
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+      });
       await waitFor(() =>
         expect(screen.getByRole("status")).toHaveTextContent(/queued for tokenization/i)
       );
@@ -547,9 +557,7 @@ describe("UploadZone — state transitions (Issue #51)", () => {
       render(<UploadZone />);
       selectFile(makePdf());
       clickSubmit();
-      await waitFor(() =>
-        expect(screen.getByRole("alert")).toHaveTextContent(/upstream error/i)
-      );
+      await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/upstream error/i));
 
       selectFile(makePdf("second.pdf"));
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -675,5 +683,4 @@ describe("UploadZone — state transitions (Issue #51)", () => {
       expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeDisabled();
     });
   });
-
 });

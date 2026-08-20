@@ -507,7 +507,8 @@ export const copy = {
     savedAnnouncement: "{label} saved.",
     cancelledAnnouncement: "Edit cancelled. {label} unchanged.",
     invalidAnnouncement: "{label} not saved: {error}",
-    subtext: "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
+    subtext:
+      "Personalize your LiquiFact experience. Preferences are stored locally and applied across the app.",
     emptyState: "No preferences available. Connect your wallet to unlock settings.",
     errorTitle: "Unable to load settings",
     errorDescription: "Unable to load settings right now.",
@@ -515,7 +516,8 @@ export const copy = {
     retryAction: "Try again",
     searchPlaceholder: "Search preferences\u2026",
     filterLegend: "Settings filters",
-    filterHelp: "Use the category selector or the search box to narrow the list. Paging is reset whenever a filter changes.",
+    filterHelp:
+      "Use the category selector or the search box to narrow the list. Paging is reset whenever a filter changes.",
     filterCategory: "Category:",
     filterSearch: "Search:",
     allCategories: "All categories",

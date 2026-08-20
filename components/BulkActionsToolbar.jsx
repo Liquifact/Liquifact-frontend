@@ -163,7 +163,10 @@ export default function BulkActionsToolbar({
           aria-label={labels.deleteButtonAria.replace("{count}", String(selectedCount))}
           data-testid="bulk-delete"
         >
-          {(safeLabels?.deleteButton || "Delete ({count})").replace("{count}", String(selectedCount))}
+          {(safeLabels?.deleteButton || "Delete ({count})").replace(
+            "{count}",
+            String(selectedCount)
+          )}
         </Button>
       </div>
     </section>

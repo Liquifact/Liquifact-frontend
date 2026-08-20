@@ -404,9 +404,7 @@ export function SettingsPage({ loadSettings }) {
     (itemId) => (newValue) => {
       setSettings((prev) => {
         if (!prev) return prev;
-        return prev.map((item) =>
-          item.id === itemId ? { ...item, value: newValue } : item
-        );
+        return prev.map((item) => (item.id === itemId ? { ...item, value: newValue } : item));
       });
     },
     []
@@ -450,7 +448,11 @@ export function SettingsPage({ loadSettings }) {
   return (
     <div className="space-y-8" data-density={density}>
       {!isLoading && !isError && (
-        <section data-testid="settings-density-section" aria-label="Display density" style={{ padding: "var(--settings-section-padding)" }}>
+        <section
+          data-testid="settings-density-section"
+          aria-label="Display density"
+          style={{ padding: "var(--settings-section-padding)" }}
+        >
           <h3 className="text-lg font-semibold text-slate-100">{copy.settings.densityLabel}</h3>
           <p className="mt-1 text-sm text-slate-400">{copy.settings.densityDescription}</p>
           <div className="mt-3">
@@ -460,7 +462,11 @@ export function SettingsPage({ loadSettings }) {
       )}
 
       <div className="flex flex-wrap items-center gap-4">
-        <div role="group" aria-label={copy.settings.exportGroupLabel} className="flex items-center gap-2">
+        <div
+          role="group"
+          aria-label={copy.settings.exportGroupLabel}
+          className="flex items-center gap-2"
+        >
           <button
             type="button"
             onClick={handleExportCSV}
@@ -468,7 +474,18 @@ export function SettingsPage({ loadSettings }) {
             aria-label={copy.settings.exportCSVLabel}
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 focus-ring transition-colors"
           >
-            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              aria-hidden="true"
+              focusable="false"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
@@ -481,7 +498,18 @@ export function SettingsPage({ loadSettings }) {
             aria-label={copy.settings.exportJSONLabel}
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 focus-ring transition-colors"
           >
-            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              aria-hidden="true"
+              focusable="false"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <polyline points="16 18 22 12 16 6" />
               <polyline points="8 6 2 12 8 18" />
             </svg>
@@ -567,7 +595,11 @@ export function SettingsPage({ loadSettings }) {
         />
       ) : settings !== null ? (
         <>
-          <ul aria-label={settingsListLabel} className="flex flex-col gap-3 list-none p-0 m-0" style={{ gap: "var(--settings-list-gap)" }}>
+          <ul
+            aria-label={settingsListLabel}
+            className="flex flex-col gap-3 list-none p-0 m-0"
+            style={{ gap: "var(--settings-list-gap)" }}
+          >
             {visibleSettings.map((item) => (
               <li
                 key={item.id}
@@ -593,7 +625,18 @@ export function SettingsPage({ loadSettings }) {
                     title={`Copy ${copy.settings.copyIdentifier}`}
                     className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:text-slate-300 focus-ring transition-colors"
                   >
-                    <svg aria-hidden="true" focusable="false" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      aria-hidden="true"
+                      focusable="false"
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                     </svg>
@@ -622,11 +665,7 @@ export function SettingsPage({ loadSettings }) {
             ) : null}
           </div>
 
-          <p
-            data-testid="settings-count"
-            className="text-sm text-slate-400"
-            aria-live="polite"
-          >
+          <p data-testid="settings-count" className="text-sm text-slate-400" aria-live="polite">
             {getSettingsShowingAnnouncement(visibleSettings.length, filteredSettings.length)}
           </p>
         </>
