@@ -23,5 +23,8 @@ jobs:
       - name: Install dependencies
         run: npm ci --omit=optional
 
+      - name: Build Next.js
+        run: npm run build
+
       - name: Check bundle size
         run: npm run size-limit
