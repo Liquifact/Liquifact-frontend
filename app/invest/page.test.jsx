@@ -5,6 +5,11 @@ import {
   InvestMarketplace,
 } from "./page";
 
+jest.mock("./exportUtils", () => ({
+  exportToCSV: jest.fn(),
+  exportToJSON: jest.fn(),
+}));
+
 jest.mock("next/link", () => {
   function MockLink({ href, children, ...props }) {
     return (
@@ -153,6 +158,97 @@ describe("InvestMarketplace", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Unable to load investable invoices right now.",
     );
+  });
+
+  it("renders export buttons with correct labels after invoices load", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme",
+        amount: "12,500",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "8.2%",
+        status: "Open",
+      },
+    ];
+
+    const loadInvoices = createDeferredLoader(invoices, 100);
+    render(<InvestMarketplace loadInvoices={loadInvoices} />);
+
+    await flushTimers(100);
+
+    expect(screen.getByRole("button", { name: /export csv/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /export json/i })).toBeInTheDocument();
+  });
+
+  it("disables export buttons while invoices are loading", () => {
+    render(<InvestMarketplace loadInvoices={createPendingLoader()} />);
+
+    expect(screen.getByRole("button", { name: /export csv/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /export json/i })).toBeDisabled();
+  });
+
+  it("disables export buttons when no invoices are available", async () => {
+    const loadInvoices = createDeferredLoader([], 100);
+    render(<InvestMarketplace loadInvoices={loadInvoices} />);
+
+    await flushTimers(100);
+
+    expect(screen.getByRole("button", { name: /export csv/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /export json/i })).toBeDisabled();
+  });
+
+  it("calls exportToCSV with loaded invoices when CSV button is clicked", async () => {
+    const { exportToCSV: csvMock } = require("./exportUtils");
+
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme",
+        amount: "12,500",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "8.2%",
+        status: "Open",
+      },
+    ];
+
+    const loadInvoices = createDeferredLoader(invoices, 100);
+    render(<InvestMarketplace loadInvoices={loadInvoices} />);
+
+    await flushTimers(100);
+
+    const csvButton = screen.getByRole("button", { name: /export csv/i });
+    csvButton.click();
+
+    expect(csvMock).toHaveBeenCalledWith(invoices);
+  });
+
+  it("calls exportToJSON with loaded invoices when JSON button is clicked", async () => {
+    const { exportToJSON: jsonMock } = require("./exportUtils");
+
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme",
+        amount: "12,500",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "8.2%",
+        status: "Open",
+      },
+    ];
+
+    const loadInvoices = createDeferredLoader(invoices, 100);
+    render(<InvestMarketplace loadInvoices={loadInvoices} />);
+
+    await flushTimers(100);
+
+    const jsonButton = screen.getByRole("button", { name: /export json/i });
+    jsonButton.click();
+
+    expect(jsonMock).toHaveBeenCalledWith(invoices);
   });
 });
 

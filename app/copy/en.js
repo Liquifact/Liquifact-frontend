@@ -12,7 +12,9 @@ export const copy = {
     subtext: "Browse tokenized invoices and fund them. Principal + yield at maturity.",
     emptyState: "No investable invoices. Connect wallet to see the marketplace.",
     exampleHeading: "Example Marketplace Invoice",
-    exampleDisclaimer: "EXAMPLE ONLY. NOT A LIVE OFFERING."
+    exampleDisclaimer: "EXAMPLE ONLY. NOT A LIVE OFFERING.",
+    exportCSVLabel: "Export CSV",
+    exportJSONLabel: "Export JSON"
   },
   invoices: {
     title: "Invoices",

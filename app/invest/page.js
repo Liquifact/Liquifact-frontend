@@ -5,6 +5,7 @@ import Link from "next/link";
 import ErrorBanner from "@/components/ErrorBanner";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
 import { copy } from "../copy/en";
+import { exportToCSV, exportToJSON } from "./exportUtils";
 
 /**
  * Mock invoice data — replace with real API call once the backend endpoint
@@ -209,6 +210,28 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
               <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">
                 Soon
               </span>
+            </div>
+
+            {/* Export Controls */}
+            <div className="flex items-center gap-2 ml-auto">
+              <button
+                type="button"
+                disabled={!invoices || invoices.length === 0}
+                onClick={() => exportToCSV(invoices)}
+                className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+                aria-label={copy.invest.exportCSVLabel}
+              >
+                {copy.invest.exportCSVLabel}
+              </button>
+              <button
+                type="button"
+                disabled={!invoices || invoices.length === 0}
+                onClick={() => exportToJSON(invoices)}
+                className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+                aria-label={copy.invest.exportJSONLabel}
+              >
+                {copy.invest.exportJSONLabel}
+              </button>
             </div>
           </div>
         </div>
