@@ -21,7 +21,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci --omit=optional
+        run: npm ci && npm rebuild
 
       - name: Build Next.js
         run: npm run build
