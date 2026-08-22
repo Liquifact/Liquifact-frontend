@@ -13,6 +13,6 @@ labels: enhancement
 
 ## Acceptance Criteria
 
-- [ ] 
+- [ ]
 
 ## Notes

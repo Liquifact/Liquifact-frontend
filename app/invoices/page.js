@@ -1,30 +1,42 @@
-import Link from 'next/link';
-import { copy } from '../copy/en';
-import UploadZone from '../../components/UploadZone';
+"use client";
+import { useState } from "react";
+import { copy } from "../copy/en";
+import NavMenu from "../../components/NavMenu";
+import UploadZone from "../../components/UploadZone";
+import UploadErrorBoundary from "../../components/UploadErrorBoundary";
+import InvoiceList from "../../components/InvoiceList";
 
 export default function InvoicesPage() {
+  const [optimisticInvoices, setOptimisticInvoices] = useState([]);
+
+  const handleUploadSuccess = (invoice) => {
+    setOptimisticInvoices((current) => [invoice, ...current]);
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-        <Link
-          href="/"
-          className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
-        >
-          ← LiquiFact
-        </Link>
-        <button
-          type="button"
-          className="rounded-full bg-cyan-500/20 text-cyan-400 px-4 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
-        >
-          Connect Wallet
-        </button>
-      </header>
-      <main className="max-w-4xl mx-auto px-6 py-12">
-        <h1 className="text-2xl font-bold mb-6">{copy.invoices.title}</h1>
-        <p className="text-slate-400 mb-8">
-          {copy.invoices.subtext}
-        </p>
-        <UploadZone />
+    <div className="min-h-screen bg-slate-950 text-slate-50">
+      <NavMenu />
+
+      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="space-y-2 mb-10">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-100 sm:text-4xl">
+            {copy.invoices.title || "Invoices"}
+          </h1>
+          <p className="text-lg text-slate-400">
+            {copy.invoices.description || "Upload and tokenize your commercial invoices."}
+          </p>
+        </div>
+
+        <div className="grid gap-10 lg:grid-cols-3">
+          <div className="lg:col-span-1">
+            <UploadErrorBoundary>
+              <UploadZone onUploadSuccess={handleUploadSuccess} />
+            </UploadErrorBoundary>
+          </div>
+          <div className="lg:col-span-2">
+            <InvoiceList optimisticInvoices={optimisticInvoices} />
+          </div>
+        </div>
       </main>
     </div>
   );

@@ -1,0 +1,36 @@
+# CODEOWNERS for Liquifact/Liquifact-frontend
+#
+# Automatically requests review from the mapped owner(s) whenever a pull
+# request touches a matching path. Later (more specific) rules win, so
+# sensitive subpaths are listed after their broader parent directories.
+# See: https://docs.github.com/articles/about-code-owners
+#
+# NOTE: the handles below are placeholders. Replace every @OWNER-* entry
+# with real GitHub usernames or teams (e.g. @Liquifact/wallet) before this
+# file can assign reviewers — GitHub silently skips a rule whose owner
+# does not exist or lacks repo access. See CONTRIBUTING.md for details.
+
+# Fallback: anything not matched by a more specific rule below.
+*                           @OWNER-CORE
+
+# Application routes and pages.
+/app/                       @OWNER-APP
+
+# Shared UI components.
+/components/                @OWNER-COMPONENTS
+
+# Wallet integration (Freighter, signing, connection flows) — sensitive.
+/lib/wallet/                @OWNER-WALLET
+
+# API client layer.
+/lib/api/                   @OWNER-API
+
+# Security headers configuration — sensitive.
+/lib/securityHeaders.mjs    @OWNER-SECURITY
+
+# Documentation.
+/docs/                      @OWNER-DOCS
+CONTRIBUTING.md             @OWNER-DOCS
+
+# CI/CD workflows and repo automation — sensitive.
+/.github/                   @OWNER-CI

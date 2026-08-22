@@ -1,26 +1,538 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  LiquiFact global theming tokens.
+  Theme is driven by a `data-theme` attribute set on <html> by the
+  ThemeToggle component (and the pre-paint inline script in layout.js).
+
+  Supported values: data-theme="dark" | data-theme="light"
+
+  Token mapping:
+  - --color-bg         : page background
+  - --color-fg         : primary text
+  - --color-muted      : secondary / muted text
+  - --color-surface    : card / panel background
+  - --color-border     : subtle border colour
+  - --color-primary    : cyan brand accent (#22d3ee / cyan-400)
+  - --color-focus-ring : focus-visible outline colour (high-contrast in both themes)
+*/
+
+/* ── Dark theme (default — matches existing slate-950 palette) ─────────────── */
+:root,
+[data-theme="dark"] {
+  --color-bg: #020617; /* slate-950 */
+  --color-fg: #f1f5f9; /* slate-100 */
+  --color-muted: #94a3b8; /* slate-400 */
+  --color-surface: #0f172a; /* slate-900 */
+  --color-border: #1e293b; /* slate-800 */
+  --color-primary: #22d3ee; /* cyan-400  */
+  --color-focus-ring: #22d3ee; /* cyan-400 — 10:1 against slate-950 */
+  --market-card-padding: 1.25rem;
+  --market-card-gap: 1rem;
+  --market-card-title-font-size: 0.95rem;
+  --market-card-title-font-weight: 600;
+  --market-card-title-line-height: 1.4;
+  --market-card-meta-font-size: 0.875rem;
+  --market-card-meta-line-height: 1.5;
+  --market-card-meta-letter-spacing: 0.01em;
+}
+
+/* ── Light theme ───────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --color-bg: #f8fafc; /* slate-50  */
+  --color-fg: #0f172a; /* slate-900 */
+  --color-muted: #64748b; /* slate-500 */
+  --color-surface: #ffffff; /* white     */
+  --color-border: #e2e8f0; /* slate-200 */
+  --color-primary: #0891b2; /* cyan-600  — stays legible on white */
+  --color-focus-ring: #0891b2; /* cyan-600 — 3.5:1 against slate-50 */
+  --market-card-padding: 1.25rem;
+  --market-card-gap: 1rem;
+  --market-card-title-font-size: 0.95rem;
+  --market-card-title-font-weight: 600;
+  --market-card-title-line-height: 1.4;
+  --market-card-meta-font-size: 0.875rem;
+  --market-card-meta-line-height: 1.5;
+  --market-card-meta-letter-spacing: 0.01em;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg: var(--color-bg);
+  --color-foreground: var(--color-fg);
+  --color-muted: var(--color-muted);
+  --color-primary: var(--color-primary);
+  --color-focus-ring: var(--color-focus-ring);
+
+  /* Geist fonts (provided by app/layout.js via next/font) */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-geist-sans);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+}
+
+/* Skip-to-content: off-screen until focused, then anchors to top-left of viewport.
+   Only visible to keyboard users (on first Tab press). Mouse users never see it. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 1rem;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 9999;
+  padding: 0.5rem 1rem;
+  background: var(--color-primary);
+  color: var(--color-bg);
+  font-weight: 600;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.skip-link:focus-visible {
+  left: 1rem;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  outline: 2px solid var(--color-bg);
+  outline-offset: 2px;
+}
+
+/*
+  Reusable focus ring — high-contrast outline driven by --color-focus-ring.
+  Apply the .focus-ring class to any interactive element (button, link, input, toggle)
+  that needs a consistent, theme-aware focus-visible indicator.
+
+  The colour token --color-focus-ring is set in both dark and light theme blocks
+  above and is verified by the WCAG contrast harness in
+  app/globals.contrast-ratio.test.tsx.
+*/
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  outline-style: solid;
+  border-radius: 0.25rem;
+}
+
+/* ── Accessibility: reduced motion ─────────────────────────────────────────── */
+/*
+  Disables non-essential animation/transition for users who have requested
+  reduced motion at the OS level. Tailwind's `motion-reduce:` variant covers
+  a few components explicitly (e.g. UploadZone's progress bar and spinner);
+  this global rule is the safety net for everything else that renders
+  `animate-*`/`transition-*` utility classes without an explicit override.
+
+  The class-specific rules below complement the universal wildcard by
+  explicitly zeroing out the most-common Tailwind animation/transition
+  utilities.  They are required by the CSS-source integrity tests in
+  app/invest/reduced-motion-contrast.test.tsx (issue #689) and serve as
+  reliable hooks for components that can't add `motion-reduce:` inline.
+
+  invoice-detail-* classes target InvoiceDetailClient.jsx and FundActions.jsx
+  specifically (issue #31) — they suppress the `transition-colors` buttons
+  and the low-opacity background fills that are illegible under reduced
+  motion preference.
+*/
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Tailwind animation utilities — explicit overrides required by test harness */
+  .animate-pulse {
+    animation: none;
+  }
+
+  .animate-spin {
+    animation: none;
+  }
+
+  /* Tailwind transition utilities — explicit overrides required by test harness */
+  .transition {
+    transition: none;
+  }
+
+  .transition-colors {
+    transition: none;
+  }
+
+  .transition-all {
+    transition: none;
+  }
+
+  /* Invoice-detail action buttons — suppress hover color transitions */
+  .invoice-detail-action-btn {
+    transition: none;
+  }
+
+  /* Invoice-detail section — suppress any background-color transitions
+     on the surface panel (bg-slate-900/50 hover or focus effects) */
+  .invoice-detail-section {
+    transition: none;
+  }
+
+  /* Wallet status copy button and dot transitions */
+  .wallet-copy-btn,
+  .wallet-status-dot {
+    transition: none;
+  }
+}
+
+/* ── Accessibility: high contrast ──────────────────────────────────────────── */
+/*
+  Strengthens low-opacity decorative fills/borders that are hard to read
+  under Windows High Contrast Mode (forced-colors) or a user's OS-level
+  "increase contrast" preference. Scoped via utility classes rather than
+  every existing selector.
+
+  .upload-*            → UploadZone component (issue #699)
+  .invoice-detail-*    → InvoiceDetailClient + FundActions (issue #31)
+  .opacity-60          → marketplace "Soon" filters wrapper (issue #689)
+*/
+@media (forced-colors: active) {
+  /* Dashboard — preserve readable surfaces, non-colour cues, and focus. */
+  .dashboard-page {
+    background-color: Canvas;
+    color: CanvasText;
+  }
+
+  .dashboard-link-card,
+  .dashboard-api-panel,
+  .dashboard-status-panel {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-link-card {
+    border-color: LinkText;
+  }
+
+  .dashboard-link-title {
+    color: LinkText;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-muted-text,
+  .dashboard-status-summary,
+  .dashboard-status-key,
+  .dashboard-status-value,
+  .dashboard-status-message,
+  .dashboard-details-summary,
+  .dashboard-raw-response {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-action {
+    border: 2px solid ButtonText;
+    background-color: ButtonFace;
+    color: ButtonText;
+    opacity: 1;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-action:disabled {
+    border-color: GrayText;
+    color: GrayText;
+    opacity: 1;
+  }
+
+  .dashboard-status-badge {
+    border: 2px solid ButtonText;
+    background-color: ButtonFace;
+    color: ButtonText;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-focus:focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 3px;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-page [data-testid="health-status-skeleton"] [aria-hidden="true"] {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  .dashboard-page [data-testid="health-status-skeleton"] [aria-hidden="true"] div {
+    background-color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .upload-dropzone {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+  }
+
+  .upload-subtle-panel {
+    border-color: CanvasText;
+    background-color: Canvas;
+  }
+
+  /* Invoice-detail summary section — replace semi-transparent bg with system Canvas */
+  .invoice-detail-section {
+    border: 2px solid CanvasText;
+    background-color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  /* Definition-list terms → GrayText for correct semantic mapping */
+  .invoice-detail-dt {
+    color: GrayText;
+    forced-color-adjust: none;
+  }
+
+  /* Definition-list values → CanvasText so they are never lost */
+  .invoice-detail-dd {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  /* Action buttons — replace semi-transparent fills with ButtonFace/ButtonText */
+  .invoice-detail-action-btn {
+    background-color: ButtonFace;
+    color: ButtonText;
+    border: 1px solid ButtonText;
+    forced-color-adjust: none;
+  }
+
+  /* Disclaimer note — same surface treatment as the section */
+  .invoice-detail-disclaimer {
+    border: 1px solid CanvasText;
+    background-color: Canvas;
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  /* Wallet components */
+  .wallet-status-dot {
+    forced-color-adjust: none;
+  }
+
+  .wallet-address-text {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .wallet-balance-text {
+    color: GrayText;
+    forced-color-adjust: none;
+  }
+
+  .wallet-helper-text {
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .wallet-skeleton-text-primary,
+  .wallet-skeleton-text-secondary,
+  .wallet-skeleton-btn {
+    border: 1px solid CanvasText;
+    background-color: Canvas;
+  }
+}
+
+@media (prefers-contrast: more) {
+  /* Dashboard — strengthen contrast without changing normal-mode layout. */
+  .dashboard-link-card,
+  .dashboard-api-panel,
+  .dashboard-status-panel {
+    border-width: 2px;
+    border-color: var(--color-fg);
+    background-color: var(--color-surface);
+  }
+
+  .dashboard-link-title {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+  }
+
+  .dashboard-muted-text,
+  .dashboard-status-summary,
+  .dashboard-status-key,
+  .dashboard-status-value,
+  .dashboard-status-message,
+  .dashboard-details-summary,
+  .dashboard-raw-response {
+    color: var(--color-fg);
+  }
+
+  .dashboard-action {
+    border: 2px solid var(--color-fg);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+    opacity: 1;
+  }
+
+  .dashboard-status-badge {
+    border-width: 2px;
+  }
+
+  .dashboard-focus:focus-visible {
+    outline-width: 3px;
+    outline-offset: 3px;
+  }
+
+  .upload-dropzone {
+    border-color: #e2e8f0; /* slate-200 — far stronger than the default slate-700 */
+  }
+
+  .upload-subtle-panel {
+    border-color: #67e8f9; /* cyan-300 */
+    background-color: rgba(8, 145, 178, 0.18); /* cyan-600, opaque enough to read */
+  }
+
+  .upload-muted-text {
+    color: #cbd5e1; /* slate-300 — far stronger than slate-500 */
+  }
+
+  /* Marketplace "Soon" filters — remove opacity so controls are legible (issue #689) */
+  .opacity-60 {
+    opacity: 1;
+  }
+
+  /* Invoice-detail: strengthen the low-opacity surface and muted text */
+  .invoice-detail-section {
+    border-color: #cbd5e1; /* slate-300 */
+    background-color: #0f172a; /* slate-900 — fully opaque */
+  }
+
+  .invoice-detail-dt {
+    color: #94a3b8; /* slate-400 — stronger than slate-500 */
+  }
+
+  .invoice-detail-dd {
+    color: #f1f5f9; /* slate-100 — maximum legibility */
+  }
+
+  .invoice-detail-action-btn {
+    border-color: #67e8f9; /* cyan-300 — stronger than slate-700 */
+    color: #f1f5f9;
+  }
+
+  .invoice-detail-disclaimer {
+    border-color: #475569; /* slate-600 — stronger than slate-800 */
+    background-color: #0f172a; /* slate-900 — fully opaque */
+    color: #cbd5e1; /* slate-300 — stronger than slate-300 */
+  }
+
+  /* Wallet components */
+  .wallet-address-text {
+    color: #f1f5f9; /* slate-100 */
+  }
+
+  .wallet-balance-text,
+  .wallet-helper-text {
+    color: #cbd5e1; /* slate-300 */
+  }
+
+  .wallet-skeleton-text-primary,
+  .wallet-skeleton-btn {
+    background-color: #475569; /* slate-600 */
+  }
+
+  .wallet-skeleton-text-secondary {
+    background-color: #334155; /* slate-700 */
+  }
+}
+
+/* ── Print stylesheet ──────────────────────────────────────────────────────── */
+/*
+   Renders the invoice detail page as a clean, ink-friendly document.
+   - Hides interactive chrome: nav header, wallet button, back link, fund button,
+     disclaimer note, and the on-screen print button.
+   - Forces a white background and dark text to save ink.
+   - Marks elements with .no-print to opt out of the printed output.
+*/
+/* ── Density spacing tokens ─────────────────────────────────────────────────── */
+/*
+   Density is driven by a `data-density` attribute set on <html> by the
+   DensityToggle component via the useDensity hook.
+
+   Supported values: data-density="comfortable" | data-density="compact"
+
+   Settings page reads these variables to control section padding, gap,
+   and heading margins.
+*/
+
+:root,
+[data-density="comfortable"] {
+  --settings-section-padding: 1.5rem;
+  --settings-section-gap: 1.5rem;
+  --settings-list-gap: 0.75rem;
+  /* Wallet view density tokens */
+  --wallet-panel-padding: 1rem;
+  --wallet-panel-gap: 0.75rem;
+  --wallet-meta-font-size: 0.75rem;
+  --wallet-address-font-size: 0.875rem;
+}
+
+[data-density="compact"] {
+  --settings-section-padding: 1rem;
+  --settings-section-gap: 1rem;
+  --settings-list-gap: 0.5rem;
+  /* Wallet view density tokens */
+  --wallet-panel-padding: 0.5rem;
+  --wallet-panel-gap: 0.375rem;
+  --wallet-meta-font-size: 0.6875rem;
+  --wallet-address-font-size: 0.75rem;
+}
+
+@media print {
+  /* Switch to a light, ink-friendly palette */
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  /* Hide interactive/navigation chrome */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Ensure invoice summary section prints with visible borders */
+  .print-invoice-section {
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+  }
+
+  /* Definition list terms and values */
+  .print-invoice-section dt {
+    color: #64748b !important;
+  }
+
+  .print-invoice-section dd {
+    color: #0f172a !important;
+  }
+
+  /* Remove decorative backgrounds from the page wrapper */
+  .print-page-wrapper {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
 }

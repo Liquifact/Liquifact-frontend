@@ -1,0 +1,35 @@
+version: 2
+updates:
+  # Keep npm dependencies up to date
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      # Batch Next.js + React together — they often need coordinated bumps
+      nextjs-react:
+        patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      # All other dev tooling in one PR
+      dev-tooling:
+        dependency-type: "development"
+        exclude-patterns:
+          - "@types/react"
+          - "@types/react-dom"
+    # Require human review — no auto-merge
+    reviewers:
+      - "Liquifact"
+
+  # Keep GitHub Actions up to date
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3

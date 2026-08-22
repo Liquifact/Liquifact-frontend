@@ -1,8 +1,8 @@
-import { render } from '@testing-library/react';
-import ErrorBanner from '../ErrorBanner';
-import { axe } from 'jest-axe';
+import { render } from "@testing-library/react";
+import ErrorBanner from "../ErrorBanner";
+import { axe } from "jest-axe";
 
-test('ErrorBanner has no accessibility violations', async () => {
+test("ErrorBanner has no accessibility violations", async () => {
   const { container } = render(
     <ErrorBanner
       variant="server"
