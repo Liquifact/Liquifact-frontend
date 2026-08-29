@@ -257,6 +257,38 @@ function useSafeSearchParams() {
   }
 }
 
+function normalizeInvoicePageResult(payload) {
+  if (Array.isArray(payload)) {
+    return { items: payload, nextCursor: null, hasMore: false, invalidCursor: false };
+  }
+
+  const result = payload ?? {};
+  const items = Array.isArray(result.items) ? result.items : [];
+  const nextCursor = typeof result.nextCursor === "string" ? result.nextCursor : null;
+  const hasMore = Boolean(result.hasMore) || nextCursor !== null;
+
+  return {
+    items,
+    nextCursor,
+    hasMore,
+    invalidCursor: Boolean(result.invalidCursor),
+  };
+}
+
+function mergeInvoicePages(current = [], incoming = []) {
+  const merged = new Map();
+
+  for (const invoice of current) {
+    if (invoice && invoice.id) merged.set(invoice.id, invoice);
+  }
+
+  for (const invoice of incoming) {
+    if (invoice && invoice.id) merged.set(invoice.id, invoice);
+  }
+
+  return Array.from(merged.values());
+}
+
 export function InvestMarketplace({
   loadInvoices = loadMockInvoices,
   onBulkDelete = async () => {},
@@ -282,6 +314,10 @@ export function InvestMarketplace({
   const bulkLabels = useMemo(() => copy.invest?.bulkActions || {}, []);
 
   const [invoices, setInvoices] = useState(null); // null = loading
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [cursorError, setCursorError] = useState("");
+  const [pageLoading, setPageLoading] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -322,19 +358,20 @@ export function InvestMarketplace({
    * async-load-driven announcement changes (debounced) from filter/
    * pagination/search-driven ones (immediate) — see `announcedMessage` below.
    */
-  const [loadGeneration, setLoadGeneration] = useState(0);
-
-  // Reset paging whenever the raw invoice data changes (new fetch, retry, etc.).
-  // Compared during render per the React-recommended pattern:
-  // https://react.dev/learn/you-might-not-need-an-effect
-  const [pagingResetFor, setPagingResetFor] = useState(invoices);
-  if (invoices !== pagingResetFor) {
-    setPagingResetFor(invoices);
-    setVisibleCount(PAGE_SIZE);
-  }
+  const [, setLoadGeneration] = useState(0);
 
   /** Ref forwarded to the "Load more" button for focus management. */
   const loadMoreRef = useRef(null);
+  const pageLoadInFlightRef = useRef(false);
+
+  const refreshPage = useCallback(() => {
+    setNextCursor(null);
+    setHasMore(false);
+    setCursorError("");
+    setPageLoading(false);
+    setVisibleCount(PAGE_SIZE);
+    setRetryKey((k) => k + 1);
+  }, []);
 
   /**
    * Ref for the page heading — the focus target for route-change focus
@@ -368,6 +405,11 @@ export function InvestMarketplace({
   const reload = useCallback(() => {
     setInvoices(null);
     setLoadError("");
+    setCursorError("");
+    setNextCursor(null);
+    setHasMore(false);
+    setPageLoading(false);
+    setVisibleCount(PAGE_SIZE);
     setRetryKey((k) => k + 1);
   }, [setInvoices, setLoadError, setRetryKey]);
 
@@ -499,24 +541,43 @@ export function InvestMarketplace({
 
     const announceLoadCompletion = async () => {
       try {
-        const nextInvoices = await loadInvoices({ signal: controller.signal });
+        setCursorError("");
+        setLoadError("");
+        setPageLoading(true);
+
+        const response = await loadInvoices({
+          signal: controller.signal,
+          cursor: null,
+          filters,
+          search: debouncedSearch,
+          sort: filters.sort || null,
+          sortDir: filters.sortDir || "desc",
+        });
 
         if (!isActive) return;
 
-        const normalizedInvoices = Array.isArray(nextInvoices) ? nextInvoices : [];
+        const normalized = normalizeInvoicePageResult(response);
+        if (normalized.invalidCursor) {
+          setCursorError(copy.invest.invalidCursorDescription);
+          setInvoices([]);
+          setNextCursor(null);
+          setHasMore(false);
+          return;
+        }
 
-        setInvoices(normalizedInvoices);
-        setLoadError("");
+        setInvoices(normalized.items);
+        setNextCursor(normalized.nextCursor ?? null);
+        setHasMore(Boolean(normalized.hasMore) || normalized.nextCursor !== null);
       } catch {
         if (!isActive) return;
 
         setInvoices(null);
         setLoadError(copy.invest.errorDescription);
       } finally {
-        // Marks this attempt as settled so the announcement effect below can
-        // tell an async result apart from a filter/pagination/search change.
-        // Skipped when the attempt was aborted/superseded (isActive is false).
-        if (isActive) setLoadGeneration((generation) => generation + 1);
+        if (isActive) {
+          setPageLoading(false);
+          setLoadGeneration((generation) => generation + 1);
+        }
       }
     };
 
@@ -527,7 +588,7 @@ export function InvestMarketplace({
       controller.abort();
     };
     // retryKey triggers a fresh load on retry without changing loadInvoices.
-  }, [loadInvoices, retryKey, setInvoices]);
+  }, [loadInvoices, retryKey, debouncedSearch, filters]);
 
   // Derive the polite live-region announcement directly from reactive state.
   // Using useMemo (rather than a useEffect + setState) avoids a cascading
@@ -538,6 +599,7 @@ export function InvestMarketplace({
   const statusMessage = useMemo(() => {
     // Loading or error states — error copy is announced by the ErrorBanner role="alert";
     // the status region is cleared so screen readers only hear one announcement.
+    if (cursorError) return copy.invest.invalidCursorDescription;
     if (!Array.isArray(invoices)) {
       return loadError ? copy.invest.errorStatus : "";
     }
@@ -555,7 +617,7 @@ export function InvestMarketplace({
       return getPaginationAnnouncement(filteredInvoices.length, filteredInvoices.length);
     }
     return getInvoiceLoadAnnouncement(invoices);
-  }, [filteredInvoices, filterActive, invoices, visibleCount, loadError]);
+  }, [filteredInvoices, filterActive, invoices, visibleCount, loadError, cursorError]);
 
   // Pass statusMessage through useSettingsAnnouncer with delay=0 so the
   // live region updates immediately on each state change, while still
@@ -571,14 +633,49 @@ export function InvestMarketplace({
    * Focus is moved back to the "Load more" button (if it still exists) so
    * keyboard users do not lose their place in the page.
    */
-  const handleLoadMore = useCallback(() => {
-    setVisibleCount((prev) => {
-      return Math.min(prev + PAGE_SIZE, filteredInvoices.length);
-    });
-    setTimeout(() => {
-      loadMoreRef.current?.focus();
-    }, 0);
-  }, [filteredInvoices.length, setVisibleCount]);
+  const handleLoadMore = useCallback(async () => {
+    if (pageLoadInFlightRef.current || pageLoading || !hasMore || !nextCursor || cursorError) return;
+
+    pageLoadInFlightRef.current = true;
+    const currentInvoices = Array.isArray(invoices) ? invoices : [];
+    setPageLoading(true);
+    setCursorError("");
+
+    try {
+      const pageResponse = await loadInvoices({
+        signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined,
+        cursor: nextCursor,
+        filters,
+        search: debouncedSearch,
+        sort: filters.sort || null,
+        sortDir: filters.sortDir || "desc",
+      });
+
+      const normalized = normalizeInvoicePageResult(pageResponse);
+      if (normalized.invalidCursor) {
+        setCursorError(copy.invest.invalidCursorDescription);
+        setNextCursor(null);
+        setHasMore(false);
+        setPageLoading(false);
+        return;
+      }
+
+      const merged = mergeInvoicePages(currentInvoices, normalized.items);
+      setInvoices(merged);
+      setNextCursor(normalized.nextCursor ?? null);
+      setHasMore(Boolean(normalized.hasMore) || normalized.nextCursor !== null);
+      setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, merged.length));
+    } catch {
+      setLoadError(copy.invest.errorDescription);
+      setCursorError("");
+    } finally {
+      pageLoadInFlightRef.current = false;
+      setPageLoading(false);
+      setTimeout(() => {
+        loadMoreRef.current?.focus();
+      }, 0);
+    }
+  }, [pageLoading, hasMore, nextCursor, cursorError, invoices, loadInvoices, filters, debouncedSearch]);
 
   // ── Bulk actions ──────────────────────────────────────────────────────────
   const handleToggleSelectAll = useCallback(() => {
@@ -756,7 +853,16 @@ export function InvestMarketplace({
         />
 
         {/* Error state – retryable */}
-        {loadError ? (
+        {cursorError ? (
+          <div role="alert" aria-live="assertive">
+            <ErrorBanner
+              title={copy.invest.invalidCursorTitle}
+              description={cursorError}
+              actionLabel={copy.invest.retryAction}
+              onAction={refreshPage}
+            />
+          </div>
+        ) : loadError ? (
           <div role="alert" aria-live="assertive">
             <ErrorBanner
               title={copy.invest.errorTitle}
@@ -836,16 +942,20 @@ export function InvestMarketplace({
                   </li>
                 ))}
               </ul>
-              {visibleCount < filteredInvoices.length && (
+              {visibleCount < filteredInvoices.length && hasMore && (
                 <button
                   ref={loadMoreRef}
                   type="button"
                   onClick={handleLoadMore}
+                  disabled={pageLoading}
                   aria-label={copy.invest.loadMoreAriaLabel}
-                  className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50"
+                  className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {copy.invest.loadMore}
+                  {pageLoading ? "Loading…" : copy.invest.loadMore}
                 </button>
+              )}
+              {!hasMore && visibleCount > PAGE_SIZE && (
+                <div className="mt-6 text-sm text-slate-400">{copy.invest.endOfList}</div>
               )}
               <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
                 {copy.invest.yieldDisclaimer}
