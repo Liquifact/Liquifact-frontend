@@ -34,7 +34,9 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { copy } from "@/app/copy/en";
+import { getInvoiceDetailHref } from "@/lib/marketplaceRoute";
 import { invoiceFieldValidators } from "@/lib/validation/invoice";
 
 const FIELD_VALIDATORS = Object.freeze({
@@ -59,6 +61,7 @@ const FIELD_LABELS = Object.freeze({
 
 export default function EditableInvoiceRow({ invoice, onSave }) {
   const [isEditing, setIsEditing] = useState(false);
+  const searchParams = useSearchParams();
   const [draft, setDraft] = useState({ ...invoice });
   const [announcement, setAnnouncement] = useState("");
   const formRef = useRef(null);
@@ -359,7 +362,7 @@ export default function EditableInvoiceRow({ invoice, onSave }) {
     <li className="group rounded-xl border border-slate-800 bg-slate-900/50 p-5 transition-colors hover:border-slate-700">
       <div className="flex items-center justify-between mb-3">
         <Link
-          href={`/invest/${invoice.id}`}
+          href={getInvoiceDetailHref(invoice.id, searchParams)}
           className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
         >
           {invoice.issuer}

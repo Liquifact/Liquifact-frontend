@@ -37,6 +37,7 @@ import { RouteFocus } from "./FocusManager";
 import InvoiceDetailClient from "./InvoiceDetailClient";
 import InvoiceDetailItems, { buildInvoiceDetailItems } from "./InvoiceDetailItems";
 import InvoiceDetailExport from "./InvoiceDetailExport";
+import { getMarketplaceHref } from "@/lib/marketplaceRoute";
 
 const detail = copy.invest.detail;
 
@@ -119,9 +120,10 @@ function buildInvoiceJsonLd(invoice) {
  *
  * @param {{ params: Promise<{ id: string }> | { id: string } }} props
  */
-export default async function InvoiceDetailPage({ params }) {
+export default async function InvoiceDetailPage({ params, searchParams }) {
   // Support both the current (sync object) and future (Promise) params shape.
   const { id } = await Promise.resolve(params);
+  const backHref = getMarketplaceHref(searchParams || {});
 
   const invoice = getInvoiceById(id);
 
@@ -159,7 +161,7 @@ export default async function InvoiceDetailPage({ params }) {
 
         {/* ── Back navigation ───────────────────────────────────────── */}
         <Link
-          href="/invest"
+          href={backHref}
           className="no-print inline-block mb-6 text-sm text-slate-400 hover:text-cyan-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
           aria-label={detail.backToMarketplaceLabel}
         >

@@ -10,10 +10,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import ErrorBanner from "./ErrorBanner";
 import EmptyState from "./EmptyState";
 import StatusPill from "./StatusPill";
 import { formatCurrency } from "../lib/format/currency";
+import { getInvoiceDetailHref } from "@/lib/marketplaceRoute";
 
 /**
  * @typedef {Object} WatchlistItem
@@ -429,7 +431,7 @@ export default function Watchlist({
                   <div>
                     <div className="flex items-center gap-2">
                       <Link
-                        href={`/invest/${item.id}`}
+                        href={getInvoiceDetailHref(item.id, searchParams)}
                         className="font-semibold text-slate-100 hover:text-cyan-300 focus-visible:outline-none focus-ring"
                         aria-label={`View details for invoice ${item.id} from ${issuerName}`}
                       >
