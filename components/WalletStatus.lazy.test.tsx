@@ -18,6 +18,7 @@ function renderLazy() {
 jest.mock("next/dynamic", () => {
   return function dynamicMock(importFunc, options) {
     const ReactForMock = require("react");
+    const { act } = require("@testing-library/react");
 
     function DynamicWrapper(props) {
       const [Component, setComponent] = ReactForMock.useState(null);
@@ -27,8 +28,10 @@ jest.mock("next/dynamic", () => {
         let cancelled = false;
         importFunc().then((mod) => {
           if (!cancelled) {
-            setComponent(() => mod.default || mod);
-            setIsLoading(false);
+            act(() => {
+              setComponent(() => mod.default || mod);
+              setIsLoading(false);
+            });
           }
         });
         return () => {
@@ -140,13 +143,13 @@ describe("WalletStatusLazy", () => {
 
     await waitFor(
       () => {
-        const status = screen.getByRole("status");
+        const status = screen.getByTestId("wallet-live-region");
         expect(status).toBeInTheDocument();
       },
       { timeout: 3000 }
     );
 
-    const status = screen.getByRole("status");
+    const status = screen.getByTestId("wallet-live-region");
     expect(status).toHaveAttribute("aria-live", "polite");
   });
 
