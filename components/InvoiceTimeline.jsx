@@ -29,7 +29,12 @@
  *     timestamp and maintains its positional role in the list.
  */
 
-import { INVOICE_STATUSES, STATUS_PILL_MAP } from "@/lib/types/invoice";
+import {
+  INVOICE_STATUSES,
+  STATUS_PILL_MAP,
+  resolveInvoiceEventLabel,
+  truncateActorLabel,
+} from "@/lib/types/invoice";
 import { copy } from "@/app/copy/en";
 
 // ---------------------------------------------------------------------------
@@ -154,9 +159,162 @@ const STAGE_LABELS = {
  * @param {string}  [props.className]  - Additional Tailwind classes on the root element.
  * @returns {JSX.Element}
  */
-export default function InvoiceTimeline({ status, timestamps = {}, className = "" }) {
+export default function InvoiceTimeline({
+  status,
+  timestamps = {},
+  className = "",
+  events,
+  loading = false,
+  error = null,
+  onRetry,
+  invoiceNotFound = false,
+}) {
   const currentStage = resolveCurrentStage(status);
   const currentIndex = currentStage !== null ? STAGE_ORDER.indexOf(currentStage) : -1;
+
+  if (loading) {
+    return (
+      <section
+        aria-labelledby="invoice-timeline-heading"
+        className={["rounded-xl border border-slate-800 bg-slate-900/50 p-6", className]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <h2 id="invoice-timeline-heading" className="text-base font-semibold text-slate-100 mb-6">
+          {copy.invoiceTimeline.heading}
+        </h2>
+        <div className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-slate-300">
+          <span className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-cyan-400" aria-hidden="true" />
+          {copy.invoiceTimeline.loadingState}
+        </div>
+      </section>
+    );
+  }
+
+  if (invoiceNotFound) {
+    return (
+      <section
+        aria-labelledby="invoice-timeline-heading"
+        className={["rounded-xl border border-slate-800 bg-slate-900/50 p-6", className]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <h2 id="invoice-timeline-heading" className="text-base font-semibold text-slate-100 mb-6">
+          {copy.invoiceTimeline.heading}
+        </h2>
+        <p className="text-sm text-slate-300">{copy.invoiceTimeline.notFoundState}</p>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section
+        aria-labelledby="invoice-timeline-heading"
+        className={["rounded-xl border border-slate-800 bg-slate-900/50 p-6", className]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <h2 id="invoice-timeline-heading" className="text-base font-semibold text-slate-100 mb-6">
+          {copy.invoiceTimeline.heading}
+        </h2>
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
+          <p className="font-medium">{copy.invoiceTimeline.errorTitle}</p>
+          <p className="mt-1 text-red-200/90">{String(error.message || error)}</p>
+          {typeof onRetry === "function" && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-3 rounded border border-red-300/50 px-3 py-1.5 text-xs font-medium text-red-50 hover:bg-red-400/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-300"
+            >
+              {copy.invoiceTimeline.retryLabel}
+            </button>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  if (Array.isArray(events)) {
+    const orderedEvents = [...events].sort((a, b) => {
+      const first = a && a.occurredAt ? new Date(a.occurredAt).getTime() : 0;
+      const second = b && b.occurredAt ? new Date(b.occurredAt).getTime() : 0;
+      return first - second;
+    });
+
+    if (orderedEvents.length === 0) {
+      return (
+        <section
+          aria-labelledby="invoice-timeline-heading"
+          className={["rounded-xl border border-slate-800 bg-slate-900/50 p-6", className]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          <h2 id="invoice-timeline-heading" className="text-base font-semibold text-slate-100 mb-6">
+            {copy.invoiceTimeline.heading}
+          </h2>
+          <p className="text-sm text-slate-300">{copy.invoiceTimeline.emptyState}</p>
+        </section>
+      );
+    }
+
+    return (
+      <section
+        aria-labelledby="invoice-timeline-heading"
+        className={["rounded-xl border border-slate-800 bg-slate-900/50 p-6", className]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <h2 id="invoice-timeline-heading" className="text-base font-semibold text-slate-100 mb-6">
+          {copy.invoiceTimeline.heading}
+        </h2>
+
+        <ol aria-label={copy.invoiceTimeline.heading} className="relative flex flex-col gap-3">
+          {orderedEvents.map((event, index) => {
+            const eventType = event?.type || "unknown";
+            const safeLabel = resolveInvoiceEventLabel(eventType, copy.invoiceTimeline.unknownEvent);
+            const safeActor = truncateActorLabel(event?.actor, 22);
+            const occurredAt = event?.occurredAt ? new Date(event.occurredAt) : null;
+            const isoText = occurredAt && !Number.isNaN(occurredAt.getTime())
+              ? occurredAt.toLocaleString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })
+              : "Unknown time";
+
+            return (
+              <li
+                key={event?.id || `${safeLabel}-${index}`}
+                className="relative pl-6 pb-4 last:pb-0"
+                aria-label={`${safeLabel} — ${copy.invoiceTimeline.byActor.replace("{actor}", safeActor)}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className="absolute left-0 top-2 h-2.5 w-2.5 rounded-full bg-cyan-400 ring-4 ring-slate-900"
+                />
+                <div className="flex min-w-0 flex-col gap-1">
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-slate-100">
+                    <span className="font-medium">{safeLabel}</span>
+                    <time className="text-xs text-slate-400" dateTime={event?.occurredAt || undefined}>
+                      {isoText}
+                    </time>
+                  </div>
+                  <div className="min-w-0 text-xs text-slate-400">
+                    <span className="inline-block max-w-full truncate align-bottom" title={safeActor}>
+                      {copy.invoiceTimeline.byActor.replace("{actor}", safeActor)}
+                    </span>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -207,7 +365,6 @@ export default function InvoiceTimeline({ status, timestamps = {}, className = "
               aria-label={ariaLabel}
               className="relative flex items-start gap-4 pb-6 last:pb-0"
             >
-              {/* Vertical connector line — hidden on the last item */}
               {!isLast && (
                 <span
                   aria-hidden="true"
@@ -215,7 +372,6 @@ export default function InvoiceTimeline({ status, timestamps = {}, className = "
                 />
               )}
 
-              {/* Stage dot / indicator */}
               <span
                 aria-hidden="true"
                 className={[
@@ -224,7 +380,6 @@ export default function InvoiceTimeline({ status, timestamps = {}, className = "
                 ].join(" ")}
               >
                 {stageState === "completed" && (
-                  /* Checkmark SVG for completed stages */
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 16 16"
@@ -242,7 +397,6 @@ export default function InvoiceTimeline({ status, timestamps = {}, className = "
                 )}
               </span>
 
-              {/* Stage text block */}
               <div className="flex flex-col min-w-0">
                 <span className={["text-sm leading-6", tone.label].join(" ")}>{label}</span>
                 {timestamp != null && String(timestamp).trim().length > 0 && (
