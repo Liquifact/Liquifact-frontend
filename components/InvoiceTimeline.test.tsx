@@ -634,6 +634,56 @@ describe("InvoiceTimeline — edge cases", () => {
 // 11. Accessibility — jest-axe
 // ---------------------------------------------------------------------------
 
+describe("InvoiceTimeline — typed events", () => {
+  it("renders an empty state when no events are present", () => {
+    renderTimeline({ events: [] });
+    expect(screen.getByText("No state events recorded")).toBeInTheDocument();
+  });
+
+  it("renders a safe fallback label for unknown event types", () => {
+    renderTimeline({
+      events: [
+        {
+          id: "evt-unknown",
+          type: "mystery-action",
+          actor: "0x1234567890abcdef",
+          occurredAt: "2025-03-01T12:00:00Z",
+        },
+      ],
+    });
+
+    expect(screen.getByText("Unknown event")).toBeInTheDocument();
+    expect(screen.getByText(/By 0x1234567890abcdef/i)).toBeInTheDocument();
+  });
+
+  it("truncates long actor labels without exposing full identities", () => {
+    renderTimeline({
+      events: [
+        {
+          id: "evt-long-actor",
+          type: "listed",
+          actor: "VeryLongIdentityThatShouldBeTruncatedBeforeRenderingInTheAuditLog",
+          occurredAt: "2025-03-01T12:00:00Z",
+        },
+      ],
+    });
+
+    expect(screen.getByText("By VeryLongIdentit…")).toBeInTheDocument();
+    const actorNode = screen.getByText("By VeryLongIdentit…");
+    expect(actorNode.className).toContain("truncate");
+  });
+
+  it("renders the loading detail state explicitly", () => {
+    renderTimeline({ loading: true });
+    expect(screen.getByText("Loading invoice details")).toBeInTheDocument();
+  });
+
+  it("renders an invoice-not-found state when the detail is missing", () => {
+    renderTimeline({ invoiceNotFound: true });
+    expect(screen.getByText("Invoice not found")).toBeInTheDocument();
+  });
+});
+
 describe("InvoiceTimeline — accessibility (jest-axe)", () => {
   it("has no axe violations with no status (all pending)", async () => {
     const { container } = renderTimeline();
