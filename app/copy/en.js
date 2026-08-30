@@ -87,6 +87,13 @@
  * @property {string} invest.detail.densityCompactAriaLabel
  * @property {string} invest.detail.densityComfortableAriaLabel
  * @property {string} invest.detail.densityCurrentAriaLabel
+ * @property {Object} invest.detail.networkMismatch - Network mismatch banner copy
+ * @property {string} invest.detail.networkMismatch.bannerTitle
+ * @property {string} invest.detail.networkMismatch.bannerBody
+ * @property {string} invest.detail.networkMismatch.bannerBodyUnknown
+ * @property {string} invest.detail.networkMismatch.bannerBodyDisconnected
+ * @property {string} invest.detail.networkMismatch.alertLabel
+ * @property {string} invest.detail.networkMismatch.announceMessage
  * @property {Object} invest.detail.inlineEdit - Inline edit mode copy for invoice-detail metadata rows
  * @property {string} invest.detail.inlineEdit.editButton
  * @property {string} invest.detail.inlineEdit.saveButton
@@ -424,6 +431,24 @@ export const copy = {
       densityCompactAriaLabel: "Switch to compact density",
       densityComfortableAriaLabel: "Switch to comfortable density",
       densityCurrentAriaLabel: "Current density: {density}",
+      networkMismatch: {
+        // Banner shown when the wallet is connected to the wrong network.
+        // {walletNetwork} and {invoiceNetwork} are replaced at render time.
+        bannerTitle: "Wrong network",
+        bannerBody:
+          "Your wallet is on {walletNetwork} but this invoice requires {invoiceNetwork}. Switch your wallet network to continue.",
+        // Shown when the wallet is connected but the network cannot be read.
+        bannerBodyUnknown:
+          "Your wallet network could not be read. This invoice requires {invoiceNetwork}. Reconnect your wallet to continue.",
+        // Shown when no wallet is connected.
+        bannerBodyDisconnected:
+          "Connect your wallet to {invoiceNetwork} to fund this invoice.",
+        // aria-label for screen readers describing the alert region.
+        alertLabel: "Network mismatch warning",
+        // Announced to screen readers when the banner first appears.
+        announceMessage:
+          "Network mismatch: please switch your wallet to {invoiceNetwork}.",
+      },
       inlineEdit: {
         editButton: "Edit {field}",
         saveButton: "Save",

@@ -37,6 +37,8 @@ import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import FundAmountInput from "@/components/FundAmountInput";
 import { useMarketplace } from "@/app/invest/MarketplaceContext";
 import { copy } from "@/app/copy/en";
+import NetworkMismatchBanner from "@/components/NetworkMismatchBanner";
+import { useWalletNetworkGuard } from "@/lib/hooks/useWalletNetworkGuard";
 
 const detail = copy.invest.detail;
 
@@ -114,6 +116,23 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
 
   const isFundingPending = pendingIds.has(id);
 
+  // Network guard — reads the connected wallet network and compares it with
+  // the invoice environment. When there is a mismatch the banner is shown
+  // and funding actions are blocked.
+  const {
+    status: networkStatus,
+    walletNetwork,
+    invoiceNetwork,
+  } = useWalletNetworkGuard();
+
+  // Funding is blocked when the wallet is on the wrong network (or we cannot
+  // confirm it is on the right one). "checking" does NOT block — we optimise
+  // for the common case where wallet and invoice are on the same network.
+  const isNetworkMismatch =
+    networkStatus === "mismatch" ||
+    networkStatus === "unknown" ||
+    networkStatus === "disconnected";
+
   // Debounced polite announcement so rapid-fire results settle into one update.
   const announce = useCallback((message) => {
     if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
@@ -132,10 +151,12 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
   }, []);
 
   // Fund button is disabled while wallet is connecting or unavailable,
-  // while an optimistic action is in-flight, or if the invoice is not Open.
+  // while a network mismatch is active, while an optimistic action is
+  // in-flight, or if the invoice is not Open.
   const isFundingDisabled =
     walletState === WALLET_STATES.CONNECTING ||
     walletState === WALLET_STATES.NO_WALLET ||
+    isNetworkMismatch ||
     status !== "Open" ||
     isFundingPending;
 
@@ -243,6 +264,15 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
       >
         {announcement}
       </div>
+
+      {/* Network mismatch banner — blocks funding until the wallet is on the
+          correct network. Rendered before the funding controls so it is the
+          first focusable / readable content in the actions area. */}
+      <NetworkMismatchBanner
+        status={networkStatus}
+        walletNetwork={walletNetwork}
+        invoiceNetwork={invoiceNetwork}
+      />
 
       {/* Partial-funding amount input — only when an amount ceiling is known
           (real detail page) and the invoice is Open. */}
