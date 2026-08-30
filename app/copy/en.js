@@ -335,6 +335,9 @@ export const copy = {
     announceFilteredCount: "{matched} of {total} invoices match",
     announceInvoicesLoaded: "{count} investable invoices loaded",
     announceShowing: "Showing {shown} of {total} investable invoices",
+    invalidCursorTitle: "This result set is no longer valid.",
+    invalidCursorDescription: "This result set is no longer valid. Refresh the marketplace to continue.",
+    endOfList: "You have reached the end of the list.",
     filters: {
       errorYieldMin: "Minimum yield must be a non-negative number.",
       errorYieldMax: "Maximum yield must be a non-negative number.",
