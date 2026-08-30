@@ -31,6 +31,7 @@ import { ToastContext } from "@/components/ToastProvider";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import MarketplaceErrorBoundary from "@/components/MarketplaceErrorBoundary";
 import { reportError } from "@/lib/observability/reportError";
+import { getInvoiceDetailHref, sanitizeMarketplaceSearchParams } from "@/lib/marketplaceRoute";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
@@ -64,7 +65,7 @@ function isValidYieldString(value) {
  * @returns {{ filters: object, searchQuery: string }}
  */
 export function parseFiltersFromSearchParams(searchParams, defaults = DEFAULT_FILTERS) {
-  const params = searchParams ?? new URLSearchParams();
+  const params = sanitizeMarketplaceSearchParams(searchParams ?? new URLSearchParams());
 
   const rawSort = params.get("sort") ?? "";
   const rawSortDir = params.get("sortDir") ?? "";
@@ -135,7 +136,7 @@ export function buildSearchParams(filters, searchQuery = "") {
   }
 
   if (Array.isArray(filters.statuses) && filters.statuses.length > 0) {
-    params.set("statuses", filters.statuses.join(","));
+    params.set("statuses", filters.statuses.filter((status) => VALID_STATUSES.has(status)).join(","));
   }
 
   return params;
@@ -917,7 +918,7 @@ export function InvestMarketplace({
                       }`}
                     >
                       <Link
-                        href={`/invest/${inv.id}`}
+                        href={getInvoiceDetailHref(inv.id, searchParamsValue)}
                         className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
                       >
                         {inv.issuer}

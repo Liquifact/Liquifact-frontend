@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 import { INVOICE_DETAIL_SHORTCUT_KEY, createShortcutMatcher } from "../lib/shortcuts";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getMarketplaceHref } from "@/lib/marketplaceRoute";
 
 /**
  * InvoiceDetailShortcut
@@ -17,15 +18,16 @@ import { useRouter } from "next/navigation";
  */
 export default function InvoiceDetailShortcut() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const handler = createShortcutMatcher(INVOICE_DETAIL_SHORTCUT_KEY, () => {
-      router.push("/invest");
+      router.push(getMarketplaceHref(searchParams));
     });
 
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [router]);
+  }, [router, searchParams]);
 
   return null;
 }

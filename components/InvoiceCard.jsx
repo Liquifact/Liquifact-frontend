@@ -10,9 +10,11 @@
 
 import Link from "next/link";
 import { useCallback, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import StatusPill from "@/components/StatusPill";
 import WatchlistStar from "@/components/WatchlistStar";
 import { formatAmount, formatCurrency, INVALID_VALUE_FALLBACK } from "@/lib/format/currency";
+import { getInvoiceDetailHref } from "@/lib/marketplaceRoute";
 import { resolveStatusPill } from "@/lib/types/invoice";
 
 /** @typedef {import("@/lib/types/invoice").Invoice} Invoice */
@@ -143,7 +145,9 @@ function CopyIdButton({ id, onCopy }) {
  */
 export default function InvoiceCard({ invoice }) {
   const toast = useToast();
+  const searchParams = useSearchParams();
   const { id, issuer, amount, currency, dueDate, yield: yieldPct, status } = invoice ?? {};
+  const detailHref = getInvoiceDetailHref(id, searchParams);
   // Resolve the canonical pill label once so the link aria-label and the
   // pill aria-label stay in lock-step (both read from the same source).
   const { label: statusLabel } = resolveStatusPill(status);
@@ -179,7 +183,7 @@ export default function InvoiceCard({ invoice }) {
 
   return (
     <Link
-      href={`/invest/${id}`}
+      href={detailHref}
       className="group block rounded-lg border border-slate-800 bg-slate-900/60 transition-colors hover:border-cyan-700/60 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
       style={{ padding: "var(--market-card-padding)" }}
       aria-label={`Invoice ${id ?? ""} from ${issuer ?? "unknown issuer"}${statusSuffix}`}
