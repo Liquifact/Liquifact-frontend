@@ -87,20 +87,13 @@
  * @property {string} invest.detail.densityCompactAriaLabel
  * @property {string} invest.detail.densityComfortableAriaLabel
  * @property {string} invest.detail.densityCurrentAriaLabel
- * @property {Object} invest.detail.funding - Idempotent funding submission states (issue #1047)
- * @property {string} invest.detail.funding.pendingButton      - Button text while submission in-flight
- * @property {string} invest.detail.funding.successTitle       - Toast / announce: confirmed success
- * @property {string} invest.detail.funding.successMsg         - Template: "{amount} {currency} submitted…"
- * @property {string} invest.detail.funding.failureTitle       - Toast / announce: submission failed
- * @property {string} invest.detail.funding.failureMsg         - Template: "{amount} {currency} failed…"
- * @property {string} invest.detail.funding.retryButton        - Button label after failure
- * @property {string} invest.detail.funding.blockedByTabMsg    - Warning when another tab has the lock
- * @property {string} invest.detail.funding.walletRejectTitle  - Toast: wallet rejected the signing request
- * @property {string} invest.detail.funding.walletRejectMsg    - Body for wallet-reject toast
- * @property {string} invest.detail.funding.timeoutTitle       - Toast: network / wallet timed out
- * @property {string} invest.detail.funding.timeoutMsg         - Body for timeout toast
- * @property {string} invest.detail.funding.conflictTitle      - Toast: server 409 conflict
- * @property {string} invest.detail.funding.conflictMsg        - Body for conflict toast (retry message)
+ * @property {Object} invest.detail.networkMismatch - Network mismatch banner copy
+ * @property {string} invest.detail.networkMismatch.bannerTitle
+ * @property {string} invest.detail.networkMismatch.bannerBody
+ * @property {string} invest.detail.networkMismatch.bannerBodyUnknown
+ * @property {string} invest.detail.networkMismatch.bannerBodyDisconnected
+ * @property {string} invest.detail.networkMismatch.alertLabel
+ * @property {string} invest.detail.networkMismatch.announceMessage
  * @property {Object} invest.detail.inlineEdit - Inline edit mode copy for invoice-detail metadata rows
  * @property {string} invest.detail.inlineEdit.editButton
  * @property {string} invest.detail.inlineEdit.saveButton
@@ -438,32 +431,23 @@ export const copy = {
       densityCompactAriaLabel: "Switch to compact density",
       densityComfortableAriaLabel: "Switch to comfortable density",
       densityCurrentAriaLabel: "Current density: {density}",
-      /**
-       * Idempotent funding submission states (issue #1047).
-       *
-       * Template tokens:
-       *   {amount}   — formatted funding amount (number)
-       *   {currency} — ISO currency code
-       */
-      funding: {
-        pendingButton: "Funding\u2026",
-        successTitle: "Funding submitted",
-        successMsg:
-          "Funding request for {amount} {currency} submitted. Awaiting wallet approval.",
-        failureTitle: "Funding failed",
-        failureMsg: "Funding request for {amount} {currency} failed. Please try again.",
-        retryButton: "Retry",
-        blockedByTabMsg:
-          "This invoice is being funded in another tab. Close that tab or wait for it to finish before retrying.",
-        walletRejectTitle: "Wallet rejected",
-        walletRejectMsg:
-          "Your wallet declined the signing request. No funds have been moved. Try again when ready.",
-        timeoutTitle: "Request timed out",
-        timeoutMsg:
-          "The funding request timed out. Check your connection and try again.",
-        conflictTitle: "Already processed",
-        conflictMsg:
-          "This funding request was already processed. Refresh the page to see the latest invoice status.",
+      networkMismatch: {
+        // Banner shown when the wallet is connected to the wrong network.
+        // {walletNetwork} and {invoiceNetwork} are replaced at render time.
+        bannerTitle: "Wrong network",
+        bannerBody:
+          "Your wallet is on {walletNetwork} but this invoice requires {invoiceNetwork}. Switch your wallet network to continue.",
+        // Shown when the wallet is connected but the network cannot be read.
+        bannerBodyUnknown:
+          "Your wallet network could not be read. This invoice requires {invoiceNetwork}. Reconnect your wallet to continue.",
+        // Shown when no wallet is connected.
+        bannerBodyDisconnected:
+          "Connect your wallet to {invoiceNetwork} to fund this invoice.",
+        // aria-label for screen readers describing the alert region.
+        alertLabel: "Network mismatch warning",
+        // Announced to screen readers when the banner first appears.
+        announceMessage:
+          "Network mismatch: please switch your wallet to {invoiceNetwork}.",
       },
       inlineEdit: {
         editButton: "Edit {field}",
