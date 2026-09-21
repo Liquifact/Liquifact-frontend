@@ -15,7 +15,7 @@
   "dependencies": {
     "@stellar/freighter-api": "^6.0.1",
     "@tailwindcss/oxide": "^4.3.3",
-    "enhanced-resolve": "^5.24.3",
+    "enhanced-resolve": "^5.25.1",
     "eslint-scope": "^9.1.2",
     "next": "^16.2.11",
     "react": "19.2.8",
