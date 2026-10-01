@@ -148,23 +148,10 @@ export function resolveInvoice(rawId, lookup = getInvoiceById) {
 }
 
 // ── Pure server-side helpers (not exported to the client bundle) ──────────────
-
-/**
- * Normalize a dynamic route id.
- *
- * Invariant: the id used for lookup is always a non-empty trimmed string.
- * Returns `null` for values that cannot represent a valid id so callers can
- * deterministically route to the not-found boundary instead of throwing.
- *
- * @param {unknown} value
- * @returns {string|null}
- */
-function normalizeInvoiceId(value) {
-  if (value === null || value === undefined) return null;
-  if (typeof value !== "string" && typeof value !== "number") return null;
-  const trimmed = String(value).trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
+// NOTE: `normalizeInvoiceId` is imported from ../validation (line 60) and must
+// NOT be re-declared locally. ES modules forbid re-binding an import name, so
+// a duplicate `function normalizeInvoiceId` declaration here would be a
+// SyntaxError. The imported shape is { ok, id, reason } — see ../validation.js.
 
 /**
  * Format a yield value as a percentage string.
@@ -316,39 +303,53 @@ export default async function InvoiceDetailPage({ params, searchParams }) {
 
   const backHref = getMarketplaceHref(searchParams || {});
 
-  // Hardened data fetching with validation and error handling
+  // ── Hardened data fetching with validation + error handling ──────────────
+  // INVARIANTS (enforced here):
+  //   FETCH_INV_1: fetchInvoiceById (page-data.js) validates the id shape,
+  //     de-duplicates concurrent requests, and throws typed errors only:
+  //       - InvalidInvoiceIdError   → notFound()
+  //       - InvoiceNotFoundError    → notFound()
+  //       - InvoiceRequestAbortedError / InvoiceDetailError → surface via
+  //         the segment error boundary with a typed, non-sensitive code.
+  //   FETCH_INV_2: After a successful fetch the record is validated via
+  //     isWellFormedInvoice before any rendering. A malformed record is
+  //     NEVER rendered — it becomes an InvoiceDetailResolveError so the
+  //     error boundary can show a generic, deterministic message and the
+  //     observability sink gets the reason.
+  //   FETCH_INV_3: invoice is assigned at most once. No re-declarations,
+  //     no shadowing, no torn writes between the try block and render.
+
   let invoice;
   try {
     invoice = await fetchInvoiceById(id);
   } catch (error) {
-    // Handle specific error types deterministically
     if (error instanceof InvalidInvoiceIdError) {
-      // Invalid ID format - treat as not found for security
       notFound();
     }
     if (error instanceof InvoiceNotFoundError) {
-      // Invoice doesn't exist
       notFound();
     }
-    // Other errors (should not happen with mock data, but will with real API)
-    // Log and treat as not found to avoid exposing internal errors
-    console.error("Failed to fetch invoice:", error);
-    notFound();
+    reportError(
+      error instanceof Error ? error : new Error(String(error)),
+      {
+        scope: "invest.invoice_detail",
+        reason: VALIDATION_REASONS.LOOKUP_FAILED,
+      }
+    );
+    throw new InvoiceDetailResolveError(VALIDATION_REASONS.LOOKUP_FAILED);
   }
 
-  // This should never happen due to error handling above, but we keep it
-  // as a defensive guard
   if (!invoice) {
     notFound();
-  } else if (resolution.status === INVOICE_RESOLUTION.ERROR) {
-    // Failure recovery is deterministic: the segment error boundary
-    // (`./error.js`) renders a typed, non-sensitive message and its `reset()`
-    // prop re-runs this render. Because `resolveInvoice` is pure, a retry
-    // either succeeds identically or fails identically — no partial state.
-    throw new InvoiceDetailResolveError(resolution.reason);
   }
 
-  const invoice = resolution.invoice;
+  if (!isWellFormedInvoice(invoice)) {
+    reportError(new Error("Malformed invoice record"), {
+      scope: "invest.invoice_detail",
+      reason: VALIDATION_REASONS.MALFORMED_RECORD,
+    });
+    throw new InvoiceDetailResolveError(VALIDATION_REASONS.MALFORMED_RECORD);
+  }
 
   const invoiceJsonLd = buildInvoiceJsonLd(invoice);
   const detailItems = buildInvoiceDetailItems(invoice);
@@ -404,7 +405,7 @@ export default async function InvoiceDetailPage({ params, searchParams }) {
           formattedAmount={formatCurrency(invoice.amount, { currency: invoice.currency })}
           formattedYield={formatYield(invoice.yield)}
           dueDate={invoice.dueDate}
-          referenceId={invoice.id ?? normalizedId}
+          referenceId={invoice.id ?? id}
           statusPill={<StatusPill status={invoice.status ?? ""} />}
         />
 
