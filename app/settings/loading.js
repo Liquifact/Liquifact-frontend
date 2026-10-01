@@ -1,32 +1,39 @@
 // @ts-check
 /**
  * @file app/settings/loading.js
- * Next.js route-level loading UI for the /settings page with deterministic failure recovery.
+ * Next.js route-level loading UI for the /settings page with deterministic
+ * failure recovery.
  *
- * Rendered automatically by the Next.js App Router while the page segment
- * is streaming. Delegates the content area to the reusable ThemeSkeleton
- * component so both stay in sync with the real settings layout.
+ * Rendered automatically by the Next.js App Router while the page segment is
+ * streaming. It renders the reusable header + theme skeletons and, when loading
+ * does not settle, transitions deterministically through the failure states
+ * below so the user always gets a recoverable, accessible UI.
  *
- * Validation boundaries
- * --------------------
- * This module exposes a pure, deterministic descriptor (`getSettingsLoadingState`)
- * that normalises the route-level loading props into a single canonical shape
- * before rendering. The component is a pure function of that descriptor, so:
+ * State invariants
+ * ----------------
+ * The component is a pure function of a normalised descriptor plus one small
+ * state machine; the machine owns every transition:
  *
- *   - Valid input -> deterministic skeleton with aria-busy="true".
- *   - Invalid input (wrong types, out-of-range delays) -> clamped/defaulted,
- *     never throws, and surfaces a development-only warning.
- *   - Duplicate submissions (concurrent loading segments) -> idempotent output.
- *   - Boundary values (0, max, NaN, Infinity, strings) -> clamped to [0, MAX].
+ *   loading -> timed_out -> retrying -> loading            (a retry succeeded)
+ *   loading -> error     -> retrying -> loading             (a child render failed)
+ *   any failed state -> exhausted                            (retries spent)
  *
- * The descriptor is intentionally free of DOM and side effects so it can be
- * tested in isolation and reused by future loading segments.
+ * Guards preserved by every transition:
+ *   - Only LOADING is "busy"; every failed/terminal state is not.
+ *   - A retry can never start while one is already in flight, and never after
+ *     the retry budget is spent (`EXHAUSTED`).
+ *   - Timers are cleared on unmount and on every state change, so no callback
+ *     fires after teardown or against stale state.
+ *   - Invalid props (wrong types, NaN/Infinity/out-of-range delay, unknown
+ *     reduced-motion literal) are clamped/defaulted; the component never
+ *     throws on malformed input.
  *
- * @see components/ThemeSkeleton.jsx — reusable theme/settings skeleton
- * @see components/NavMenuSkeleton.jsx — reusable header skeleton
- * @see components/ErrorBanner.jsx — reusable accessible error banner
- * @see lib/observability/reportError.js — sanitized error reporter
+ * @see components/ThemeSkeleton.jsx - reusable theme/settings skeleton
+ * @see components/NavMenuSkeleton.jsx - reusable header skeleton
+ * @see components/ErrorBanner.jsx - reusable accessible error banner
+ * @see lib/observability/reportError.js - sanitized error reporter
  */
+import { Component, useCallback, useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import NavMenuSkeleton from "../../components/NavMenuSkeleton";
 import ThemeSkeleton from "../../components/ThemeSkeleton";
@@ -47,14 +54,27 @@ export const LOADING_STATES = Object.freeze({
   EXHAUSTED: "exhausted",
 });
 
-/** Default timeout threshold (10 seconds) before showing timeout recovery UI */
+/** Default timeout threshold (10 seconds) before showing timeout recovery UI. */
 export const DEFAULT_TIMEOUT_MS = 10000;
 
-/** Default maximum number of retry attempts before halting */
+/** Default maximum number of retry attempts before halting. */
 export const DEFAULT_MAX_RETRIES = 3;
 
+/** Maximum accepted skeleton delay in milliseconds. */
+export const MAX_SKELETON_DELAY_MS = 60_000;
+
+/** Default skeleton delay in milliseconds. */
+export const DEFAULT_SKELETON_DELAY_MS = 0;
+
+/** Default accessible label used when no valid label is supplied. */
+export const DEFAULT_SKELETON_LABEL = "Theme settings loading, please wait";
+
+/** Allowed literal values for the `reducedMotion` flag. */
+const ACCEPTED_REDUCED_MOTION_VALUES = ["system", "reduce", "no-preference"];
+
 /**
- * Class-based Error Boundary to catch render failures within the loading subtree.
+ * Class-based Error Boundary to catch render failures within the loading
+ * subtree and route them back to the parent's recovery state machine.
  */
 export class SettingsLoadingErrorBoundary extends Component {
   constructor(props) {
@@ -89,222 +109,11 @@ export class SettingsLoadingErrorBoundary extends Component {
   }
 }
 
-/**
- * SettingsLoading component with deterministic failure recovery.
- *
- * @param {object} [props]
- * @param {number|null} [props.timeoutMs=DEFAULT_TIMEOUT_MS] - Timeout duration before transitioning
- *   to the TIMED_OUT state. Set to 0 or null to disable timeout.
- * @param {number} [props.maxRetries=DEFAULT_MAX_RETRIES] - Maximum allowed retry attempts.
- * @param {Function} [props.onRetry] - Callback executed on user retry. Can be async.
- * @param {Function} [props.onError] - Callback executed when transitioning to an error/timeout state.
- * @param {Error|null} [props.initialError=null] - Optional pre-existing error.
- * @param {React.ReactNode} [props.children] - Custom loading placeholder (defaults to ThemeSkeleton).
- */
-export default function SettingsLoading({
-  timeoutMs = DEFAULT_TIMEOUT_MS,
-  maxRetries = DEFAULT_MAX_RETRIES,
-  onRetry,
-  onError,
-  initialError = null,
-  children,
-} = {}) {
-  // Boundary normalization
-  const safeTimeoutMs =
-    typeof timeoutMs === "number" && Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : null;
-
-  const safeMaxRetries =
-    typeof maxRetries === "number" && Number.isFinite(maxRetries) && maxRetries >= 0
-      ? Math.floor(maxRetries)
-      : DEFAULT_MAX_RETRIES;
-
-  const [status, setStatus] = useState(
-    initialError
-      ? safeMaxRetries === 0
-        ? LOADING_STATES.EXHAUSTED
-        : LOADING_STATES.ERROR
-      : LOADING_STATES.LOADING
-  );
-  const [currentError, setCurrentError] = useState(initialError);
-  const [retryCount, setRetryCount] = useState(0);
-  const [resetKey, setResetKey] = useState(0);
-
-  const isMountedRef = useRef(true);
-  const timerRef = useRef(null);
-  const isRetryingRef = useRef(false);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, []);
-
-  const emitObservability = useCallback((err, phase, currentAttempt) => {
-    try {
-      reportError(err, {
-        boundary: "SettingsLoading",
-        phase,
-        retryCount: currentAttempt,
-      });
-    } catch {
-      // Safe fallback if reporter sink fails
-    }
-  }, []);
-
-  // Handle timeout transitions
-  useEffect(() => {
-    if (status !== LOADING_STATES.LOADING) {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-      return;
-    }
-
-    if (safeTimeoutMs !== null) {
-      timerRef.current = setTimeout(() => {
-        if (!isMountedRef.current) return;
-        const timeoutErr = new Error(`Settings loading timed out after ${safeTimeoutMs}ms`);
-        timeoutErr.name = "SettingsLoadingTimeoutError";
-        timeoutErr.code = "LOADING_TIMEOUT";
-
-        const nextStatus =
-          retryCount >= safeMaxRetries ? LOADING_STATES.EXHAUSTED : LOADING_STATES.TIMED_OUT;
-        emitObservability(timeoutErr, "timeout", retryCount);
-        setStatus(nextStatus);
-        setCurrentError(timeoutErr);
-
-        if (typeof onError === "function") {
-          try {
-            onError(timeoutErr, { phase: "timeout", retryCount });
-          } catch {
-            // Ignore callback exceptions
-          }
-        }
-      }, safeTimeoutMs);
-    }
-
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [status, safeTimeoutMs, retryCount, safeMaxRetries, resetKey, emitObservability, onError]);
-
-  // Handle child render failures caught by error boundary
-  const handleChildError = useCallback(
-    (caughtError, errorInfo) => {
-      if (!isMountedRef.current) return;
-      const nextStatus =
-        retryCount >= safeMaxRetries ? LOADING_STATES.EXHAUSTED : LOADING_STATES.ERROR;
-      emitObservability(caughtError, "render_error", retryCount);
-      setStatus(nextStatus);
-      setCurrentError(caughtError);
-
-      if (typeof onError === "function") {
-        try {
-          onError(caughtError, { phase: "render_error", retryCount, ...errorInfo });
-        } catch {
-          // Ignore callback exceptions
-        }
-      }
-    },
-    [emitObservability, retryCount, safeMaxRetries, onError]
-  );
-
-  // Idempotent retry handler
-  const handleRetry = useCallback(() => {
-    // Prevent duplicate triggers if already retrying or actively loading
-    if (isRetryingRef.current || status === LOADING_STATES.LOADING) {
-      return;
-    }
-
-    if (retryCount >= safeMaxRetries) {
-      setStatus(LOADING_STATES.EXHAUSTED);
-      return;
-    }
-
-    const nextAttempt = retryCount + 1;
-    isRetryingRef.current = true;
-    setStatus(LOADING_STATES.RETRYING);
-
-    const completeSuccess = () => {
-      if (!isMountedRef.current) return;
-      isRetryingRef.current = false;
-      setRetryCount(nextAttempt);
-      setResetKey((prev) => prev + 1);
-      setCurrentError(null);
-      setStatus(LOADING_STATES.LOADING);
-    };
-
-    const completeFailure = (err) => {
-      if (!isMountedRef.current) return;
-      isRetryingRef.current = false;
-      setRetryCount(nextAttempt);
-      emitObservability(err, "retry_failure", nextAttempt);
-      setCurrentError(err);
-      setStatus(nextAttempt >= safeMaxRetries ? LOADING_STATES.EXHAUSTED : LOADING_STATES.ERROR);
-    };
-
-    if (typeof onRetry === "function") {
-      try {
-        const result = onRetry({ attempt: nextAttempt, maxRetries: safeMaxRetries });
-        if (result && typeof result.then === "function") {
-          result.then(completeSuccess, completeFailure);
-          return;
-        }
-      } catch (err) {
-        completeFailure(err);
-        return;
-      }
-    }
-
-    completeSuccess();
-  }, [status, retryCount, safeMaxRetries, onRetry, emitObservability]);
-
-  const isBusy = status === LOADING_STATES.LOADING || status === LOADING_STATES.RETRYING;
-  const isFailed =
-    status === LOADING_STATES.TIMED_OUT ||
-    status === LOADING_STATES.ERROR ||
-    status === LOADING_STATES.EXHAUSTED;
-
-  const errorTitle =
-    status === LOADING_STATES.TIMED_OUT
-      ? copy?.settings?.timeoutTitle || "Loading timed out"
-      : status === LOADING_STATES.EXHAUSTED
-        ? copy?.settings?.exhaustedTitle || "Loading failed"
-        : copy?.settings?.errorTitle || "Unable to load settings";
-
-  const errorDescription =
-    status === LOADING_STATES.TIMED_OUT
-      ? copy?.settings?.timeoutDescription ||
-        "Settings are taking longer than expected to load. You can try again or check your connection."
-      : status === LOADING_STATES.EXHAUSTED
-        ? copy?.settings?.exhaustedDescription ||
-          "Settings could not be loaded after multiple attempts. Please check your connection or reload the page."
-        : copy?.settings?.errorDescription || "Unable to load settings right now.";
-
-  const showAction = isFailed && status !== LOADING_STATES.EXHAUSTED && retryCount < safeMaxRetries;
-  const actionLabel = copy?.settings?.retryAction || "Try again";
-  const details = retryCount > 0 ? `Attempt ${retryCount} of ${safeMaxRetries}` : undefined;
-
-/** Maximum accepted skeleton delay in milliseconds. */
-export const MAX_SKELETON_DELAY_MS = 60_000;
-
-/** Default skeleton delay in milliseconds. */
-export const DEFAULT_SKELETON_DELAY_MS = 0;
-
-/** Default accessible label used when no valid label is supplied. */
-export const DEFAULT_SKELETON_LABEL = "Theme settings loading, please wait";
-
-/** Allowed literal values for the `reducedMotion` flag. */
-const ACCEPTED_REDUCED_MOTION_VALUES = ["system", "reduce", "no-preference"];
+SettingsLoadingErrorBoundary.propTypes = {
+  children: PropTypes.node,
+  onError: PropTypes.func,
+  fallback: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
+};
 
 /**
  * @param {unknown} value
@@ -340,17 +149,15 @@ export function clampSkeletonDelay(value) {
 export function normaliseReducedMotion(value) {
   if (typeof value !== "string") return "system";
   const normalised = value.trim().toLowerCase();
-  return ACCEPTED_REDUCED_MOTION_VALUES.includes(normalised)
-    ? normalised
-    : "system";
+  return ACCEPTED_REDUCED_MOTION_VALUES.includes(normalised) ? normalised : "system";
 }
 
 /**
  * Build the canonical descriptor for the /settings loading segment.
  *
- * This function is the single validation boundary for the loading UI:
- * every field is either accepted as-is (when valid) or coerced to a safe
- * default. It never throws and never returns `undefined` fields.
+ * This function is the single validation boundary for the loading UI: every
+ * field is either accepted as-is (when valid) or coerced to a safe default. It
+ * never throws and never returns `undefined` fields.
  *
  * @param {object} [props]
  * @param {unknown} [props.delayMs]
@@ -375,37 +182,285 @@ export function getSettingsLoadingState(props = {}) {
  * Route-level loading UI for /settings.
  *
  * @param {object} [props]
+ * @param {number|null} [props.timeoutMs=DEFAULT_TIMEOUT_MS] - Timeout before
+ *   transitioning to TIMED_OUT. Non-positive/non-finite disables the timeout.
+ * @param {number} [props.maxRetries=DEFAULT_MAX_RETRIES]
+ * @param {Function} [props.onRetry]
+ * @param {Function} [props.onError]
+ * @param {Error|null} [props.initialError=null]
+ * @param {boolean} [props.isBusy] - Override the busy state (defaults to the
+ *   state machine).
+ * @param {string} [props.className]
  * @param {unknown} [props.delayMs]
  * @param {unknown} [props.reducedMotion]
- * @param {unknown} [props.label]
- * @returns {JSX.Element}
+ * @param {string} [props.label]
+ * @param {React.ReactNode} [props.children]
  */
-export default function SettingsLoading(props) {
-  const { delayMs, reducedMotion, label } = getSettingsLoadingState(props);
+export function SettingsLoading({
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+  maxRetries = DEFAULT_MAX_RETRIES,
+  onRetry,
+  onError,
+  initialError = null,
+  isBusy: isBusyOverride,
+  className = "",
+  delayMs,
+  reducedMotion,
+  label,
+  children,
+  ...rest
+}) {
+  const { "data-testid": dataTestId, ...forwardedProps } = rest;
+  const {
+    delayMs: safeDelayMs,
+    reducedMotion: safeReducedMotion,
+    label: safeLabel,
+  } = getSettingsLoadingState({ delayMs, reducedMotion, label });
+
+  // Boundary normalization for the state machine inputs.
+  const safeTimeoutMs =
+    typeof timeoutMs === "number" && Number.isFinite(timeoutMs) && timeoutMs > 0
+      ? timeoutMs
+      : null;
+  const safeMaxRetries =
+    typeof maxRetries === "number" && Number.isFinite(maxRetries) && maxRetries >= 0
+      ? Math.floor(maxRetries)
+      : DEFAULT_MAX_RETRIES;
+
+  const [status, setStatus] = useState(
+    initialError
+      ? safeMaxRetries === 0
+        ? LOADING_STATES.EXHAUSTED
+        : LOADING_STATES.ERROR
+      : LOADING_STATES.LOADING,
+  );
+  const [currentError, setCurrentError] = useState(initialError);
+  const [retryCount, setRetryCount] = useState(0);
+  const [resetKey, setResetKey] = useState(0);
+
+  const isMountedRef = useRef(true);
+  const timerRef = useRef(null);
+  const isRetryingRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
+
+  const emitObservability = useCallback((err, phase, attempt) => {
+    try {
+      reportError(err, { boundary: "SettingsLoading", phase, retryCount: attempt });
+    } catch {
+      // A failing observability sink must never break the loading UI.
+    }
+  }, []);
+
+  // Timeout transition: only while actively loading.
+  useEffect(() => {
+    if (status !== LOADING_STATES.LOADING) {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      return undefined;
+    }
+
+    if (safeTimeoutMs !== null) {
+      timerRef.current = setTimeout(() => {
+        if (!isMountedRef.current) return;
+        const timeoutErr = new Error(
+          `Settings loading timed out after ${safeTimeoutMs}ms`,
+        );
+        timeoutErr.name = "SettingsLoadingTimeoutError";
+        timeoutErr.code = "LOADING_TIMEOUT";
+
+        const nextStatus =
+          retryCount >= safeMaxRetries ? LOADING_STATES.EXHAUSTED : LOADING_STATES.TIMED_OUT;
+        emitObservability(timeoutErr, "timeout", retryCount);
+        setStatus(nextStatus);
+        setCurrentError(timeoutErr);
+
+        if (typeof onError === "function") {
+          try {
+            onError(timeoutErr, { phase: "timeout", retryCount });
+          } catch {
+            // Ignore callback exceptions.
+          }
+        }
+      }, safeTimeoutMs);
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [status, safeTimeoutMs, retryCount, safeMaxRetries, resetKey, emitObservability, onError]);
+
+  const handleChildError = useCallback(
+    (caughtError, errorInfo) => {
+      if (!isMountedRef.current) return;
+      const nextStatus =
+        retryCount >= safeMaxRetries ? LOADING_STATES.EXHAUSTED : LOADING_STATES.ERROR;
+      emitObservability(caughtError, "render_error", retryCount);
+      setStatus(nextStatus);
+      setCurrentError(caughtError);
+
+      if (typeof onError === "function") {
+        try {
+          onError(caughtError, { phase: "render_error", retryCount, ...errorInfo });
+        } catch {
+          // Ignore callback exceptions.
+        }
+      }
+    },
+    [emitObservability, retryCount, safeMaxRetries, onError],
+  );
+
+  const handleRetry = useCallback(() => {
+    // Idempotent: ignore duplicate triggers while retrying or still loading.
+    if (isRetryingRef.current || status === LOADING_STATES.LOADING) return;
+    if (retryCount >= safeMaxRetries) {
+      setStatus(LOADING_STATES.EXHAUSTED);
+      return;
+    }
+
+    const nextAttempt = retryCount + 1;
+    isRetryingRef.current = true;
+    setStatus(LOADING_STATES.RETRYING);
+
+    const completeSuccess = () => {
+      if (!isMountedRef.current) return;
+      isRetryingRef.current = false;
+      setRetryCount(nextAttempt);
+      setResetKey((prev) => prev + 1);
+      setCurrentError(null);
+      setStatus(LOADING_STATES.LOADING);
+    };
+
+    const completeFailure = (err) => {
+      if (!isMountedRef.current) return;
+      isRetryingRef.current = false;
+      setRetryCount(nextAttempt);
+      emitObservability(err, "retry_failure", nextAttempt);
+      setCurrentError(err);
+      setStatus(
+        nextAttempt >= safeMaxRetries ? LOADING_STATES.EXHAUSTED : LOADING_STATES.ERROR,
+      );
+    };
+
+    if (typeof onRetry === "function") {
+      try {
+        const result = onRetry({ attempt: nextAttempt, maxRetries: safeMaxRetries });
+        if (result && typeof result.then === "function") {
+          result.then(completeSuccess, completeFailure);
+          return;
+        }
+      } catch (err) {
+        completeFailure(err);
+        return;
+      }
+    }
+
+    completeSuccess();
+  }, [status, retryCount, safeMaxRetries, onRetry, emitObservability]);
+
+  const isBusy =
+    typeof isBusyOverride === "boolean"
+      ? isBusyOverride
+      : status === LOADING_STATES.LOADING || status === LOADING_STATES.RETRYING;
+  const isFailed =
+    status === LOADING_STATES.TIMED_OUT ||
+    status === LOADING_STATES.ERROR ||
+    status === LOADING_STATES.EXHAUSTED;
+
+  const errorTitle =
+    status === LOADING_STATES.TIMED_OUT
+      ? copy?.settings?.timeoutTitle || "Loading timed out"
+      : status === LOADING_STATES.EXHAUSTED
+        ? copy?.settings?.exhaustedTitle || "Loading failed"
+        : copy?.settings?.errorTitle || "Unable to load settings";
+
+  const errorDescription =
+    status === LOADING_STATES.TIMED_OUT
+      ? copy?.settings?.timeoutDescription ||
+        "Settings are taking longer than expected to load. You can try again or check your connection."
+      : status === LOADING_STATES.EXHAUSTED
+        ? copy?.settings?.exhaustedDescription ||
+          "Settings could not be loaded after multiple attempts. Please check your connection or reload the page."
+        : copy?.settings?.errorDescription || "Unable to load settings right now.";
+
+  const showAction =
+    isFailed && status !== LOADING_STATES.EXHAUSTED && retryCount < safeMaxRetries;
+  const actionLabel = copy?.settings?.retryAction || "Try again";
+  const details = retryCount > 0 ? `Attempt ${retryCount} of ${safeMaxRetries}` : undefined;
+
+  const rootClassName = [
+    "min-h-screen",
+    "bg-slate-950",
+    "text-slate-50",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div
-      className="min-h-screen bg-slate-950 text-slate-50"
+      className={rootClassName}
       aria-busy={isBusy ? "true" : "false"}
-      data-testid="settings-loading"
-      data-delay-ms={delayMs}
-      data-reduced-motion={reducedMotion}
+      data-status={status}
+      data-delay-ms={safeDelayMs}
+      data-reduced-motion={safeReducedMotion}
+      data-testid={dataTestId || "settings-loading"}
+      {...forwardedProps}
     >
-      {/* ---- Reusable nav skeleton ---- */}
       <NavMenuSkeleton />
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
-        {/* ---- Reusable theme/settings skeleton ---- */}
-        <ThemeSkeleton isBusy={true} label={label} />
+        {isFailed ? (
+          <div data-testid="settings-loading-fallback">
+            <ErrorBanner
+              variant="server"
+              title={errorTitle}
+              description={errorDescription}
+              details={details}
+              actionLabel={showAction ? actionLabel : undefined}
+              onAction={handleRetry}
+            />
+          </div>
+        ) : (
+          <SettingsLoadingErrorBoundary onError={handleChildError}>
+            <ThemeSkeleton isBusy={isBusy} label={safeLabel} />
+          </SettingsLoadingErrorBoundary>
+        )}
+
+        {children}
       </main>
     </div>
   );
 }
 
 SettingsLoading.propTypes = {
+  timeoutMs: PropTypes.number,
+  maxRetries: PropTypes.number,
+  onRetry: PropTypes.func,
+  onError: PropTypes.func,
+  initialError: PropTypes.instanceOf(Error),
+  isBusy: PropTypes.bool,
+  className: PropTypes.string,
   delayMs: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   reducedMotion: PropTypes.string,
   label: PropTypes.string,
+  children: PropTypes.node,
 };
 
 SettingsLoading.defaultProps = {};
+
+export default SettingsLoading;
