@@ -69,11 +69,7 @@ jest.mock("@/components/FundAmountInput", () => ({
     disabled: boolean;
   }) {
     return (
-      <button
-        data-testid="fund-amount-submit"
-        disabled={disabled}
-        onClick={() => onSubmit(500)}
-      >
+      <button data-testid="fund-amount-submit" disabled={disabled} onClick={() => onSubmit(500)}>
         Submit amount
       </button>
     );
@@ -87,6 +83,17 @@ let mockFundInvoice: jest.Mock;
 
 jest.mock("@/app/invest/MarketplaceContext", () => ({
   useMarketplace: jest.fn(),
+}));
+
+// Network guard — pinned to "ok" so the funding form stays enabled and the
+// wallet-state branching in handleFundAmount is what is actually exercised.
+// (The guard's own blocking behaviour is covered by FundActions.networkMismatch.)
+jest.mock("@/lib/hooks/useWalletNetworkGuard", () => ({
+  useWalletNetworkGuard: () => ({
+    status: "ok",
+    walletNetwork: "testnet",
+    invoiceNetwork: "testnet",
+  }),
 }));
 
 /**
@@ -129,6 +136,9 @@ const fundingCopy = copy.invest.detail.funding;
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
 function clearSessionIdem() {
+  Object.keys(localStorage).forEach((k) => {
+    if (k.startsWith("liquifact-idem-")) localStorage.removeItem(k);
+  });
   Object.keys(sessionStorage).forEach((k) => {
     if (k.startsWith("liquifact-idem-")) sessionStorage.removeItem(k);
   });
@@ -139,8 +149,9 @@ beforeEach(() => {
   clearSessionIdem();
 
   MockBroadcastChannel._registry.clear();
-  (global as typeof globalThis & { BroadcastChannel: typeof MockBroadcastChannel }).BroadcastChannel =
-    MockBroadcastChannel as unknown as typeof BroadcastChannel;
+  (
+    global as typeof globalThis & { BroadcastChannel: typeof MockBroadcastChannel }
+  ).BroadcastChannel = MockBroadcastChannel as unknown as typeof BroadcastChannel;
 
   mockPendingIds = new Set();
   mockFundInvoice = jest.fn(async (_id, _amount, action) => action(_id, _amount));
@@ -248,9 +259,10 @@ describe("edge case 1: double click", () => {
       fireEvent.click(screen.getByTestId("fund-amount-submit"));
     });
 
-    expect(
-      screen.getByRole("button", { name: /fund this invoice/i })
-    ).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("button", { name: /fund this invoice/i })).toHaveAttribute(
+      "aria-busy",
+      "true"
+    );
 
     await act(async () => {
       resolve({ ok: true });
@@ -293,9 +305,7 @@ describe("edge case 2: wallet rejects", () => {
     });
 
     expect(screen.getByTestId("fund-retry-button")).toBeInTheDocument();
-    expect(screen.getByTestId("fund-retry-button")).toHaveTextContent(
-      fundingCopy.retryButton
-    );
+    expect(screen.getByTestId("fund-retry-button")).toHaveTextContent(fundingCopy.retryButton);
   });
 
   it("re-enables the form after clicking retry", async () => {
@@ -333,10 +343,7 @@ describe("edge case 3: network timeout", () => {
       fireEvent.click(screen.getByTestId("fund-amount-submit"));
     });
 
-    expect(mockToast.error).toHaveBeenCalledWith(
-      fundingCopy.timeoutMsg,
-      fundingCopy.timeoutTitle
-    );
+    expect(mockToast.error).toHaveBeenCalledWith(fundingCopy.timeoutMsg, fundingCopy.timeoutTitle);
   });
 
   it("shows the retry button after a timeout", async () => {
@@ -620,9 +627,7 @@ describe("accessibility", () => {
 
   it("passes axe checks with retry button visible after failure", async () => {
     const performFund = jest.fn().mockRejectedValue(new Error("fail"));
-    const { container } = render(
-      <FundActions {...DEFAULT_PROPS} performFund={performFund} />
-    );
+    const { container } = render(<FundActions {...DEFAULT_PROPS} performFund={performFund} />);
 
     await act(async () => {
       fireEvent.click(screen.getByTestId("fund-amount-submit"));

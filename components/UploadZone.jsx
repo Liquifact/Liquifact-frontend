@@ -99,6 +99,11 @@ function Spinner({ className = "" }) {
 function UploadZone({ onUploadSuccess, progress }) {
   const inputRef = useRef(null);
   const dropzoneRef = useRef(null);
+  // Refs close same-turn races before React commits state; run IDs reject stale async results.
+  const validationRunRef = useRef(0);
+  const validationPromiseRef = useRef(null);
+  const submissionRunRef = useRef(0);
+  const activeSubmissionRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
   const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
@@ -111,6 +116,10 @@ function UploadZone({ onUploadSuccess, progress }) {
   }
 
   function resetUpload() {
+    validationRunRef.current += 1;
+    validationPromiseRef.current = null;
+    submissionRunRef.current += 1;
+    activeSubmissionRef.current = null;
     setFile(null);
     setError(null);
     setStatus("idle");
@@ -138,22 +147,33 @@ function UploadZone({ onUploadSuccess, progress }) {
   }
 
   async function handleFile(f) {
+    if (activeSubmissionRef.current !== null) {
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+
+    const validationRun = ++validationRunRef.current;
     setStatus("idle");
     const err = validate(f);
     if (err) {
+      validationPromiseRef.current = null;
       setError(err);
       setFile(null);
       return;
     }
     setFile(f);
     setError(null);
+    const validationPromise = Promise.resolve().then(() => validatePdfFile(f));
+    validationPromiseRef.current = { run: validationRun, promise: validationPromise };
     try {
-      const validation = await validatePdfFile(f);
+      const validation = await validationPromise;
+      if (validationRun !== validationRunRef.current) return;
       if (!validation.valid) {
         setError(validation.reason || copy.uploadZone.errorInvalidPdf);
         setFile(null);
       }
     } catch (e) {
+      if (validationRun !== validationRunRef.current) return;
       setError(copy.uploadZone.errorReadFailed);
       setFile(null);
     }
@@ -173,14 +193,42 @@ function UploadZone({ onUploadSuccess, progress }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!file || status !== "idle") return;
+    if (
+      !file ||
+      status !== "idle" ||
+      activeSubmissionRef.current !== null
+    ) {
+      return;
+    }
+
+    const submittedFile = file;
+    const validationRun = validationRunRef.current;
+    const validation = validationPromiseRef.current?.run === validationRun
+      ? validationPromiseRef.current.promise
+      : null;
+    const submissionRun = ++submissionRunRef.current;
+    activeSubmissionRef.current = submissionRun;
 
     setStatus("uploading");
     setError(null);
 
     try {
+      if (validation) {
+        let validationResult;
+        try {
+          validationResult = await validation;
+        } catch (err) {
+          validationResult = { valid: false };
+        }
+        if (submissionRun !== submissionRunRef.current) return;
+        if (!validationResult?.valid) {
+          setStatus("idle");
+          return;
+        }
+      }
+
       const body = new FormData();
-      body.append("invoice", file);
+      body.append("invoice", submittedFile);
 
       const baseUrl = typeof API_URL !== "undefined" && API_URL ? API_URL : "";
       const res = await fetch(`${baseUrl}/invoices`, { method: "POST", body });
@@ -192,17 +240,17 @@ function UploadZone({ onUploadSuccess, progress }) {
         );
       }
 
-      setStatus("tokenizing");
+      if (submissionRun === submissionRunRef.current) setStatus("tokenizing");
       const { tokenizationDelay = 0 } = await res.json().catch(() => ({}));
       if (tokenizationDelay > 0) {
         await new Promise((r) => setTimeout(r, tokenizationDelay));
       }
-      setStatus("success");
+      if (submissionRun === submissionRunRef.current) setStatus("success");
       announce(copy.uploadZone.statusSuccess);
       if (typeof onUploadSuccess === "function") {
         onUploadSuccess({
-          id: `upload-${Date.now()}-${sanitizeFilename(file.name)}`,
-          issuer: sanitizeFilename(file.name),
+          id: `upload-${Date.now()}-${sanitizeFilename(submittedFile.name)}`,
+          issuer: sanitizeFilename(submittedFile.name),
           amount: "Pending",
           currency: "USD",
           dueDate: "Pending",
@@ -211,17 +259,23 @@ function UploadZone({ onUploadSuccess, progress }) {
         });
       }
     } catch (err) {
-      const errorMsg = err.message || copy.uploadZone.errorUploadFailed;
-      setError(errorMsg);
-      announce(errorMsg);
-      setStatus("idle");
+      if (submissionRun === submissionRunRef.current) {
+        const errorMsg = err.message || copy.uploadZone.errorUploadFailed;
+        setError(errorMsg);
+        announce(errorMsg);
+        setStatus("idle");
+      }
+    } finally {
+      if (activeSubmissionRef.current === submissionRun) {
+        activeSubmissionRef.current = null;
+      }
     }
   }
 
   function handleKeyDown(e) {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      inputRef.current?.click();
+      if (activeSubmissionRef.current === null) inputRef.current?.click();
     }
   }
 
@@ -251,20 +305,24 @@ function UploadZone({ onUploadSuccess, progress }) {
         accept={FILE_CONSTRAINTS.accept}
         className="sr-only"
         aria-label={copy.uploadZone.fileInputLabel}
+        disabled={activeSubmissionRef.current !== null}
         onChange={handleChange}
       />
       <div
         ref={dropzoneRef}
         role="button"
-        tabIndex={0}
+        tabIndex={activeSubmissionRef.current === null ? 0 : -1}
         aria-label={copy.uploadZone.dropZoneLabel}
+        aria-disabled={activeSubmissionRef.current !== null}
         onDragOver={(e) => {
           e.preventDefault();
           setDragOver(true);
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => {
+          if (activeSubmissionRef.current === null) inputRef.current?.click();
+        }}
         onKeyDown={handleKeyDown}
         className={`upload-dropzone focus-ring cursor-pointer rounded-xl border-2 border-dashed transition-colors duration-200 motion-reduce:transition-none p-10 text-center ${dropZoneBorder}`}
       >

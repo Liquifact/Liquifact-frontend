@@ -83,9 +83,7 @@ describe("NetworkMismatchBanner", () => {
   describe("edge case 2: unknown network", () => {
     it("renders bannerBodyUnknown message when status=unknown", () => {
       renderBanner({ status: "unknown", walletNetwork: null });
-      expect(screen.getByTestId("network-mismatch-body")).toHaveTextContent(
-        /could not be read/i
-      );
+      expect(screen.getByTestId("network-mismatch-body")).toHaveTextContent(/could not be read/i);
       expect(screen.getByTestId("network-mismatch-body")).toHaveTextContent(/Testnet/i);
     });
   });
@@ -102,11 +100,7 @@ describe("NetworkMismatchBanner", () => {
 
       // Network changes — user switches wallet to public while page is open.
       rerender(
-        <NetworkMismatchBanner
-          status="mismatch"
-          walletNetwork="public"
-          invoiceNetwork="testnet"
-        />
+        <NetworkMismatchBanner status="mismatch" walletNetwork="public" invoiceNetwork="testnet" />
       );
       expect(screen.getByTestId("network-mismatch-banner")).toBeInTheDocument();
     });
@@ -169,11 +163,7 @@ describe("NetworkMismatchBanner", () => {
 
       // After account switch, new account is on a different network.
       rerender(
-        <NetworkMismatchBanner
-          status="unknown"
-          walletNetwork={null}
-          invoiceNetwork="testnet"
-        />
+        <NetworkMismatchBanner status="unknown" walletNetwork={null} invoiceNetwork="testnet" />
       );
       expect(screen.getByTestId("network-mismatch-body")).toHaveTextContent(/could not be read/i);
     });
@@ -229,9 +219,7 @@ describe("NetworkMismatchBanner", () => {
   describe("live region announcement", () => {
     it("calls announce when status becomes mismatch", () => {
       renderBanner({ status: "mismatch", walletNetwork: "public" });
-      expect(announce).toHaveBeenCalledWith(
-        expect.stringContaining("Testnet")
-      );
+      expect(announce).toHaveBeenCalledWith(expect.stringContaining("Testnet"));
     });
 
     it("calls announce when status is disconnected", () => {

@@ -73,6 +73,17 @@ jest.mock("@/app/invest/MarketplaceContext", () => ({
   useMarketplace: jest.fn(),
 }));
 
+// Network guard — pinned to "ok" so the funding form stays enabled and the
+// optimistic-update behaviour is what is actually exercised.
+// (The guard's own blocking behaviour is covered by FundActions.networkMismatch.)
+jest.mock("@/lib/hooks/useWalletNetworkGuard", () => ({
+  useWalletNetworkGuard: () => ({
+    status: "ok",
+    walletNetwork: "testnet",
+    invoiceNetwork: "testnet",
+  }),
+}));
+
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import { useMarketplace } from "@/app/invest/MarketplaceContext";
 import FundActions from "./FundActions";

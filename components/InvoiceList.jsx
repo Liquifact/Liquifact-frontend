@@ -9,6 +9,10 @@ import InvoiceListSkeleton from "./InvoiceListSkeleton";
 import { useToast } from "./ToastProvider";
 import { copy } from "../app/copy/en";
 import { downloadInvoices } from "../lib/exportInvoices";
+// Mock invoice data is sourced exclusively from app/invest/lib.js — the single
+// source of truth for fixtures (MOCK_INVOICES, loadMockInvoices).  Do NOT
+// redeclare them inline here.
+import { loadMockInvoices } from "../app/invest/lib";
 
 const INVOICE_STATUSES = {
   PENDING_TOKENIZATION: "Pending tokenization",
@@ -24,31 +28,6 @@ const STATUS_STYLES = {
   [INVOICE_STATUSES.FUNDED]: "bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-400/20",
   [INVOICE_STATUSES.SETTLED]: "bg-slate-800/80 text-slate-200 ring-1 ring-slate-500/20",
 };
-
-const MOCK_INVOICES = [
-  {
-    id: "inv-1001",
-    issuer: "Test Supplier",
-    amount: "12,500",
-    currency: "USD",
-    dueDate: "2026-06-15",
-    yield: "8.2%",
-    status: INVOICE_STATUSES.TOKENIZED,
-  },
-  {
-    id: "inv-1002",
-    issuer: "Another LLC",
-    amount: "7,800",
-    currency: "EUR",
-    dueDate: "2026-07-01",
-    yield: "7.5%",
-    status: INVOICE_STATUSES.SETTLED,
-  },
-];
-
-function loadMockInvoices() {
-  return Promise.resolve(MOCK_INVOICES);
-}
 
 /**
  * Writes `text` to the clipboard. Falls back to the legacy execCommand API

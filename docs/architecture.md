@@ -96,6 +96,20 @@ single place new backend fields should be mapped.
 Other live clients: `lib/api/health.js` (`/health`, used on the home page) and
 `lib/api/fetchWithRetry.js` (shared retry wrapper).
 
+**Funding concurrency primitives.** Mutating actions that must not run twice are
+guarded at three layers:
+
+- `lib/concurrency/tabLock.js` — `withExclusiveTabLock` takes a Web Locks
+exclusive lock (`ifAvailable: true`) named per invoice so only one browser tab
+can be inside a funding submission at a time; browsers without Web Locks fall
+back to the advisory `BroadcastChannel` protocol in `useFundingSubmit`.
+- `lib/idempotency/index.js` — a deterministic, collision-free idempotency key
+per `(wallet, invoice, amount)` triple, cached in memory as well as
+`sessionStorage` so retries always replay the same key even when storage is
+unavailable or throws.
+- `lib/api/fetchWithRetry.js` — non-idempotent requests are only retried with a
+stable `Idempotency-Key` header, and never when the body cannot be replayed.
+
 ---
 
 ## Where state lives

@@ -938,7 +938,7 @@ describe("UploadZone", () => {
       const submitBtn = screen.getByRole("button", { name: /upload & tokenize invoice/i });
       fireEvent.click(submitBtn);
 
-      expect(global.fetch).toHaveBeenCalled();
+      await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     });
 
     it("dropzone has visible focus indicator via focus styles", () => {

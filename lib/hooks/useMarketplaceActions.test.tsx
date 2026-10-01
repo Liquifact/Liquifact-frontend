@@ -337,6 +337,10 @@ describe("useMarketplaceActions", () => {
     });
 
     it("rollback is not called when no optimisticUpdate is provided", async () => {
+      // When no optimisticUpdate is supplied the snapshot is undefined/null.
+      // The invariant guard skips the rollback call when snapshot is null/undefined —
+      // nothing was optimistically applied, so nothing needs to be reverted.
+      // This aligns with the test title (rollback NOT called).
       const { result } = renderHook(() => useMarketplaceActions());
       const action = jest.fn().mockRejectedValue(new Error("fail"));
       const rollback = jest.fn();
@@ -347,7 +351,7 @@ describe("useMarketplaceActions", () => {
         } catch {}
       });
 
-      expect(rollback).toHaveBeenCalledWith("inv-001", undefined);
+      expect(rollback).not.toHaveBeenCalled();
     });
 
     it("works without any options (backward compatible)", async () => {

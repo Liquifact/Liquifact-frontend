@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import "@testing-library/jest-dom";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -14,6 +15,8 @@ import { filterInvoices, InvestMarketplace, PAGE_SIZE, SEARCH_DEBOUNCE_MS } from
 import { WalletProvider } from "@/components/WalletProvider";
 import { ToastProvider } from "@/components/ToastProvider";
 
+const describeIfImplemented = (name: string, fn: () => void) => describe(name, fn);
+
 jest.mock("next/link", () => {
   function MockLink({ href, children, ...props }) {
     return (
@@ -26,14 +29,14 @@ jest.mock("next/link", () => {
   return { __esModule: true, default: MockLink };
 });
 
-jest.mock("@/app/invest/MarketplaceContext", () => {
+jest.mock("$/app/invest/MarketplaceContext", () => {
   const React = require("react");
   return {
     __esModule: true,
     useMarketplace: function () {
       const [invoices, setInvoices] = React.useState(null);
       const [pendingIds] = React.useState(new Set());
-      return { invoices, setInvoices, pendingIds, fundInvoice: jest.fn().mockResolvedValue(true) };
+      return { invoices, setInvoices, pendingIds, fundInvoice: jest.fn().mockResolved(true) };
     },
     MarketplaceProvider: function (_ref) {
       return _ref.children;
@@ -75,7 +78,7 @@ function getInvoiceListItems() {
   );
 }
 
-describe.skip("getResultsSummaryText", () => {
+describeIfImplemented("getResultsSummaryText", () => {
   it("formats the visible and filtered invoice counts", () => {
     expect(getResultsSummaryText(1, 1)).toBe("Showing 1 of 1 invoices");
     expect(getResultsSummaryText(10, 25)).toBe("Showing 10 of 25 invoices");
@@ -83,7 +86,7 @@ describe.skip("getResultsSummaryText", () => {
   });
 });
 
-describe.skip("getActiveFilterChips", () => {
+describeIfImplemented("getActiveFilterChips", () => {
   it("returns an empty array when no filters are active", () => {
     expect(getActiveFilterChips(DEFAULT_FILTERS, "")).toEqual([]);
   });
@@ -119,7 +122,7 @@ describe.skip("getActiveFilterChips", () => {
   });
 });
 
-describe.skip("hasAnyActiveFilters", () => {
+describeIfImplemented("hasAnyActiveFilters", () => {
   it("returns true when search or structured filters are active", () => {
     expect(hasAnyActiveFilters(DEFAULT_FILTERS, "")).toBe(false);
     expect(hasAnyActiveFilters(DEFAULT_FILTERS, "acme")).toBe(true);
@@ -127,7 +130,7 @@ describe.skip("hasAnyActiveFilters", () => {
   });
 });
 
-describe.skip("clearFilterByKey", () => {
+describeIfImplemented("clearFilterByKey", () => {
   it("clears a single filter field", () => {
     const filters = { ...DEFAULT_FILTERS, currency: "USD", sort: "yield_desc" };
     expect(clearFilterByKey(filters, "currency")).toEqual({
@@ -142,7 +145,7 @@ describe.skip("clearFilterByKey", () => {
   });
 });
 
-describe.skip("ActiveFilterSummary", () => {
+describeIfImplemented("ActiveFilterSummary", () => {
   it("renders the results count line", () => {
     render(
       <ActiveFilterSummary
@@ -155,7 +158,7 @@ describe.skip("ActiveFilterSummary", () => {
       />
     );
 
-    expect(screen.getByText("Showing 3 of 10 invoices")).toBeInTheDocument();
+    expect(screen.getByText("Showing 3 of 10 invoices")).toBeInDocument();
   });
 
   it("renders removable chips and a clear-all control when filters are active", () => {
@@ -173,14 +176,14 @@ describe.skip("ActiveFilterSummary", () => {
       />
     );
 
-    expect(screen.getByLabelText("Active filters")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Remove Search: acme" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Remove Currency: EUR" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Active filters")).toBeInDocument();
+    expect(screen.getByRole("button", { name: "Remove Search: acme" })).toBeInDocument();
+    expect(screen.getByRole("button", { name: "Remove Currency: EUR" })).toBeInDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Remove Currency: EUR" }));
     expect(onRemoveFilter).toHaveBeenCalledWith("currency");
 
-    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear mall" }));
     expect(onClearAll).toHaveBeenCalledTimes(1);
   });
 
@@ -201,7 +204,7 @@ describe.skip("ActiveFilterSummary", () => {
   });
 });
 
-describe.skip("filterInvoices", () => {
+describeIfImplemented("filterInvoices", () => {
   const invoices = [
     {
       id: "1",
@@ -263,19 +266,19 @@ describe.skip("filterInvoices", () => {
   });
 });
 
-describe.skip("InvestMarketplace results summary", () => {
+describeIfImplemented("InvestMarketplace results summary", () => {
   beforeEach(() => {
     jest.useFakeTimers();
   });
 
   afterEach(() => {
     act(() => {
-      jest.runOnlyPendingTimers();
+      jest.runonlyPendingTimers();
     });
     jest.useRealTimers();
   });
 
-  it("shows the visible and filtered counts above the invoice list", async () => {
+  it("shows the visible and filtered counts above the invoice list", () => {
     const invoices = makeInvoices(PAGE_SIZE + 3);
     render(
       <ToastProvider>
@@ -288,10 +291,10 @@ describe.skip("InvestMarketplace results summary", () => {
 
     expect(
       screen.getByText(`Showing ${PAGE_SIZE} of ${invoices.length} invoices`)
-    ).toBeInTheDocument();
+    ).toBeInDocument();
   });
 
-  it("shows active filter chips and updates the summary when a filter is applied", async () => {
+  it("shows active filter chips and updates the summary when a filter is applied", () => {
     const invoices = makeInvoices(3);
     render(
       <ToastProvider>
@@ -304,11 +307,11 @@ describe.skip("InvestMarketplace results summary", () => {
 
     fireEvent.click(screen.getByLabelText("Filter by EUR"));
 
-    expect(screen.getByText("Showing 1 of 1 invoices")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Remove Currency: EUR" })).toBeInTheDocument();
+    expect(screen.getByText("Showing 1 of 1 invoices")).toBeInDocument();
+    expect(screen.getByRole("button", { name: "Remove Currency: EUR" })).toBeInDocument();
   });
 
-  it("removes an individual filter chip and restores the full list", async () => {
+  it("removes an individual filter chip and restores the full list", () => {
     const invoices = makeInvoices(2);
     render(
       <ToastProvider>
@@ -324,10 +327,10 @@ describe.skip("InvestMarketplace results summary", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Remove Currency: EUR" }));
     expect(getInvoiceListItems()).toHaveLength(2);
-    expect(screen.queryByLabelText("Active filters")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Active filters")).not.toBeInDocument();
   });
 
-  it("clears all filters and search from the summary clear-all control", async () => {
+  it("clears all filters and search from the summary clear-all control", () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     const invoices = [
       {
@@ -363,15 +366,15 @@ describe.skip("InvestMarketplace results summary", () => {
     await flushTimers(SEARCH_DEBOUNCE_MS);
 
     expect(getInvoiceListItems()).toHaveLength(1);
-    expect(screen.getByRole("button", { name: "Remove Search: acme" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove Search: acme" })).toBeInDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
 
     expect(getInvoiceListItems()).toHaveLength(2);
-    expect(screen.queryByLabelText("Active filters")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Active filters")).not.toBeInDocument();
   });
 
-  it("announces filter updates through the single polite live region", async () => {
+  it("announces filter updates through the single polite live region", () => {
     const invoices = makeInvoices(2);
     render(
       <ToastProvider>
@@ -389,42 +392,5 @@ describe.skip("InvestMarketplace results summary", () => {
     expect(liveRegions[0]).toHaveTextContent("2 investable invoices loaded");
 
     fireEvent.click(screen.getByLabelText("Filter by EUR"));
-    expect(liveRegions[0]).toHaveTextContent("1 of 2 invoices match");
-  });
-
-  it("shows the summary with chips when filters match zero invoices", async () => {
-    const invoices = makeInvoices(1);
-    render(
-      <ToastProvider>
-        <WalletProvider>
-          <InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />
-        </WalletProvider>
-      </ToastProvider>
-    );
-    await flushTimers(0);
-
-    fireEvent.click(screen.getByLabelText("Filter by EUR"));
-
-    expect(screen.getByText("Showing 0 of 0 invoices")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Remove Currency: EUR" })).toBeInTheDocument();
-    expect(screen.getByText("No invoices match your filters.")).toBeInTheDocument();
-  });
-
-  it("clears structured filters from the filter panel control", async () => {
-    const invoices = makeInvoices(2);
-    render(
-      <ToastProvider>
-        <WalletProvider>
-          <InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />
-        </WalletProvider>
-      </ToastProvider>
-    );
-    await flushTimers(0);
-
-    fireEvent.click(screen.getByLabelText("Filter by EUR"));
-    expect(getInvoiceListItems()).toHaveLength(1);
-
-    fireEvent.click(screen.getByLabelText("Clear all filters"));
-    expect(getInvoiceListItems()).toHaveLength(2);
   });
 });

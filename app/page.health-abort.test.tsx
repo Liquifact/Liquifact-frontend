@@ -29,7 +29,7 @@ jest.mock("../lib/api/health", () => ({
 
 const mockGetHealth = getHealth as jest.Mock;
 
-describe("Home Page – health-check abort on unmount", () => {
+describe("Home Page — health-check abort on unmount", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -104,11 +104,12 @@ describe("Home Page – health-check abort on unmount", () => {
 
   it("treats an unmount-abort as a non-error – does not throw or surface error state", async () => {
     let rejectHealth: (err: unknown) => void;
-    const deferred = new Promise<unknown>((_res, rej) => {
+    const deferred = new Promise<unknown>((res, rej) => {
       rejectHealth = rej;
     });
+    deferred.catch(() => {});
 
-    mockGetHealth.mockReturnValue(deferred);
+    mockGetHealth.mockImplementation(() => deferred);
 
     const { unmount } = render(<Home />);
     fireEvent.click(screen.getByRole("button", { name: /check backend health/i }));

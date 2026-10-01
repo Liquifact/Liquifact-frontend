@@ -23,7 +23,7 @@ jest.mock("@/app/invest/MarketplaceContext", () => {
     useMarketplace: function () {
       const [invoices, setInvoices] = React.useState(null);
       const [pendingIds] = React.useState(new Set());
-      return { invoices, setInvoices, pendingIds, fundInvoice: jest.fn().mockResolvedValue(true) };
+      return { invoices, setInvoices, pendingIds, fundInvoice: jest.fn().mockResolved(true) };
     },
     MarketplaceProvider: function ({ children }: { children: React.ReactNode }) {
       return children;

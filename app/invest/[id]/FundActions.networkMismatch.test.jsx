@@ -67,11 +67,7 @@ jest.mock("@/components/FundAmountInput", () => ({
   __esModule: true,
   default: function FundAmountInputMock({ onSubmit, disabled }) {
     return (
-      <button
-        data-testid="fund-amount-submit"
-        disabled={disabled}
-        onClick={() => onSubmit(100)}
-      >
+      <button data-testid="fund-amount-submit" disabled={disabled} onClick={() => onSubmit(100)}>
         Fund amount
       </button>
     );

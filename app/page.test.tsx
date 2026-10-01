@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
+import React from "react";
 import Home from "./page";
 import { getHealth } from "../lib/api/health";
 
@@ -8,6 +9,7 @@ jest.mock("next/navigation", () => ({
   usePathname: () => "/",
 }));
 
+// eslint-disable-next-line react/display-name
 jest.mock("../components/WalletStatusLazy", () => ({
   __esModule: true,
   default: function MockWalletStatusLazy() {
@@ -245,5 +247,89 @@ describe("Home Page Health Check", () => {
     const statusRegion = await screen.findByRole("status");
 
     expect(statusRegion.getAttribute("aria-live")).toBe("polite");
+  });
+
+  it("keeps the last known health result when a retry rejects", async () => {
+    mockGetHealth.mockResolvedValue({
+      status: "connected",
+      message: "Backend is healthy",
+    });
+
+    render(<Home />);
+
+    const button = screen.getByRole("button", {
+      name: /check backend health/i,
+    });
+
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/connected/i).length).toBeGreaterThan(0);
+    });
+
+    mockGetHealth.mockRejectedValue(new Error("network down"));
+
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/connected/i).length).toBeGreaterThan(0);
+    });
+
+    expect(screen.getAllByText(/unreachable/i).length).toBeGreaterThan(0);
+  });
+
+  it("ignores an out-of-order response from an earlier request", async () => {
+    let resolveFirst: (value: unknown) => void = () => {};
+    const firstPromise = new Promise((resolve) => {
+      resolveFirst = resolve as (value: unknown) => void;
+    });
+
+    mockGetHealth.mockImplementationOnce(() => firstPromise);
+    mockGetHealth.mockResolvedValueOnce({
+      status: "degraded",
+      message: "Backend responded with 500",
+    });
+
+    render(<Home />);
+
+    const button = screen.getByRole("button", {
+      name: /check backend health/i,
+    });
+
+    fireEvent.click(button);
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/degraded/i).length).toBeGreaterThan(0);
+    });
+
+    resolveFirst({
+      status: "connected",
+      message: "Backend is healthy",
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/degraded/i).length).toBeGreaterThan(0);
+    });
+
+    expect(screen.queryByText(/backend is healthy/i)).toBeNull();
+  });
+
+  it("surfaces a diagnosable error without leaking sensitive details", async () => {
+    mockGetHealth.mockRejectedValue(new Error("secret-token-leaked"));
+
+    render(<Home />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /check backend health/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/unreachable/i).length).toBeGreaterThan(0);
+    });
+
+    expect(screen.queryByText(/secret-token-leaked/i)).toBeNull();
   });
 });

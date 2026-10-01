@@ -8,8 +8,12 @@
  */
 
 import "@testing-library/jest-dom";
-import { act, fireEvent, render, screen } from "@testing-library/react";
-import { MARKETPLACE_SHORTCUT_KEY, createShortcutMatcher } from "../lib/shortcuts";
+import { render, screen } from "@testing-library/react";
+import {
+  MARKETPLACE_SHORTCUT_KEY,
+  createShortcutMatcher,
+  isFocusInsideEditableElement,
+} from "../lib/shortcuts";
 
 // Mock useRouter
 jest.mock("next/navigation", () => ({
@@ -35,7 +39,7 @@ describe("Marketplace shortcut", () => {
     expect(key).toBe("m");
   });
 
-  it("shortcut entry is in KEYBOARD_SHORTCUTS registry", () => {
+  it("shortcut entry is in KEYBOARD_SHORTCUT_ registry", () => {
     const { KEYBOARD_SHORTCUTS } = require("../lib/shortcuts");
     const marketplaceEntry = KEYBOARD_SHORTCUTS.find((s: any) => s.id === "marketplace-navigate");
 
@@ -70,8 +74,8 @@ describe("Marketplace shortcut", () => {
   });
 
   it("shortcut matcher ignores key when in editable element", () => {
-    const handler = createShortcutMatcher("m", jest.fn());
-    const mockCallback = jest.fn();
+    const callback = jest.fn();
+    const handler = createShortcutMatcher("m", callback);
 
     // Create an input and focus it
     const input = document.createElement("input");
@@ -79,13 +83,26 @@ describe("Marketplace shortcut", () => {
     document.body.appendChild(input);
     input.focus();
 
-    // The real implementation checks isFocusInsideEditableElement
-    // We're testing the matcher's behavior when focus is in an editable
     const event = new KeyboardEvent("keydown", { key: "m" });
     handler(event);
 
-    // The matcher should not call the handler when in editable element
-    // (This is tested via the isFocusInsideEditableElement helper in the real implementation)
+    expect(callback).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("shortcut matcher ignores key when focus is in a contenteditable element", () => {
+    const callback = jest.fn();
+    const handler = createShortcutMatcher("m", callback);
+
+    const editable = document.createElement("div");
+    editable.setAttribute("contenteditable", "true");
+    document.body.appendChild(editable);
+    editable.focus();
+
+    const event = new KeyboardEvent("keydown", { key: "m" });
+    handler(event);
+
+    expect(callback).not.toHaveBeenCalled();
   });
 
   it("shortcut matcher triggers on plain 'm' key", () => {
@@ -106,5 +123,110 @@ describe("Marketplace shortcut", () => {
     handler(event);
 
     expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("shortcut matcher ignores repeat keydown events to avoid duplicate navigation", () => {
+    const callback = jest.fn();
+    const handler = createShortcutMatcher("m", callback);
+
+    const event = new KeyboardEvent("keydown", { key: "m", repeat: true });
+    handler(event);
+
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("shortcut matcher ignores events already defaultPrevented", () => {
+    const callback = jest.fn();
+    const handler = createShortcutMatcher("m", callback);
+
+    const event = new KeyboardEvent("keydown", { key: "m", cancelable: true });
+    event.preventDefault();
+    handler(event);
+
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("shortcut matcher ignores events from editable element targets even without focus", () => {
+    const callback = jest.fn();
+    const handler = createShortcutMatcher("m", callback);
+
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+
+    const event = new KeyboardEvent("keydown", { key: "m", bubbles: true });
+    textarea.dispatchEvent(event);
+
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("isFocusInsideEditableElement returns true for input, textarea, select, and contenteditable", () => {
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+    expect(isFocusInsideEditableElement()).toBe(true);
+
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+    textarea.focus();
+    expect(isFocusInsideEditableElement()).toBe(true);
+
+    const select = document.createElement("select");
+    document.body.appendChild(select);
+    select.focus();
+    expect(isFocusInsideEditableElement()).toBe(true);
+
+    const editable = document.createElement("div");
+    editable.setAttribute("contenteditable", "true");
+    document.body.appendChild(editable);
+    editable.focus();
+    expect(isFocusInsideEditableElement()).toBe(true);
+  });
+
+  it("isFocusInsideEditableElement returns false for body and non-editable elements", () => {
+    expect(isFocusInsideEditableElement()).toBe(false);
+
+    const button = document.createElement("button");
+    document.body.appendChild(button);
+    button.focus();
+    expect(isFocusInsideEditableElement()).toBe(false);
+  });
+
+  it("shortcut matcher ignores key when modifier key is pressed even if key matches", () => {
+    const callback = jest.fn();
+    const handler = createShortcutMatcher("m", callback);
+
+    const shiftEvent = new KeyboardEvent("keydown", { key: "M", shiftKey: true });
+    handler(shiftEvent);
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("shortcut matcher is case-insensitive for the configured key", () => {
+    const callback = jest.fn();
+    const handler = createShortcutMatcher("m", callback);
+
+    const event = new KeyboardEvent("keydown", { key: "M" });
+    handler(event);
+
+    expect(callback).toHaveBeenCalledWith(event);
+  });
+
+  it("shortcut matcher does not throw when document is undefined", () => {
+    const callback = jest.fn();
+    const handler = createShortcutMatcher("m", callback);
+
+    const original = global.document;
+    // @js-tools-ignore next-line
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).document = undefined;
+
+    try {
+      const event = new KeyboardEvent("keydown", { key: "m" });
+      handler(event);
+      expect(callback).not.toHaveBeenCalled();
+    } finally {
+      // @js-tools-ignore next-line
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (global as any).document = original;
+    }
   });
 });

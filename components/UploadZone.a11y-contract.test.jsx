@@ -327,6 +327,7 @@ describe("UploadZone Accessibility Contract (docs/upload-a11y.md)", () => {
       expect(uploadingBtn).toBeDisabled();
 
       // 3. Tokenizing state (resolve fetch response only)
+      await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
       await act(async () => {
         resolveFetch({
           ok: true,

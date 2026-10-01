@@ -21,69 +21,201 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
-  title: `LiquiFact — ${copy.home.heroTitle}`,
-  description: copy.home.heroSub,
-  openGraph: {
-    title: `LiquiFact — ${copy.home.heroTitle}`,
-    description: copy.home.heroSub,
-    url: "/",
-    siteName: "LiquiFact",
-    images: [
-      {
-        url: "/opengraph-image", // Next.js App Router dynamic route
-        width: 1200,
-        height: 630,
-        alt: "LiquiFact Social Preview",
-      },
-    ],
-    locale: "en_US",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: `LiquiFact — ${copy.home.heroTitle}`,
-    description: copy.home.heroSub,
-    images: ["/opengraph-image"],
-  },
-};
+/**
+ * Validation boundaries for layout inputs.
+ *
+ * Invariants enforced here:
+ *  - `siteUrl must be an absolute http(s) URL, or it is rejected (metadataBase omitted).
+ *  - `themeStorageKey` must be a non-empty string matching a safe identifier pattern.
+ *  - `themes` must be a non-empty array of unique, non-empty strings.
+ *  - `nonce` must be a non-empty base64-ish string; otherwise it is dropped.
+ *
+ * Rejections never throw and never leak the rejected value: only a constant
+ * reason code is emitted so logs remain diagnosable without exposing secrets.
+ */
+const LAYOUT_WARNINGS = Object.freeze({
+  SITE_URL_INVALID: "site_url_invalid",
+  SITE_URL_MISSING: "site_url_missing",
+  THEME_KEY_INVALID: "theme_storage_key_invalid",
+  THEMES_INVALID: "themes_invalid",
+  THEMES_DUPLICATE: "themes_duplicate",
+  NONCE_INVALID: "nonce_invalid",
+});
+
+const SAFE_IDENTIFIER = /^[A-Za-z0-9_.:-]{1,128}$/;
+const SAFE_NONCE = /^[A-Za-z0-9+/_=-]{1,256}$/;
+
+function normalizeSiteUrl(raw) {
+  if (raw === undefined || raw === null || raw === "") {
+    return { value: undefined, warning: LAYOUT_WARNINGS.SITE_URL_MISSING };
+  }
+  if (typeof raw !== "string") {
+    return { value: undefined, warning: LAYOUT_WARNINGS.SITE_URL_INVALID };
+  }
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return { value: undefined, warning: LAYOUT_WARNINGS.SITE_URL_INVALID };
+    }
+    return { value: parsed, warning: null };
+  } catch {
+    return { value: undefined, warning: LAYOUT_WARNINGS.SITE_URL_INVALID };
+  }
+}
+
+function normalizeThemeStorageKey(raw) {
+  if (typeof raw !== "string" || !SAFE_IDENTIFIER.test(raw)) {
+    return { value: undefined, warning: LAYOUT_WARNINGS.THEME_KEY_INVALID };
+  }
+  return { value: raw, warning: null };
+}
+
+function normalizeThemes(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return { value: undefined, warning: LAYOUT_WARNINGS.THEMES_INVALID };
+  }
+  const seen = new Set();
+  const out = [];
+  for (const entry of raw) {
+    if (typeof entry !== "string" || !SAFE_IDENTIFIER.test(entry)) {
+      return { value: undefined, warning: LAYOUT_WARNINGS.THEMES_INVALID };
+    }
+    if (seen.has(entry)) {
+      return { value: undefined, warning: LAYOUT_WARNINGS.THEMES_DUPLICATE };
+    }
+    seen.add(entry);
+    out.push(entry);
+  }
+  return { value: Object.freeze(out), warning: null };
+}
+
+function normalizeNonce(raw) {
+  if (raw === undefined || raw === null || raw === "") {
+    return { value: undefined, warning: null };
+  }
+  if (typeof raw !== "string" || !SAFE_NONCE.test(raw)) {
+    return { value: undefined, warning: LAYOUT_WARNINGS.NONCE_INVALID };
+  }
+  return { value: raw, warning: null };
+}
 
 /**
- * Inline script that runs synchronously before the first paint to set the
- * correct data-theme attribute on <html>.  Reads the user's stored preference
- * from localStorage (or falls back to the OS colour-scheme media query).
- * Inlining avoids the "flash of incorrect theme" that would occur if we let
- * React hydrate first.
- *
- * The script must be a string constant because Next.js serialises it into
- * a <script> tag at the HTML level.  dangerouslySetInnerHTML is intentional
- * and safe here — the content is a static literal, not user-supplied data.
+ * Build the pre-paint theme script from validated inputs only.
+ * Returns `null` when any required input is invalid, so the caller can
+ * omit the script tag entirely rather than emit a malformed payload.
  */
-const THEME_SCRIPT = `(function(){
-  var key = '${THEME_STORAGE_KEY}';
-  var themes = ${JSON.stringify(THEMES)};
-  var pref = 'system';
-  try { var s = localStorage.getItem(key); if (s && themes.indexOf(s) !== -1) pref = s; } catch(e){}
-  var effective = pref;
-  if (pref === 'system') {
-    effective = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
-  }
-  document.documentElement.setAttribute('data-theme', effective);
-})();`;
+function buildThemeScript(themeStorageKey, themes) {
+  if (!themeStorageKey || !themes) return null;
+  const serializedThemes = JSON.stringify(themes);
+  const serializedKey = JSON.stringify(themeStorageKey);
+  return (
+    "(function(){try{" +
+    "var k=" + serializedKey + ";" +
+    "var allowed=" + serializedThemes + ";" +
+    "var stored=window.localStorage.getItem(k);" +
+    "var theme=allowed.indexOf(stored)>=0?stored:'light';" +
+    "document.documentElement.setAttribute('data-theme',theme);" +
+    "}catch(e){}})();"
+  );
+}
+
+/**
+ * Resolve layout inputs with deterministic validation.
+ * Accepts partial input; missing fields are treated as invalid where required.
+ */
+function resolveLayoutInputs(input = {}) {
+  const warnings = [];
+
+  const siteUrl = normalizeSiteUrl(input.siteUrl);
+  if (siteUrl.warning) warnings.push(siteUrl.warning);
+
+  const themeKey = normalizeThemeStorageKey(input.themeStorageKey);
+  if (themeKey.warning) warnings.push(themeKey.warning);
+
+  const themes = normalizeThemes(input.themes);
+  if (themes.warning) warnings.push(themes.warning);
+
+  const nonce = normalizeNonce(input.nonce);
+  if (nonce.warning) warnings.push(nonce.warning);
+
+  const themeScript =
+    themeKey.value && themes.value
+      ? buildThemeScript(themeKey.value, themes.value)
+      : null;
+
+  return {
+    metadataBase: siteUrl.value,
+    themeStorageKey: themeKey.value,
+    themes: themes.value,
+    themeScript,
+    nonce: nonce.value,
+    warnings,
+  };
+}
+
+/**
+ * Resolve layout inputs at module load time.
+ *
+ * The site URL and theme configuration are static for the lifetime
+ * of the process, so we validate them once. The nonce is request-scoped
+ * and is resolved inside the layout render.
+ */
+const staticInputs = resolveLayoutInputs({
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
+  themeStorageKey: THEME_STORAGE_KEY,
+  themes: THEMES,
+});
+
+/**
+ * Emit a single, structured warning line for each invalid layout input.
+ * The reason codes are constants and do not contain the rejected value,
+ * so no sensitive data is exposed in logs.
+ */
+for (const warning of staticInputs.warnings) {
+  // eslint-disable-next-line no-console
+  console.warn(`[layout] invalid input rejected: ${warning}`);
+}
+
+export const metadata = {
+  metadataBase: staticInputs.metadataBase,
+  title: `LiquiFact — ${copy.home.heroTitle}`,
+  description: copy.home.heroSub,
+  openGraph: {},
+  twitter: {},
+};
+
+const CSP_NONCE_PATTERN = /^[A-Za-z0-9+/]{22}==$/;
 
 export default async function RootLayout({ children }) {
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const nonceResult = resolveLayoutInputs({
+    nonce: (await headers()).get("x-nonce"),
+  });
+
+  // Request-scoped nonce issues are logged as constant reason codes.
+  for (const warning of nonceResult.warnings) {
+    // eslint-disable-next-line no-console
+    console.warn(`[layout] invalid input rejected: ${warning}`);
+  }
 
   return (
     <html lang="en">
       {/*
         Pre-paint theme script: runs synchronously before React hydrates,
         eliminating the flash of incorrect theme (FOIT-equivalent for themes).
+        The script body is built from validated inputs only; if any input
+        is invalid the script is omitted entirely rather than emitting
+        a malformed or unsafe tag.
       */}
-      <head>
-        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
-      </head>
+      {staticInputs.themeScript ? (
+        <head>
+          <script
+            nonce={nonceResult.nonce}
+            dangerouslySetInnerHTML={{ __html: staticInputs.themeScript }}
+          />
+        </head>
+      ) : (
+        <head />
+      )}
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {/* Skip link: first focusable element so keyboard users can bypass the header */}
         <a href="#main-content" className="skip-link">

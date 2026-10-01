@@ -306,7 +306,7 @@ describe("UploadZone — state transitions (Issue #51)", () => {
       expect(screen.getAllByRole("img", { name: /loading/i }).length).toBeGreaterThanOrEqual(1);
     });
 
-    it("double-submit guard: fetch called only once even when submit clicked twice", () => {
+    it("double-submit guard: fetch called only once even when submit clicked twice", async () => {
       mockFetchPending();
       render(<UploadZone />);
       selectFile(makePdf());
@@ -316,7 +316,7 @@ describe("UploadZone — state transitions (Issue #51)", () => {
       // locate it by its stable element ID rather than accessible name.
       const btn = document.getElementById("invoice-upload-btn");
       fireEvent.click(btn);
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
     });
   });
 

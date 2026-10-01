@@ -168,4 +168,65 @@ describe("WalletStatus copy address feature", () => {
     await user.keyboard(" ");
     expect(writeTextMock).toHaveBeenCalledTimes(2);
   });
+
+  it("4. Boundary: does not render copy button when wallet is not connected", () => {
+    render(
+      <ToastProvider>
+        <WalletContext.Provider
+          value={{
+            state: WALLET_STATES.DISCONNECTED,
+            walletData: null,
+            error: null,
+            connect: jest.fn(),
+            disconnect: jest.fn(),
+          }}
+        >
+          <WalletStatus />
+        </WalletContext.Provider>
+      </ToastProvider>
+    );
+
+    expect(
+      screen.queryByRole("button", { name: copy.wallet.copyAddressButton })
+    ).not.toBeInTheDocument();
+  });
+
+  it("5. Regression: copy button remains functional across repeated clicks without duplicating toasts", async () => {
+    const user = userEvent.setup();
+    const writeTextMock = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: writeTextMock },
+      configurable: true,
+      writable: true,
+    });
+
+    renderConnectedWallet();
+
+    const copyButton = screen.getByRole("button", { name: copy.wallet.copyAddressButton });
+    await user.click(copyButton);
+    await user.click(copyButton);
+
+    expect(writeTextMock).toHaveBeenCalledWith(FULL_ADDRESS);
+    expect(writeTextMock).toHaveBeenCalledTimes(2);
+    await waitFor(() => {
+      expect(screen.getByText(copy.wallet.toastCopySuccessMsg)).toBeInTheDocument();
+    });
+  });
+
+  it("6. Regression: copy failure does not leak sensitive details in the error toast", async () => {
+    const user = userEvent.setup();
+    jest
+      .spyOn(clipboardModule, "copyToClipboard")
+      .mockRejectedValue(new Error("internal-secret-stack-trace"));
+
+    renderConnectedWallet();
+
+    const copyButton = screen.getByRole("button", { name: copy.wallet.copyAddressButton });
+    await user.click(copyButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(copy.wallet.toastCopyErrorMsg)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/internal-secret-stack-trace/i)).not.toBeInTheDocument();
+  });
 });

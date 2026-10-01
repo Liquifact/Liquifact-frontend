@@ -142,11 +142,9 @@ export default function NetworkMismatchBanner({ status, walletNetwork, invoiceNe
         <p className="mt-0.5" data-testid="network-mismatch-body">
           {status === "mismatch" ? (
             <>
-              Your wallet is on{" "}
-              <strong className="font-semibold">{walletLabel}</strong> but this invoice
-              requires{" "}
-              <strong className="font-semibold">{invoiceLabel}</strong>. Switch your wallet
-              network to continue.
+              Your wallet is on <strong className="font-semibold">{walletLabel}</strong> but this
+              invoice requires <strong className="font-semibold">{invoiceLabel}</strong>. Switch
+              your wallet network to continue.
             </>
           ) : (
             bodyText

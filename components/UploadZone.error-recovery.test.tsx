@@ -108,6 +108,93 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("UploadZone — error-recovery flows", () => {
+  it("sends only one request when submit events race before React rerenders", async () => {
+    let resolveFetch;
+    global.fetch = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        })
+    );
+    const onUploadSuccess = jest.fn();
+    const { container } = render(<UploadZone onUploadSuccess={onUploadSuccess} />);
+
+    selectFile(createPdfFile());
+
+    act(() => {
+      fireEvent.submit(container.querySelector("form"));
+      fireEvent.submit(container.querySelector("form"));
+    });
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      resolveFetch({
+        ok: true,
+        json: jest.fn().mockResolvedValue({}),
+      });
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(onUploadSuccess).toHaveBeenCalledTimes(1));
+  });
+
+  it("ignores an older PDF validation result after a newer file is selected", async () => {
+    const validations = new Map();
+    (validatePdfFile as jest.Mock).mockImplementation(
+      (file) =>
+        new Promise((resolve) => {
+          validations.set(file.name, resolve);
+        })
+    );
+    render(<UploadZone />);
+
+    selectFile(createPdfFile("first.pdf"));
+    selectFile(createPdfFile("second.pdf"));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      validations.get("second.pdf")({ valid: true });
+    });
+    expect(screen.getByText("second.pdf")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeEnabled();
+
+    await act(async () => {
+      validations.get("first.pdf")({ valid: false, reason: "stale validation" });
+    });
+
+    expect(screen.getByText("second.pdf")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeEnabled();
+  });
+
+  it("does not restore stale success UI after reset during tokenization", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({ tokenizationDelay: 1000 }),
+    });
+    const onUploadSuccess = jest.fn();
+    render(<UploadZone onUploadSuccess={onUploadSuccess} />);
+
+    selectFile(createPdfFile());
+    clickSubmit();
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(copy.uploadZone.statusTokenizing)
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: copy.uploadZone.resetAriaLabel }));
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeDisabled();
+    expect(screen.queryByText(copy.uploadZone.statusSuccess)).not.toBeInTheDocument();
+    expect(onUploadSuccess).toHaveBeenCalledTimes(1);
+  });
+
   // -------------------------------------------------------------------------
   // Scenario 1 — Upload fails → error state is shown
   // -------------------------------------------------------------------------

@@ -1,3 +1,5 @@
+
+
 /**
  * @file app/settings/page.test.tsx
  *
@@ -15,6 +17,7 @@
 import "@testing-library/jest-dom";
 import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { jest } from "@jest/globals";
 
 import SettingsPage, {
   normalizeSettings,
@@ -25,6 +28,11 @@ import SettingsPage, {
   validateDisplayName,
   validateEmail,
 } from "./page";
+
+// Alias used by the failure-recovery tests below. Kept as a local binding so
+// the public export name (SETTINGS_STORAGE_KEY) remains the single source of
+// truth and callers stay compatible.
+const STORAGE_KEY = SETTINGS_STORAGE_KEY;
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -37,15 +45,28 @@ jest.mock("next/link", () => {
   return { __esModule: true, default: LinkMock };
 });
 
+// Deterministic failure-injection hook for the storage layer. The page
+// module reads/writes through `window.localStorage`; tests can override
+// these spies to simulate quota errors, partial writes, and read failures.
+const originalSetItem = window.localStorage.setItem.bind(window.localStorage);
+const originalGetItem = window.localStorage.getItem.bind(window.localStorage);
+
 jest.mock("next/navigation", () => ({
   usePathname: () => "/settings",
-  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), refresh: jest.fn() }),
+  useRouter: () => ({ push: () => {}, replace: () => {}, refresh: () => {} }),
 }));
 
 jest.mock("../../components/NavMenu", () => {
   return function MockNavMenu() {
     return <div data-testid="nav-menu-mock">NavMenu</div>;
   };
+});
+
+afterEach(() => {
+  // Restore storage spies so failure injection cannot leak across tests.
+  window.localStorage.setItem = originalSetItem;
+  window.localStorage.getItem = originalGetItem;
+  jest.restoreAllMocks();
 });
 
 // ─── normalizeSettings pure unit ────────────────────────────────────────────
@@ -57,6 +78,15 @@ describe("normalizeSettings", () => {
     expect(normalizeSettings("not an object")).toEqual(DEFAULT_SETTINGS);
   });
 
+  it("is deterministic for duplicate and boundary inputs", () => {
+    // Duplicate keys collapse to the last value; boundary strings are preserved.
+    const dup = { displayName: "First", email: "a@b.co", displayName: "Second" };
+    expect(normalizeSettings(dup)).toEqual({ displayName: "Second", email: "a@b.co" });
+
+    const boundary = { displayName: "x".repeat(DISPLAY_NAME_MAX_LENGTH), email: "" };
+    expect(normalizeSettings(boundary)).toEqual(boundary);
+  });
+
   it("merges partial stored values with defaults", () => {
     expect(normalizeSettings({ displayName: "Z" })).toEqual({
       displayName: "Z",
@@ -66,6 +96,14 @@ describe("normalizeSettings", () => {
       displayName: "",
       email: "x@y.com",
     });
+  });
+
+  it("is idempotent when applied repeatedly", () => {
+    const once = normalizeSettings({ displayName: "Sam", email: "sam@x.com" });
+    const twice = normalizeSettings(once);
+    const thrice = normalizeSettings(twice);
+    expect(twice).toEqual(once);
+    expect(thrice).toEqual(once);
   });
 
   it("drops non-string fields", () => {
@@ -97,6 +135,21 @@ describe("settings validators", () => {
     const localPart = "a".repeat(EMAIL_MAX_LENGTH - "@x.co".length);
     expect(validateEmail(`${localPart}@x.co`)).toBeNull();
   });
+
+  it("is deterministic across repeated invocations (no hidden state)", () => {
+    const cases = ["", "  ", "x", "x".repeat(DISPLAY_NAME_MAX_LENGTH + 1)];
+    for (const c of cases) {
+      const a = validateDisplayName(c);
+      const b = validateDisplayName(c);
+      expect(a).toBe(b);
+    }
+    const emails = ["", "  ", "not-an-email", "a@b.co", `${"a".repeat(EMAIL_MAX_LENGTH)}@x.co`];
+    for (const e of emails) {
+      const a = validateEmail(e);
+      const b = validateEmail(e);
+      expect(a).toBe(b);
+    }
+  });
 });
 
 // ─── Page render ────────────────────────────────────────────────────────────
@@ -104,6 +157,7 @@ describe("settings validators", () => {
 describe("SettingsPage", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    window.localStorage.setItem = originalSetItem;
   });
 
   it("renders the page heading and a navigable nav menu", () => {
@@ -318,5 +372,167 @@ describe("SettingsPage", () => {
     await waitFor(() =>
       expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Updated")
     );
+  });
+
+  // ─── Failure recovery: deterministic, observable, no data loss ───────────
+
+  it("surfaces a user-visible error and preserves prior value when storage write fails", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ displayName: "Prior", email: "" })
+    );
+    render(<SettingsPage />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Prior")
+    );
+
+    // Inject a quota-style failure on the next write.
+    const failingSetItem = jest.fn(() => {
+      throw new DOMException("QuotaExceededError", "QuotaExceededError");
+    });
+    window.localStorage.setItem = failingSetItem as unknown as typeof window.localStorage.setItem;
+
+    await user.click(screen.getByRole("button", { name: /edit display name/i }));
+    const input = screen.getByTestId("settings-display-name-input");
+    await user.clear(input);
+    await user.type(input, "NewValue");
+    await user.click(screen.getByRole("button", { name: /save display name/i }));
+
+    // Failure must be observable to the user (alert region) and must not
+    // silently drop the prior persisted value.
+    const alert = await screen.findByRole("alert");
+    expect(alert).toBeInTheDocument();
+    expect(alert.textContent || "").not.toMatch(/NewValue/);
+
+    // Prior value is still persisted (no data loss).
+    const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "{}");
+    expect(stored.displayName).toBe("Prior");
+  });
+
+  it("recovers cleanly after a transient storage failure (retry succeeds)", async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    let attempts = 0;
+    const flakySetItem = jest.fn((key: string, value: string) => {
+      attempts += 1;
+      if (attempts === 1) {
+        throw new DOMException("QuotaExceededError", "QuotaExceededError");
+      }
+      return originalSetItem(key, value);
+    });
+    window.localStorage.setItem = flakySetItem as unknown as typeof window.localStorage.setItem;
+
+    await user.click(screen.getByRole("button", { name: /edit display name/i }));
+    await user.type(screen.getByTestId("settings-display-name-input"), "Retry");
+    await user.click(screen.getByRole("button", { name: /save display name/i }));
+
+    // First attempt failed — user sees an error and remains in edit mode.
+    await screen.findByRole("alert");
+    expect(screen.getByTestId("settings-display-name-input")).toBeInTheDocument();
+
+    // Retry the same save — second attempt succeeds.
+    await user.click(screen.getByRole("button", { name: /save display name/i }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Retry")
+    );
+    const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "{}");
+    expect(stored.displayName).toBe("Retry");
+    expect(attempts).toBeGreaterThanOrEqual(2);
+  });
+
+  it("does not corrupt state when a read failure occurs during hydration", async () => {
+    const failingGetItem = jest.fn(() => {
+      throw new DOMException("SecurityError", "SecurityError");
+    });
+    window.localStorage.getItem = failingGetItem as unknown as typeof window.localStorage.getItem;
+
+    // Page must still render with defaults rather than crash.
+    render(<SettingsPage />);
+    expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Not set");
+    expect(screen.getByTestId("settings-email-display")).toHaveTextContent("Not set");
+  });
+
+  it("rejects duplicate concurrent saves without producing inconsistent state", async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    await user.click(screen.getByRole("button", { name: /edit display name/i }));
+    await user.type(screen.getByTestId("settings-display-name-input"), "Once");
+
+    const saveBtn = screen.getByRole("button", { name: /save display name/i });
+    // Fire two rapid clicks; the second must be a no-op (row already saved).
+    await user.click(saveBtn);
+    await user.click(saveBtn);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Once")
+    );
+
+    const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "{}");
+    expect(stored.displayName).toBe("Once");
+    // No duplicate edit form should be mounted after save.
+    expect(screen.queryByTestId("settings-display-name-input")).not.toBeInTheDocument();
+  });
+
+  it("partial completion: display name saved, email save fails, name remains persisted", async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    // Save display name successfully.
+    await user.click(screen.getByRole("button", { name: /edit display name/i }));
+    await user.type(screen.getByTestId("settings-display-name-input"), "Acme");
+    await user.click(screen.getByRole("button", { name: /save display name/i }));
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Acme")
+    );
+
+    // Now make the next write fail and attempt to save email.
+    window.localStorage.setItem = jest.fn(() => {
+      throw new DOMException("QuotaExceededError", "QuotaExceededError");
+    }) as unknown as typeof window.localStorage.setItem;
+
+    await user.click(screen.getByRole("button", { name: /edit email/i }));
+    await user.type(screen.getByTestId("settings-email-input"), "ops@liquifact.com");
+    await user.click(screen.getByRole("button", { name: /save email/i }));
+
+    await screen.findByRole("alert");
+
+    // The previously persisted display name must survive the failed email save.
+    const stored = JSON.parse(originalGetItem(STORAGE_KEY) || "{}");
+    expect(stored.displayName).toBe("Acme");
+  });
+
+  it("cancel after a failed save restores the last persisted value", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ displayName: "Persisted", email: "" })
+    );
+    render(<SettingsPage />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Persisted")
+    );
+
+    window.localStorage.setItem = jest.fn(() => {
+      throw new DOMException("QuotaExceededError", "QuotaExceededError");
+    }) as unknown as typeof window.localStorage.setItem;
+
+    await user.click(screen.getByRole("button", { name: /edit display name/i }));
+    const input = screen.getByTestId("settings-display-name-input");
+    await user.clear(input);
+    await user.type(input, "Attempted");
+    await user.click(screen.getByRole("button", { name: /save display name/i }));
+    await screen.findByRole("alert");
+
+    // Cancel must restore the persisted value, not the attempted one.
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(screen.getByTestId("settings-display-name-display")).toHaveTextContent("Persisted");
+    const stored = JSON.parse(originalGetItem(STORAGE_KEY) || "{}");
+    expect(stored.displayName).toBe("Persisted");
   });
 });

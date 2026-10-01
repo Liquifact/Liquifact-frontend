@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useId, useMemo, useState } from "react";
+import { useRef } from "react";
 import Button from "./Button";
 import { formatCurrency } from "@/lib/format/currency";
 import { formatYield } from "@/lib/format/invoice";
@@ -15,6 +16,19 @@ const CURRENCY_DECIMALS = {
   KRW: 0,
   VND: 0,
 };
+
+/**
+ * Hard upper bound on the number of characters accepted in the raw input.
+ * Prevents pathological inputs (e.g. 1e309, extremely long digit strings)
+ * from reaching Number() and keeps validation deterministic.
+ */
+const MAX_RAW_INPUT_LENGTH = 32;
+
+/**
+ * Matches a non-negative decimal number with optional fraction.
+ * Rejects scientific notation, signs, whitespace, and locale separators.
+ */
+const DECIMAL_PATTERN = /^\d*(?:\.\d*)?$/;
 
 /**
  * Returns the allowed decimal precision for a currency code.
@@ -39,6 +53,14 @@ function getDecimalPrecision(currency) {
  * @returns {string|null}
  */
 export function validateFundAmount(rawValue, maxAmount, currency) {
+  if (typeof rawValue !== "string") {
+    return copy.invest.fundAmount.errorRequired;
+  }
+
+  if (rawValue.length > MAX_RAW_INPUT_LENGTH) {
+    return copy.invest.fundAmount.errorRequired;
+  }
+
   if (rawValue.trim() === "") {
     return copy.invest.fundAmount.errorRequired;
   }
@@ -49,11 +71,23 @@ export function validateFundAmount(rawValue, maxAmount, currency) {
     return copy.invest.fundAmount.errorRequired;
   }
 
+  if (!DECIMAL_PATTERN.test(rawValue)) {
+    return copy.invest.fundAmount.errorRequired;
+  }
+
   if (numeric <= 0) {
     return copy.invest.fundAmount.errorPositive;
   }
 
   if (numeric > maxAmount) {
+    return copy.invest.fundAmount.errorExceedsBalance
+      .replace("{max}", maxAmount.toString())
+      .replace("{currency}", currency);
+  }
+
+  // Reject values that lose precision when converted to a Number
+  (// (e.g. amounts beyond Number.MAX_SAFE_INTEGER).
+  if (!Number.isSafeInteger(Math.round(numeric * 100)) && numeric > Number.MAX_SAFE_INTEGER) {
     return copy.invest.fundAmount.errorExceedsBalance
       .replace("{max}", maxAmount.toString())
       .replace("{currency}", currency);
@@ -116,6 +150,8 @@ export default function FundAmountInput({
   const [rawValue, setRawValue] = useState("");
   const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const lastSubmittedRef = useRef(null);
 
   const inputId = useId();
   const errorId = useId();
@@ -141,7 +177,16 @@ export default function FundAmountInput({
   const isSubmitDisabled = disabled || submitting || !isValidNumber || validationError !== null;
 
   const handleChange = useCallback((e) => {
-    setRawValue(e.target.value);
+    const next = e.target.value;
+    // Reject oversized input at the source so validation stays deterministic.
+    if (typeof next === "string" && next.length > MAX_RAW_INPUT_LENGTH) {
+      return;
+    }
+    // Reject characters that cannot form a valid decimal amount.
+    if (typeof next === "string" && next !== "" && !DECIMAL_PATTERN.test(next)) {
+      return;
+    }
+    setRawValue(next);
   }, []);
 
   const handleBlur = useCallback(() => {
@@ -156,13 +201,30 @@ export default function FundAmountInput({
 
       if (validationError !== null) return;
 
-      if (onSubmit) {
-        setSubmitting(true);
-        try {
-          await onSubmit(numericValue);
-        } finally {
-          setSubmitting(false);
-        }
+      if (!onSubmit) return;
+
+      // Guard against concurrent/re-entrant submissions (double-click, Enter
+      // key repeat, or programmatic dispatch) that could otherwise fire the
+      // callback multiple times before React commits the `submitting` state.
+      if (submittingRef.current) return;
+
+      // Guard against duplicate submissions of the same amount after a
+      // successful submit, which would otherwise re-trigger the callback.
+      if (lastSubmittedRef.current === numericValue) return;
+
+      submittingRef.current = true;
+      setSubmitting(true);
+      try {
+        await onSubmit(numericValue);
+        lastSubmittedRef.current = numericValue;
+      } catch (err) {
+        // Do not record a failed submission as the last submitted amount so
+        // the caller can retry the same value.
+        lastSubmittedRef.current = null;
+        throw err;
+      } finally {
+        submittingRef.current = false;
+        setSubmitting(false);
       }
     },
     [validationError, onSubmit, numericValue]
@@ -234,7 +296,7 @@ export default function FundAmountInput({
         <p id={yieldId} aria-live="polite" className="mb-4 text-sm text-slate-300">
           {copy.invest.fundAmount.expectedYieldLabel}{" "}
           <span className="font-semibold text-cyan-400">
-            {formatYield(yieldValue)} (≈ {formatCurrency(expectedYieldAmount, { currency })})
+            {formatYield(yieldValue)} (≈{formatCurrency(expectedYieldAmount, { currency })})
           </span>
         </p>
       )}

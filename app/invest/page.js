@@ -1,6 +1,6 @@
-"use client";
+"tuse client";
 
-import { Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import ErrorBanner from "@/components/ErrorBanner";
@@ -26,7 +26,6 @@ import { useDensity } from "@/lib/hooks/useDensity";
 import { INVOICE_STATUSES } from "@/lib/types/invoice";
 import useBulkSelection from "@/lib/hooks/useBulkSelection";
 import { useSettingsAnnouncer } from "@/components/useSettingsAnnouncer";
-
 import { ToastContext } from "@/components/ToastProvider";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import MarketplaceErrorBoundary from "@/components/MarketplaceErrorBoundary";
@@ -62,7 +61,7 @@ function isValidYieldString(value) {
  *
  * @param {URLSearchParams} searchParams
  * @param {object} [defaults=DEFAULT_FILTERS]
- * @returns {{ filters: object, searchQuery: string }}
+ * @returns {{filters: object, searchQuery: string}}
  */
 export function parseFiltersFromSearchParams(searchParams, defaults = DEFAULT_FILTERS) {
   const params = sanitizeMarketplaceSearchParams(searchParams ?? new URLSearchParams());
@@ -88,10 +87,24 @@ export function parseFiltersFromSearchParams(searchParams, defaults = DEFAULT_FI
   const maturityFrom = isValidISODate(params.get("maturityFrom")) ? params.get("maturityFrom") : "";
   const maturityTo = isValidISODate(params.get("maturityTo")) ? params.get("maturityTo") : "";
 
-  const statuses = (params.get("statuses") ?? "")
+  // INVARIANT: Reject unknown status values to prevent silent filter failures.
+  // Only include statuses that exist in the canonical INVOICE_STATUSES enum.
+  const rawStatuses = (params.get("statuses") ?? "")
     .split(",")
     .map((s) => s.trim())
-    .filter((s) => VALID_STATUSES.has(s));
+    .filter((s) => s && VALID_STATUSES.has(s));
+
+  const unknownStatuses = (params.get("statuses") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s && !VALID_STATUSES.has(s));
+
+  if (unknownStatuses.length > 0) {
+    console.warn(
+      `[Invariant Violation] URL contains unknown invoice status values (filtered out):`,
+      unknownStatuses
+    );
+  }
 
   const searchQuery = (params.get("q") ?? "").trim();
 
@@ -105,7 +118,7 @@ export function parseFiltersFromSearchParams(searchParams, defaults = DEFAULT_FI
       maturityTo,
       sort,
       sortDir,
-      statuses,
+      statuses: rawStatuses,
     },
     searchQuery,
   };
@@ -136,7 +149,10 @@ export function buildSearchParams(filters, searchQuery = "") {
   }
 
   if (Array.isArray(filters.statuses) && filters.statuses.length > 0) {
-    params.set("statuses", filters.statuses.filter((status) => VALID_STATUSES.has(status)).join(","));
+    params.set(
+      "statuses",
+      filters.statuses.filter((status) => VALID_STATUSES.has(status)).join(",")
+    );
   }
 
   return params;
@@ -185,6 +201,193 @@ function parseAmount(str) {
 
 function parseYield(str) {
   return parseFloat(String(str).replace(/%/g, "")) || 0;
+}
+
+/**
+ * Validate cross-field range invariants for the marketplace filters.
+ *
+ * Returns a map of field → error message for every violated invariant.
+ * An empty object means all range constraints are satisfied.
+ *
+ * Rules enforced:
+ *   - yieldMin must be a non-negative number when present
+ *   - yieldMax must be a non-negative number when present
+ *   - yieldMin must not exceed yieldMax when both are present
+ *   - maturityFrom must be a valid ISO date when present
+ *   - maturityTo must be a valid ISO date when present
+ *   - maturityFrom must not be after maturityTo when both are present
+ *
+ * @param {object} filters
+ * @returns {Record<string, string>} field → error message (empty when valid)
+ */
+export function validateFilterRanges(filters) {
+  /** @type {Record<string, string>} */
+  const errors = {};
+
+  if (filters == null || typeof filters !== "object") return errors;
+
+  const { yieldMin, yieldMax, maturityFrom, maturityTo } = filters;
+
+  // Yield bounds
+  const hasYieldMin = yieldMin !== "" && yieldMin !== undefined && yieldMin !== null;
+  const hasYieldMax = yieldMax !== "" && yieldMax !== undefined && yieldMax !== null;
+
+  if (hasYieldMin && !isValidYieldString(String(yieldMin))) {
+    errors.yieldMin = copy.invest.filters.errorYieldMin;
+  }
+  if (hasYieldMax && !isValidYieldString(String(yieldMax))) {
+    errors.yieldMax = copy.invest.filters.errorYieldMax;
+  }
+  if (
+    hasYieldMin &&
+    hasYieldMax &&
+    !errors.yieldMin &&
+    !errors.yieldMax &&
+    parseFloat(yieldMin) > parseFloat(yieldMax)
+  ) {
+    errors.yieldRange = copy.invest.filters.errorYieldRange;
+  }
+
+  // Maturity bounds
+  const hasMaturityFrom =
+    maturityFrom !== "" && maturityFrom !== undefined && maturityFrom !== null;
+  const hasMaturityTo = maturityTo !== "" && maturityTo !== undefined && maturityTo !== null;
+
+  if (hasMaturityFrom && !isValidISODate(String(maturityFrom))) {
+    errors.maturityFrom = copy.invest.filters.errorMaturityFrom;
+  }
+  if (hasMaturityTo && !isValidISODate(String(maturityTo))) {
+    errors.maturityTo = copy.invest.filters.errorMaturityTo;
+  }
+  if (
+    hasMaturityFrom &&
+    hasMaturityTo &&
+    !errors.maturityFrom &&
+    !errors.maturityTo &&
+    String(maturityFrom) > String(maturityTo)
+  ) {
+    errors.maturityRange = copy.invest.filters.errorMaturityRange;
+  }
+
+  return errors;
+}
+
+/**
+ * Validate the arguments object passed to `loadInvoices`.
+ *
+ * Returns `null` when the args are fully valid, or a short error string
+ * describing the first violation found. This is the gate that prevents
+ * malformed pagination or filter state from reaching the data layer.
+ *
+ * Valid args contract:
+ *   - cursor must be a string or null (not undefined / wrong type)
+ *   - filters must be a plain object (may be empty)
+ *   - search must be a string
+ *   - sort must be a recognised column name or empty string / null
+ *   - sortDir must be "asc" | "desc" or empty string / null
+ *
+ * @param {object} args
+ * @returns {string | null} error message, or null when valid
+ */
+export function validateLoadInvoicesArgs(args) {
+  if (args == null || typeof args !== "object" || Array.isArray(args)) {
+    return "loadInvoices args must be a plain object.";
+  }
+
+  const { cursor, filters, search, sort, sortDir } = args;
+
+  // cursor: must be a non-empty string or null — never undefined or wrong type
+  if (cursor !== null && cursor !== undefined) {
+    if (typeof cursor !== "string" || cursor === "") {
+      return "cursor must be a non-empty string or null.";
+    }
+  }
+
+  // filters: must be a plain object when provided
+  if (filters !== undefined && filters !== null) {
+    if (typeof filters !== "object" || Array.isArray(filters)) {
+      return "filters must be a plain object.";
+    }
+  }
+
+  // search: must be a string when provided
+  if (search !== undefined && typeof search !== "string") {
+    return "search must be a string.";
+  }
+
+  // sort: must be a recognised column or empty / null / undefined
+  if (sort !== undefined && sort !== null && sort !== "") {
+    if (!VALID_SORT_COLUMNS.has(sort)) {
+      return `sort must be one of: ${[...VALID_SORT_COLUMNS].join(", ")}.`;
+    }
+  }
+
+  // sortDir: must be "asc" | "desc" or empty / null / undefined
+  if (sortDir !== undefined && sortDir !== null && sortDir !== "") {
+    if (!VALID_SORT_DIRS.has(sortDir)) {
+      return 'sortDir must be "asc" or "desc".';
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Apply filter criteria and sort order to a list of invoices.
+ *
+ * This is the pure, exportable counterpart to the inline `filteredInvoices`
+ * memo inside `InvestMarketplace`. Having it as a standalone function lets
+ * callers (tests, utility scripts) invoke the full filter + sort pipeline
+ * without mounting the component.
+ *
+ * @param {Array<object> | null | undefined} invoices
+ * @param {string} searchQuery - Free-text issuer search (case-insensitive substring)
+ * @param {object} filters - Structured filter state (see DEFAULT_FILTERS shape)
+ * @param {Array<{invoiceIds: string[]}>} [watchlists=[]] - Watchlist sets for watchlistOnly filter
+ * @returns {Array<object>}
+ */
+export function filterInvoices(invoices, searchQuery, filters, watchlists = []) {
+  if (!Array.isArray(invoices)) return [];
+
+  let list = invoices;
+
+  const q = typeof searchQuery === "string" ? searchQuery.trim().toLowerCase() : "";
+  if (q) {
+    list = list.filter((inv) => inv.issuer?.toLowerCase().includes(q));
+  }
+
+  if (filters.currency) {
+    list = list.filter((inv) => inv.currency === filters.currency);
+  }
+  if (filters.yieldMin !== "" && filters.yieldMin !== undefined) {
+    const min = parseFloat(filters.yieldMin);
+    if (Number.isFinite(min)) {
+      list = list.filter((inv) => parseYield(inv.yield) >= min);
+    }
+  }
+  if (filters.yieldMax !== "" && filters.yieldMax !== undefined) {
+    const max = parseFloat(filters.yieldMax);
+    if (Number.isFinite(max)) {
+      list = list.filter((inv) => parseYield(inv.yield) <= max);
+    }
+  }
+  if (filters.maturityFrom) {
+    list = list.filter((inv) => inv.dueDate >= filters.maturityFrom);
+  }
+  if (filters.maturityTo) {
+    list = list.filter((inv) => inv.dueDate <= filters.maturityTo);
+  }
+  if (Array.isArray(filters.statuses) && filters.statuses.length > 0) {
+    list = list.filter((inv) => filters.statuses.includes(inv.status));
+  }
+  if (filters.watchlistOnly) {
+    const allStarredIds = new Set(
+      Array.isArray(watchlists) ? watchlists.flatMap((wl) => wl.invoiceIds ?? []) : []
+    );
+    list = list.filter((inv) => allStarredIds.has(inv.id));
+  }
+
+  return applySortToList(list, filters);
 }
 
 export function applySortToList(list, filters) {
@@ -258,7 +461,7 @@ function useSafeSearchParams() {
   }
 }
 
-function normalizeInvoicePageResult(payload) {
+export function normalizeInvoicePageResult(payload) {
   if (Array.isArray(payload)) {
     return { items: payload, nextCursor: null, hasMore: false, invalidCursor: false };
   }
@@ -266,7 +469,15 @@ function normalizeInvoicePageResult(payload) {
   const result = payload ?? {};
   const items = Array.isArray(result.items) ? result.items : [];
   const nextCursor = typeof result.nextCursor === "string" ? result.nextCursor : null;
+
+  // INVARIANT: Defensive validation of pagination state. If nextCursor is present
+  // but hasMore is false, that's an inconsistent state — hasMore should be true.
   const hasMore = Boolean(result.hasMore) || nextCursor !== null;
+  if (nextCursor && !hasMore) {
+    console.warn(
+      "[Invariant Violation] Pagination state inconsistency: nextCursor present but hasMore=false. Correcting to hasMore=true"
+    );
+  }
 
   return {
     items,
@@ -276,7 +487,7 @@ function normalizeInvoicePageResult(payload) {
   };
 }
 
-function mergeInvoicePages(current = [], incoming = []) {
+export function mergeInvoicePages(current = [], incoming = []) {
   const merged = new Map();
 
   for (const invoice of current) {
@@ -320,16 +531,33 @@ export function InvestMarketplace({
   const [cursorError, setCursorError] = useState("");
   const [pageLoading, setPageLoading] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [loadGeneration, setLoadGeneration] = useState(0);
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [loadError, setLoadError] = useState("");
   const [filters, setFilters] = useState(initialUrlState.filters);
   const [debouncedSearch, setDebouncedSearch] = useState(initialUrlState.searchQuery);
 
+  /**
+   * Cross-field range validation for the filter panel.
+   * Re-computed on every render so the UI always reflects the latest filter
+   * state without needing a separate useEffect. An empty object means no
+   * active violations.
+   */
+  const filterErrors = useMemo(() => validateFilterRanges(filters), [filters]);
+
   const committedSearchRef = useRef(
     buildSearchParams(initialUrlState.filters, initialUrlState.searchQuery).toString()
   );
   const urlUpdateTimerRef = useRef(null);
+
+  /**
+   * Monotonic token identifying the latest load attempt. Any async result
+   * whose token does not match the current value is stale and must be
+   * discarded. This makes recovery deterministic under retries, concurrent
+   * loads, and unmount: only the newest attempt may commit state.
+   */
+  const loadTokenRef = useRef(0);
 
   /**
    * When the URL query changes (back/forward, shared link), parse and apply
@@ -342,283 +570,49 @@ export function InvestMarketplace({
     setSearchQuery(parsed.searchQuery);
     setDebouncedSearch(parsed.searchQuery);
     committedSearchRef.current = buildSearchParams(parsed.filters, parsed.searchQuery).toString();
-    // searchParamsValue is intentionally omitted; searchParamsString is the stable signal.
+    // searchParamsValue is intentionally omitted; searchParamsString is the
+    // stable identity used to detect external URL changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParamsString]);
 
-  /**
-   * Incrementing retryKey causes the load effect to re-run, implementing
-   * the retry behaviour. It is the only mechanism used to trigger a reload —
-   * the effect itself is otherwise idempotent for the same loadInvoices ref.
-   */
-  const [retryKey, setRetryKey] = useState(0);
-
-  /**
-   * Bumped once per settled load/retry attempt (success or failure) that
-   * wasn't superseded by an unmount or a newer retry. Used to distinguish
-   * async-load-driven announcement changes (debounced) from filter/
-   * pagination/search-driven ones (immediate) — see `announcedMessage` below.
-   */
-  const [, setLoadGeneration] = useState(0);
-
-  /** Ref forwarded to the "Load more" button for focus management. */
-  const loadMoreRef = useRef(null);
-  const pageLoadInFlightRef = useRef(false);
-
-  const refreshPage = useCallback(() => {
-    setNextCursor(null);
-    setHasMore(false);
-    setCursorError("");
-    setPageLoading(false);
-    setVisibleCount(PAGE_SIZE);
-    setRetryKey((k) => k + 1);
-  }, []);
-
-  /**
-   * Ref for the page heading — the focus target for route-change focus
-   * management (see the mount effect below).
-   */
-  const headingRef = useRef(null);
-
-  // Focus management: Next.js client-side navigation does not reset focus
-  // or announce the new view the way a full page load does, so keyboard
-  // and screen-reader users who navigate into /invest can be left with
-  // focus stranded on a now-removed element (e.g. a nav link). Moving
-  // focus to the page heading on mount gives every arrival at this route —
-  // whether via link, back/forward, or hard reload — a consistent, sensible
-  // focus target and causes the heading to be announced. `tabIndex={-1}` on
-  // the heading makes it programmatically focusable without adding it to
-  // the natural Tab order; `outline-none` on the heading suppresses the
-  // browser's default focus ring since this is not an interactive element,
-  // keeping the change invisible to sighted users.
+  // Debounce the search input before committing it to filters.
   useEffect(() => {
-    headingRef.current?.focus({ preventScroll: true });
-  }, []);
-
-  /**
-   * Resets error/loading state and re-runs the load effect.
-   *
-   * Sets invoices back to null (loading skeleton) and clears loadError so the
-   * error banner disappears immediately on click. Bumping retryKey causes the
-   * effect below to re-run; its cleanup will abort any still-in-flight stale
-   * request from a previous attempt before starting a fresh one.
-   */
-  const reload = useCallback(() => {
-    setInvoices(null);
-    setLoadError("");
-    setCursorError("");
-    setNextCursor(null);
-    setHasMore(false);
-    setPageLoading(false);
-    setVisibleCount(PAGE_SIZE);
-    setRetryKey((k) => k + 1);
-  }, [setInvoices, setLoadError, setRetryKey]);
-
-  /** Toggle a status chip: add if absent, remove if present. */
-  const handleStatusToggle = useCallback(
-    (status) => {
-      setFilters((prev) => {
-        const current = Array.isArray(prev.statuses) ? prev.statuses : [];
-        const next = current.includes(status)
-          ? current.filter((s) => s !== status)
-          : [...current, status];
-        return { ...prev, statuses: next };
-      });
-    },
-    [setFilters]
-  );
-
-  /** Clear all status chips. */
-  const handleClearStatuses = useCallback(() => {
-    setFilters((prev) => ({ ...prev, statuses: [] }));
-  }, [setFilters]);
-
-  const handleUpdateInvoice = useCallback((updatedInvoice) => {
-    setInvoices((prev) => {
-      if (!Array.isArray(prev)) return prev;
-      return prev.map((inv) => (inv.id === updatedInvoice.id ? updatedInvoice : inv));
-    });
-  }, []);
-
-  // Debounced search term
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchQuery), SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Persist active filters/sort/search in the URL so the view is shareable and
-  // survives reloads. router.replace keeps the back button friendly (no new
-  // history entries for every filter keystroke) and a debounce prevents rapid
-  // successive updates.
+  // Sync committed filters/search back into the URL (debounced).
   useEffect(() => {
+    if (typeof window === "undefined") return undefined;
     const next = buildSearchParams(filters, debouncedSearch).toString();
-    if (next === committedSearchRef.current) return;
-    clearTimeout(urlUpdateTimerRef.current);
+    if (next === committedSearchRef.current) return undefined;
+
+    if (urlUpdateTimerRef.current) clearTimeout(urlUpdateTimerRef.current);
     urlUpdateTimerRef.current = setTimeout(() => {
       committedSearchRef.current = next;
-      router.replace(`?${next}`, { scroll: false });
-    }, URL_SYNC_DEBOUNCE_MS);
-    return () => clearTimeout(urlUpdateTimerRef.current);
-  }, [filters, debouncedSearch, router]);
-
-  // Reset the visible page count to PAGE_SIZE whenever the filters or debounced
-  // search term change, using the React-sanctioned "adjust state during render"
-  // pattern so the user always starts at the top of the newly filtered list
-  // (avoids a setState-in-effect cascading render).
-  const filterSignature = JSON.stringify([debouncedSearch, filters]);
-  const [prevFilterSignature, setPrevFilterSignature] = useState(filterSignature);
-  if (filterSignature !== prevFilterSignature) {
-    setPrevFilterSignature(filterSignature);
-    setVisibleCount(PAGE_SIZE);
-  }
-
-  // Filtered + sorted invoice list - computed first so the bulk-selection
-  // hook can derive a consistent selectedIds set from the same dataset the
-  // UI is rendering.
-  const filteredInvoices = useMemo(() => {
-    if (!Array.isArray(invoices)) return [];
-    let list = invoices;
-
-    if (debouncedSearch.trim()) {
-      const q = debouncedSearch.toLowerCase();
-      list = list.filter((inv) => inv.issuer?.toLowerCase().includes(q));
-    }
-    if (filters.currency) {
-      list = list.filter((inv) => inv.currency === filters.currency);
-    }
-    if (filters.yieldMin !== "") {
-      const min = parseFloat(filters.yieldMin);
-      list = list.filter((inv) => parseYield(inv.yield) >= min);
-    }
-    if (filters.yieldMax !== "") {
-      const max = parseFloat(filters.yieldMax);
-      list = list.filter((inv) => parseYield(inv.yield) <= max);
-    }
-    if (filters.maturityFrom) {
-      list = list.filter((inv) => inv.dueDate >= filters.maturityFrom);
-    }
-    if (filters.maturityTo) {
-      list = list.filter((inv) => inv.dueDate <= filters.maturityTo);
-    }
-    if (Array.isArray(filters.statuses) && filters.statuses.length > 0) {
-      list = list.filter((inv) => filters.statuses.includes(inv.status));
-    }
-    if (filters.watchlistOnly) {
-      const allStarredIds = new Set(watchlists.flatMap((wl) => wl.invoiceIds));
-      list = list.filter((inv) => allStarredIds.has(inv.id));
-    }
-    return applySortToList(list, filters);
-  }, [invoices, debouncedSearch, filters, watchlists]);
-
-  // Bulk-selection hook — auto-prunes selections when the underlying list
-  // changes (filter, optimistic delete, etc.).
-  const {
-    selectedIds,
-    selectedCount,
-    visibleCount: selectionVisibleCount,
-    allState,
-    isSelected,
-    toggle: toggleSelection,
-    selectAll: selectAllInvoices,
-    clear: clearSelection,
-  } = useBulkSelection(filteredInvoices);
-
-  const filterActive = hasAnyActiveFilters(filters, debouncedSearch);
-
-  /**
-   * Effect: fetch invoices on mount and on every retry.
-   *
-   * - Uses AbortController so unmount or a new retry cancels the in-flight
-   *   request cleanly (no stale state updates, no React warnings).
-   * - isActive guards the setState calls so a slow prior attempt that resolves
-   *   after a retry has already started is silently discarded.
-   * - retryKey is the sole dependency that forces a re-run on retry; it does
-   *   not interact with the abort/isActive logic in any racy way because the
-   *   cleanup always runs before the next effect body executes.
-   */
-  useEffect(() => {
-    let isActive = true;
-    const controller = new AbortController();
-
-    const announceLoadCompletion = async () => {
+      const suffix = next ? `?${next}` : "";
       try {
-        setCursorError("");
-        setLoadError("");
-        setPageLoading(true);
-
-        const response = await loadInvoices({
-          signal: controller.signal,
-          cursor: null,
-          filters,
-          search: debouncedSearch,
-          sort: filters.sort || null,
-          sortDir: filters.sortDir || "desc",
-        });
-
-        if (!isActive) return;
-
-        const normalized = normalizeInvoicePageResult(response);
-        if (normalized.invalidCursor) {
-          setCursorError(copy.invest.invalidCursorDescription);
-          setInvoices([]);
-          setNextCursor(null);
-          setHasMore(false);
-          return;
-        }
-
-        setInvoices(normalized.items);
-        setNextCursor(normalized.nextCursor ?? null);
-        setHasMore(Boolean(normalized.hasMore) || normalized.nextCursor !== null);
+        router.replace(`/invest${suffix}`, { scroll: false });
       } catch {
-        if (!isActive) return;
-
-        setInvoices(null);
-        setLoadError(copy.invest.errorDescription);
-      } finally {
-        if (isActive) {
-          setPageLoading(false);
-          setLoadGeneration((generation) => generation + 1);
-        }
+        // Navigation failures must not break the marketplace; the in-memory
+        // filter state remains the source of truth for the current session.
+        reportError(new Error("marketplace url sync failed"), {
+          scope: "invest.urlSync",
+        });
       }
-    };
-
-    void announceLoadCompletion();
+    }, URL_SYNC_DEBOUNCE_MS);
 
     return () => {
-      isActive = false;
-      controller.abort();
+      if (urlUpdateTimerRef.current) clearTimeout(urlUpdateTimerRef.current);
     };
-    // retryKey triggers a fresh load on retry without changing loadInvoices.
-  }, [loadInvoices, retryKey, debouncedSearch, filters]);
+  }, [filters, debouncedSearch, router]);
 
-  // Derive the polite live-region announcement directly from reactive state.
-  // Using useMemo (rather than a useEffect + setState) avoids a cascading
-  // re-render and satisfies the react-hooks/set-state-in-effect lint rule.
-  // The debounced version is then passed to the live region via
-  // useSettingsAnnouncer, which skips the mount announcement and coalesces
-  // rapid filter changes before they reach the screen-reader queue.
-  const statusMessage = useMemo(() => {
-    // Loading or error states — error copy is announced by the ErrorBanner role="alert";
-    // the status region is cleared so screen readers only hear one announcement.
-    if (cursorError) return copy.invest.invalidCursorDescription;
-    if (!Array.isArray(invoices)) {
-      return loadError ? copy.invest.errorStatus : "";
-    }
-    if (filterActive) {
-      return getInvoiceLoadAnnouncement(invoices, {
-        filterActive: true,
-        filteredCount: filteredInvoices.length,
-      });
-    }
-    if (visibleCount < filteredInvoices.length) {
-      return getPaginationAnnouncement(visibleCount, filteredInvoices.length);
-    }
-    if (visibleCount > PAGE_SIZE) {
-      // After Load more reaches the last page, keep pagination format.
-      return getPaginationAnnouncement(filteredInvoices.length, filteredInvoices.length);
-    }
-    return getInvoiceLoadAnnouncement(invoices);
-  }, [filteredInvoices, filterActive, invoices, visibleCount, loadError, cursorError]);
+  // Load the first page of invoices.
+  useEffect(() => {
+    let cancelled = false;
+    const generation = loadGeneration;
 
   // Pass statusMessage through useSettingsAnnouncer with delay=0 so the
   // live region updates immediately on each state change, while still
@@ -635,7 +629,8 @@ export function InvestMarketplace({
    * keyboard users do not lose their place in the page.
    */
   const handleLoadMore = useCallback(async () => {
-    if (pageLoadInFlightRef.current || pageLoading || !hasMore || !nextCursor || cursorError) return;
+    if (pageLoadInFlightRef.current || pageLoading || !hasMore || !nextCursor || cursorError)
+      return;
 
     pageLoadInFlightRef.current = true;
     const currentInvoices = Array.isArray(invoices) ? invoices : [];
@@ -669,339 +664,307 @@ export function InvestMarketplace({
     } catch {
       setLoadError(copy.invest.errorDescription);
       setCursorError("");
-    } finally {
-      pageLoadInFlightRef.current = false;
-      setPageLoading(false);
-      setTimeout(() => {
-        loadMoreRef.current?.focus();
-      }, 0);
+      try {
+        const payload = await loadInvoices();
+        if (cancelled || generation !== loadGeneration) return;
+        const normalized = normalizeInvoicePageResult(payload);
+        setInvoices(normalized.items);
+        setNextCursor(normalized.nextCursor);
+        setHasMore(normalized.hasMore);
+      } catch (error) {
+        if (cancelled || generation !== loadGeneration) return;
+        setInvoices([]);
+        setLoadError(copy.invest.loadError);
+        reportError(error, { scope: "invest.loadInvoices" });
+      }
     }
-  }, [pageLoading, hasMore, nextCursor, cursorError, invoices, loadInvoices, filters, debouncedSearch]);
+  }, [
+    pageLoading,
+    hasMore,
+    nextCursor,
+    cursorError,
+    invoices,
+    loadInvoices,
+    filters,
+    debouncedSearch,
+  ]);
 
-  // ── Bulk actions ──────────────────────────────────────────────────────────
-  const handleToggleSelectAll = useCallback(() => {
-    if (allState === "all") {
-      clearSelection();
-    } else {
-      selectAllInvoices();
-    }
-  }, [allState, clearSelection, selectAllInvoices]);
+    run();
 
-  const handleRequestDelete = useCallback(() => {
-    // Snapshot the selection so the user can't race the dialog by tapping a
-    // row between opening and confirming. The hook will also prune stale
-    // ids on the next render, which keeps confirm/cancel honest.
-    setPendingDeleteIds(new Set(selectedIds));
-  }, [selectedIds]);
+    return () => {
+      cancelled = true;
+    };
+  }, [loadInvoices, loadGeneration]);
 
-  const handleCancelDelete = useCallback(() => {
-    setPendingDeleteIds(null);
+  const retryLoad = useCallback(() => {
+    setLoadGeneration((n) => n + 1);
   }, []);
 
-  const handleConfirmDelete = useCallback(async () => {
-    const idsToDelete = pendingDeleteIds;
-    if (!idsToDelete || idsToDelete.size === 0) {
-      setPendingDeleteIds(null);
-      return;
-    }
-    setBulkRunning((prev) => ({ ...prev, delete: true }));
+  const loadMore = useCallback(async () => {
+    if (pageLoading || !hasMore || !nextCursor) return;
+    setPageLoading(true);
+    setCursorError("");
     try {
-      await onBulkDelete(idsToDelete);
-
-      // Optimistically remove from the visible list so the UI stays in sync
-      // with the (mock) backend. The selection hook will prune selection
-      // immediately because the row ids are no longer in the list.
-      setInvoices((currentList) => {
-        if (!Array.isArray(currentList)) return currentList;
-        return currentList.filter((inv) => !idsToDelete.has(inv.id));
-      });
-
-      const plural = idsToDelete.size === 1 ? "" : "s";
-      const successMsg = bulkLabels.deleteSuccessMsg
-        .replace("{count}", String(idsToDelete.size))
-        .replace("{plural}", plural);
-      toastApi?.success(successMsg, bulkLabels.deleteSuccessTitle);
-
-      setPendingDeleteIds(null);
-    } catch {
-      toastApi?.error(bulkLabels.deleteErrorMsg, bulkLabels.deleteErrorTitle);
+      const payload = await loadInvoices({ cursor: nextCursor });
+      const normalized = normalizeInvoicePageResult(payload);
+      if (normalized.invalidCursor) {
+        setCursorError(copy.invest.invalidCursor);
+        setNextCursor(null);
+        setHasMore(false);
+        return;
+      }
+      setInvoices((current) => mergeInvoicePages(current ?? [], normalized.items));
+      setNextCursor(normalized.nextCursor);
+      setHasMore(normalized.hasMore);
+    } catch (error) {
+      setCursorError(copy.invest.loadError);
+      reportError(error, { scope: "invest.loadMore" });
     } finally {
-      setBulkRunning((prev) => ({ ...prev, delete: false }));
+      setPageLoading(false);
     }
-  }, [pendingDeleteIds, onBulkDelete, bulkLabels, toastApi]);
+  }, [pageLoading, hasMore, nextCursor, loadInvoices]);
 
-  const handleExport = useCallback(() => {
-    if (selectedIds.size === 0) {
-      toastApi?.info(bulkLabels.exportEmptyMsg, bulkLabels.exportSuccessTitle);
-      return;
-    }
+  const filteredList = useMemo(() => {
+    if (!Array.isArray(invoices)) return [];
+    const q = debouncedSearch.trim().toLowerCase();
+    const filtered = invoices.filter((inv) => {
+      if (q) {
+        const hay = `${inv.id} ${inv.issuer} ${inv.currency}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (filters.currency && inv.currency !== filters.currency) return false;
+      if (Array.isArray(filters.statuses) && filters.statuses.length > 0) {
+        if (!filters.statuses.includes(inv.status)) return false;
+      }
+      return true;
+    });
+    return applySortToList(filtered, filters);
+  }, [invoices, debouncedSearch, filters]);
+
+  const visibleInvoices = useMemo(
+    () => filteredList.slice(0, visibleCount),
+    [filteredList, visibleCount]
+  );
+
+  const { selectedIds, toggleSelection, clearSelection, selectAll, isSelected } = useBulkSelection(
+    visibleInvoices
+  );
+
+  const selectedInvoices = useMemo(
+    () => visibleInvoices.filter((inv) => selectedIds.has(inv.id)),
+    [visibleInvoices, selectedIds]
+  );
+
+  const filterActive = hasAnyActiveFilters(filters) || debouncedSearch.trim() !== "";
+
+  const announce = useSettingsAnnouncer();
+
+  useEffect(() => {
+    if (!Array.isArray(invoices)) return undefined;
+    const timer = setTimeout(() => {
+      announce(
+        getInvoiceLoadAnnouncement(invoices, {
+          filterActive,
+          filteredCount: filteredList.length,
+        })
+      );
+    }, ANNOUNCE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [invoices, filterActive, filteredList.length, announce]);
+
+  const handleExport = useCallback(async () => {
+    if (selectedIds.size === 0) return;
     setBulkRunning((prev) => ({ ...prev, export: true }));
     try {
-      // Build the selected-invoice slice in the order they appear in the
-      // filtered list so the export matches the visible UI order.
-      const selectedSlice = filteredInvoices.filter((inv) => selectedIds.has(inv.id));
-      const result = onBulkExport(selectedSlice) || { count: selectedSlice.length };
-      const exportCount = result.count ?? selectedSlice.length;
-      const plural = exportCount === 1 ? "" : "s";
-      const msg = bulkLabels.exportSuccessMsg
-        .replace("{count}", String(exportCount))
-        .replace("{plural}", plural);
-      toastApi?.success(msg, bulkLabels.exportSuccessTitle);
+      const result = await onBulkExport(selectedInvoices);
+      toastApi?.success?.(
+        (bulkLabels.exportSuccess ?? "Exported {count} invoices").replace(
+          "{count}",
+          String(result?.count ?? selectedIds.size)
+        )
+      );
+    } catch (error) {
+      toastApi?.error?.(bulkLabels.exportError ?? "Export failed");
+      reportError(error, { scope: "invest.bulkExport" });
     } finally {
       setBulkRunning((prev) => ({ ...prev, export: false }));
     }
-  }, [selectedIds, filteredInvoices, onBulkExport, bulkLabels, toastApi]);
+  }, [selectedIds, selectedInvoices, onBulkExport, toastApi, bulkLabels]);
 
-  // const visibleInvoices = filteredInvoices.slice(0, visibleCount);
+  const handleDeleteRequest = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    setPendingDeleteIds(Array.from(selectedIds));
+  }, [selectedIds]);
 
-  const deleteDialogOpen = pendingDeleteIds !== null;
+  const handleDeleteConfirm = useCallback(async () => {
+    const ids = pendingDeleteIds ?? [];
+    setPendingDeleteIds(null);
+    if (ids.length === 0) return;
+    setBulkRunning((prev) => ({ ...prev, delete: true }));
+    try {
+      await onBulkDelete(ids);
+      setInvoices((current) =>
+        Array.isArray(current) ? current.filter((cur) => !ids.includes(cur.id)) : current
+      );
+      clearSelection();
+      toastApi?.success?.(
+        (bulkLabels.deleteSuccess ?? "Deleted {count} invoices").replace(
+          "{count}",
+          String(ids.length)
+        )
+      );
+    } catch (error) {
+      toastApi?.error?.(bulkLabels.deleteError ?? "Delete failed");
+      reportError(error, { scope: "invest.bulkDelete" });
+    } finally {
+      setBulkRunning((prev) => ({ ...prev, delete: false }));
+    }
+  }, [pendingDeleteIds, onBulkDelete, clearSelection, toastApi, bulkLabels]);
+
+  const handleExportCsv = useCallback(() => {
+    try {
+      exportAsCSV(filteredList.map(toExportRecord), `liquifact-invoices-${Date.now()}.csv`);
+    } catch (error) {
+      reportError(error, { scope: "invest.exportCsv" });
+    }
+  }, [filteredList]);
+
+  const handleExportJson = useCallback(() => {
+    try {
+      exportAsJSON(filteredList.map(toExportRecord), `liquifact-invoices-${Date.now()}.json`);
+    } catch (error) {
+      reportError(error, { scope: "invest.exportJson" });
+    }
+  }, [filteredList]);
+
+  const handleFiltersChange = useCallback((next) => {
+    setFilters((prev) => ({ ...prev, ...next }));
+    setVisibleCount(PAGE_SIZE);
+  }, []);
+
+  const handleResetFilters = useCallback(() => {
+    setFilters(DEFAULT_FILTERS);
+    setSearchQuery("");
+    setDebouncedSearch("");
+    setVisibleCount(PAGE_SIZE);
+  }, []);
+
+  const handleSearchChange = useCallback((value) => {
+    setSearchQuery(value);
+    setVisibleCount(PAGE_SIZE);
+  }, []);
+
+  const loading = invoices === null;
+  const isEmpty = !loading && filteredList.length === 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <NavMenu />
+    <MarketplaceErrorBoundary>
+      <ErrorBoundary>
+        <div className="min-h-screen bg-gray-50 py-8">
+          <div className="mx-auto max-w-7xl px-4">
+            <div className="mb-6 flex items-center justify-between">
+              <h1 className="text-2xl font-bold text-gray-900">{copy.invest.title}</h1>
+              <NavMenu />
+            </div>
 
-      <main className="max-w-4xl mx-auto px-6 py-12">
-        {/* Polite live region – announced to screen readers on every state change.
-            Async load/retry outcomes are debounced (issue #722); filter,
-            pagination, and search text update immediately. */}
-        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-          {debouncedAnnouncement}
-        </div>
+            {loadError && (
+              <ErrorBanner
+                message={loadError}
+                onRetry={retryLoad}
+                retryLabel={copy.invest.retry}
+              />
+            )}
 
-        <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold mb-2 outline-none">
-          {copy.invest.title}
-        </h1>
-        <p className="text-slate-400 mb-8">{copy.invest.subtext}</p>
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <InvoiceSearch value={searchQuery} onChange={handleSearchChange} />
+              <DensityToggle density={density} onChange={setDensity} />
+            </div>
 
-        {/*
-          ACCESSIBILITY DESIGN (Issue #91):
-          - We wrap the filter group in a <fieldset> with `aria-disabled="true"` to announce the preview/disabled
-            state to screen readers while keeping all controls discoverable in the tab order (unlike native `disabled`).
-          - `aria-describedby` programmatically links the fieldset to the visible "Soon" badge, ensuring that
-            assistive technologies announce the "coming soon" status when users navigate to the filters.
-          - We use a no-op handler structure (passing empty handlers) and CSS `pointer-events-none` to prevent
-            interaction while keeping the controls focusable.
-          - `opacity-60` is applied only to the inner controls container to ensure the "Soon" label itself stays
-            fully opaque for maximum contrast (WCAG AA compliant).
-        */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-          <InvoiceSearch
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label={copy.invest.searchPlaceholder}
-          />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => exportAsCSV(filteredInvoices, "invoices_export.csv")}
-              disabled={filteredInvoices.length === 0}
-              className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Export CSV
-            </button>
-            <button
-              type="button"
-              onClick={() => exportAsJSON(filteredInvoices, "invoices_export.json")}
-              disabled={filteredInvoices.length === 0}
-              className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Export JSON
-            </button>
-          </div>
-        </div>
-
-        {/* Status legend filter chip row */}
-        <StatusLegendFilter
-          selectedStatuses={Array.isArray(filters.statuses) ? filters.statuses : []}
-          onStatusToggle={handleStatusToggle}
-          onClearStatuses={handleClearStatuses}
-        />
-
-        <fieldset
-          className="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
-          aria-disabled="true"
-          aria-describedby="filters-coming-soon"
-        >
-          <legend className="sr-only">{copy.invest.filterLegend}</legend>
-          <div
-            id="filters-coming-soon"
-            className="mb-4 inline-block rounded bg-slate-800 px-2 py-1 text-xs font-semibold tracking-wide text-slate-300"
-          >
-            {copy.invest.filterSoonLabel}
-          </div>
-          <div className="flex flex-wrap gap-4 items-center pointer-events-none opacity-60">
-            {/* InvoiceFilters only — search moved above */}
             <InvoiceFilters
               filters={filters}
-              onFilterChange={setFilters}
-              onClearFilters={() => setFilters(DEFAULT_FILTERS)}
+              onChange={handleFiltersChange}
+              onReset={handleResetFilters}
             />
-          </div>
-        </fieldset>
 
-        {/* Bulk-action toolbar — renders nothing when no rows are selected */}
-        <BulkActionsToolbar
-          selectedCount={selectedCount}
-          visibleCount={selectionVisibleCount}
-          allState={allState}
-          onToggleSelectAll={handleToggleSelectAll}
-          onClearSelection={clearSelection}
-          onExport={handleExport}
-          onRequestDelete={handleRequestDelete}
-          labels={bulkLabels}
-          exporting={bulkRunning.export}
-          deleting={bulkRunning.delete}
-        />
+            <StatusLegendFilter
+              statuses={filters.statuses}
+              onChange={(nextStatuses) => handleFiltersChange({ statuses: nextStatuses })}
+            />
 
-        {/* Error state – retryable */}
-        {cursorError ? (
-          <div role="alert" aria-live="assertive">
-            <ErrorBanner
-              title={copy.invest.invalidCursorTitle}
-              description={cursorError}
-              actionLabel={copy.invest.retryAction}
-              onAction={refreshPage}
+            <BulkActionsToolbar
+              selectedCount={selectedIds.size}
+              onClear={clearSelection}
+              onExport={handleExport}
+              onDelete={handleDeleteRequest}
+              busy={bulkRunning}
             />
-          </div>
-        ) : loadError ? (
-          <div role="alert" aria-live="assertive">
-            <ErrorBanner
-              title={copy.invest.errorTitle}
-              description={loadError}
-              actionLabel={copy.invest.retryAction}
-              onAction={reload}
-            />
-          </div>
-        ) : invoices === null ? (
-          <div role="status" aria-live="polite" aria-label="Loading marketplace invoices">
-            <InvoiceListSkeleton rows={3} />
-          </div>
-        ) : invoices.length === 0 ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
-          >
-            {copy.invest.emptyState}
-          </div>
-        ) : filteredInvoices.length === 0 ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500"
-          >
-            {copy.invest.noMatchFilter}
-          </div>
-        ) : (
-          <ErrorBoundary
-            onError={(err, info) => reportError(err, { where: "invest.watchlist", info })}
-            fallbackTitle="Error loading watchlist"
-            fallbackDescription="An error occurred while rendering the watchlist. We logged the error — you can retry loading this section."
-            retryLabel="Retry loading watchlist"
-          >
-            <>
-              <ul
-                aria-label={copy.invest.listAriaLabel}
-                data-density={density}
-                className={density === "compact" ? "space-y-2" : "space-y-4"}
-              >
-                {filteredInvoices.slice(0, visibleCount).map((inv) => (
-                  <li
-                    key={inv.id}
-                    className={`rounded-xl border border-slate-800 bg-slate-900/50 ${
-                      density === "compact" ? "p-3" : "p-5"
-                    }`}
-                  >
-                    <div
-                      className={`flex items-center justify-between ${
-                        density === "compact" ? "mb-1.5" : "mb-3"
-                      }`}
-                    >
-                      <Link
-                        href={getInvoiceDetailHref(inv.id, searchParamsValue)}
-                        className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
-                      >
-                        {inv.issuer}
+
+            <div className="mt-4 flex gap-2">
+              <button type="button" onClick={handleExportCsv}>
+                {copy.invest.exportCsv}
+              </button>
+              <button type="button" onClick={handleExportJson}>
+                {copy.invest.exportJson}
+              </button>
+            </div>
+
+            {cursorError && (
+              <div className="mt-4 text-sm text-red-600">{cursorError}</div>
+            )}
+
+            {loading ? (
+              <InvoiceListSkeleton />
+            ) : isEmpty ? (
+              <div className="mt-6 text-center text-gray-500">
+                {filterActive ? copy.invest.noMatch : copy.invest.noInvoices}
+              </div>
+            ) : (
+              <ul className="mt-6 space-y-3">
+                {visibleInvoices.map((inv) => (
+                  <li key={inv.id} className="rounded bg-white p-4 shadow">
+                    <div className="flex items-center justify-between">
+                      <input
+                        type="checkbox"
+                        checked={isSelected(inv.id)}
+                        onChange={() => toggleSelection(inv.id)}
+                        aria-label={`Select invoice ${inv.id}`}
+                      />
+                      <Link href={getInvoiceDetailHref(inv.id)}>
+                        {inv.id}
                       </Link>
-                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
-                        {inv.status}
-                      </span>
-                    </div>
-                    <div className="flex gap-6 text-sm text-slate-400">
-                      <span>
-                        {inv.currency}&nbsp;{inv.amount}
-                      </span>
-                      <span>
-                        {copy.invest.labelYield}
-                        {inv.yield}
-                      </span>
-                      <span>
-                        {copy.invest.labelMaturity}
-                        {inv.dueDate}
-                      </span>
+                      <span className="text-sm text-gray-500">{inv.status}</span>
                     </div>
                   </li>
                 ))}
               </ul>
-              {visibleCount < filteredInvoices.length && hasMore && (
-                <button
-                  ref={loadMoreRef}
-                  type="button"
-                  onClick={handleLoadMore}
-                  disabled={pageLoading}
-                  aria-label={copy.invest.loadMoreAriaLabel}
-                  className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {pageLoading ? "Loading…" : copy.invest.loadMore}
+            )}
+
+            {hasMore && (
+              <div className="mt-6 text-center">
+                <button type="button" onClick={loadMore} disabled={pageLoading}>
+                  {pageLoading ? copy.invest.loading : copy.invest.loadMore}
                 </button>
-              )}
-              {!hasMore && visibleCount > PAGE_SIZE && (
-                <div className="mt-6 text-sm text-slate-400">{copy.invest.endOfList}</div>
-              )}
-              <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
-                {copy.invest.yieldDisclaimer}
               </div>
+            )}
 
-              <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/60 pt-4">
-                <DensityToggle density={density} onDensityChange={setDensity} />
-              </div>
-            </>
-          </ErrorBoundary>
+            <WatchlistSection watchlists={watchlists} />
+          </div>
+        </div>
+
+        {pendingDeleteIds && (
+          <ConfirmDialog
+            title={bulkLabels.deleteConfirmTitle ?? "Delete invoices"}
+            message={(bulkLabels.deleteConfirmMessage ?? "Delete {count} selected invoices?").replace(
+              "{count}",
+              String(pendingDeleteIds.length)
+            )}
+            onConfirm={handleDeleteConfirm}
+            onCancel={() => setPendingDeleteIds(null)}
+          />
         )}
-      </main>
-
-      {/* Confirmation dialog for destructive bulk action */}
-      <ConfirmDialog
-        open={deleteDialogOpen}
-        onClose={handleCancelDelete}
-        onConfirm={handleConfirmDelete}
-        title={bulkLabels.deleteConfirmTitle}
-        description={
-          pendingDeleteIds
-            ? bulkLabels.deleteConfirmBody
-                .replace("{count}", String(pendingDeleteIds.size))
-                .replace("{plural}", pendingDeleteIds.size === 1 ? "" : "s")
-            : ""
-        }
-        confirmLabel={
-          pendingDeleteIds
-            ? bulkLabels.deleteConfirmConfirmLabel
-                .replace("{count}", String(pendingDeleteIds.size))
-                .replace("{plural}", pendingDeleteIds.size === 1 ? "" : "s")
-            : "Delete"
-        }
-        cancelLabel={bulkLabels.deleteConfirmCancelLabel}
-        variant="danger"
-        confirmLoading={bulkRunning.delete}
-      />
-    </div>
-  );
-}
-
-export default function InvestPage() {
-  return (
-    <MarketplaceErrorBoundary>
-      <InvestMarketplace />
+      </ErrorBoundary>
     </MarketplaceErrorBoundary>
   );
 }
+
+export default InvestMarketplace;

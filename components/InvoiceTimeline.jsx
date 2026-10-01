@@ -184,7 +184,10 @@ export default function InvoiceTimeline({
           {copy.invoiceTimeline.heading}
         </h2>
         <div className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-slate-300">
-          <span className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-cyan-400" aria-hidden="true" />
+          <span
+            className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-cyan-400"
+            aria-hidden="true"
+          />
           {copy.invoiceTimeline.loadingState}
         </div>
       </section>
@@ -272,18 +275,22 @@ export default function InvoiceTimeline({
         <ol aria-label={copy.invoiceTimeline.heading} className="relative flex flex-col gap-3">
           {orderedEvents.map((event, index) => {
             const eventType = event?.type || "unknown";
-            const safeLabel = resolveInvoiceEventLabel(eventType, copy.invoiceTimeline.unknownEvent);
+            const safeLabel = resolveInvoiceEventLabel(
+              eventType,
+              copy.invoiceTimeline.unknownEvent
+            );
             const safeActor = truncateActorLabel(event?.actor, 22);
             const occurredAt = event?.occurredAt ? new Date(event.occurredAt) : null;
-            const isoText = occurredAt && !Number.isNaN(occurredAt.getTime())
-              ? occurredAt.toLocaleString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })
-              : "Unknown time";
+            const isoText =
+              occurredAt && !Number.isNaN(occurredAt.getTime())
+                ? occurredAt.toLocaleString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })
+                : "Unknown time";
 
             return (
               <li
@@ -298,12 +305,18 @@ export default function InvoiceTimeline({
                 <div className="flex min-w-0 flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-2 text-sm text-slate-100">
                     <span className="font-medium">{safeLabel}</span>
-                    <time className="text-xs text-slate-400" dateTime={event?.occurredAt || undefined}>
+                    <time
+                      className="text-xs text-slate-400"
+                      dateTime={event?.occurredAt || undefined}
+                    >
                       {isoText}
                     </time>
                   </div>
                   <div className="min-w-0 text-xs text-slate-400">
-                    <span className="inline-block max-w-full truncate align-bottom" title={safeActor}>
+                    <span
+                      className="inline-block max-w-full truncate align-bottom"
+                      title={safeActor}
+                    >
                       {copy.invoiceTimeline.byActor.replace("{actor}", safeActor)}
                     </span>
                   </div>

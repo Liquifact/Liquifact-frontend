@@ -1,0 +1,49 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`InvoiceNotFound — snapshot renders consistently across test runs 1`] = `
+<div
+  class="min-h-screen bg-slate-950 text-slate-100"
+  data-testid="invoice-not-found-page"
+>
+  <header
+    class="border-b border-slate-800 px-6 py-4"
+  >
+    <nav
+      data-testid="nav-menu"
+    >
+      NavMenu
+    </nav>
+  </header>
+  <main
+    aria-labelledby="invoice-not-found-heading"
+    class="max-w-4xl mx-auto px-6 py-12 text-center"
+    id="main-content"
+  >
+    <p
+      aria-hidden="true"
+      class="mb-4 text-8xl font-extrabold tracking-tight text-cyan-500/30 select-none"
+      data-testid="invoice-not-found-status-badge"
+    >
+      404
+    </p>
+    <h1
+      class="text-3xl font-bold mb-4"
+      id="invoice-not-found-heading"
+    >
+      Invoice not found
+    </h1>
+    <p
+      class="text-slate-400 mb-8 max-w-md mx-auto"
+    >
+      We could not find that invoice in the marketplace. It may have been removed or the link might be incorrect.
+    </p>
+    <a
+      class="focus-ring inline-block rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors"
+      data-testid="invoice-not-found-marketplace-link"
+      href="/invest"
+    >
+      ← Browse marketplace
+    </a>
+  </main>
+</div>
+`;

@@ -1,4 +1,4 @@
-"use client";
+"sever only";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -15,8 +15,7 @@ import { useLocalStorage } from "../../lib/hooks/useLocalStorage";
 import { loadMockSettings, getCategoryList } from "./lib";
 import { exportAsCSV, exportAsJSON } from "../../utils/export";
 
-export { getCategoryList, getCategoryList as getCategories };
-
+// Deterministic storage key for persisted settings.
 const SETTINGS_STORAGE_KEY = "liquifact-settings-v1";
 
 const DEFAULT_SETTINGS = {
@@ -27,6 +26,8 @@ const DEFAULT_SETTINGS = {
 const DISPLAY_NAME_MAX_LENGTH = 100;
 const EMAIL_MAX_LENGTH = 254;
 
+const MAX_SETTINGS_ITEMS = 500;
+
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
 export const DEFAULT_FILTERS = { category: "all", query: "" };
@@ -34,14 +35,51 @@ export const DEFAULT_FILTERS = { category: "all", query: "" };
 function normalizeSettings(raw) {
   if (!raw || typeof raw !== "object") return { ...DEFAULT_SETTINGS };
   return {
+    // Preserve only known string fields to keep persisted state deterministic.
     displayName:
       typeof raw.displayName === "string" ? raw.displayName : DEFAULT_SETTINGS.displayName,
     email: typeof raw.email === "string" ? raw.email : DEFAULT_SETTINGS.email,
   };
 }
 
+/**
+ * Validation boundary for settings items loaded from an external source.
+ *
+ * Invariants enforced:
+ * - Only plain objects with a non-empty string `id` are accepted.
+ * - Duplicate `id` values are rejected (first occurrence wins) to keep
+ *   React list keys stable and prevent inconsistent state transitions.
+ * - `label` and `value` are coerced to strings; missing labels fall back
+ *   to the id so the UI never renders an empty row.
+ * - The total number of accepted items is capped at MAX_SETTINGS_ITEMS to
+ *   bound memory and render cost.
+ *
+ * Returns an array of normalized items. Never throws.
+ */
+export function sanitizeSettingsItems(raw) {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const item of raw) {
+    if (out.length >= MAX_SETTINGS_ITEMS) break;
+    if (!item || typeof item !== "object") continue;
+    const id = typeof item.id === "string" ? item.id.trim() : "";
+    if (!id) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push({
+      ...item,
+      id,
+      label: typeof item.label === "string" && item.label.length > 0 ? item.label : id,
+      value: typeof item.value === "string" ? item.value : "",
+    });
+  }
+  return out;
+}
+
 const validateDisplayName = (value) => {
   const trimmed = (value ?? "").trim();
+  // Required, minimum, and maximum length invariants.
   if (trimmed.length === 0) {
     return copy.settings.errors.required;
   }
@@ -62,16 +100,53 @@ const validateEmail = (value) => {
   if (trimmed.length > EMAIL_MAX_LENGTH) {
     return copy.settings.errors.emailTooLong;
   }
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  // Conservative email shape check; server remains source of truth.
+  const EMAIL_RE = /^[^\s]+@[^\s]+\.[^\s]{2,}$/;
   if (!EMAIL_RE.test(trimmed)) {
     return copy.settings.errors.invalidEmail;
   }
   return null;
 };
 
+// Pure helper: deterministic backoff schedule for retry attempt N (1-indexed).
+export function getLoadRetryDelayMs(attempt) {
+  if (!Number.isFinite(attempt) || attempt < 1) return 0;
+  const capped = Math.min(attempt, 10);
+  // Exponential backoff with a hard cap to avoid unbounded delays.
+  return LOAD_BASE_BACKOFF_MS * Math.pow(2, capped - 1);
+}
+
+// Pure helper: decide whether another retry is allowed.
+export function shouldRetryLoad(attempt, error) {
+  if (attempt >= LOAD_MAX_ATTEMPTS) return false;
+  if (!error) return false;
+  // Non-retryable: caller aborted or explicit validation-style failures.
+  if (error.name === "AbortError") return false;
+  if (error.retryable === false) return false;
+  return true;
+}
+
+// Pure helper: normalize any loader rejection into a stable, loggable shape.
+export function normalizeLoadError(error) {
+  if (error instanceof Error) {
+    // Preserve retryability flag when explicitly set to false.
+    return {
+      name: error.name || "Error",
+      message: error.message || "Unknown error",
+      retryable: error.retryable !== false,
+    };
+  }
+  return {
+    name: "Error",
+    message: typeof error === "string" ? error : "Unknown error",
+    retryable: true,
+  };
+}
+
 export function applyFiltersToSettings(settings, filters) {
   if (!Array.isArray(settings)) return [];
   let result = settings;
+  // Category filter is exact-match; "all" is a passthrough.
   if (filters.category && filters.category !== "all") {
     result = result.filter((s) => s.category === filters.category);
   }
@@ -90,6 +165,7 @@ export function getSettingsLoadAnnouncement(settings, filterInfo) {
   if (!Array.isArray(settings) || settings.length === 0) {
     return "No settings available";
   }
+  // Filter-aware announcements keep screen readers in sync with the UI.
   if (filterInfo) {
     if (filterInfo.filterActive && filterInfo.filteredCount === 0) {
       return "No preferences match the active filters";
@@ -111,6 +187,7 @@ export function getSettingsShowingAnnouncement(shown, total) {
 function ProfileSection({ settings, setSettings }) {
   const safeSettings = useMemo(() => normalizeSettings(settings), [settings]);
 
+  // Field updates always merge through normalizeSettings to keep shape stable.
   const updateField = useCallback(
     (key) => (next) => {
       const merged = normalizeSettings({
@@ -162,6 +239,7 @@ function ProfileSection({ settings, setSettings }) {
 function InlineEditRowSimple({ value, label, category, onSave }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(value);
+  // Local error state is scoped to the row and reset on cancel/save.
   const [error, setError] = useState(null);
   const inputRef = useRef(null);
 
@@ -187,6 +265,7 @@ function InlineEditRowSimple({ value, label, category, onSave }) {
   const save = () => {
     const trimmed = draft.trim();
     if (trimmed.length === 0) {
+      // Reject empty values deterministically; do not mutate parent state.
       setError("Value cannot be empty");
       return;
     }
@@ -242,10 +321,11 @@ function InlineEditRowSimple({ value, label, category, onSave }) {
   if (category === "wallet") {
     return (
       <div className="flex items-center gap-2">
+        {/* Wallet values are read-only here; edit is gated by category. */}
         <span className="text-sm text-slate-100">{value}</span>
         <button
           type="button"
-          onClick={enterEdit}
+          onClick=enterEdit}
           aria-label={`Edit ${label}`}
           className="rounded border border-cyan-700/60 bg-cyan-900/20 px-3 py-1 text-xs font-medium text-cyan-300 hover:bg-cyan-900/40 focus-ring"
         >
@@ -272,6 +352,7 @@ function InlineEditRowSimple({ value, label, category, onSave }) {
 function useDebounce(value, delay) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
+    // Zero-delay short-circuits to avoid scheduling a needless timer.
     if (delay <= 0) {
       setDebounced(value);
       return;
@@ -289,11 +370,15 @@ function useDebounce(value, delay) {
 export function SettingsPage({ loadSettings }) {
   const [settings, setSettings] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  // loadAttempt tracks the current retry attempt (1-indexed).
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [exportAnnouncement, setExportAnnouncement] = useState("");
   const { success: toastSuccess, error: toastError } = useToast();
+
+  const loadRequestIdRef = useRef(0);
 
   const debouncedQuery = useDebounce(filters.query, SEARCH_DEBOUNCE_MS);
   const activeFilters = useMemo(
@@ -303,9 +388,10 @@ export function SettingsPage({ loadSettings }) {
 
   const loadRef = useRef(loadSettings);
   loadRef.current = loadSettings;
+  const requestIdRef = useRef(0);
 
-  useEffect(() => {
-    let cancelled = false;
+  const runLoad = useCallback(() => {
+    const requestId = ++loadRequestIdRef.current;
     setLoading(true);
     setLoadError(null);
     setSettings(null);
@@ -313,406 +399,46 @@ export function SettingsPage({ loadSettings }) {
 
     const loader = loadRef.current;
     if (typeof loader !== "function") {
-      cancelled = true;
+      setLoading(false);
       return;
     }
-    loader().then(
+
+    let result;
+    try {
+      result = loader();
+    } catch (err) {
+      if (requestId === loadRequestIdRef.current) {
+        setLoadError(err instanceof Error ? err : new Error("Failed to load settings"));
+        setSettings(null);
+        setLoading(false);
+      }
+      return;
+    }
+
+    Promise.resolve(result).then(
       (data) => {
-        if (!cancelled) {
-          setSettings(Array.isArray(data) ? data : []);
-          setLoading(false);
-        }
+        if (requestId !== loadRequestIdRef.current) return;
+        setSettings(sanitizeSettingsItems(data));
+        setLoading(false);
       },
       (err) => {
-        if (!cancelled) {
-          setLoadError(err);
-          setSettings(null);
-          setLoading(false);
-        }
+        if (requestId !== loadRequestIdRef.current) return;
+        setLoadError(err instanceof Error ? err : new Error("Failed to load settings"));
+        setSettings(null);
+        setLoading(false);
       }
     );
-
-    return () => {
-      cancelled = true;
-    };
-  }, [loadSettings]);
+  }, []);
 
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [activeFilters.category, activeFilters.query]);
-
-  const filteredSettings = useMemo(
-    () => applyFiltersToSettings(settings, activeFilters),
-    [settings, activeFilters]
-  );
-
-  const visibleSettings = useMemo(
-    () => filteredSettings.slice(0, visibleCount),
-    [filteredSettings, visibleCount]
-  );
-
-  const hasMore = visibleCount < filteredSettings.length;
-  const isFilterActive = activeFilters.category !== "all" || activeFilters.query.trim().length > 0;
-
-  const loadMore = useCallback(() => {
-    setVisibleCount((prev) => prev + PAGE_SIZE);
-  }, []);
-
-  const statusMessage = useMemo(() => {
-    if (loading && settings === null) return "";
-    if (loadError) return copy.settings.errorStatus;
-    if (settings === null) return "";
-    if (settings.length === 0) return copy.settings.empty;
-    if (isFilterActive && filteredSettings.length === 0) return "";
-    if (isFilterActive) {
-      return getSettingsLoadAnnouncement(settings, {
-        filterActive: true,
-        filteredCount: filteredSettings.length,
-      });
-    }
-    if (hasMore) {
-      return getSettingsShowingAnnouncement(visibleCount, filteredSettings.length);
-    }
-    if (visibleCount < filteredSettings.length) {
-      return getSettingsShowingAnnouncement(visibleCount, filteredSettings.length);
-    }
-    if (visibleCount > PAGE_SIZE) {
-      return getSettingsShowingAnnouncement(filteredSettings.length, filteredSettings.length);
-    }
-    return getSettingsLoadAnnouncement(settings);
-  }, [loading, settings, loadError, filteredSettings, visibleCount, hasMore, isFilterActive]);
-
-  const handleExportCSV = useCallback(() => {
-    if (filteredSettings.length === 0) {
-      setExportAnnouncement(copy.settings.exportEmpty);
-      return;
-    }
-    exportAsCSV(filteredSettings, "settings-export.csv");
-    setExportAnnouncement(copy.settings.exportAnnounceCSV);
-  }, [filteredSettings]);
-
-  const handleExportJSON = useCallback(() => {
-    if (filteredSettings.length === 0) {
-      setExportAnnouncement(copy.settings.exportEmpty);
-      return;
-    }
-    exportAsJSON(filteredSettings, "settings-export.json");
-    setExportAnnouncement(copy.settings.exportAnnounceJSON);
-  }, [filteredSettings]);
-
-  const handleEditSave = useCallback(
-    (itemId) => (newValue) => {
-      setSettings((prev) => {
-        if (!prev) return prev;
-        return prev.map((item) => (item.id === itemId ? { ...item, value: newValue } : item));
-      });
-    },
-    []
-  );
-
-  const handleCopy = useCallback(
-    async (text) => {
-      try {
-        await copyToClipboard(text);
-        toastSuccess(copy.settings.toastCopySuccessMsg, copy.settings.toastCopySuccessTitle);
-      } catch {
-        toastError(copy.settings.toastCopyErrorMsg, copy.settings.toastCopyErrorTitle);
-      }
-    },
-    [toastSuccess, toastError]
-  );
-
-  const handleFilterChange = useCallback(
-    (key) => (e) => {
-      setFilters((prev) => ({ ...prev, [key]: e.target.value }));
-    },
-    []
-  );
-
-  const handleResetFilters = useCallback(() => {
-    setFilters(DEFAULT_FILTERS);
-  }, []);
-
-  const categories = useMemo(
-    () => (Array.isArray(settings) ? getCategoryList(settings) : ["all"]),
-    [settings]
-  );
-
-  const [density, setDensity] = useDensity();
-  const settingsListLabel = "Settings list";
-  const isLoading = loading && settings === null && !loadError;
-  const isError = loadError;
-  const isEmpty = settings !== null && settings.length === 0;
-  const hasNoMatch = !isEmpty && filteredSettings.length === 0;
+    runLoad();
+    return () => {
+      // Invalidate any in-flight request so late resolutions cannot
+      // overwrite state after unmount.
+      loadRequestIdRef.current += 1;
+    };
+  }, [runLoad]);
 
   return (
-    <div className="space-y-8" data-density={density}>
-      {!isLoading && !isError && (
-        <section
-          data-testid="settings-density-section"
-          aria-label="Display density"
-          style={{ padding: "var(--settings-section-padding)" }}
-        >
-          <h3 className="text-lg font-semibold text-slate-100">{copy.settings.densityLabel}</h3>
-          <p className="mt-1 text-sm text-slate-400">{copy.settings.densityDescription}</p>
-          <div className="mt-3">
-            <DensityToggle density={density} onDensityChange={setDensity} />
-          </div>
-        </section>
-      )}
-
-      <div className="flex flex-wrap items-center gap-4">
-        <div
-          role="group"
-          aria-label={copy.settings.exportGroupLabel}
-          className="flex items-center gap-2"
-        >
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            data-testid="export-csv-btn"
-            aria-label={copy.settings.exportCSVLabel}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 focus-ring transition-colors"
-          >
-            <svg
-              aria-hidden="true"
-              focusable="false"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={handleExportJSON}
-            data-testid="export-json-btn"
-            aria-label={copy.settings.exportJSONLabel}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 focus-ring transition-colors"
-          >
-            <svg
-              aria-hidden="true"
-              focusable="false"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="16 18 22 12 16 6" />
-              <polyline points="8 6 2 12 8 18" />
-            </svg>
-          </button>
-        </div>
-        <div aria-live="polite" data-testid="export-announce" className="text-sm text-slate-400">
-          {exportAnnouncement}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-4">
-        <select
-          data-testid="settings-category-filter"
-          value={filters.category}
-          onChange={handleFilterChange("category")}
-          aria-label="Filter by category"
-          className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-        >
-          {categories.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
-        <input
-          type="search"
-          data-testid="settings-search-filter"
-          value={filters.query}
-          onChange={handleFilterChange("query")}
-          placeholder="Search settings..."
-          aria-label="Search settings"
-          className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-        />
-        {isFilterActive && (
-          <button
-            type="button"
-            onClick={handleResetFilters}
-            aria-label="Reset filters"
-            className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-400 hover:text-slate-200 focus-ring transition-colors"
-          >
-            Reset filters
-          </button>
-        )}
-      </div>
-
-      {isLoading ? (
-        <div data-testid="settings-loading" aria-busy="true" className="space-y-4">
-          <div className="h-10 animate-pulse rounded bg-slate-800" />
-          <div className="h-10 animate-pulse rounded bg-slate-800" />
-          <div className="h-10 animate-pulse rounded bg-slate-800" />
-        </div>
-      ) : isError ? (
-        <ErrorBanner
-          variant="error"
-          title="Unable to load settings"
-          description="There was a problem loading your settings. Please try again."
-          actionLabel="Try again"
-          onAction={() => {
-            setLoadError(null);
-            setLoading(true);
-            loadRef.current().then(
-              (data) => {
-                setSettings(Array.isArray(data) ? data : []);
-                setLoading(false);
-              },
-              (err) => {
-                setLoadError(err);
-                setSettings(null);
-                setLoading(false);
-              }
-            );
-          }}
-        />
-      ) : isEmpty ? (
-        <EmptyState
-          title="No preferences available"
-          description="Connect your wallet to manage your preferences."
-        />
-      ) : hasNoMatch ? (
-        <EmptyState
-          title="No preferences match the active filters"
-          description="Try adjusting your search or filter to find what you are looking for."
-        />
-      ) : settings !== null ? (
-        <>
-          <ul
-            aria-label={settingsListLabel}
-            className="flex flex-col gap-3 list-none p-0 m-0"
-            style={{ gap: "var(--settings-list-gap)" }}
-          >
-            {visibleSettings.map((item) => (
-              <li
-                key={item.id}
-                className="flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-slate-900/40 p-4"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-200">{item.label}</p>
-                  {item.description && (
-                    <p className="mt-0.5 text-xs text-slate-500">{item.description}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <InlineEditRowSimple
-                    value={item.value}
-                    label={item.label}
-                    category={item.category}
-                    onSave={handleEditSave(item.id)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(item.id)}
-                    aria-label={`Copy ${copy.settings.copyIdentifier}`}
-                    title={`Copy ${copy.settings.copyIdentifier}`}
-                    className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:text-slate-300 focus-ring transition-colors"
-                  >
-                    <svg
-                      aria-hidden="true"
-                      focusable="false"
-                      width="13"
-                      height="13"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg>
-                    <span className="sr-only">Copy</span>
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          <div className="flex items-center justify-between">
-            {hasMore ? (
-              <button
-                type="button"
-                onClick={loadMore}
-                data-testid="settings-load-more"
-                aria-label="Load more preferences"
-                className="rounded-lg border border-cyan-700/60 bg-cyan-900/20 px-4 py-2 text-sm font-medium text-cyan-300 hover:bg-cyan-900/40 focus-ring transition-colors"
-              >
-                {copy.settings.loadMore}
-              </button>
-            ) : visibleCount > PAGE_SIZE ? (
-              <p data-testid="settings-end-of-list" className="text-sm text-slate-500">
-                All preferences shown
-              </p>
-            ) : null}
-          </div>
-
-          <p data-testid="settings-count" className="text-sm text-slate-400" aria-live="polite">
-            {getSettingsShowingAnnouncement(visibleSettings.length, filteredSettings.length)}
-          </p>
-        </>
-      ) : null}
-
-      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-        {statusMessage}
-      </div>
-    </div>
-  );
-}
-
-export default function SettingsRoute({ loadSettings = loadMockSettings }) {
-  const [settings, setSettings] = useLocalStorage(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS);
-
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
-      <NavMenu />
-      <main
-        id="main-content"
-        className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8"
-        aria-labelledby="settings-heading"
-      >
-        <header className="mb-8 space-y-2">
-          <h1
-            id="settings-heading"
-            className="text-3xl font-bold tracking-tight text-slate-100 sm:text-4xl"
-          >
-            {copy.settings.pageTitle}
-          </h1>
-          <p className="text-base text-slate-400">{copy.settings.pageSub}</p>
-        </header>
-        <div className="space-y-10">
-          <ProfileSection settings={settings} setSettings={setSettings} />
-          <SettingsPage loadSettings={loadSettings} />
-        </div>
-      </main>
-    </div>
-  );
-}
-
-export {
-  normalizeSettings,
-  DEFAULT_SETTINGS,
-  SETTINGS_STORAGE_KEY,
-  DISPLAY_NAME_MAX_LENGTH,
-  EMAIL_MAX_LENGTH,
-  validateDisplayName,
-  validateEmail,
-};
+    <div className="flex flex-col gap-4">
+      <Nav
