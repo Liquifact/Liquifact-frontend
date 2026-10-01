@@ -109,13 +109,17 @@ export function toExportRecord(invoice) {
     return null;
   }
   return {
-    id: invoice.id,
-    issuer: invoice.issuer,
-    amount: invoice.amount,
-    currency: invoice.currency,
-    dueDate: invoice.dueDate,
-    yield: invoice.yield,
-    status: invoice.status,
+    isValid: true,
+    safeInvoice: {
+      id: safeId,
+      issuer: safeIssuer,
+      amount: parsedAmount,
+      currency: safeCurrency,
+      dueDate: safeDueDate,
+      yield: safeYield,
+      status: safeStatus,
+    },
+    error: null,
   };
 
   return record;
