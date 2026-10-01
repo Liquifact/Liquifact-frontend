@@ -4,91 +4,64 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ErrorBanner from "@/components/ErrorBanner";
 import { reportError } from "@/lib/observability/reportError";
 import { copy } from "@/app/copy/en";
-import { reportError } from "@/lib/observability/reportError";
+import Link from "next/link";
 
-/**
- * Route-level error boundary for `app/invest/[id]`.
- *
- * Rendered by the Next.js App Router when the invoice-detail segment throws
- * during render or data fetching. Its job is to make that failure
- * *recoverable* and *diagnosable* without leaking anything the server chose
- * not to send to the browser.
- *
- * Three properties this boundary guarantees, each of which the previous
- * version did not hold:
- *
- * 1. **The server's error message is never rendered.** The earlier version
- *    passed `error.message` straight into the banner, so a thrown message
- *    carrying a SQL fragment, a filesystem path, or an upstream provider
- *    response body was shown verbatim to any user who triggered the error.
- *    Only `copy.error.description` is rendered now; the raw message goes to
- *    the observability sink instead.
- *
- * 2. **Retry is guarded against re-entrancy.** `reset()` re-renders the
- *    segment, and a segment that fails deterministically will fail again.
- *    Without a guard, a user mashing "Try again" queues an unbounded number
- *    of re-renders, each re-reporting the same error. Attempts are capped and
- *    the control is disabled once the cap is reached, so the loop terminates
- *    deterministically instead of depending on how fast the user clicks.
- *
- * 3. **Reporting happens once per distinct error**, not once per render.
- *    `useEffect` keyed on `error` re-fires whenever the boundary re-renders
- *    with the same error object. A ref guard makes reporting idempotent, so
- *    the retry counter reflects distinct attempts rather than render count.
- *
- * `error.digest` is Next.js's server-side correlation identifier. It is passed
- * to the reporter and rendered as a short reference so a user can quote it in
- * a support request, without exposing a stack trace.
- *
- * @param {object}   props
- * @param {Error}    props.error — Error thrown by the segment. Next.js
- *   attaches `digest` for server-side errors.
- * @param {Function} props.reset — Re-mounts the subtree. Replaces the failed
- *   render without a full page reload.
- */
 const MAX_RETRY_ATTEMPTS = 3;
 
-/**
- * Decide what the recovery control should do after `attempts` retries.
- *
- * Pure and exported so the policy is testable on its own. Re-rendering the
- * same segment cannot fix a deterministic failure, so once the cap is reached
- * the only remaining recovery is a full page reload.
- *
- * @param {number} attempts Retries already performed.
- * @returns {"retry"|"reload"}
- */
 export function recoveryAction(attempts) {
   return attempts >= MAX_RETRY_ATTEMPTS ? "reload" : "retry";
 }
 
+const reportedErrors = new WeakSet();
+
 export default function InvoiceDetailError({ error, reset }) {
   const [attempts, setAttempts] = useState(0);
-  const reportedRef = useRef(null);
+  const [isResetting, setIsResetting] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+  
+  const isMountedRef = useRef(true);
 
-  // Report each distinct error exactly once, even across re-renders.
   useEffect(() => {
-    // Forward to the pluggable observability sink so failures are diagnosable
-    // in production. `digest` is the opaque server-side correlation id; the raw
-    // `error.message` is intentionally NOT rendered because it may contain
-    // internal or sensitive detail.
-    reportError(error, {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!error) return;
+
+    if (reportedErrors.has(error)) return;
+    reportedErrors.add(error);
+
+    let active = true;
+    setIsReporting(true);
+
+    const digest = error.digest;
+    
+    Promise.resolve(reportError(error, {
       scope: "invest.invoice_detail",
-      digest: error?.digest,
+      digest: digest,
+    })).finally(() => {
+      if (active && isMountedRef.current) {
+        setIsReporting(false);
+      }
     });
+
+    return () => {
+      active = false;
+    };
   }, [error]);
 
   const exhausted = recoveryAction(attempts) === "reload";
 
   const handleRetry = useCallback(() => {
-    if (recoveryAction(attempts) === "reload") return;
-    setAttempts((previous) => previous + 1);
+    if (isResetting || isReporting || exhausted) return;
+    setIsResetting(true);
+    setAttempts((prev) => prev + 1);
     reset();
-  }, [attempts, reset]);
+  }, [attempts, reset, exhausted, isResetting, isReporting]);
 
-  // Past the cap, recovery means a full reload: re-rendering the same
-  // deterministic failure cannot succeed, and leaving the user with a dead
-  // button would be worse than an honest dead end.
   const handleReload = useCallback(() => {
     if (typeof window !== "undefined") window.location.reload();
   }, []);
@@ -103,18 +76,23 @@ export default function InvoiceDetailError({ error, reset }) {
         onAction: handleRetry,
       };
 
+  const buttonLabel = isReporting
+    ? "Reporting…"
+    : isResetting
+      ? "Retrying…"
+      : action.label;
+
   return (
     <div
       className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-4 py-16"
-      data-testid="invest-detail-error-page"
+      data-testid="invest-id-error-boundary"
     >
       <main
         id="main-content"
         className="w-full max-w-lg"
-        aria-labelledby="invest-detail-error-heading"
+        aria-labelledby="invest-error-heading"
       >
-        {/* Visually hidden heading so screen readers can identify the landmark */}
-        <h1 id="invest-detail-error-heading" className="sr-only">
+        <h1 id="invest-error-heading" className="sr-only">
           {copy.error?.title || "Something went wrong"}
         </h1>
 
@@ -122,9 +100,28 @@ export default function InvoiceDetailError({ error, reset }) {
           variant="server"
           title={copy.error?.title || "Something went wrong"}
           description={copy.error?.description}
-          actionLabel={copy.error?.actionLabel}
-          onAction={reset}
+          previewLabel={copy.error?.previewLabel}
         />
+        
+        <div className="mt-6 flex flex-col items-center gap-4">
+          <button
+            type="button"
+            data-testid="invest-error-reset-btn"
+            onClick={action.onAction}
+            disabled={isResetting || isReporting}
+            aria-disabled={isResetting || isReporting}
+            className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {buttonLabel}
+          </button>
+
+          <Link
+            href="/invest"
+            className="text-sm text-slate-400 hover:text-slate-200"
+          >
+            Back to marketplace
+          </Link>
+        </div>
       </main>
     </div>
   );

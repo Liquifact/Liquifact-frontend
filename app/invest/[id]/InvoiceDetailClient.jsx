@@ -108,6 +108,7 @@ function validateInvoiceDetailClientProps(props) {
     rawYield,
     rawDueDate,
     onSave,
+    currency,
   } = props;
 
   // Validate string props with fallback
@@ -157,6 +158,7 @@ function validateInvoiceDetailClientProps(props) {
     rawYield: validateOptionalString(rawYield, validateString(formattedYield, "")),
     rawDueDate: validateOptionalString(rawDueDate, validateString(dueDate, "")),
     onSave: validateCallback(onSave),
+    currency: validateOptionalString(currency, null),
   };
 }
 
@@ -310,7 +312,7 @@ function EditableRow({
   // row is not being edited. This preserves the contract that the displayed
   // value always reflects the latest props after a successful save.
   useEffect(() => {
-    if (!isEditing && !saveInFlightRef.current) {
+    if (!isEditing && !inFlightRef.current) {
       setDraft(rawValue);
     }
   }, [rawValue, isEditing]);
@@ -545,15 +547,16 @@ export default function InvoiceDetailClient(props) {
     rawYield,
     rawDueDate,
     onSave,
+    currency,
   } = validatedProps;
   // Density state is owned here and passed to DensityToggle as controlled props
   // so that both this component and the toggle always reflect the same value.
   const [density, setDensity] = useDensity();
-  const spacing = SPACING[density] ?? SPACING.comfortable;
 
   // Single polite aria-live region shared by all editable rows so announcements
   // do not stack up in the DOM (one region, one message at a time).
   const [announcement, setAnnouncement] = useState("");
+  const announceTimer = useRef(null);
 
   // Invariant 6: unknown density values fall back to "comfortable" so a
   // corrupted localStorage value cannot break layout.
@@ -566,7 +569,7 @@ export default function InvoiceDetailClient(props) {
 
   // I6: announcements are serialized through a single shared live region.
   // A later announcement supersedes an earlier one and is auto-cleared.
-  const announce = useCallback((msg) => {
+  const handleAnnounce = useCallback((msg) => {
     if (typeof msg !== "string" || msg.length === 0) return;
     setAnnouncement(msg);
     if (announceTimer.current) clearTimeout(announceTimer.current);
@@ -604,7 +607,6 @@ export default function InvoiceDetailClient(props) {
           inputType="text"
           onSave={handleSave}
           onAnnounce={handleAnnounce}
-          onSave={onSave}
         />
         <EditableRow
           field="yield"
@@ -613,7 +615,6 @@ export default function InvoiceDetailClient(props) {
           rawValue={rawYield}
           onSave={handleSave}
           onAnnounce={handleAnnounce}
-          onSave={onSave}
         />
         <EditableRow
           field="dueDate"
@@ -621,8 +622,8 @@ export default function InvoiceDetailClient(props) {
           displayValue={dueDate}
           rawValue={rawDueDate}
           inputType="date"
+          onSave={handleSave}
           onAnnounce={handleAnnounce}
-          onSave={onSave}
         />
         {currency && (
           <div>
