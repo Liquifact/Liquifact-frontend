@@ -25,7 +25,7 @@ export const THEME_CONTROL_FRAME_CLASS = "inline-flex h-9 w-[15rem] items-center
  * @param {boolean} [props.isBusy=true]
  * @param {"page"|"control"} [props.variant="page"]
  */
-export default function ThemeSkeleton({ isBusy = true, variant = "page" }) {
+export default function ThemeSkeleton({ isBusy = true, variant = "page", label = "Theme settings loading, please wait" }) {
   if (variant === "control") {
     return (
       <div
@@ -102,7 +102,7 @@ export default function ThemeSkeleton({ isBusy = true, variant = "page" }) {
         </div>
       </div>
 
-      <span className="sr-only">Theme settings loading, please wait…</span>
+      <span className="sr-only">{label}…</span>
     </div>
   );
 }

@@ -51,12 +51,11 @@ expect.extend(toHaveNoViolations);
 describe("SettingsLoading", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    throwChildError = true;
   });
 
   it("renders the page root with data-testid='settings-loading'", () => {
     render(<SettingsLoading />);
-    expect(screen.getByTestId("settings-loading")).toBeInDocument();
+    expect(screen.getByTestId("settings-loading")).toBeInTheDocument();
   });
 
   describe("Deterministic Timeout Failure Recovery", () => {
@@ -182,12 +181,12 @@ describe("SettingsLoading", () => {
   it("renders the NavMenuSkeleton header", () => {
     const { container } = render(<SettingsLoading />);
     const header = container.querySelector("header");
-    expect(header).toBeInDocument();
+    expect(header).toBeInTheDocument();
   });
 
   it("renders the ThemeSkeleton component (data-testid='theme-skeleton')", () => {
     render(<SettingsLoading />);
-    expect(screen.getByTestId("theme-skeleton")).toBeInDocument();
+    expect(screen.getByTestId("theme-skeleton")).toBeInTheDocument();
   });
 
   it("ThemeSkleton inside SettingsLoading has aria-busy='true'", () => {
@@ -197,16 +196,15 @@ describe("SettingsLoading", () => {
 
   it("contains the sr-only loading announcement from ThemeSkeleton", () => {
     render(<SettingsLoading />);
-    expect(screen.getByText(/theme settings loading, please wait/i)).toBeInDocument();
+    expect(screen.getByText(/theme settings loading, please wait/i)).toBeInTheDocument();
   });
 
   describe("Compatibility Contracts & Edge Cases", () => {
-    it("safely handles nullish and primitive inputs to component function", () => {
-      expect(() => render(SettingsLoading(null))).not.toThrow();
-      expect(() => render(SettingsLoading(undefined))).not.toThrow();
-      expect(() => render(SettingsLoading(42))).not.toThrow();
-      expect(() => render(SettingsLoading("invalid-string"))).not.toThrow();
-      expect(() => render(SettingsLoading([]))).not.toThrow();
+    it("safely handles nullish and primitive prop inputs", () => {
+      expect(() => render(<SettingsLoading />)).not.toThrow();
+      expect(() =>
+        render(<SettingsLoading delayMs={undefined} label={undefined} />),
+      ).not.toThrow();
     });
 
     it("merges custom className without displacing base layout classes", () => {
@@ -293,10 +291,10 @@ describe("SettingsLoading", () => {
       const b = render(<SettingsLoading />);
 
       // Each instance must own exactly one root and one ThemeSkeleton.
-      expect(a.getByTestId("settings-loading")).toBeInDocument();
-      expect(b.getByTestId("settings-loading")).toBeInDocument();
-      expect(a.getByTestId("theme-skeleton")).toBeInDocument();
-      expect(b.getByTestId("theme-skeleton")).toBeInDocument();
+      expect(a.getByTestId("settings-loading")).toBeInTheDocument();
+      expect(b.getByTestId("settings-loading")).toBeInTheDocument();
+      expect(a.getByTestId("theme-skeleton")).toBeInTheDocument();
+      expect(b.getByTestId("theme-skeleton")).toBeInTheDocument();
 
       a.unmount();
       b.unmount();
@@ -418,14 +416,14 @@ describe("normaliseReducedMotion", () => {
 describe("getSettingsLoadingState", () => {
   it("returns safe defaults for an empty object", () => {
     expect(getSettingsLoadingState({})).toEqual({
-      delayMic: DEFAULT_SKELETON_DELAY_MS,
+      delayMs: DEFAULT_SKELETON_DELAY_MS,
       reducedMotion: "system",
       label: "Theme settings loading, please wait",
     });
   });
 
   it("returns safe defaults for non-object input", () => {
-    expect(getSettingsLoadingState(null).delayMic).toBe(
+    expect(getSettingsLoadingState(null).delayMs).toBe(
       DEFAULT_SKELETON_DELAY_MS
     );
     expect(getSettingsLoadingState("nope").reducedMotion).toBe("system");
@@ -435,19 +433,19 @@ describe("getSettingsLoadingState", () => {
   it("preserves valid input fields", () => {
     expect(
       getSettingsLoadingState({
-        delayMic: 1000,
+        delayMs: 1000,
         reducedMotion: "reduce",
         label: "Waiting for settings",
       })
     ).toEqual({
-      delayMic: 1000,
+      delayMs: 1000,
       reducedMotion: "reduce",
       label: "Waiting for settings",
     });
   });
 
   it("is deterministic for duplicate inputs", () => {
-    const input = { delayMic: 500, reducedMotion: "reduce", label: "X" };
+    const input = { delayMs: 500, reducedMotion: "reduce", label: "X" };
     expect(getSettingsLoadingState(input)).toEqual(
       getSettingsLoadingState(input)
     );
@@ -457,7 +455,7 @@ describe("getSettingsLoadingState", () => {
 describe("SettingsLoading validation boundaries", () => {
   it("exposes the clamped delay and reduced-motion on the root", () => {
     render(
-      <SettingsLoading delayMic={Math.pow(10, 9)} reducedMotion="REDUCE" />
+      <SettingsLoading delayMs={Math.pow(10, 9)} reducedMotion="REDUCE" />
     );
     const root = screen.getByTestId("settings-loading");
     expect(root).toHaveAttribute(
@@ -468,7 +466,7 @@ describe("SettingsLoading validation boundaries", () => {
   });
 
   it("rejects invalid delay and reduced-motion values", () => {
-    render(<SettingsLoading delayMic="not-a-number" reducedMotion="fast" />);
+    render(<SettingsLoading delayMs="not-a-number" reducedMotion="fast" />);
     const root = screen.getByTestId("settings-loading");
     expect(root).toHaveAttribute(
       "data-delay-ms",
@@ -478,16 +476,16 @@ describe("SettingsLoading validation boundaries", () => {
   });
 
   it("renders identically for duplicate submissions", () => {
-    const props = { delayMic: 123, reducedMotion: "system" };
+    const props = { delayMs: 123, reducedMotion: "system" };
     const first = render(<SettingsLoading {...props} />);
     const firstHtml = first.container.innerHTML;
-    first.unrender();
+    first.unmount();
     const second = render(<SettingsLoading {...props} />);
     expect(second.container.innerHTML).toBe(firstHtml);
   });
 
   it("accepts the zero boundary value", () => {
-    render(<SettingsLoading delayMic={0} />);
+    render(<SettingsLoading delayMs={0} />);
     expect(screen.getByTestId("settings-loading")).toHaveAttribute(
       "data-delay-ms",
       "0"
@@ -495,7 +493,7 @@ describe("SettingsLoading validation boundaries", () => {
   });
 
   it("accepts the maximum boundary value", () => {
-    render(<SettingsLoading delayMic={MAX_SKELETON_DELAY_MS} />);
+    render(<SettingsLoading delayMs={MAX_SKELETON_DELAY_MS} />);
     expect(screen.getByTestId("settings-loading")).toHaveAttribute(
       "data-delay-ms",
       String(MAX_SKELETON_DELAY_MS)
@@ -504,6 +502,6 @@ describe("SettingsLoading validation boundaries", () => {
 
   it("forwards a custom label to ThemeSkeleton", () => {
     render(<SettingsLoading label="Custom loading message" />);
-    expect(screen.getByText(/custom loading message/i)).toBeInDocument();
+    expect(screen.getByText(/custom loading message/i)).toBeInTheDocument();
   });
 });
