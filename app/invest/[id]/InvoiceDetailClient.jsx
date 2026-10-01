@@ -61,7 +61,7 @@
  * lock released, so retrying is safe and re-uses the same value.
  */
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import React, { Component, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 // ── Concurrency invariants (issue #1138) ─────────────────────────────────
 // EditableRow enforces four invariants for any `onSave` (sync or async):
 //
@@ -80,6 +80,7 @@ import DensityToggle from "@/components/DensityToggle";
 import { useDensity } from "@/lib/hooks/useDensity";
 import { getInvoiceFieldValidator } from "@/lib/validation/invoice";
 import { copy } from "@/app/copy/en";
+import { reportError } from "@/lib/observability/reportError";
 
 /**
  * Validation boundary for InvoiceDetailClient props.
@@ -108,6 +109,7 @@ function validateInvoiceDetailClientProps(props) {
     rawYield,
     rawDueDate,
     onSave,
+    currency,
   } = props;
 
   // Validate string props with fallback
@@ -157,6 +159,7 @@ function validateInvoiceDetailClientProps(props) {
     rawYield: validateOptionalString(rawYield, validateString(formattedYield, "")),
     rawDueDate: validateOptionalString(rawDueDate, validateString(dueDate, "")),
     onSave: validateCallback(onSave),
+    currency: validateOptionalString(currency, null),
   };
 }
 
@@ -282,7 +285,6 @@ function EditableRow({
   }, []);
 
   // Resolve the live validator: caller-supplied wins, otherwise fall back to
-  const inputRef = useRef(null);
   // the field-keyed validator from `lib/validation/invoice`. We freeze the
   // function reference in a useMemo so the useMemo below is a pure
   // function of (draft, isEditing) and won't churn on every render.
@@ -310,7 +312,7 @@ function EditableRow({
   // row is not being edited. This preserves the contract that the displayed
   // value always reflects the latest props after a successful save.
   useEffect(() => {
-    if (!isEditing && !saveInFlightRef.current) {
+    if (!isEditing && !inFlightRef.current) {
       setDraft(rawValue);
     }
   }, [rawValue, isEditing]);
@@ -522,7 +524,38 @@ function EditableRow({
 // InvoiceDetailClient
 // ────────────────────────────────────────────────────────────────────────────
 
-export default function InvoiceDetailClient(props) {
+class InvoiceDetailClientErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    if (typeof reportError === "function") {
+      reportError(error, {
+        scope: "invest.invoice_detail_client",
+        ...errorInfo,
+      });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <section className="p-6 bg-slate-900/50 border border-slate-800 rounded-lg">
+          <p className="text-sm text-slate-400">Metadata is temporarily unavailable.</p>
+        </section>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function InvoiceDetailClientInner(props) {
   // Validate all props at component entry to ensure type safety and provide fallbacks
   const validatedProps = useMemo(() => validateInvoiceDetailClientProps(props), [props]);
 
@@ -545,15 +578,16 @@ export default function InvoiceDetailClient(props) {
     rawYield,
     rawDueDate,
     onSave,
+    currency,
   } = validatedProps;
   // Density state is owned here and passed to DensityToggle as controlled props
   // so that both this component and the toggle always reflect the same value.
   const [density, setDensity] = useDensity();
-  const spacing = SPACING[density] ?? SPACING.comfortable;
 
   // Single polite aria-live region shared by all editable rows so announcements
   // do not stack up in the DOM (one region, one message at a time).
   const [announcement, setAnnouncement] = useState("");
+  const announceTimer = useRef(null);
 
   // Invariant 6: unknown density values fall back to "comfortable" so a
   // corrupted localStorage value cannot break layout.
@@ -566,7 +600,7 @@ export default function InvoiceDetailClient(props) {
 
   // I6: announcements are serialized through a single shared live region.
   // A later announcement supersedes an earlier one and is auto-cleared.
-  const announce = useCallback((msg) => {
+  const handleAnnounce = useCallback((msg) => {
     if (typeof msg !== "string" || msg.length === 0) return;
     setAnnouncement(msg);
     if (announceTimer.current) clearTimeout(announceTimer.current);
@@ -604,7 +638,6 @@ export default function InvoiceDetailClient(props) {
           inputType="text"
           onSave={handleSave}
           onAnnounce={handleAnnounce}
-          onSave={onSave}
         />
         <EditableRow
           field="yield"
@@ -613,7 +646,6 @@ export default function InvoiceDetailClient(props) {
           rawValue={rawYield}
           onSave={handleSave}
           onAnnounce={handleAnnounce}
-          onSave={onSave}
         />
         <EditableRow
           field="dueDate"
@@ -621,8 +653,8 @@ export default function InvoiceDetailClient(props) {
           displayValue={dueDate}
           rawValue={rawDueDate}
           inputType="date"
+          onSave={handleSave}
           onAnnounce={handleAnnounce}
-          onSave={onSave}
         />
         {currency && (
           <div>
@@ -653,5 +685,13 @@ export default function InvoiceDetailClient(props) {
         {announcement}
       </p>
     </section>
+  );
+}
+
+export default function InvoiceDetailClient(props) {
+  return (
+    <InvoiceDetailClientErrorBoundary>
+      <InvoiceDetailClientInner {...props} />
+    </InvoiceDetailClientErrorBoundary>
   );
 }
