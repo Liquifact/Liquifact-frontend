@@ -348,8 +348,8 @@ function deepFreeze(value, seen = new WeakSet()) {
 
   seen.add(value);
 
-  Object.values(value).forEach((nestedValue) => {
-    deepFreeze(nestedValue, seen);
+  Reflect.ownKeys(value).forEach((key) => {
+    deepFreeze(value[key], seen);
   });
 
   return Object.freeze(value);
@@ -918,9 +918,9 @@ export async function executeWithRecovery(operation, options = {}) {
     
     try {
       const result = await Promise.race([
-        operation(),
+        operation({ signal: controller.signal }),
         new Promise((_, reject) => {
-          controller.signal.addEventListener('abort', () => reject(new Error('Timeout')));
+          controller.signal.addEventListener('abort', () => reject(new Error('Timeout')), { once: true });
         })
       ]);
       clearTimeout(timeoutId);
