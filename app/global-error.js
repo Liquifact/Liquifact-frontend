@@ -80,6 +80,11 @@ export default function GlobalLayoutError({ error, reset }) {
 
   // ── Error reporting — idempotent, post-unmount safe ───────────────────────
   useEffect(() => {
+    if (reportedErrorRef.current === error) {
+      return;
+    }
+    reportedErrorRef.current = error;
+
     // Invariant: reportError must not crash the boundary even if `error` or
     // the observability reporter is invalid. The try/catch is a belt-and-
     // suspenders guard; reportError itself also has an internal try/catch.
@@ -90,13 +95,22 @@ export default function GlobalLayoutError({ error, reset }) {
     }
   }, [error]);
 
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // Invariant: `reset` is callable only when it is a function. A non-function
   // prop (undefined, null, a string from a misconfigured test) must never reach
   // the onClick handler.
   const canReset = typeof reset === "function";
 
   const handleReset = () => {
-    if (canReset) {
+    if (canReset && !isResettingRef.current) {
+      isResettingRef.current = true;
+      setIsResetting(true);
       reset();
     }
   };
@@ -149,16 +163,18 @@ export default function GlobalLayoutError({ error, reset }) {
               <button
                 type="button"
                 onClick={handleReset}
+                disabled={isResetting}
                 data-testid="global-error-reset"
                 style={{
                   padding: "0.75rem 1.5rem",
                   borderRadius: "9999px",
                   background: "rgba(34, 211, 238, 0.2)",
-                  color: "#22d3ee",
+                  color: isResetting ? "#64748b" : "#22d3ee",
                   border: "none",
-                  cursor: "pointer",
+                  cursor: isResetting ? "not-allowed" : "pointer",
                   fontSize: "0.875rem",
                   fontWeight: 500,
+                  opacity: isResetting ? 0.5 : 1,
                 }}
               >
                 {copy.globalError.reloadLabel}
