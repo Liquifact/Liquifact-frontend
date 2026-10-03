@@ -20,7 +20,7 @@
 import React from "react";
 import { render, screen, cleanup } from "@testing-library/react";
 import { axe, toHaveNoViolations } from "jest-axe";
-import InvoicesLoading from "./loading";
+import InvoicesLoading, { resolveUploadSkeleton, UploadSkeletonFallback } from "./loading";
 
 expect.extend(toHaveNoViolations);
 
@@ -31,6 +31,23 @@ describe("InvoicesLoading", () => {
 
   it("renders without crashing", () => {
     expect(() => render(React.createElement(InvoicesLoading))).not.toThrow();
+  });
+
+  it("normalizes the upload skeleton boundary for supported inputs", () => {
+    expect(typeof resolveUploadSkeleton()).toBe("function");
+    render(<InvoicesLoading />);
+    expect(screen.getByTestId("upload-skeleton-boundary")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByTestId("upload-skeleton-boundary")).toHaveAttribute(
+      "data-compatibility",
+      "invoices-loading-v1",
+    );
+  });
+
+  it("falls back cleanly when the shared upload skeleton is unavailable", () => {
+    render(<UploadSkeletonFallback isBusy={false} />);
+    const boundary = screen.getByTestId("upload-skeleton-boundary");
+    expect(boundary).toHaveAttribute("aria-busy", "false");
+    expect(screen.getByText(/upload form loading, please wait/i)).toBeInTheDocument();
   });
 
   it("renders the page root with aria-busy='true'", () => {

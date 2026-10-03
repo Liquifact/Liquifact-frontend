@@ -52,6 +52,66 @@ import UploadSkeleton from "../../components/UploadSkeleton.jsx";
  * @type {string}
  */
 export const INVOICES_LOADING_TESTID = "invoices-loading";
+export const UPLOAD_SKELETON_BOUNDARY_TESTID = "upload-skeleton-boundary";
+export const UPLOAD_SKELETON_COMPATIBILITY = "invoices-loading-v1";
+
+/**
+ * Safely resolves the reusable upload skeleton. This keeps the loading route
+ * deterministic even when the underlying component import is missing or broken.
+ *
+ * @returns {Function|null}
+ */
+export function resolveUploadSkeleton() {
+  const candidate = UploadSkeleton && typeof UploadSkeleton === "object" ? UploadSkeleton.default : UploadSkeleton;
+
+  if (typeof candidate === "function") {
+    return candidate;
+  }
+
+  return null;
+}
+
+/**
+ * Fallback content-shaped placeholder used when the shared UploadSkeleton is not
+ * available. The wrapper keeps the compatibility test ids and aria-busy contract
+ * even in degraded mode.
+ *
+ * @param {object} [props]
+ * @param {boolean} [props.isBusy=true]
+ * @returns {JSX.Element}
+ */
+export function UploadSkeletonFallback({ isBusy = true, ...restProps } = {}) {
+  const safeBusy = isBusy === false ? "false" : "true";
+
+  return (
+    <div
+      {...restProps}
+      aria-busy={safeBusy}
+      data-testid={UPLOAD_SKELETON_BOUNDARY_TESTID}
+      data-compatibility={UPLOAD_SKELETON_COMPATIBILITY}
+      className="w-full rounded-xl border border-slate-800 bg-slate-900/50 p-4"
+    >
+      <div aria-hidden="true" className="space-y-4">
+        <div className="h-3 w-32 rounded bg-slate-700 mb-3 animate-pulse" />
+        <div className="flex flex-wrap gap-2 mb-3">
+          <div className="h-6 w-20 rounded-full bg-slate-700 animate-pulse" />
+          <div className="h-6 w-24 rounded-full bg-slate-700 animate-pulse" />
+          <div className="h-6 w-28 rounded-full bg-slate-700 animate-pulse" />
+        </div>
+        <div className="h-3 w-full rounded bg-slate-800 animate-pulse" />
+        <div className="rounded-xl border-2 border-dashed border-slate-700 p-10 text-center animate-pulse">
+          <div className="space-y-4">
+            <div className="h-10 w-10 mx-auto rounded bg-slate-700" />
+            <div className="h-4 w-64 mx-auto rounded bg-slate-700" />
+            <div className="h-3 w-32 mx-auto rounded bg-slate-800" />
+          </div>
+        </div>
+        <div className="mt-4 h-12 w-full rounded-xl bg-slate-800 animate-pulse" />
+      </div>
+      <span className="sr-only">Upload form loading, please wait…</span>
+    </div>
+  );
+}
 
 /**
  * Route-level loading UI for /invoices.
@@ -64,9 +124,20 @@ export const INVOICES_LOADING_TESTID = "invoices-loading";
  * @returns {JSX.Element}
  */
 export default function InvoicesLoading() {
-  // eslint-disable-next-line no-unused-vars
   const ResolvedUploadSkeleton = resolveUploadSkeleton();
   const Skeleton = ResolvedUploadSkeleton || UploadSkeletonFallback;
+  const uploadSkeletonBoundary = ResolvedUploadSkeleton ? (
+    <div
+      data-testid={UPLOAD_SKELETON_BOUNDARY_TESTID}
+      data-compatibility={UPLOAD_SKELETON_COMPATIBILITY}
+      aria-busy="true"
+      className="w-full"
+    >
+      <Skeleton isBusy={true} />
+    </div>
+  ) : (
+    <Skeleton isBusy={true} />
+  );
 
   return (
     <div
@@ -92,11 +163,7 @@ export default function InvoicesLoading() {
         <div className="h-4 w-2/3 max-w-lg rounded bg-slate-800 animate-pulse mb-8" />
 
         {/* ---- Reusable upload skeleton ----- */}
-        <Skeleton
-          isBusy={true}
-          data-testid="upload-skeleton-boundary"
-          data-compatibility="invoices-loading-v1"
-        />
+        {uploadSkeletonBoundary}
       </main>
     </div>
   );
