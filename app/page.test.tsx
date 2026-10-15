@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 import React from "react";
 import Home from "./page";
@@ -34,7 +34,10 @@ const mockGetHealth = getHealth as jest.Mock;
 
 describe("Home Page Health Check", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    // reset (not just clear): a queued mockImplementationOnce from an earlier
+    // test must never leak into the next one, otherwise a test would observe a
+    // response that was never requested by its own click.
+    jest.resetAllMocks();
   });
 
   it("verifies mock", () => {
@@ -278,7 +281,15 @@ describe("Home Page Health Check", () => {
     expect(screen.getAllByText(/unreachable/i).length).toBeGreaterThan(0);
   });
 
-  it("ignores an out-of-order response from an earlier request", async () => {
+  it("cannot start a second check while one is in flight, so responses cannot arrive out of order", async () => {
+    // Invariant (issue #1217 / app/page.js): only one request is in flight at a
+    // time — the button is disabled while loading and checkApi re-entry is
+    // guarded synchronously. Therefore a stale response can never race a newer
+    // one: the second queued mock must never be requested, and the single
+    // in-flight response is the only one that can be rendered. The complementary
+    // guard (a result whose requestId does not match the current request is
+    // dropped) is asserted directly on the reducer in
+    // lib/health/healthState.test.js ("stale result (old requestId) is ignored").
     let resolveFirst: (value: unknown) => void = () => {};
     const firstPromise = new Promise((resolve) => {
       resolveFirst = resolve as (value: unknown) => void;
@@ -297,22 +308,27 @@ describe("Home Page Health Check", () => {
     });
 
     fireEvent.click(button);
+    // Second click while the first request is pending — must be a no-op.
     fireEvent.click(button);
 
+    expect(mockGetHealth).toHaveBeenCalledTimes(1);
+    expect(button).toBeDisabled();
+
+    await act(async () => {
+      resolveFirst({
+        status: "connected",
+        message: "Backend is healthy",
+      });
+    });
+
     await waitFor(() => {
-      expect(screen.getAllByText(/degraded/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/connected/i).length).toBeGreaterThan(0);
     });
 
-    resolveFirst({
-      status: "connected",
-      message: "Backend is healthy",
-    });
-
-    await waitFor(() => {
-      expect(screen.getAllByText(/degraded/i).length).toBeGreaterThan(0);
-    });
-
-    expect(screen.queryByText(/backend is healthy/i)).toBeNull();
+    // The queued "degraded" response belongs to a request that was never made.
+    expect(mockGetHealth).toHaveBeenCalledTimes(1);
+    expect(screen.queryAllByText(/backend responded with 500/i)).toHaveLength(0);
+    expect(screen.getAllByText(/backend is healthy/i).length).toBeGreaterThan(0);
   });
 
   it("surfaces a diagnosable error without leaking sensitive details", async () => {
