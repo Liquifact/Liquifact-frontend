@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createInvoice } from "@/lib/api";
+import { uploadInvoiceDocument } from "@/lib/api/uploads";
 import { validateInvoiceForm } from "@/lib/format";
+import UploadZone from "@/components/upload/UploadZone";
 
 const EMPTY = { sme: "", debtor: "", amount: "", currency: "USDC", yieldBps: "800", dueDate: "", smeAddress: "" };
 
@@ -12,6 +14,10 @@ export default function SubmitForm() {
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
+  const [doc, setDoc] = useState(null);
+  const [zoneKey, setZoneKey] = useState(0);
+  const [progress, setProgress] = useState(null);
+  const abortRef = useRef(null);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   async function onSubmit(e) {
@@ -22,6 +28,17 @@ export default function SubmitForm() {
     setBusy(true);
     setResult(null);
     try {
+      let upload = null;
+      if (doc) {
+        const controller = new AbortController();
+        abortRef.current = controller;
+        setProgress(0);
+        upload = await uploadInvoiceDocument(doc.file, {
+          sha256: doc.sha256,
+          signal: controller.signal,
+          onProgress: setProgress,
+        });
+      }
       const payload = {
         sme: form.sme,
         debtor: form.debtor,
@@ -30,13 +47,20 @@ export default function SubmitForm() {
         yieldBps: Number(form.yieldBps),
         dueDate: form.dueDate,
         ...(form.smeAddress ? { smeAddress: form.smeAddress } : {}),
+        ...(doc ? { documentSha256: doc.sha256 } : {}),
+        ...(upload && !upload.mock && upload.documentId ? { documentId: upload.documentId } : {}),
       };
       const { data } = await createInvoice(payload);
       setResult({ ok: true, invoice: data });
       setForm(EMPTY);
+      setDoc(null);
+      setZoneKey((k) => k + 1);
     } catch (err) {
-      setResult({ ok: false, text: (err.details && err.details.join("; ")) || err.message });
+      const text = err.name === "AbortError" ? "Upload cancelled. Nothing was submitted." : (err.details && err.details.join("; ")) || err.message;
+      setResult({ ok: false, text });
     } finally {
+      abortRef.current = null;
+      setProgress(null);
       setBusy(false);
     }
   }
@@ -83,6 +107,14 @@ export default function SubmitForm() {
               {field("dueDate", "Due date", { type: "date" })}
             </div>
             {field("smeAddress", "Stellar wallet (optional)", { placeholder: "G…", autoComplete: "off" })}
+            <UploadZone key={zoneKey} onChange={setDoc} disabled={busy} />
+            {progress !== null && (
+              <div className="upload-progress" role="status" aria-live="polite">
+                <label htmlFor="upload-progress">Uploading document… {progress}%</label>
+                <progress id="upload-progress" value={progress} max="100" />
+                <button type="button" className="btn btn-ghost" onClick={() => abortRef.current?.abort()}>Cancel upload</button>
+              </div>
+            )}
             <button className="btn btn-primary" disabled={busy}>{busy ? "Submitting…" : "Submit invoice"}</button>
             {result && result.ok && (
               <div className="notice notice-ok">
