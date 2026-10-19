@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { createInvoice } from "@/lib/api";
 import { validateInvoiceForm } from "@/lib/format";
+import { rememberSmeInvoice } from "@/lib/sme/invoices";
 
 const EMPTY = { sme: "", debtor: "", amount: "", currency: "USDC", yieldBps: "800", dueDate: "", smeAddress: "" };
 
@@ -32,6 +33,7 @@ export default function SubmitForm() {
         ...(form.smeAddress ? { smeAddress: form.smeAddress } : {}),
       };
       const { data } = await createInvoice(payload);
+      rememberSmeInvoice(data.id);
       setResult({ ok: true, invoice: data });
       setForm(EMPTY);
     } catch (err) {
@@ -82,11 +84,11 @@ export default function SubmitForm() {
               {field("yieldBps", "Investor yield (bps)", { type: "number", min: "0", max: "10000", step: "1" }, "800 bps = 8.00%")}
               {field("dueDate", "Due date", { type: "date" })}
             </div>
-            {field("smeAddress", "Stellar wallet (optional)", { placeholder: "G…", autoComplete: "off" })}
-            <button className="btn btn-primary" disabled={busy}>{busy ? "Submitting…" : "Submit invoice"}</button>
+            {field("smeAddress", "Stellar wallet (optional)", { placeholder: "G&#x2026;", autoComplete: "off" })}
+            <button className="btn btn-primary" disabled={busy}>{busy ? "Submitting&#x2026;" : "Submit invoice"}</button>
             {result && result.ok && (
               <div className="notice notice-ok">
-                Invoice <strong>{result.invoice.id}</strong> created. <Link href={`/marketplace/${result.invoice.id}`}>View listing →</Link>
+                Invoice <strong>{result.invoice.id}</strong> created. <Link href={`/marketplace/${result.invoice.id}`}>View listing &#8594;</Link>
               </div>
             )}
             {result && !result.ok && <div className="notice notice-err">Could not submit: {result.text}</div>}
