@@ -8,10 +8,10 @@
     "node": ">=20.9"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "test": "node --test tests/"
+    "dev": "node api.js && next dev",
+    "build": "node api.js && next build",
+    "start": "node api.js && next start",
+    "test": "node scripts/check-i18n.mjs && node --test tests/"
   },
   "dependencies": {
     "next": "16.4.2",
