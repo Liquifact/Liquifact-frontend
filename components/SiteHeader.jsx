@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const LINKS = [
   { href: "/", label: "Home" },
@@ -43,6 +44,7 @@ export default function SiteHeader() {
               {l.label}
             </Link>
           ))}
+          <ThemeToggle />
         </nav>
       </div>
     </header>
