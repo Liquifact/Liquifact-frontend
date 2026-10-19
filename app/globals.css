@@ -237,3 +237,18 @@ pre { background: var(--code-bg); color: var(--code-fg); padding: 16px; border-r
 .theme-toggle { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); }
 .theme-toggle button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.85rem; padding: 4px 10px; border-radius: 999px; cursor: pointer; }
 .theme-toggle button[aria-checked="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+
+/* Escrow rules list + fund-form wiring (#1371) */
+.rules { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
+.rules-title { margin: 0 0 10px; font-size: 0.95rem; }
+.rules-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rules-row { display: flex; justify-content: space-between; gap: 12px; font-size: 0.9rem; }
+.rules-value { text-align: right; }
+.rules-flags { list-style: none; margin: 10px 0 0; padding: 0; display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.88rem; }
+.rules-flag.rules-ok { color: var(--ok); }
+.rules-flag.rules-bad { color: var(--danger); }
+.rules-partial { margin: 8px 0 0; font-size: 0.82rem; color: var(--warn); }
+.amount-row { display: flex; gap: 8px; align-items: stretch; }
+.amount-row input { flex: 1; min-width: 0; }
+.btn-max { padding: 8px 14px; font-size: 0.88rem; white-space: nowrap; }
+.field-error { display: block; min-height: 1.1em; font-size: 0.85rem; color: var(--danger); margin-top: 4px; }
