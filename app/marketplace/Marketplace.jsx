@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import OfflineNotice from "@/components/pwa/OfflineNotice";
 import InvoiceCard from "@/components/InvoiceCard";
 import { listInvoices } from "@/lib/api";
 
@@ -43,11 +44,7 @@ export default function Marketplace() {
           <Link href="/submit" className="btn btn-primary">+ Submit invoice</Link>
         </div>
 
-        {state.offline && (
-          <div className="notice notice-warn" style={{ marginBottom: 20 }}>
-            The API is unreachable right now — showing demo data.
-          </div>
-        )}
+        <OfflineNotice {...state} />
 
         {state.loading ? (
           <div className="grid grid-3">{[0, 1, 2].map((i) => <div key={i} className="skeleton" />)}</div>

@@ -204,3 +204,9 @@ pre { background: #0b1024; color: #e2e8f0; padding: 16px; border-radius: 12px; o
 .skeleton { background: linear-gradient(90deg, var(--surface-2), var(--border), var(--surface-2)); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 8px; min-height: 180px; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } * { transition: none !important; } }
+
+/* Offline status uses foreground/surface tokens for AA in both palettes. */
+.pwa-notice { background: var(--surface-2); color: var(--fg); border: 1px solid var(--border); margin-bottom: 20px; }
+.pwa-status { position: sticky; bottom: 0; z-index: 60; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 16px 20px; background: var(--surface); color: var(--fg); border-top: 1px solid var(--border); }
+.pwa-status > [role="status"] { flex: 1 1 240px; }
+.pwa-status:has(> [role="status"]:empty) { padding: 0; border: 0; }

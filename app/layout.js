@@ -1,5 +1,6 @@
 import "./globals.css";
 import SiteHeader from "@/components/SiteHeader";
+import ServiceWorkerRegistrar from "@/components/pwa/ServiceWorkerRegistrar";
 import SiteFooter from "@/components/SiteFooter";
 
 export const metadata = {
@@ -19,6 +20,7 @@ export default function RootLayout({ children }) {
         <SiteHeader />
         <main id="main">{children}</main>
         <SiteFooter />
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );
