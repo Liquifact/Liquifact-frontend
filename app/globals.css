@@ -158,6 +158,16 @@ a.invoice-card:hover { transform: translateY(-2px); border-color: color-mix(in s
 .field .err { color: var(--danger); font-size: 0.83rem; }
 .field .hint { color: var(--muted); font-size: 0.83rem; }
 
+/* Return calculator */
+.return-calc { display: grid; gap: 8px; margin-top: 4px; }
+.return-calc__chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.return-calc__chip { border: 1px solid var(--border); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 4px 12px; font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.return-calc__chip:hover:not([disabled]) { background: var(--surface-2); }
+.return-calc__chip[disabled] { opacity: 0.55; cursor: not-allowed; }
+.return-calc__result { font-size: 0.88rem; line-height: 1.5; overflow-wrap: anywhere; }
+.return-calc__warn { color: var(--fg); font-weight: 600; }
+.return-calc__disclaimer { margin: 0; }
+
 /* Notices */
 .notice { border-radius: 12px; padding: 14px 16px; border: 1px solid var(--border); background: var(--surface-2); font-size: 0.93rem; }
 .notice-ok { border-color: color-mix(in srgb, var(--ok) 40%, var(--border)); background: color-mix(in srgb, var(--ok) 10%, var(--surface)); }
