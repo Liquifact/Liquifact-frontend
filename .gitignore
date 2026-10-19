@@ -3,7 +3,7 @@ node_modules/
 out/
 .vercel
 .env*.local
-.env
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
+config.bat

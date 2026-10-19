@@ -8,10 +8,11 @@
     "node": ">=20.9"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "test": "node --test tests/"
+    "dev": "node init && next dev",
+    "build": "node init && next build",
+    "start": "node init && next start",
+    "test": "node --test tests/",
+    "test:ui": "vitest run"
   },
   "dependencies": {
     "next": "16.4.2",
