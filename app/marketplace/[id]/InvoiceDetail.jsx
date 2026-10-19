@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import StatusBadge from "@/components/StatusBadge";
 import ContractCard from "@/components/ContractCard";
+import ClaimPanel from "@/components/invest/ClaimPanel";
 import { fundInvoice, getInvoice } from "@/lib/api";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 
@@ -110,6 +111,8 @@ export default function InvoiceDetail({ id }) {
                 </div>
                 <button className="btn btn-primary" disabled={busy || state.offline}>{busy ? "Submitting…" : "Fund invoice"}</button>
               </form>
+            ) : inv.onChain && inv.status === "settled" ? (
+              <ClaimPanel currency={inv.currency} />
             ) : (
               <p className="muted" style={{ marginTop: 12 }}>This invoice is <strong>{inv.status}</strong> and no longer accepts contributions.</p>
             )}
