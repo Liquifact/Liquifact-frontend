@@ -158,6 +158,22 @@ a.invoice-card:hover { transform: translateY(-2px); border-color: color-mix(in s
 .field .err { color: var(--danger); font-size: 0.83rem; }
 .field .hint { color: var(--muted); font-size: 0.83rem; }
 
+/* Upload */
+.field .label-text { font-weight: 600; font-size: 0.9rem; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.upload-zone { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 16px; border: 2px dashed var(--border); border-radius: 12px; background: var(--surface); }
+.upload-zone.is-dragging { border-color: var(--brand); background: var(--surface-2); }
+.upload-zone:focus-within { outline: 3px solid var(--brand-2); outline-offset: 2px; }
+.upload-zone .upload-input { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; overflow: hidden; }
+.upload-btn { padding: 7px 14px; }
+.upload-chip { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); min-width: 0; }
+.upload-chip-head, .upload-digest { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: space-between; min-width: 0; }
+.upload-name { overflow-wrap: anywhere; min-width: 0; }
+.upload-digest .addr { flex: 1 1 200px; min-width: 0; }
+.upload-preview { width: 100%; height: 320px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.upload-progress { display: grid; gap: 6px; }
+.upload-progress progress { width: 100%; accent-color: var(--brand); }
+
 /* Notices */
 .notice { border-radius: 12px; padding: 14px 16px; border: 1px solid var(--border); background: var(--surface-2); font-size: 0.93rem; }
 .notice-ok { border-color: color-mix(in srgb, var(--ok) 40%, var(--border)); background: color-mix(in srgb, var(--ok) 10%, var(--surface)); }
