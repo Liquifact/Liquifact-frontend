@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/", label: "Home" },
   { href: "/marketplace", label: "Marketplace" },
   { href: "/submit", label: "Submit invoice" },
+  { href: "/get-started", label: "Get started" },
   { href: "/docs", label: "Docs" },
 ];
 
