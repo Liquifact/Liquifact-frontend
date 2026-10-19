@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import StatusBadge from "@/components/StatusBadge";
+import RiskBadge from "@/components/RiskBadge";
+import RiskFactorsCard from "@/components/RiskFactorsCard";
 import ContractCard from "@/components/ContractCard";
 import { fundInvoice, getInvoice } from "@/lib/api";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
+import { scoreInvoice } from "@/lib/risk";
 
 export default function InvoiceDetail({ id }) {
   const [state, setState] = useState({ loading: true, data: null, offline: false });
@@ -63,6 +66,7 @@ export default function InvoiceDetail({ id }) {
 
   const pct = fundedPercent(inv);
   const remaining = Math.max(0, inv.amount - inv.fundedAmount);
+  const risk = scoreInvoice(inv);
 
   return (
     <section className="section">
@@ -74,8 +78,9 @@ export default function InvoiceDetail({ id }) {
             <h1 style={{ fontSize: "clamp(1.7rem,4vw,2.4rem)", margin: "4px 0" }}>{inv.sme}</h1>
             <div className="muted">Debtor: {inv.debtor}</div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <StatusBadge status={inv.status} />
+            {risk.band && <RiskBadge band={risk.band} score={risk.score} factors={risk.factors} />}
             {inv.onChain && <span className="badge badge-chain">on-chain</span>}
           </div>
         </div>
@@ -116,6 +121,12 @@ export default function InvoiceDetail({ id }) {
             {msg && <div className={`notice notice-${msg.kind}`} style={{ marginTop: 14 }}>{msg.text}</div>}
           </div>
         </div>
+
+        {risk.band && (
+          <div style={{ marginTop: 24 }}>
+            <RiskFactorsCard risk={risk} />
+          </div>
+        )}
 
         {inv.onChain && <div style={{ marginTop: 20 }}><ContractCard /></div>}
       </div>
