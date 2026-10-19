@@ -6,19 +6,26 @@ import StatusBadge from "@/components/StatusBadge";
 import RiskBadge from "@/components/RiskBadge";
 import RiskFactorsCard from "@/components/RiskFactorsCard";
 import ContractCard from "@/components/ContractCard";
-import { fundInvoice, getInvoice } from "@/lib/api";
+import { fundInvoice, getInvoice, listInvoices } from "@/lib/api";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
-import { scoreInvoice } from "@/lib/risk";
+import { computeListMedians, scoreInvoice } from "@/lib/risk";
 
 export default function InvoiceDetail({ id }) {
   const [state, setState] = useState({ loading: true, data: null, offline: false });
+  const [medians, setMedians] = useState(null);
   const [amount, setAmount] = useState("");
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    getInvoice(id).then((r) => alive && setState({ loading: false, ...r }));
+    Promise.all([getInvoice(id), listInvoices()]).then(([invRes, listRes]) => {
+      if (!alive) return;
+      setState({ loading: false, ...invRes });
+      if (listRes?.data) {
+        setMedians(computeListMedians(listRes.data));
+      }
+    });
     return () => {
       alive = false;
     };
@@ -66,7 +73,7 @@ export default function InvoiceDetail({ id }) {
 
   const pct = fundedPercent(inv);
   const remaining = Math.max(0, inv.amount - inv.fundedAmount);
-  const risk = scoreInvoice(inv);
+  const risk = scoreInvoice(inv, undefined, medians);
 
   return (
     <section className="section">
