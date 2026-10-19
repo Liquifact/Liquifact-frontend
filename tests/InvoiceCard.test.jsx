@@ -44,4 +44,24 @@ describe("InvoiceCard component", () => {
     expect(screen.getByText("settled")).not.toBeNull();
     expect(screen.queryByRole("status")).toBeNull();
   });
+
+  it("does not render RiskBadge for cancelled invoice", () => {
+    const invoice = {
+      id: "INV_0005",
+      sme: "Cancelled Corp",
+      debtor: "Acme Buyer",
+      amount: 10000,
+      currency: "USDC",
+      fundedAmount: 0,
+      yieldBps: 800,
+      dueDate: "2026-11-30",
+      status: "cancelled",
+      onChain: false,
+    };
+
+    render(<InvoiceCard invoice={invoice} />);
+
+    expect(screen.getByText("cancelled")).not.toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+  });
 });

@@ -138,7 +138,7 @@ p { margin: 0 0 1em; }
 /* Invoice cards */
 .invoice-card { display: flex; flex-direction: column; gap: 14px; color: var(--fg); transition: transform 0.15s ease, border-color 0.15s ease; }
 a.invoice-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--brand) 45%, var(--border)); text-decoration: none; }
-.invoice-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.invoice-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
 .invoice-id { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; color: var(--muted); }
 .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; font-size: 0.92rem; }
 .kv .k { color: var(--muted); font-size: 0.8rem; display: block; }

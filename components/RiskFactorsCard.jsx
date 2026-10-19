@@ -18,11 +18,11 @@ export default function RiskFactorsCard({ risk, className = "" }) {
       </div>
 
       <div className="table-wrap" style={{ marginTop: 12 }}>
-        <table className="table" aria-label="Risk factor breakdown">
+        <table className="table" aria-label="Risk factor breakdown" style={{ minWidth: 420 }}>
           <thead>
             <tr>
-              <th scope="col" style={{ width: "28%" }}>Factor</th>
-              <th scope="col" style={{ width: "16%", textAlign: "right" }}>Impact</th>
+              <th scope="col" style={{ width: "30%" }}>Factor</th>
+              <th scope="col" style={{ width: "18%", textAlign: "right", whiteSpace: "nowrap" }}>Impact</th>
               <th scope="col">Assessment Details</th>
             </tr>
           </thead>
