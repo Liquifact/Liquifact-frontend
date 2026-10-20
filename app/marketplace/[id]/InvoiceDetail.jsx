@@ -6,6 +6,7 @@ import StatusBadge from "@/components/StatusBadge";
 import ContractCard from "@/components/ContractCard";
 import { fundInvoice, getInvoice } from "@/lib/api";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
+import * as money from "@/lib/money";
 
 export default function InvoiceDetail({ id }) {
   const [state, setState] = useState({ loading: true, data: null, offline: false });
@@ -23,18 +24,24 @@ export default function InvoiceDetail({ id }) {
 
   async function onFund(e) {
     e.preventDefault();
-    const n = Number(amount);
-    if (!(n > 0)) {
+    const currency = state.data?.currency || "USDC";
+    let amountMinor;
+    try {
+      amountMinor = money.parse(amount, currency);
+    } catch {
+      amountMinor = 0n;
+    }
+    if (amountMinor <= 0n) {
       setMsg({ kind: "err", text: "Enter a positive amount." });
       return;
     }
     setBusy(true);
     setMsg(null);
     try {
-      const { data } = await fundInvoice(id, n);
+      const { data } = await fundInvoice(id, amount);
       setState((s) => ({ ...s, data }));
       setAmount("");
-      setMsg({ kind: "ok", text: `Contribution of ${formatAmount(n, data.currency)} recorded.` });
+      setMsg({ kind: "ok", text: `Contribution of ${formatAmount(amount, data.currency)} recorded.` });
     } catch (err) {
       setMsg({ kind: "err", text: err.message || "Funding failed." });
     } finally {
@@ -62,7 +69,9 @@ export default function InvoiceDetail({ id }) {
   }
 
   const pct = fundedPercent(inv);
-  const remaining = Math.max(0, inv.amount - inv.fundedAmount);
+  const amountMinor = money.parse(inv.amount, inv.currency);
+  const fundedMinor = money.parse(inv.fundedAmount ?? 0, inv.currency);
+  const remaining = money.sub(amountMinor, fundedMinor, { clamp: true });
 
   return (
     <section className="section">
@@ -88,7 +97,7 @@ export default function InvoiceDetail({ id }) {
               <div><span className="k">Face value</span>{formatAmount(inv.amount, inv.currency)}</div>
               <div><span className="k">Investor yield</span>{bpsToPercent(inv.yieldBps)}</div>
               <div><span className="k">Due date</span>{formatDate(inv.dueDate)}</div>
-              <div><span className="k">Remaining</span>{formatAmount(remaining, inv.currency)}</div>
+              <div><span className="k">Remaining</span>{money.format(remaining, inv.currency)}</div>
               {inv.smeAddress && <div style={{ gridColumn: "1 / -1" }}><span className="k">SME wallet</span><span className="mono">{shortAddress(inv.smeAddress, 8)}</span></div>}
             </div>
             <div style={{ marginTop: 18 }}>
@@ -105,7 +114,7 @@ export default function InvoiceDetail({ id }) {
               <form className="form" onSubmit={onFund} style={{ marginTop: 12 }}>
                 <div className="field">
                   <label htmlFor="amount">Amount ({inv.currency})</label>
-                  <input id="amount" type="number" min="0" step="any" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={`Up to ${remaining}`} />
+                  <input id="amount" type="number" min="0" step="any" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={`Up to ${money.format(remaining, inv.currency)}`} />
                   <span className="hint">Demo mode: contributions are recorded by the API; on-chain funding uses the escrow&apos;s <code>fund</code> entrypoint.</span>
                 </div>
                 <button className="btn btn-primary" disabled={busy || state.offline}>{busy ? "Submitting…" : "Fund invoice"}</button>
