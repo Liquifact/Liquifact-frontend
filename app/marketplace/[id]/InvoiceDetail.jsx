@@ -8,18 +8,36 @@ import { fundInvoice, getInvoice } from "@/lib/api";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 
 export default function InvoiceDetail({ id }) {
-  const [state, setState] = useState({ loading: true, data: null, offline: false });
+  const [state, setState] = useState({ loading: true, data: null, offline: false, error: null });
   const [amount, setAmount] = useState("");
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let alive = true;
-    getInvoice(id).then((r) => alive && setState({ loading: false, ...r }));
+    const ctrl = new AbortController();
+    setState(s => ({ ...s, loading: true, error: null }));
+    getInvoice(id, { signal: ctrl.signal })
+      .then((r) => {
+        if (!alive) return;
+        setState({ loading: false, data: r.data, offline: !!r.offline, error: null });
+      })
+      .catch((err) => {
+        if (!alive) return;
+        if (err && (err.name === "AbortError" || err.name === "TimeoutError")) return;
+        setState({
+          loading: false,
+          data: null,
+          offline: false,
+          error: { message: (err && err.message) || "Something went wrong" },
+        });
+      });
     return () => {
       alive = false;
+      ctrl.abort();
     };
-  }, [id]);
+  }, [id, reloadKey]);
 
   async function onFund(e) {
     e.preventDefault();
@@ -32,11 +50,11 @@ export default function InvoiceDetail({ id }) {
     setMsg(null);
     try {
       const { data } = await fundInvoice(id, n);
-      setState((s) => ({ ...s, data }));
+      setState(s => ({ ...s, data }));
       setAmount("");
       setMsg({ kind: "ok", text: `Contribution of ${formatAmount(n, data.currency)} recorded.` });
     } catch (err) {
-      setMsg({ kind: "err", text: err.message || "Funding failed." });
+      setMsg({ kind: "err", text: (err && err.message) || "Funding failed." });
     } finally {
       setBusy(false);
     }
@@ -45,6 +63,18 @@ export default function InvoiceDetail({ id }) {
   if (state.loading) {
     return (
       <section className="section"><div className="container"><div className="skeleton" style={{ minHeight: 320 }} /></div></section>
+    );
+  }
+
+  if (state.error) {
+    return (
+      <section className="section">
+        <div className="container center">
+          <h1 style={{ fontSize: "2rem" }}>Something went wrong</h1>
+          <p className="lead">{state.error.message}</p>
+          <button className="btn btn-primary" onClick={() => setReloadKey((k) => k + 1)}>Retry</button>
+        </div>
+      </section>
     );
   }
 
@@ -79,7 +109,7 @@ export default function InvoiceDetail({ id }) {
             {inv.onChain && <span className="badge badge-chain">on-chain</span>}
           </div>
         </div>
-        {state.offline && <div className="notice notice-warn" style={{ marginBottom: 20 }}>API unreachable — showing demo data.</div>}
+        {state.offline && <div className="notice notice-warn" style={{ marginBottom: 20 }}>The API is unreachable right now — showing demo data.</div>}
 
         <div className="grid grid-2" style={{ alignItems: "start" }}>
           <div className="card">
@@ -106,7 +136,7 @@ export default function InvoiceDetail({ id }) {
                 <div className="field">
                   <label htmlFor="amount">Amount ({inv.currency})</label>
                   <input id="amount" type="number" min="0" step="any" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={`Up to ${remaining}`} />
-                  <span className="hint">Demo mode: contributions are recorded by the API; on-chain funding uses the escrow&apos;s <code>fund</code> entrypoint.</span>
+                  <span className="hint">Demo mode: contributions are recorded by the API; on-chain funding uses the escrow&#39;s <code>fund</code> entrypoint.</span>
                 </div>
                 <button className="btn btn-primary" disabled={busy || state.offline}>{busy ? "Submitting…" : "Fund invoice"}</button>
               </form>
