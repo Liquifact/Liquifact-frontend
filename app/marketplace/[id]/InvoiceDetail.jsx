@@ -9,6 +9,7 @@ import StatusBadge from "@/components/StatusBadge";
 import RiskBadge from "@/components/RiskBadge";
 import RiskFactorsCard from "@/components/RiskFactorsCard";
 import ContractCard from "@/components/ContractCard";
+import OnChainFundForm from "@/components/invest/OnChainFundForm";
 import ActivityFeed from "./ActivityFeed";
 import EscrowRules from "@/components/escrow/EscrowRules";
 import { useNotifications } from "@/components/NotificationsProvider";
@@ -22,6 +23,7 @@ import { getWalletAddress } from "@/lib/stellar/freighter";
 import SmeActionsCard from "@/components/sme/SmeActionsCard";
 import LifecycleTimeline from "@/components/invoice/LifecycleTimeline";
 import { escrowFor } from "@/lib/escrow/registry";
+import { getEscrowInfo, getYieldTiers } from "@/lib/stellar/simulate";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 import * as money from "@/lib/money";
 import { computeListMedians, scoreInvoice } from "@/lib/risk";
@@ -116,6 +118,8 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
     };
   }, []);
 
+  const [tierState, setTierState] = useState({ loading: false, tiers: [], escrow: null, nowSec: 0 });
+
   useEffect(() => {
     let alive = true;
     getInvoice(id).then((r) => alive && setState({ loading: false, ...r }));
@@ -168,6 +172,32 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
   }, [inv?.onChain, rules.data, blocking, amount]);
   const maxFill = rules.data ? maxFillAmount(rules.data) : null;
   const fundDisabled = busy || state.offline || blocking !== null || (validation !== null && !validation.ok);
+
+  // For on-chain escrows, read the yield tier table + maturity via simulation.
+  // Failures fall back to the plain fund form — never block the page.
+  useEffect(() => {
+    if (!state.data?.onChain) return undefined;
+    let alive = true;
+    const controller = new AbortController();
+    const contractId = escrowFor(state.data)?.contractId ?? CONTRACT_ID;
+    setTierState((c) => ({ ...c, loading: true }));
+    (async () => {
+      try {
+        const [tiers, escrow] = await Promise.all([
+          getYieldTiers({ contractId, signal: controller.signal }),
+          getEscrowInfo({ contractId, signal: controller.signal }),
+        ]);
+        if (!alive) return;
+        setTierState({ loading: false, tiers, escrow, nowSec: Math.floor(Date.now() / 1000) });
+      } catch {
+        if (alive) setTierState({ loading: false, tiers: [], escrow: null, nowSec: 0 });
+      }
+    })();
+    return () => {
+      alive = false;
+      controller.abort();
+    };
+  }, [state.data?.onChain]);
 
   async function onFund(e) {
     e.preventDefault();
@@ -277,6 +307,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
   // Per-invoice escrow from the registry (#1375); never fall back to another invoice's contract.
   const escrow = escrowFor(inv);
   const contractId = escrow?.contractId ?? null;
+  const hasTierForm = inv.status === "open" && inv.onChain && Boolean(tierState.escrow) && tierState.tiers.length > 0;
 
   async function refreshOnChainInvoice() {
     const { readSmeEscrow } = await import("@/lib/stellar/soroban");
@@ -343,7 +374,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
 
           <div className="card funding-card">
             <h3>Fund this invoice</h3>
-            {inv.onChain && (
+            {inv.onChain && !hasTierForm && (
               <div className="wallet-connection">
                 <p className="muted">{chain.address ? `Connected: ${shortAddress(chain.address, 8)}` : "Connect Freighter to fund this invoice."} &middot; {NETWORK}</p>
                 <button type="button" className="btn btn-ghost focus-ring" onClick={chain.connect} disabled={fundingBusy || chain.pending}>
@@ -351,7 +382,9 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                 </button>
               </div>
             )}
-            {inv.status === "open" ? (
+            {hasTierForm ? (
+              <OnChainFundForm inv={inv} tiers={tierState.tiers} escrow={tierState.escrow} nowSec={tierState.nowSec} />
+            ) : inv.status === "open" ? (
               <form className="form" onSubmit={onFund} style={{ marginTop: 12 }}>
                 <div className="field">
                   <label htmlFor="amount">Amount ({inv.currency})</label>

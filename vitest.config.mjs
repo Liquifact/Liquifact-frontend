@@ -1,7 +1,7 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
-import { resolve } from "path";
-import { fileURLToPath } from "url";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { transformWithEsbuild } from "vite";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
@@ -23,8 +23,10 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    setupFiles: ["./tests/setup.js"],
-    include: ["tests/**/*.ui.test.{js,jsx,ts,tsx}", "tests-ui/**/*.test.{js,jsx}"],
+    setupFiles: ["./tests/setup.js", "./vitest.setup.mjs"],
+    // Plain node --test ESM suites live in tests/*.test.mjs and are run by
+    // `npm test`; Vitest only picks up the JSX component/hook suites.
+    include: ["tests/**/*.test.{js,jsx,ts,tsx}", "tests-ui/**/*.test.{js,jsx}"],
   },
   resolve: {
     alias: {
