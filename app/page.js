@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import LiveStats from "@/components/LiveStats";
 import ContractCard from "@/components/ContractCard";
+import FeaturedInvoice, { FeaturedInvoiceSkeleton } from "@/components/FeaturedInvoice";
 import { API_DOCS_URL, EXPLORER_URL } from "@/lib/config";
 
 const STEPS = [
@@ -11,7 +13,7 @@ const STEPS = [
 ];
 
 const FEATURES = [
-  { i: "⛓", t: "On-chain escrow", d: "A Soroban smart contract holds every investor contribution, with explicit states for open, funded and settled." },
+  { i: "⛍", t: "On-chain escrow", d: "A Soroban smart contract holds every investor contribution, with explicit states for open, funded and settled." },
   { i: "⚡", t: "Fast and low-cost", d: "Stellar settles in seconds for fractions of a cent, so small invoices are economical to finance." },
   { i: "🛡", t: "Built-in safeguards", d: "Legal holds, allowlists, investor caps, funding deadlines and maturity locks are enforced by the contract." },
   { i: "📈", t: "Transparent yield", d: "Yield is set in basis points per invoice and visible before you commit — no hidden spreads." },
@@ -39,15 +41,9 @@ export default function Home() {
               <Link href="/docs" className="btn btn-light">Read the docs</Link>
             </div>
           </div>
-          <div className="glass" aria-label="Example invoice">
-            <div className="eyebrow" style={{ color: "#a5b4fc" }}>Example listing</div>
-            <h3 style={{ margin: "6px 0 14px" }}>INV_0002 · Northwind Textiles</h3>
-            <div className="row"><span className="k">Face value</span><span>25,000 USDC</span></div>
-            <div className="row"><span className="k">Investor yield</span><span>6.50%</span></div>
-            <div className="row"><span className="k">Due</span><span>Dec 30, 2026</span></div>
-            <div className="row"><span className="k">Funded</span><span>72%</span></div>
-            <div className="progress" style={{ marginTop: 14, background: "rgba(255,255,255,0.12)" }}><span style={{ width: "72%" }} /></div>
-          </div>
+          <Suspense fallback={<FeaturedInvoiceSkeleton />}>
+            <FeaturedInvoice />
+          </Suspense>
         </div>
       </section>
 
