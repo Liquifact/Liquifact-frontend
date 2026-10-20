@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getHealth, getStats } from "@/lib/api";
 import { bpsToPercent } from "@/lib/format";
+import * as money from "@/lib/money";
 
 export default function LiveStats() {
   const [stats, setStats] = useState(null);
@@ -20,7 +21,7 @@ export default function LiveStats() {
   const items = [
     { label: "Invoices listed", value: stats ? stats.invoices : "—" },
     { label: "Open for funding", value: stats ? stats.open : "—" },
-    { label: "Face value (all)", value: stats ? stats.totalFaceValue.toLocaleString("en-US") : "—" },
+    { label: "Face value (all)", value: stats ? money.format(money.parse(stats.totalFaceValue ?? 0, "USDC"), "USDC", { includeCurrency: false }) : "—" },
     { label: "Average yield", value: stats ? bpsToPercent(stats.averageYieldBps) : "—" },
   ];
 

@@ -25,7 +25,7 @@ export default function SubmitForm() {
       const payload = {
         sme: form.sme,
         debtor: form.debtor,
-        amount: Number(form.amount),
+        amount: form.amount,
         currency: form.currency,
         yieldBps: Number(form.yieldBps),
         dueDate: form.dueDate,
