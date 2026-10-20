@@ -1,16 +1,17 @@
 # Invoice data contract
 
 This guide documents the invoice objects that currently power the investment
-marketplace and invoice detail page. It describes the mock contract as it exists
-in `app/invest/lib.js`, including the difference between display-ready strings
+marketplace and invoice detail page. It describes the mock contract in
+`lib/invoiceFixtures.js`, including the difference between display-ready strings
 and numeric values used for calculations.
 
 ## Source of truth
 
-`app/invest/lib.js` is the source of mock invoice fixtures for the `/invest`
-marketplace and detail routes. It exports:
+`lib/invoiceFixtures.js` is the source of mock invoice fixtures for the `/invest`
+marketplace and detail routes. `app/invest/lib.js` re-exports the fixture and
+provides the loaders and lookup function:
 
-- `MOCK_INVOICES`, the canonical fixture array;
+- `MOCK_INVOICES`, the canonical fixture array in `lib/invoiceFixtures.js`;
 - `loadMockInvoices()`, the asynchronous list loader used by default on
   `/invest`; and
 - `getInvoiceById(id)`, the synchronous lookup used by `/invest/[id]`.

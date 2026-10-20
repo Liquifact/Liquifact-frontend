@@ -407,7 +407,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
                 <li key={inv.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
                   <div className="flex items-center justify-between mb-3">
                     <Link
-                      href={`/invest/${inv.id}`}
+                      href={`/marketplace/${inv.id}`}
                       className="font-medium text-slate-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
                     >
                       {inv.issuer}

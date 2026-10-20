@@ -130,7 +130,7 @@ jest.mock("../lib", () => ({
 import { notFound } from "next/navigation";
 import { getInvoiceById } from "../lib";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
-import InvoiceDetailPage from "./page";
+import InvoiceDetailPage, { generateMetadata } from "./page";
 import FundActions, { copyInvoiceUrl, copyToClipboardFallback } from "./FundActions";
 import { copy } from "@/app/copy/en";
 
@@ -173,6 +173,14 @@ async function renderServerPage(params: { id: string }) {
 // =============================================================================
 
 describe("InvoiceDetailPage (Server Component shell)", () => {
+  it("uses invoice metadata with a canonical marketplace URL", async () => {
+    const metadata = await generateMetadata({ params: Promise.resolve({ id: "inv-001" }) });
+
+    expect(metadata.title).toContain("Acme Supplies Ltd");
+    expect(metadata.alternates.canonical).toBe("/marketplace/inv-001");
+    expect(metadata.openGraph.images[0].url).toBe("/marketplace/inv-001/opengraph-image");
+  });
+
   describe("when invoice exists", () => {
     it("renders the page heading and subtitle", async () => {
       await renderServerPage({ id: "inv-001" });
@@ -188,6 +196,16 @@ describe("InvoiceDetailPage (Server Component shell)", () => {
 
       expect(
         screen.getByRole("heading", { level: 2, name: "Acme Supplies Ltd" })
+      ).toBeInTheDocument();
+    });
+
+    it("renders the SEO demo invoice when it is not in the legacy marketplace fixtures", async () => {
+      mockGetInvoiceById.mockReturnValue(undefined as unknown as ReturnType<typeof getInvoiceById>);
+
+      await renderServerPage({ id: "INV_0002" });
+
+      expect(
+        screen.getByRole("heading", { level: 2, name: "Northwind Textiles" })
       ).toBeInTheDocument();
     });
 

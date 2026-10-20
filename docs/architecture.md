@@ -39,7 +39,8 @@ chunk stays out of the initial bundle.
 | `/`            | `app/page.js`              | `app/error.js`                                                            | `getHealth()` → `lib/api/health.js` (live `/health`) |
 | `/invoices`    | `app/invoices/page.js`     | `app/invoices/loading.js`                                                 | `UploadZone` POST `${API_URL}/invoices`; `InvoiceList` |
 | `/invest`      | `app/invest/page.js`       | `app/invest/loading.js`                                                   | `fetchInvestableInvoices()` → `lib/api/invoices.js` (live client) |
-| `/invest/[id]` | `app/invest/[id]/page.js`  | `app/invest/[id]/loading.js`, `app/invest/[id]/not-found.js`             | `getInvoiceById()` → `app/invest/lib.js` (mock layer) |
+| `/invest/[id]` | `app/invest/[id]/page.js`  | `app/invest/[id]/loading.js`, `app/invest/[id]/not-found.js`             | Legacy detail view; canonical metadata points to `/marketplace/[id]` |
+| `/marketplace/[id]` | `app/marketplace/[id]/page.js` | `app/marketplace/[id]/opengraph-image.js` | Timed invoice API lookup with demo fallback; server-rendered detail, metadata, and JSON-LD |
 
 `loading.js` files are App Router Suspense fallbacks (rendered while a segment
 loads); `error.js` is the route error boundary; `not-found.js` backs
@@ -76,12 +77,12 @@ There are **two** invoice data paths today, and they are intentionally separate:
    `InvestMarketplace({ loadInvoices = fetchInvestableInvoices })` seam, which
    makes the data source injectable for tests.
 
-2. **Mock layer — `app/invest/lib.js`** (`MOCK_INVOICES`, `loadMockInvoices`,
-   `getInvoiceById`)
+2. **Mock layer — `lib/invoiceFixtures.js` + `app/invest/lib.js`**
+   (`MOCK_INVOICES`, `loadMockInvoices`, `getInvoiceById`)
    Static fixtures used by the **detail** route (`/invest/[id]`) and as a
    deterministic source for e2e tests via the `window.__TEST_MOCK_INVOICES__`
    hook. `loadMockInvoices()` prefers that global when present, otherwise returns
-   the in-file fixtures after a dev-only delay.
+   the shared fixtures after a dev-only delay.
 
 **Migration boundary:** the marketplace list (`/invest`) already consumes the
 live client; the detail page (`/invest/[id]`) still reads the mock layer via

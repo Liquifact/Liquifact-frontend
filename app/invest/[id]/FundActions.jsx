@@ -55,8 +55,8 @@ export function copyToClipboardFallback(text) {
  * @param {string} id - Invoice id
  * @returns {Promise<string>} The URL that was copied
  */
-export async function copyInvoiceUrl(id) {
-  const url = `${window.location.origin}/invest/${id}`;
+export async function copyInvoiceUrl(id, pathPrefix = "/invest") {
+  const url = `${window.location.origin}${pathPrefix}/${encodeURIComponent(id)}`;
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(url);
   } else {
@@ -74,7 +74,14 @@ export async function copyInvoiceUrl(id) {
  * @param {string} props.id          - Invoice id (used to build the share URL)
  * @param {string} props.status      - Invoice status; disables fund button when not "Open"
  */
-export default function FundActions({ id, status, maxAmount, currency, yieldValue }) {
+export default function FundActions({
+  id,
+  status,
+  maxAmount,
+  currency,
+  yieldValue,
+  pathPrefix = "/invest",
+}) {
   const { state: walletState, connect } = useWallet();
   const toast = useToast();
   const [isCopying, setIsCopying] = useState(false);
@@ -98,14 +105,14 @@ export default function FundActions({ id, status, maxAmount, currency, yieldValu
     if (isCopying) return;
     setIsCopying(true);
     try {
-      await copyInvoiceUrl(id);
+      await copyInvoiceUrl(id, pathPrefix);
       toast.success(detail.copySuccessMsg, detail.copySuccessTitle);
     } catch {
       toast.error(detail.copyErrorMsg, detail.copyErrorTitle);
     } finally {
       setIsCopying(false);
     }
-  }, [id, isCopying, toast]);
+  }, [id, isCopying, pathPrefix, toast]);
 
   const handlePrint = () => {
     window.print();

@@ -30,10 +30,19 @@ import StatusPill from "@/components/StatusPill";
 import InvoiceTimeline from "@/components/InvoiceTimeline";
 import { copy } from "@/app/copy/en";
 import { INVALID_VALUE_FALLBACK, formatCurrency, formatAmount } from "@/lib/format/currency";
+import { getDemoInvoiceById } from "@/lib/invoiceSeoData.js";
+import { invoiceMeta } from "@/lib/seo.js";
 import { getInvoiceById } from "../lib";
 import FundActions from "./FundActions";
 
 const detail = copy.invest.detail;
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+export async function generateMetadata({ params }) {
+  const { id } = await Promise.resolve(params);
+  const invoice = getInvoiceById(id) ?? getDemoInvoiceById(id);
+  return invoiceMeta(invoice, siteUrl, id);
+}
 
 // ── Pure server-side helpers (not exported to the client bundle) ──────────────
 
@@ -118,7 +127,7 @@ export default async function InvoiceDetailPage({ params }) {
   // Support both the current (sync object) and future (Promise) params shape.
   const { id } = await Promise.resolve(params);
 
-  const invoice = getInvoiceById(id);
+  const invoice = getInvoiceById(id) ?? getDemoInvoiceById(id);
 
   if (!invoice) {
     notFound();
@@ -211,6 +220,7 @@ export default async function InvoiceDetailPage({ params }) {
           maxAmount={invoice.amountValue}
           currency={invoice.currency}
           yieldValue={invoice.yieldValue}
+          pathPrefix="/marketplace"
         />
       </main>
     </div>

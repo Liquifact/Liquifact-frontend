@@ -8,5 +8,6 @@ describe("Robots Route", () => {
     expect(result.rules.allow).toBe("/");
     // default base URL fallback
     expect(result.sitemap).toContain("http://localhost:3000/sitemap.xml");
+    expect(result.host).toBe("localhost:3000");
   });
 });

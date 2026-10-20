@@ -1,52 +1,10 @@
+import { MOCK_INVOICES } from "../../lib/invoiceFixtures.js";
+
+export { MOCK_INVOICES };
+
 /**
- * Mock invoice data — replace with real API call once the backend endpoint
- * is available (follow-up: link backend issue here).
- *
- * ⚠️  SINGLE SOURCE OF TRUTH: This file is the only place mock invoice
- * fixtures are defined. All components and tests must import MOCK_INVOICES
- * and loadMockInvoices from here. Do NOT redeclare them inline elsewhere.
- * Remove this block and swap loadMockInvoices for the real API client once
- * the backend `/invoices` endpoint is ready.
- *
- * Contract per item: { id, issuer, amount, currency, dueDate, yield, status }
- * NOTE: yield values are illustrative; contracts use on-chain basis points and
- * actual settlement is at maturity.
+ * Load marketplace fixtures with the Playwright/Jest test hook preserved.
  */
-export const MOCK_INVOICES = [
-  {
-    id: "inv-001",
-    issuer: "Acme Supplies Ltd",
-    amount: "12,500",
-    amountValue: 12500,
-    currency: "USD",
-    dueDate: "2026-06-15",
-    yield: "8.2%",
-    yieldValue: 8.2,
-    status: "Open",
-  },
-  {
-    id: "inv-002",
-    issuer: "Bright Logistics GmbH",
-    amount: "7,800",
-    amountValue: 7800,
-    currency: "EUR",
-    dueDate: "2026-07-01",
-    yield: "7.5%",
-    yieldValue: 7.5,
-    status: "Open",
-  },
-  {
-    id: "inv-003",
-    issuer: "Sunrise Exports Pte",
-    amount: "22,000",
-    amountValue: 22000,
-    currency: "USD",
-    dueDate: "2026-05-30",
-    yield: "9.1%",
-    yieldValue: 9.1,
-    status: "Open",
-  },
-];
 
 // DEV-only delay (ms) to make the skeleton visible during local development.
 const DEV_DELAY = process.env.NODE_ENV === "development" ? 1500 : 0;
@@ -87,5 +45,4 @@ export function getInvoiceById(id) {
   return MOCK_INVOICES.find((invoice) => invoice.id === id);
 }
 
-// NOTE: This file is the single source of truth for mock invoice data
-// until the API client is fully integrated.
+// Mock invoice fixtures are defined in lib/invoiceFixtures.js.
