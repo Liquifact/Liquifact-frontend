@@ -1,7 +1,9 @@
 import Link from "next/link";
 import LiveStats from "@/components/LiveStats";
 import ContractCard from "@/components/ContractCard";
+import FundingProgress from "@/components/FundingProgress";
 import { API_DOCS_URL, EXPLORER_URL } from "@/lib/config";
+import { DEMO_INVOICES } from "@/lib/demo";
 
 const STEPS = [
   { t: "SME submits an invoice", d: "Upload an unpaid B2B invoice with amount, debtor and due date. LiquiFact lists it on the marketplace." },
@@ -18,6 +20,8 @@ const FEATURES = [
   { i: "🌍", t: "Global by default", d: "Any SME with a Stellar wallet can raise against receivables; any investor can participate." },
   { i: "🧩", t: "Open API", d: "A documented REST API powers the app and lets partners integrate invoice origination." },
 ];
+
+const EXAMPLE_INVOICE = DEMO_INVOICES[1];
 
 export default function Home() {
   return (
@@ -41,12 +45,11 @@ export default function Home() {
           </div>
           <div className="glass" aria-label="Example invoice">
             <div className="eyebrow" style={{ color: "#a5b4fc" }}>Example listing</div>
-            <h3 style={{ margin: "6px 0 14px" }}>INV_0002 · Northwind Textiles</h3>
-            <div className="row"><span className="k">Face value</span><span>25,000 USDC</span></div>
+            <h3 style={{ margin: "6px 0 14px" }}>{EXAMPLE_INVOICE.id} · {EXAMPLE_INVOICE.sme}</h3>
+            <div className="row"><span className="k">Face value</span><span>{EXAMPLE_INVOICE.amount.toLocaleString("en-US")} {EXAMPLE_INVOICE.currency}</span></div>
             <div className="row"><span className="k">Investor yield</span><span>6.50%</span></div>
             <div className="row"><span className="k">Due</span><span>Dec 30, 2026</span></div>
-            <div className="row"><span className="k">Funded</span><span>72%</span></div>
-            <div className="progress" style={{ marginTop: 14, background: "rgba(255,255,255,0.12)" }}><span style={{ width: "72%" }} /></div>
+            <FundingProgress funded={EXAMPLE_INVOICE.fundedAmount} target={EXAMPLE_INVOICE.amount} currency={EXAMPLE_INVOICE.currency} size="md" showLabel />
           </div>
         </div>
       </section>
