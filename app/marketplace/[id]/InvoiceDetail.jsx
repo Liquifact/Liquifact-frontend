@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import FundingProgress from "@/components/FundingProgress";
 import StatusBadge from "@/components/StatusBadge";
 import ContractCard from "@/components/ContractCard";
 import { fundInvoice, getInvoice } from "@/lib/api";
@@ -75,8 +76,8 @@ export default function InvoiceDetail({ id }) {
             <div className="muted">Debtor: {inv.debtor}</div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <StatusBadge status={inv.status} />
-            {inv.onChain && <span className="badge badge-chain">on-chain</span>}
+            <StatusBadge status={inv.status} live />
+            {inv.onChain && <StatusBadge kind="chain" />}
           </div>
         </div>
         {state.offline && <div className="notice notice-warn" style={{ marginBottom: 20 }}>API unreachable — showing demo data.</div>}
@@ -95,7 +96,9 @@ export default function InvoiceDetail({ id }) {
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }} className="muted">
                 <span>Funded</span><span>{formatAmount(inv.fundedAmount, inv.currency)} · {pct}%</span>
               </div>
-              <div className="progress" style={{ marginTop: 6 }}><span style={{ width: `${pct}%` }} /></div>
+              <div style={{ marginTop: 6 }}>
+                <FundingProgress funded={inv.fundedAmount} target={inv.amount} currency={inv.currency} size="md" />
+              </div>
             </div>
           </div>
 
