@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { API_DOCS_URL, API_URL, EXPLORER_URL, REPOS } from "@/lib/config";
+import { API_DOCS_URL, API_URL, EXPLORER_URL, NETWORK_LABEL, REPOS } from "@/lib/config";
 
 export default function SiteFooter() {
   return (
@@ -38,7 +38,7 @@ export default function SiteFooter() {
         </div>
       </div>
       <div className="container muted" style={{ marginTop: 28, fontSize: "0.85rem" }}>
-        © {new Date().getFullYear()} LiquiFact · Running on Stellar testnet · MIT licensed
+        © {new Date().getFullYear()} LiquiFact · Running on Stellar {NETWORK_LABEL} · MIT licensed
       </div>
     </footer>
   );
