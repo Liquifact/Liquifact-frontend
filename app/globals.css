@@ -12,6 +12,10 @@
   --warn: #d97706;
   --info: #2563eb;
   --danger: #dc2626;
+  --risk-low: #047857;
+  --risk-moderate: #0369a1;
+  --risk-elevated: #b45309;
+  --risk-high: #b91c1c;
   --radius: 14px;
   --shadow: 0 1px 2px rgba(14, 21, 48, 0.04), 0 8px 24px rgba(14, 21, 48, 0.06);
   --hero: radial-gradient(1200px 500px at 80% -10%, rgba(6, 182, 212, 0.35), transparent 60%),
@@ -61,6 +65,10 @@
     --warn: #fbbf24;
     --info: #60a5fa;
     --danger: #f87171;
+    --risk-low: #34d399;
+    --risk-moderate: #38bdf8;
+    --risk-elevated: #fbbf24;
+    --risk-high: #f87171;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
     --code-bg: #0b1024;
     --code-fg: #e2e8f0;
@@ -159,7 +167,7 @@ p { margin: 0 0 1em; }
 /* Invoice cards */
 .invoice-card { display: flex; flex-direction: column; gap: 14px; color: var(--fg); transition: transform 0.15s ease, border-color 0.15s ease; }
 a.invoice-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--brand) 45%, var(--border)); text-decoration: none; }
-.invoice-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.invoice-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
 .invoice-id { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; color: var(--muted); }
 .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; font-size: 0.92rem; }
 .kv .k { color: var(--muted); font-size: 0.8rem; display: block; }
@@ -171,6 +179,52 @@ a.invoice-card:hover { transform: translateY(-2px); border-color: color-mix(in s
 .badge-settled { color: var(--muted); }
 .badge-cancelled { color: var(--danger); }
 .badge-chain { color: var(--brand); }
+.badge-risk {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+.badge-risk-low { color: var(--risk-low); }
+.badge-risk-moderate { color: var(--risk-moderate); }
+.badge-risk-elevated { color: var(--risk-elevated); }
+.badge-risk-high { color: var(--risk-high); }
+.risk-score-pill {
+  font-size: 0.72rem;
+  opacity: 0.85;
+  margin-left: 2px;
+  padding-left: 5px;
+  border-left: 1px solid currentColor;
+  font-variant-numeric: tabular-nums;
+}
+.risk-pts {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.risk-pts-pos {
+  color: var(--risk-high);
+  background: color-mix(in srgb, var(--risk-high) 12%, transparent);
+}
+.risk-pts-neg {
+  color: var(--risk-low);
+  background: color-mix(in srgb, var(--risk-low) 12%, transparent);
+}
+.risk-pts-zero {
+  color: var(--muted);
+  background: var(--surface-2);
+}
 
 /* Toolbar / filters */
 .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
