@@ -12,6 +12,8 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./tests/setup.js"],
     include: ["tests/**/*.ui.test.{js,jsx,ts,tsx}"],
+    pool: "threads",
+    testTimeout: 15000,
   },
   resolve: {
     alias: {

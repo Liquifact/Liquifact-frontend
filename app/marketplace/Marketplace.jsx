@@ -18,6 +18,7 @@ const FILTERS = [
   { v: "open", l: "Open" },
   { v: "funded", l: "Funded" },
   { v: "settled", l: "Settled" },
+  { v: "cancelled", l: "Cancelled" },
 ];
 
 /**

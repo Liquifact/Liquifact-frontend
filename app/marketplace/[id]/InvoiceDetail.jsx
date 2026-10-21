@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import StatusBadge from "@/components/StatusBadge";
@@ -7,11 +8,17 @@ import ContractCard from "@/components/ContractCard";
 import { fundInvoice, getInvoice } from "@/lib/api";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 
+// ExitPanel uses @stellar/stellar-sdk + @stellar/freighter-api — SSR-unsafe.
+// Lazy-load so the Soroban SDK never runs on the server.
+const ExitPanel = dynamic(() => import("@/components/invest/ExitPanel"), { ssr: false });
+
 export default function InvoiceDetail({ id }) {
   const [state, setState] = useState({ loading: true, data: null, offline: false });
   const [amount, setAmount] = useState("");
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  // Connected wallet address — populated when Freighter is available
+  const [walletAddress, setWalletAddress] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -20,6 +27,24 @@ export default function InvoiceDetail({ id }) {
       alive = false;
     };
   }, [id]);
+
+  // Detect Freighter connection (browser-only) — no full WalletProvider needed.
+  useEffect(() => {
+    let alive = true;
+    async function detectWallet() {
+      try {
+        const { isConnected, getPublicKey } = await import("@stellar/freighter-api");
+        const connected = await isConnected();
+        if (!alive || !connected) return;
+        const address = await getPublicKey();
+        if (alive && address) setWalletAddress(address);
+      } catch {
+        // Freighter not installed or not connected — silently ignore
+      }
+    }
+    detectWallet();
+    return () => { alive = false; };
+  }, []);
 
   async function onFund(e) {
     e.preventDefault();
@@ -42,6 +67,11 @@ export default function InvoiceDetail({ id }) {
     }
   }
 
+  // Refresh invoice data after a successful exit action
+  function onContribRefresh() {
+    getInvoice(id).then((r) => setState({ loading: false, ...r }));
+  }
+
   if (state.loading) {
     return (
       <section className="section"><div className="container"><div className="skeleton" style={{ minHeight: 320 }} /></div></section>
@@ -54,7 +84,7 @@ export default function InvoiceDetail({ id }) {
       <section className="section">
         <div className="container center">
           <h1 style={{ fontSize: "2rem" }}>Invoice not found</h1>
-          <p className="lead">We couldn’t find invoice <code>{id}</code>.</p>
+          <p className="lead">We couldn&apos;t find invoice <code>{id}</code>.</p>
           <Link href="/marketplace" className="btn btn-primary">Back to marketplace</Link>
         </div>
       </section>
@@ -63,6 +93,7 @@ export default function InvoiceDetail({ id }) {
 
   const pct = fundedPercent(inv);
   const remaining = Math.max(0, inv.amount - inv.fundedAmount);
+  const isCancelled = inv.status === "cancelled";
 
   return (
     <section className="section">
@@ -111,9 +142,30 @@ export default function InvoiceDetail({ id }) {
                 <button className="btn btn-primary" disabled={busy || state.offline}>{busy ? "Submitting…" : "Fund invoice"}</button>
               </form>
             ) : (
-              <p className="muted" style={{ marginTop: 12 }}>This invoice is <strong>{inv.status}</strong> and no longer accepts contributions.</p>
+              <p className="muted" style={{ marginTop: 12 }}>
+                This invoice is <strong>{inv.status}</strong>
+                {isCancelled
+                  ? " — see your exit options below."
+                  : " and no longer accepts contributions."}
+              </p>
             )}
             {msg && <div className={`notice notice-${msg.kind}`} style={{ marginTop: 14 }}>{msg.text}</div>}
+
+            {/* ── Investor exit panel (on-chain invoices, connected wallet only) ── */}
+            {inv.onChain && walletAddress && (
+              <ExitPanel
+                investorAddress={walletAddress}
+                invoiceStatus={inv.status}
+                onContribRefresh={onContribRefresh}
+              />
+            )}
+
+            {/* Prompt to connect wallet if not connected and invoice is on-chain */}
+            {inv.onChain && !walletAddress && (
+              <p className="muted exit-wallet-prompt" style={{ marginTop: 16, fontSize: "0.9rem" }}>
+                Connect your Freighter wallet to manage your position.
+              </p>
+            )}
           </div>
         </div>
 
