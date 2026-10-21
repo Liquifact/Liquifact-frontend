@@ -14,5 +14,11 @@ export default defineConfig({
     },
   }, react()],
   resolve: { alias: { "@": fileURLToPath(new URL(".", import.meta.url)) } },
-  test: { environment: "jsdom", include: ["ui-tests/**/*.test.jsx"], restoreMocks: true },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: ["./tests/setup.js"],
+    include: ["tests/**/*.ui.test.{js,jsx,ts,tsx}", "ui-tests/**/*.test.jsx"],
+    restoreMocks: true,
+  },
 });

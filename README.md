@@ -37,7 +37,7 @@ and RPC traffic are not cached. [Browser evidence](docs/pwa-evidence/README.md).
 
 ## Development
 
-Requires Node.js 20.9+.
+Use Node.js 24, matching CI and the Vitest 5 test runner.
 
 ```bash
 npm ci
