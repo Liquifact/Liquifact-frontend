@@ -1,0 +1,24 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "feat/freighter-wallet-connect",
+    "main",
+    "origin",
+    "review/1362-screenshots",
+    "validate/1362-current-main"
+  ],
+  "parent": {
+    "feat/freighter-wallet-connect": "main",
+    "main": null,
+    "origin": "main",
+    "review/1362-screenshots": "main",
+    "validate/1362-current-main": "main"
+  },
+  "order": [
+    "main",
+    "feat/freighter-wallet-connect",
+    "origin",
+    "review/1362-screenshots",
+    "validate/1362-current-main"
+  ]
+}

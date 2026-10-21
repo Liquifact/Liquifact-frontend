@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { WalletButton } from "@/components/wallet/WalletButton";
 import ThemeToggle from "@/components/ThemeToggle";
 
 const LINKS = [
@@ -45,6 +46,9 @@ export default function SiteHeader() {
               {l.label}
             </Link>
           ))}
+          <div className="wallet">
+            <WalletButton />
+          </div>
           <ThemeToggle />
         </nav>
       </div>

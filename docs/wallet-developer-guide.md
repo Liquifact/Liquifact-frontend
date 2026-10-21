@@ -1,10 +1,31 @@
 # Wallet Developer Guide
 
-> **See also:** [`WALLET_INTEGRATION_CONTRACT.md`](../WALLET_INTEGRATION_CONTRACT.md) — the integration contract that defines the required wire-up for real Stellar wallet SDKs.
+The LiquiFact frontend has one wallet layer: a Freighter adapter, a pure state
+machine, and a React context that the header button reads. This guide
+describes the code that actually ships.
 
-## Overview
+---
 
-The Liquifact wallet subsystem is built around a single-source-of-truth React context (`WalletProvider`) that exposes state and actions to any component via the `useWallet()` hook. This guide documents the state machine, the public hook API, and the rules for integrating new wallet providers.
+## Files
+
+| File | Kind | What it does |
+|---|---|---|
+| `lib/stellar/walletState.js` | plain ESM | The wallet state machine. No React, no Freighter imports, so it is unit testable with `node:test`. |
+| `lib/stellar/freighter.js` | plain ESM | The adapter around `@stellar/freighter-api`. Normalises every failure into a `WalletError` with a stable `code`. |
+| `components/wallet/WalletProvider.jsx` | client component | Owns the state, the session restore, the account watcher and the `useWallet()` context. |
+| `components/wallet/WalletButton.jsx` | client component | The header button: connect, spinner, connected menu, install link, error banner. |
+| `components/SiteHeader.jsx` | client component | Renders `<WalletButton />` inside the navigation, so it sits after the links on desktop and inside the mobile drawer. |
+| `app/layout.js` | server component | Mounts `<WalletProvider>` around the header, the page and the footer. |
+
+```
+app/layout.js
+└── <WalletProvider>            ← single source of truth, mounted once
+    ├── <SiteHeader>
+    │   └── <nav>
+    │       └── <WalletButton>  ← the only consumer today
+    ├── <main>{children}</main>
+    └── <SiteFooter>
+```
 
 ---
 
@@ -15,201 +36,182 @@ The Liquifact wallet subsystem is built around a single-source-of-truth React co
 | State | Value | Description |
 |---|---|---|
 | `DISCONNECTED` | `"disconnected"` | Initial state; no wallet is connected. |
-| `CONNECTING` | `"connecting"` | A connection attempt is in progress; UI is locked. |
-| `CONNECTED` | `"connected"` | Wallet connected successfully. `walletData` is populated. |
-| `ERROR` | `"error"` | Connection attempt failed (user rejection, network error, etc.). |
-| `WRONG_NETWORK` | `"wrong_network"` | Wallet is connected but on the wrong Stellar network. |
-| `NO_WALLET` | `"no_wallet"` | No compatible Stellar wallet extension detected in the browser. |
+| `CONNECTING` | `"connecting"` | A connection attempt is in progress; the UI is locked. |
+| `CONNECTED` | `"connected"` | The wallet is connected. `address` and `network` are populated. |
+| `ERROR` | `"error"` | The connection attempt failed (user rejection, extension error). |
+| `WRONG_NETWORK` | `"wrong_network"` | The wallet is connected to the wrong Stellar network. |
+| `NO_WALLET` | `"no_wallet"` | No Freighter extension was detected in the browser. |
 
-### Transition Diagram
+`wrongNetwork` is also exposed as a boolean flag on the state, so the network
+guard can raise it without changing the status. The guard itself is not wired
+up yet — blocking transactions on a network mismatch is a separate issue.
+
+### Transitions
 
 ```mermaid
 stateDiagram-v2
-    [*] --> DISCONNECTED : initial mount (or localStorage miss)
-    DISCONNECTED --> CONNECTED : localStorage rehydration (stored snapshot found)
-
-    DISCONNECTED --> CONNECTING : connect() called
-    ERROR --> CONNECTING : connect() called (retry)
-    WRONG_NETWORK --> CONNECTING : connect() called (retry)
-
-    CONNECTING --> CONNECTED : wallet accepted + correct network
-    CONNECTING --> ERROR : wallet rejected / SDK threw
-    CONNECTING --> WRONG_NETWORK : wallet on testnet
+    [*] --> DISCONNECTED
+    DISCONNECTED --> CONNECTING : connect()
+    DISCONNECTED --> CONNECTED : session restore (no prompt)
+    ERROR --> CONNECTING : connect() (retry)
+    WRONG_NETWORK --> CONNECTING : connect() (retry)
+    NO_WALLET --> CONNECTING : connect() (after install)
+    CONNECTING --> CONNECTED : wallet accepted
+    CONNECTING --> ERROR : user rejected / extension error
     CONNECTING --> NO_WALLET : no extension detected
-
-    CONNECTED --> DISCONNECTED : disconnect() called
-
-    NO_WALLET --> CONNECTING : connect() called (after install)
+    CONNECTED --> CONNECTED : account switch inside the extension
+    CONNECTED --> DISCONNECTED : disconnect()
 ```
 
-### Transition Triggers
+The reducer lives in `lib/stellar/walletState.js` and is a pure function of
+`(state, action)`:
 
-| From | To | Trigger |
+```js
+import { walletReducer, WALLET_ACTIONS } from "@/lib/stellar/walletState";
+
+const next = walletReducer(state, {
+  type: WALLET_ACTIONS.CONNECTED,
+  address: "GABC…",
+  network: "testnet",
+});
+```
+
+Actions: `connect`, `connected`, `failed`, `no_wallet`, `account_changed`,
+`network_changed`, `disconnect`.
+
+---
+
+## `useWallet()`
+
+```js
+import { useWallet } from "@/components/wallet/WalletProvider";
+
+const { status, address, network, error, connect, disconnect } = useWallet();
+```
+
+| Field | Type | Description |
 |---|---|---|
-| `DISCONNECTED` | `CONNECTING` | User clicks **Connect Wallet** |
-| `DISCONNECTED` | `CONNECTED` | Page reload with valid `localStorage` snapshot |
-| `CONNECTING` | `CONNECTED` | SDK resolves with valid address + correct network |
-| `CONNECTING` | `ERROR` | SDK throws or user cancels permission dialog |
-| `CONNECTING` | `WRONG_NETWORK` | SDK resolves but network ≠ `"public"` |
-| `CONNECTING` | `NO_WALLET` | No wallet extension found in `window` |
-| `CONNECTED` | `DISCONNECTED` | User clicks **Disconnect** |
-| `ERROR` | `CONNECTING` | User clicks **Retry** |
-| `WRONG_NETWORK` | `CONNECTING` | User clicks **Switch Network** (retries after manual switch) |
-| `NO_WALLET` | `CONNECTING` | User clicks **Install Wallet** CTA, then retries |
+| `status` | `string` | One of the `WALLET_STATUS` values. |
+| `address` | `string \| null` | The connected Stellar address. |
+| `network` | `string \| null` | The network reported by the extension, e.g. `"testnet"`. |
+| `networkPassphrase` | `string \| null` | The network passphrase reported by the extension. |
+| `error` | `string \| null` | Human readable reason for the last failure. |
+| `errorCode` | `string \| null` | Machine readable reason (`NO_WALLET`, `USER_REJECTED`, `UNKNOWN`). |
+| `wrongNetwork` | `boolean` | True when the wallet is on the wrong network. |
+| `connect()` | `() => Promise<{ status: string }>` | Starts a connection attempt. Never rejects — the outcome is in the resolved value and in the state. |
+| `disconnect()` | `() => void` | Ends the session, stops the watcher and clears the session flag. |
 
-### Persistence Rules
-
-Only the `CONNECTED` state is written to `localStorage` (key: `liquifact-wallet-snapshot`). All other states clear the snapshot.
-
-```
-CONNECTED    → write snapshot  { version, state, address (truncated), network }
-DISCONNECTED → clear snapshot
-ERROR        → clear snapshot
-WRONG_NETWORK→ clear snapshot
-CONNECTING   → no-op (not persisted)
-NO_WALLET    → no-op (not persisted)
-```
-
-> **Security:** Never persist balances, private keys, or full signing material. The snapshot stores only the first 4 and last 6 characters of the address (e.g. `GABC...XYZ123`). Addresses starting with `S` and ≥ 56 characters long (secret keys) are rejected outright.
+The hook throws when it is used outside a `<WalletProvider>`.
 
 ---
 
-## Public Hook API — `useWallet()`
+## The Freighter adapter
 
-Defined in [`components/WalletProvider.jsx`](../components/WalletProvider.jsx). Must be called inside a `<WalletProvider>` tree, otherwise it throws.
+`lib/stellar/freighter.js` is the only module that knows about Freighter. It
+exposes:
 
-```js
-import { useWallet } from '@/components/WalletProvider';
-
-const { state, walletData, connect, disconnect } = useWallet();
-```
-
-### Return Shape
-
-```ts
-{
-  /** One of the WALLET_STATES string values */
-  state: string;
-
-  /**
-   * Populated only in CONNECTED state.
-   * balance is runtime-only and is never persisted.
-   */
-  walletData: {
-    address: string;   // truncated Stellar G-address, e.g. "GABC...XYZ123"
-    network: string;   // "public" | "testnet"
-    balance?: string;  // e.g. "1,234.56 XLM" — live only, never stored
-  } | null;
-
-  /**
-   * Initiate a wallet connection.
-   * Returns a settled promise — never rejects; errors are
-   * surfaced through the outcome field and the state machine.
-   */
-  connect: () => Promise<{
-    outcome: 'success' | 'error' | 'wrong_network' | 'no_wallet';
-    message?: string;
-  }>;
-
-  /**
-   * Terminate the session, reset state to DISCONNECTED,
-   * and remove the persisted snapshot.
-   */
-  disconnect: () => void;
-}
-```
-
-### `WALLET_STATES` Constant
-
-```js
-import { WALLET_STATES } from '@/components/WalletProvider';
-
-WALLET_STATES.DISCONNECTED   // "disconnected"
-WALLET_STATES.CONNECTING     // "connecting"
-WALLET_STATES.CONNECTED      // "connected"
-WALLET_STATES.ERROR          // "error"
-WALLET_STATES.WRONG_NETWORK  // "wrong_network"
-WALLET_STATES.NO_WALLET      // "no_wallet"
-```
-
-Always compare against this constant rather than raw strings to stay in sync with future state renames.
-
----
-
-## Utility Exports
-
-These helpers are exported from `WalletProvider.jsx` for use in tests and real SDK adapters:
-
-| Function | Signature | Description |
+| Function | Freighter call | Returns |
 |---|---|---|
-| `truncateAddress` | `(address: string) => string` | Returns first 4 + last 6 chars with `...` in between. Safe for display and persistence. |
-| `sanitizeSnapshot` | `(raw: unknown) => Snapshot \| null` | Validates a raw JSON object from storage. Rejects wrong version, non-persistable states, bad address format, and secret keys. |
-| `isBrowser` | `() => boolean` | Returns `true` when `window` is defined (guards SSR code paths). |
-| `readStoredSnapshot` | `() => Snapshot \| null` | Reads and sanitizes `localStorage`. Safe to call in SSR — returns `null` on the server. |
-| `writeStoredSnapshot` | `(state, walletData) => void` | Writes the snapshot for `CONNECTED` state; otherwise delegates to `clearStoredSnapshot`. |
-| `clearStoredSnapshot` | `() => void` | Removes `liquifact-wallet-snapshot` from storage. |
+| `isAvailable()` | — (`window.freighter`) | `boolean` |
+| `connect()` | `requestAccess()` | the selected address |
+| `getAddress()` | `getAddress()` | the active address |
+| `isAllowed()` | `isAllowed()` | `boolean` — is the site already trusted? |
+| `getNetwork()` | `getNetworkDetails()` | `{ network, networkPassphrase }` |
+| `signTransaction(xdr, options)` | `signTransaction(xdr, options)` | the signed XDR |
+| `watch(callback)` | `new WatchWalletChanges()` | an unsubscribe function |
+
+Freighter never throws for a rejected request — it resolves with
+`{ error: { code, message } }`. The adapter normalises that once:
+
+| Situation | `WalletError.code` |
+|---|---|
+| The extension is not installed | `NO_WALLET` |
+| The user declined the request (extension code `4001` / `4100`) | `USER_REJECTED` |
+| Anything else | `UNKNOWN` |
+
+The extension is imported dynamically (`import("@stellar/freighter-api")`)
+inside the adapter, so nothing touches `window` during server rendering. The
+adapter is deliberately narrow (Freighter only) so that other wallets can be
+added later behind the same interface.
 
 ---
 
-## Component Architecture
+## Session restore
 
-```
-app/layout.js
-└── <ToastProvider>
-    └── <WalletProvider>        ← single source of truth, mounted once
-        └── <NavMenu>
-            └── <WalletStatusLazy>   ← next/dynamic, ssr: false
-                └── <WalletStatus>   ← presentational consumer
-```
+On mount the provider checks two things:
 
-- **`WalletProvider`** manages state, persistence, and toast notifications.  
-- **`WalletStatusLazy`** lazy-loads `WalletStatus` with `ssr: false` to prevent "window is not defined" errors when the Stellar SDK initialises, and renders a pulse-skeleton placeholder to prevent CLS.  
-- **`WalletStatus`** is a pure presentational component. It calls `useWallet()` to read state and dispatch actions. It includes an inline error banner (`role="alert"`, `aria-live="assertive"`) that persists as long as the wallet is in `ERROR` or `WRONG_NETWORK`.
+1. the browser remembers a session — `localStorage["liquifact-wallet"] === "1"`;
+2. the extension already trusts this site — `isAllowed()`.
 
----
+Only then does it read the address again, **without** calling `requestAccess()`,
+so a reload never shows a prompt. The flag is written on a successful connect
+and cleared on disconnect or when the extension is gone.
 
-## Error Feedback Layers
-
-When the state machine enters `ERROR` or `WRONG_NETWORK`:
-
-1. **Toast** — immediate, auto-dismissing notification via `ToastProvider`.  
-2. **Inline banner** — persistent `role="alert"` block rendered above the wallet button until the state transitions away.  
-3. **`sr-only` status region** — `role="status"` `aria-live="polite"` announces transitions to screen readers without duplicating visible text.
+The flag holds **no** address, no key and no other personal data — only the
+fact that a session may be restored. No private key ever reaches the app: the
+extension signs, the app only ever sees public addresses.
 
 ---
 
-## Implementing a Real Wallet Adapter
+## Account changes
 
-Replace the mock `setTimeout` block in `WalletProvider.connect` with real SDK calls. The required outcome contract is:
+While the wallet is connected the provider subscribes with `watch()` and
+dispatches `account_changed` when the extension reports a different address.
+The subscription is torn down on unmount and on disconnect.
 
-```js
-// Must resolve (never reject) with one of:
-resolve({ outcome: 'success' });
-resolve({ outcome: 'error',         message: 'Human-readable reason' });
-resolve({ outcome: 'wrong_network', message: 'Human-readable reason' });
-resolve({ outcome: 'no_wallet',     message: 'Human-readable reason' });
-```
+---
 
-See [`WALLET_INTEGRATION_CONTRACT.md § Required Implementation`](../WALLET_INTEGRATION_CONTRACT.md#required-implementation) for the full checklist (detection, connection, network verification, error handling).
+## Header button
 
-### Deprecated Shim
+`components/wallet/WalletButton.jsx` renders one of:
 
-`components/WalletContext.jsx` is a backwards-compat re-export. Do **not** add new code there. All imports should target `@/components/WalletProvider` directly.
+| State | Rendering |
+|---|---|
+| `disconnected` | a **Connect wallet** button |
+| `connecting` | a disabled button with a spinner and `aria-busy="true"` |
+| `connected` | the short address; clicking opens a menu with *Copy address*, *View on stellar.expert* and *Disconnect* |
+| `no_wallet` | an **Install Freighter ↗** link to <https://www.freighter.app/> |
+| `error` | the connect button plus an inline `role="alert"` message and a **Retry** button |
+
+Accessibility notes:
+
+* the connected trigger is a disclosure: `aria-expanded`, `aria-haspopup="menu"`
+  and `aria-controls` point at the menu;
+* **Escape** closes the menu and returns the focus to the trigger;
+* every state change is announced through an `sr-only` `role="status"`
+  `aria-live="polite"` region;
+* the error message is an inline `role="alert"` region with a retry button;
+* the button keeps the existing `:focus-visible` ring and works at 375px,
+  where it moves into the mobile navigation drawer.
+
+The explorer link is built from `EXPLORER_ACCOUNT_URL` in `lib/config.js`
+(`/account/<G…>`), so it is not hard-coded to one network.
 
 ---
 
 ## Testing
 
-| Test file | Focus |
-|---|---|
-| `WalletProvider.test.tsx` | Unit: state transitions, localStorage persistence |
-| `WalletProvider.consolidation.test.tsx` | Integration: provider + consumer render |
-| `WalletStatus.test.jsx` / `.test.tsx` | UI: button labels, ARIA, error banner lifecycle |
-| `WalletStatus.lazy.test.tsx` | Lazy loading, placeholder, CLS guard |
-| `WalletContext.test.jsx` | Shim re-exports nothing new |
-
-Run the wallet test suite in isolation:
+| Test file | Runner | Focus |
+|---|---|---|
+| `tests/wallet-state.test.mjs` | `node:test` | Every reducer transition. |
+| `tests/wallet-adapter.test.mjs` | `node:test` | The adapter: Freighter error payloads become typed `WalletError`s. |
+| `tests/ui/wallet-button.ui.test.jsx` | Vitest + Testing Library | The button in every state, the menu actions, the session restore. |
 
 ```bash
-npx jest --testPathPattern="Wallet"
+npm test          # node:test — the pure logic
+npm run test:ui   # vitest — the components
 ```
+
+The adapter takes its Freighter API through `setFreighterApi()`, so the tests
+never need the real extension and never touch `window`.
+
+### Integration with current main
+
+Availability uses the asynchronous Freighter SDK `isConnected()` result rather
+than requiring a `window.freighter` global. The adapter also recognizes the
+SEP-43 rejection code `-4`. Existing onboarding helper exports remain available;
+`hasFreighter()` is now awaited by the checklist and shares the SDK detector.
+Connection/restore attempts are invalidated by disconnect or unmount, and the
+watcher updates context on network-only changes as well as account changes.
+The current theme toggle, onboarding route, test setup, and pinned testing-tool
+versions are retained. All UI tests use the existing `vitest.config.mjs`.
