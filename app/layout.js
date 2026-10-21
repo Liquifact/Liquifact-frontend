@@ -1,6 +1,7 @@
 import "./globals.css";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import SkipLink from "@/components/SkipLink";
 
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://liquifact-frontend.vercel.app"),
@@ -16,8 +17,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
+        <SkipLink />
         <SiteHeader />
-        <main id="main">{children}</main>
+        <main id="main" tabIndex={-1}>{children}</main>
         <SiteFooter />
       </body>
     </html>
