@@ -230,6 +230,11 @@ pre { background: var(--code-bg); color: var(--code-fg); padding: 16px; border-r
 .site-footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
 .site-footer a { color: var(--fg); }
 @media (max-width: 760px) { .site-footer .cols { grid-template-columns: 1fr 1fr; } }
+.footer-bottom { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+.locale-switcher { display: inline-flex; align-items: center; gap: 8px; }
+.locale-switcher label { color: var(--muted); font-size: 0.85rem; }
+.locale-switcher select { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--fg); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .skeleton { background: linear-gradient(90deg, var(--surface-2), var(--border), var(--surface-2)); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 8px; min-height: 180px; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } * { transition: none !important; } }
