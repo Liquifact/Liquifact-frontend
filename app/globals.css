@@ -237,3 +237,10 @@ pre { background: var(--code-bg); color: var(--code-fg); padding: 16px; border-r
 .theme-toggle { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); }
 .theme-toggle button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.85rem; padding: 4px 10px; border-radius: 999px; cursor: pointer; }
 .theme-toggle button[aria-checked="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+
+/* Balance hint (#1373) */
+.balance-hint { display: block; margin-top: 4px; }
+.balance-warn { color: var(--warn); }
+.balance-err { color: var(--danger); display: block; margin-top: 4px; }
+.linklike { background: none; border: none; padding: 0; color: var(--brand); font: inherit; cursor: pointer; text-decoration: underline; }
+.linklike[disabled] { opacity: 0.55; cursor: not-allowed; }

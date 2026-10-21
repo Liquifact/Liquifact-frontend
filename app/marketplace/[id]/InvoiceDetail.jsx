@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import StatusBadge from "@/components/StatusBadge";
 import ContractCard from "@/components/ContractCard";
 import { fundInvoice, getInvoice } from "@/lib/api";
+import BalanceHint from "@/components/wallet/BalanceHint";
+import { getWalletAddress } from "@/lib/stellar/freighter";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 
 export default function InvoiceDetail({ id }) {
@@ -12,6 +14,16 @@ export default function InvoiceDetail({ id }) {
   const [amount, setAmount] = useState("");
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [walletAddress, setWalletAddress] = useState(null);
+  const [balanceValidation, setBalanceValidation] = useState({ ok: true, message: null });
+
+  useEffect(() => {
+    let alive = true;
+    getWalletAddress().then((a) => alive && setWalletAddress(a));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -105,10 +117,13 @@ export default function InvoiceDetail({ id }) {
               <form className="form" onSubmit={onFund} style={{ marginTop: 12 }}>
                 <div className="field">
                   <label htmlFor="amount">Amount ({inv.currency})</label>
-                  <input id="amount" type="number" min="0" step="any" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={`Up to ${remaining}`} />
-                  <span className="hint">Demo mode: contributions are recorded by the API; on-chain funding uses the escrow&apos;s <code>fund</code> entrypoint.</span>
+                  <input id="amount" type="number" min="0" step="any" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={`Up to ${remaining}`} aria-describedby="amount-hint amount-balance" />
+                  <span className="hint" id="amount-hint">Demo mode: contributions are recorded by the API; on-chain funding uses the escrow&apos;s <code>fund</code> entrypoint.</span>
+                  <span id="amount-balance">
+                    <BalanceHint currency={inv.currency} address={walletAddress} amount={amount} onUseMax={(v) => setAmount(v)} onValidation={setBalanceValidation} />
+                  </span>
                 </div>
-                <button className="btn btn-primary" disabled={busy || state.offline}>{busy ? "Submitting…" : "Fund invoice"}</button>
+                <button className="btn btn-primary" disabled={busy || state.offline || !balanceValidation.ok}>{busy ? "Submitting…" : "Fund invoice"}</button>
               </form>
             ) : (
               <p className="muted" style={{ marginTop: 12 }}>This invoice is <strong>{inv.status}</strong> and no longer accepts contributions.</p>
