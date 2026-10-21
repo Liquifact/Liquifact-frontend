@@ -1,5 +1,6 @@
 import "./globals.css";
 import SiteHeader from "@/components/SiteHeader";
+import ServiceWorkerRegistrar from "@/components/pwa/ServiceWorkerRegistrar";
 import SiteFooter from "@/components/SiteFooter";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
@@ -30,6 +31,7 @@ export default function RootLayout({ children }) {
         <SiteHeader />
         <main id="main">{children}</main>
         <SiteFooter />
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );

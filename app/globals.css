@@ -237,3 +237,9 @@ pre { background: var(--code-bg); color: var(--code-fg); padding: 16px; border-r
 .theme-toggle { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); }
 .theme-toggle button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.85rem; padding: 4px 10px; border-radius: 999px; cursor: pointer; }
 .theme-toggle button[aria-checked="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+
+/* Offline status uses foreground/surface tokens for AA in both palettes. */
+.pwa-notice { background: var(--surface-2); color: var(--fg); border: 1px solid var(--border); margin-bottom: 20px; }
+.pwa-status { position: sticky; bottom: 0; z-index: 60; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 16px 20px; background: var(--surface); color: var(--fg); border-top: 1px solid var(--border); }
+.pwa-status > [role="status"] { flex: 1 1 240px; }
+.pwa-status:has(> [role="status"]:empty) { padding: 0; border: 0; }

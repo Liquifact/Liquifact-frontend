@@ -25,11 +25,19 @@ Part of the LiquiFact stack: **frontend** (this repo) ·
 | `/submit` | Submit an invoice for financing |
 | `/docs` | Product overview, architecture, usage guide, API and contract reference |
 
-If the API is unreachable the marketplace falls back to bundled demo data.
+The production app can be installed from the browser. Previously viewed invoices
+remain available offline with a saved-data timestamp; bundled demo data is used
+only when no cached response is available. Unvisited pages show an offline screen.
+
+`npm run build` prepares the versioned worker policy/config before building Next.
+The worker registers only in production on HTTPS or localhost; use `npm start`
+to verify offline behavior. `npm run test:ui` runs the PWA keyboard/status tests.
+Updates activate only after the user selects **Reload**. Funding, escrow, wallet,
+and RPC traffic are not cached. [Browser evidence](docs/pwa-evidence/README.md).
 
 ## Development
 
-Requires Node.js 20.9+.
+Use Node.js 24, matching CI and the Vitest 5 test runner.
 
 ```bash
 npm ci

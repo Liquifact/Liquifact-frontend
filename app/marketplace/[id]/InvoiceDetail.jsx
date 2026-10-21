@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import OfflineNotice from "@/components/pwa/OfflineNotice";
 import StatusBadge from "@/components/StatusBadge";
 import ContractCard from "@/components/ContractCard";
 import { fundInvoice, getInvoice } from "@/lib/api";
@@ -79,7 +80,7 @@ export default function InvoiceDetail({ id }) {
             {inv.onChain && <span className="badge badge-chain">on-chain</span>}
           </div>
         </div>
-        {state.offline && <div className="notice notice-warn" style={{ marginBottom: 20 }}>API unreachable — showing demo data.</div>}
+        <OfflineNotice {...state} />
 
         <div className="grid grid-2" style={{ alignItems: "start" }}>
           <div className="card">
