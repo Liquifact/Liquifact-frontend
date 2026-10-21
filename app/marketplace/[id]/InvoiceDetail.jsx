@@ -6,6 +6,12 @@ import StatusBadge from "@/components/StatusBadge";
 import ContractCard from "@/components/ContractCard";
 import { fundInvoice, getInvoice } from "@/lib/api";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
+import {
+  computeReturn,
+  formatAnnualisedRate,
+  parseUnitsToStroops,
+  stroopsToNumber,
+} from "@/lib/investment";
 
 export default function InvoiceDetail({ id }) {
   const [state, setState] = useState({ loading: true, data: null, offline: false });
@@ -63,6 +69,15 @@ export default function InvoiceDetail({ id }) {
 
   const pct = fundedPercent(inv);
   const remaining = Math.max(0, inv.amount - inv.fundedAmount);
+  const preview = (() => {
+    const stroops = parseUnitsToStroops(amount);
+    if (stroops === null || stroops <= 0n) return null;
+    return computeReturn({
+      fundedStroops: stroops,
+      yieldBps: inv.yieldBps,
+      dueDate: inv.dueDate,
+    });
+  })();
 
   return (
     <section className="section">
@@ -86,7 +101,7 @@ export default function InvoiceDetail({ id }) {
             <h3>Terms</h3>
             <div className="kv" style={{ marginTop: 12 }}>
               <div><span className="k">Face value</span>{formatAmount(inv.amount, inv.currency)}</div>
-              <div><span className="k">Investor yield</span>{bpsToPercent(inv.yieldBps)}</div>
+              <div><span className="k">Coupon (flat, for the term)</span>{bpsToPercent(inv.yieldBps)}</div>
               <div><span className="k">Due date</span>{formatDate(inv.dueDate)}</div>
               <div><span className="k">Remaining</span>{formatAmount(remaining, inv.currency)}</div>
               {inv.smeAddress && <div style={{ gridColumn: "1 / -1" }}><span className="k">SME wallet</span><span className="mono">{shortAddress(inv.smeAddress, 8)}</span></div>}
@@ -108,6 +123,17 @@ export default function InvoiceDetail({ id }) {
                   <input id="amount" type="number" min="0" step="any" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={`Up to ${remaining}`} />
                   <span className="hint">Demo mode: contributions are recorded by the API; on-chain funding uses the escrow&apos;s <code>fund</code> entrypoint.</span>
                 </div>
+                {preview && (
+                  <div className="notice notice-info" aria-live="polite">
+                    <strong>If you fund {formatAmount(stroopsToNumber(preview.fundedStroops), inv.currency)}</strong>
+                    <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
+                      <li>Payout at settlement: {formatAmount(stroopsToNumber(preview.payoutStroops), inv.currency)}</li>
+                      <li>Profit: {formatAmount(stroopsToNumber(preview.couponStroops), inv.currency)}</li>
+                      <li>Term: {preview.termDays} day{preview.termDays === 1 ? "" : "s"}</li>
+                      <li>Implied annualised rate: {formatAnnualisedRate(preview.annualisedBps)}</li>
+                    </ul>
+                  </div>
+                )}
                 <button className="btn btn-primary" disabled={busy || state.offline}>{busy ? "Submitting…" : "Fund invoice"}</button>
               </form>
             ) : (
