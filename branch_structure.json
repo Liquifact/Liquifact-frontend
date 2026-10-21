@@ -1,0 +1,27 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "feat/1379-tx-review-dialog",
+    "feat/1388-return-calculator",
+    "feat/w2-issue-1379-tx-review-dialog",
+    "feat/w2-issue-1388-return-calculator",
+    "main",
+    "origin"
+  ],
+  "parent": {
+    "feat/1379-tx-review-dialog": "main",
+    "feat/1388-return-calculator": "main",
+    "feat/w2-issue-1379-tx-review-dialog": "main",
+    "feat/w2-issue-1388-return-calculator": "main",
+    "main": null,
+    "origin": "main"
+  },
+  "order": [
+    "main",
+    "feat/1379-tx-review-dialog",
+    "feat/1388-return-calculator",
+    "feat/w2-issue-1379-tx-review-dialog",
+    "feat/w2-issue-1388-return-calculator",
+    "origin"
+  ]
+}
