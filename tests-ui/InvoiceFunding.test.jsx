@@ -44,7 +44,7 @@ describe("InvoiceDetail fund form with escrow constraints", () => {
   it("keeps the form usable while rules are being checked", async () => {
     setup(new Promise(() => {})); // never resolves -> still checking
     const input = await screen.findByLabelText(/Amount/);
-    expect(screen.getByText(/Checking escrow rules/)).toBeTruthy();
+    expect(await screen.findByText(/Checking escrow rules/)).toBeTruthy();
     expect(input.disabled).toBe(false);
     expect(screen.getByRole("button", { name: "Fund invoice" }).disabled).toBe(false);
   });
