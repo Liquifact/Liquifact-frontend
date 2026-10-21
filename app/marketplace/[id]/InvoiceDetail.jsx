@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import StatusBadge from "@/components/StatusBadge";
 import ContractCard from "@/components/ContractCard";
+import ActivityFeed from "./ActivityFeed";
 import { fundInvoice, getInvoice } from "@/lib/api";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 
@@ -118,6 +119,7 @@ export default function InvoiceDetail({ id }) {
         </div>
 
         {inv.onChain && <div style={{ marginTop: 20 }}><ContractCard /></div>}
+        {inv.onChain && <div style={{ marginTop: 20 }}><ActivityFeed invoiceId={inv.id} /></div>}
       </div>
     </section>
   );
