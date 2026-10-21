@@ -35,6 +35,7 @@ Requires Node.js 20.9+.
 npm ci
 npm run dev      # http://localhost:3000
 npm test         # unit tests (node:test)
+npm run test:ui  # funding component tests (Vitest)
 npm run build
 ```
 
@@ -47,6 +48,7 @@ All variables are optional (see [`.env.local.example`](.env.local.example)):
 | `NEXT_PUBLIC_API_URL` | `https://liquifact-backend.vercel.app` |
 | `NEXT_PUBLIC_CONTRACT_ID` | `CDQCKR2YU6IVQ4GYPBMXBPZ4FGFQB5H25AI7ZSETHS2CZ5ZRCWQDSO6P` |
 | `NEXT_PUBLIC_STELLAR_NETWORK` | `testnet` |
+| `NEXT_PUBLIC_STELLAR_RPC_URL` | `https://soroban-testnet.stellar.org` |
 | `NEXT_PUBLIC_SITE_URL` | `https://liquifact-frontend.vercel.app` |
 
 ## Deployment

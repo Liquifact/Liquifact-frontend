@@ -234,6 +234,16 @@ pre { background: var(--code-bg); color: var(--code-fg); padding: 16px; border-r
 @keyframes shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } * { transition: none !important; } }
 
+/* On-chain funding: scoped contrast, focus and narrow-screen layout. */
+.invoice-detail .invoice-head { flex-wrap: wrap; }
+.funding-card { min-width: 0; }
+.funding-card .btn-primary { background: var(--brand); color: var(--brand-ink); }
+.funding-card .focus-ring:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+.funding-card .wallet-connection { margin: 12px 0; }
+.funding-card .wallet-connection p, .funding-card .notice p { margin: 6px 0; }
+.funding-card .funding-status:not(:empty) { margin-top: 14px; }
+.funding-card .tx-hash { display: block; overflow-wrap: anywhere; }
+.funding-card .field input { min-width: 0; }
 .theme-toggle { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); }
 .theme-toggle button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.85rem; padding: 4px 10px; border-radius: 999px; cursor: pointer; }
 .theme-toggle button[aria-checked="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }

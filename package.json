@@ -15,16 +15,23 @@
     "test:ui": "vitest run"
   },
   "dependencies": {
+    "@stellar/freighter-api": "6.0.1",
+    "@stellar/stellar-sdk": "14.3.2",
     "next": "16.4.2",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "6.6.3",
-    "@testing-library/react": "16.3.0",
-    "@testing-library/user-event": "14.6.1",
-    "@vitejs/plugin-react": "4.5.2",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.8",
+    "@vitejs/plugin-react": "5.2.0",
     "jsdom": "26.1.0",
-    "vitest": "5.0.5"
+    "vitest": "4.1.12",
+    "@testing-library/jest-dom": "6.6.3"
+  },
+  "overrides": {
+    "@stellar/stellar-sdk": {
+      "toml": "4.2.0"
+    }
   }
 }
