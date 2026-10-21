@@ -11,7 +11,7 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./tests/setup.js"],
-    include: ["tests/**/*.ui.test.{js,jsx,ts,tsx}"],
+    include: ["tests/**/*.ui.test.{js,jsx,ts,tsx}", "tests-ui/**/*.test.{js,jsx}"],
   },
   resolve: {
     alias: {
