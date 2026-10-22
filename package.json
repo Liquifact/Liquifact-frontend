@@ -8,10 +8,11 @@
     "node": ">=20.9"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "test": "node --test tests/*.test.mjs",
+    "dev": "node api.js && next dev",
+    "build": "node api.js && next build",
+    "start": "node api.js && next start",
+    "test": "node --test tests/",
+    "e2e": "playwright test",
     "test:ui": "vitest run"
   },
   "dependencies": {
@@ -20,6 +21,8 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "1.48.2",
+    "@axe-core/playwright": "4.10.1",
     "@testing-library/jest-dom": "6.6.3",
     "@testing-library/react": "16.3.0",
     "@testing-library/user-event": "14.6.1",
