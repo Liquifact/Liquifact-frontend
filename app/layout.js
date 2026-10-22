@@ -1,6 +1,7 @@
 import "./globals.css";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://liquifact-frontend.vercel.app"),
@@ -10,11 +11,21 @@ export const metadata = {
   openGraph: { title: "LiquiFact", description: "Invoice liquidity on Stellar", type: "website" },
 };
 
-export const viewport = { width: "device-width", initialScale: 1, themeColor: "#0b1024" };
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f8fc" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0e1f" },
+  ],
+};
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body>
         <SiteHeader />
         <main id="main">{children}</main>
