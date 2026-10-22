@@ -4,14 +4,24 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import StatusBadge from "@/components/StatusBadge";
 import ContractCard from "@/components/ContractCard";
+import SmeActionsCard from "@/components/sme/SmeActionsCard";
 import { fundInvoice, getInvoice } from "@/lib/api";
+import { CONTRACT_ID } from "@/lib/config";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
+
+const ON_CHAIN_STATUSES = ["open", "funded", "settled", "withdrawn", "cancelled"];
+const STROOPS_PER_TOKEN = 10_000_000;
 
 export default function InvoiceDetail({ id }) {
   const [state, setState] = useState({ loading: true, data: null, offline: false });
   const [amount, setAmount] = useState("");
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+
+  const refreshInvoice = async () => {
+    const result = await getInvoice(id);
+    setState({ loading: false, ...result });
+  };
 
   useEffect(() => {
     let alive = true;
@@ -63,6 +73,25 @@ export default function InvoiceDetail({ id }) {
 
   const pct = fundedPercent(inv);
   const remaining = Math.max(0, inv.amount - inv.fundedAmount);
+  const contractId = inv.escrowAddress || inv.contractId || CONTRACT_ID;
+
+  async function refreshOnChainInvoice() {
+    const { readSmeEscrow } = await import("@/lib/stellar/soroban");
+    const { getPublicKey } = await import("@/lib/stellar/freighter");
+    const source = await getPublicKey();
+    if (!source) return refreshInvoice();
+    const { escrow } = await readSmeEscrow({ contractId, source });
+    const statusIndex = Number(escrow.status);
+    const status = ON_CHAIN_STATUSES[statusIndex];
+    if (!status) throw new Error(`Unknown escrow status: ${statusIndex}`);
+    const fundedAmount = Number(
+      BigInt(escrow.funded_amount ?? escrow.fundedAmount ?? 0) / BigInt(STROOPS_PER_TOKEN),
+    );
+    setState((current) => ({
+      ...current,
+      data: { ...current.data, status, fundedAmount },
+    }));
+  }
 
   return (
     <section className="section">
@@ -117,7 +146,18 @@ export default function InvoiceDetail({ id }) {
           </div>
         </div>
 
-        {inv.onChain && <div style={{ marginTop: 20 }}><ContractCard /></div>}
+        {inv.onChain && (
+          <>
+            <div style={{ marginTop: 20 }}>
+              <SmeActionsCard
+                contractId={contractId}
+                currency={inv.currency}
+                onRefresh={refreshOnChainInvoice}
+              />
+            </div>
+            <div style={{ marginTop: 20 }}><ContractCard /></div>
+          </>
+        )}
       </div>
     </section>
   );
