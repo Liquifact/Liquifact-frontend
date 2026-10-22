@@ -17,6 +17,7 @@ export default function SiteFooter() {
           <ul>
             <li><Link href="/marketplace">Marketplace</Link></li>
             <li><Link href="/submit">Submit invoice</Link></li>
+            <li><Link href="/get-started">Get started</Link></li>
             <li><Link href="/docs">Documentation</Link></li>
           </ul>
         </div>
