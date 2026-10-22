@@ -7,6 +7,11 @@ const root = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
+  esbuild: {
+    loader: "jsx",
+    include: /.*\.[jt]sx?$/,
+    exclude: [],
+  },
   test: {
     environment: "jsdom",
     globals: true,

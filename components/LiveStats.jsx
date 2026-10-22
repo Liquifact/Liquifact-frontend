@@ -20,7 +20,13 @@ export default function LiveStats() {
   const items = [
     { label: "Invoices listed", value: stats ? stats.invoices : "—" },
     { label: "Open for funding", value: stats ? stats.open : "—" },
-    { label: "Face value (all)", value: stats ? stats.totalFaceValue.toLocaleString("en-US") : "—" },
+    {
+      label: "Face value (all)",
+      value:
+        stats?.totalFaceValue != null && !Number.isNaN(Number(stats.totalFaceValue))
+          ? Number(stats.totalFaceValue).toLocaleString("en-US")
+          : "—",
+    },
     { label: "Average yield", value: stats ? bpsToPercent(stats.averageYieldBps) : "—" },
   ];
 
