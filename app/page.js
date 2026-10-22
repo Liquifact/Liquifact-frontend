@@ -40,7 +40,7 @@ export default function Home() {
             </div>
           </div>
           <div className="glass" aria-label="Example invoice">
-            <div className="eyebrow" style={{ color: "#a5b4fc" }}>Example listing</div>
+            <div className="eyebrow" style={{ color: "var(--on-hero-eyebrow)" }}>Example listing</div>
             <h3 style={{ margin: "6px 0 14px" }}>INV_0002 · Northwind Textiles</h3>
             <div className="row"><span className="k">Face value</span><span>25,000 USDC</span></div>
             <div className="row"><span className="k">Investor yield</span><span>6.50%</span></div>
@@ -114,7 +114,7 @@ export default function Home() {
           <div className="cta">
             <div>
               <h2 style={{ margin: "0 0 6px" }}>Ready to see it in action?</h2>
-              <p>Browse live invoices or inspect the escrow contract on <a href={EXPLORER_URL} style={{ color: "#67e8f9" }}>stellar.expert</a>.</p>
+              <p>Browse live invoices or inspect the escrow contract on <a href={EXPLORER_URL} style={{ color: "var(--on-hero-link)" }}>stellar.expert</a>.</p>
             </div>
             <div className="btn-row">
               <Link href="/marketplace" className="btn btn-primary">Go to marketplace</Link>
