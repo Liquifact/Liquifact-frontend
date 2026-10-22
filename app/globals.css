@@ -237,3 +237,13 @@ pre { background: var(--code-bg); color: var(--code-fg); padding: 16px; border-r
 .theme-toggle { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); }
 .theme-toggle button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.85rem; padding: 4px 10px; border-radius: 999px; cursor: pointer; }
 .theme-toggle button[aria-checked="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+
+/* Live stats */
+.tip-btn { border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 50%; width: 20px; height: 20px; font-size: 0.75rem; line-height: 1; cursor: pointer; display: inline-grid; place-items: center; margin-left: 6px; padding: 0; vertical-align: middle; font-family: inherit; }
+.tip-btn:hover { color: var(--fg); }
+.tip { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: min(280px, calc(100vw - 60px)); display: block; background: var(--surface); color: var(--fg); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); padding: 10px 12px; font-size: 0.8rem; font-weight: 400; text-transform: none; letter-spacing: 0; text-align: left; }
+.stat-label { position: relative; }
+.status-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.status-dot-online { background: var(--ok); }
+.status-dot-degraded { background: var(--warn); }
+.status-dot-unreachable { background: var(--danger); }
