@@ -8,9 +8,9 @@
     "node": ">=20.9"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "node init && next dev",
+    "build": "node init && next build",
+    "start": "node init && next start",
     "test": "node --test tests/*.test.mjs",
     "test:ui": "vitest run"
   },
