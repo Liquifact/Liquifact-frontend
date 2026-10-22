@@ -187,6 +187,23 @@ a.invoice-card:hover { transform: translateY(-2px); border-color: color-mix(in s
 .field .err { color: var(--danger); font-size: 0.83rem; }
 .field .hint { color: var(--muted); font-size: 0.83rem; }
 
+/* Transaction review dialog */
+.tx-review { width: min(560px, calc(100vw - 32px)); max-height: 90vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--fg); padding: 24px; box-shadow: var(--shadow); }
+.tx-review::backdrop { background: rgba(4, 8, 24, 0.55); }
+.tx-review__title { margin-bottom: 12px; }
+.tx-review__intro { color: var(--muted); font-size: 0.92rem; }
+.tx-review__rows { display: grid; gap: 10px; margin: 18px 0; }
+.tx-review__rows > div { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; align-items: start; }
+.tx-review__rows dt { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+.tx-review__rows dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.tx-review__blocker { border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border)); background: color-mix(in srgb, var(--danger) 10%, var(--surface)); border-radius: 10px; padding: 12px 14px; color: var(--fg); font-size: 0.9rem; }
+.tx-review__blocker ul { margin: 8px 0 0; padding-left: 1.2em; }
+.tx-review__actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+@media (max-width: 520px) {
+  .tx-review__rows > div { grid-template-columns: 1fr; gap: 2px; }
+  .tx-review__actions .btn { flex: 1 1 100%; }
+}
+
 /* Notices */
 .notice { border-radius: 12px; padding: 14px 16px; border: 1px solid var(--border); background: var(--surface-2); font-size: 0.93rem; }
 .notice-ok { border-color: color-mix(in srgb, var(--ok) 40%, var(--border)); background: color-mix(in srgb, var(--ok) 10%, var(--surface)); }
