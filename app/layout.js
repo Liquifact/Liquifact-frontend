@@ -1,10 +1,11 @@
 import "./globals.css";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import { SITE_URL } from "@/lib/config";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
 export const metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://liquifact-frontend.vercel.app"),
+  metadataBase: new URL(SITE_URL),
   title: { default: "LiquiFact — Invoice liquidity on Stellar", template: "%s · LiquiFact" },
   description:
     "LiquiFact turns unpaid invoices into instant liquidity. SMEs tokenize invoices, investors fund them, and a Soroban escrow on Stellar holds funds until settlement.",

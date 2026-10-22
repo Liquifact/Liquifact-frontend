@@ -1,3 +1,12 @@
+import { parseConfig } from "./lib/config.js";
+
+try {
+  parseConfig(process.env);
+} catch (err) {
+  console.error(err.message || err);
+  throw err;
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,

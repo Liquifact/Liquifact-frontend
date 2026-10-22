@@ -1,5 +1,5 @@
-const BASE = process.env.NEXT_PUBLIC_SITE_URL || "https://liquifact-frontend.vercel.app";
+import { SITE_URL } from "@/lib/config";
 
 export default function sitemap() {
-  return ["", "/marketplace", "/submit", "/get-started", "/docs"].map((p) => ({ url: `${BASE}${p}`, lastModified: new Date() }));
+  return ["", "/marketplace", "/submit", "/get-started", "/docs"].map((p) => ({ url: `${SITE_URL}${p}`, lastModified: new Date() }));
 }
