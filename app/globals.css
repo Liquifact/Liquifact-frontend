@@ -221,6 +221,96 @@ pre { background: var(--code-bg); color: var(--code-fg); padding: 16px; border-r
   .diagram { grid-template-columns: 1fr; }
 }
 
+/* Marketplace filters */
+.mq-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.mq-search-wrap {
+  position: relative;
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+.mq-search-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+.mq-search {
+  width: 100%;
+  padding: 9px 12px 9px 34px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.92rem;
+}
+.mq-search:focus {
+  outline: 2px solid color-mix(in srgb, var(--brand) 50%, transparent);
+  border-color: var(--brand);
+}
+/* Remove browser default clear button on search inputs */
+.mq-search::-webkit-search-cancel-button { -webkit-appearance: none; }
+.mq-filter-field { flex: 0 1 auto; }
+.mq-select {
+  padding: 9px 30px 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
+  appearance: auto;
+}
+.mq-select:focus {
+  outline: 2px solid color-mix(in srgb, var(--brand) 50%, transparent);
+  border-color: var(--brand);
+}
+.mq-clear { flex-shrink: 0; }
+.mq-count {
+  font-size: 0.88rem;
+  margin: 0 0 14px;
+}
+.mq-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 32px;
+}
+.mq-page-btn {
+  min-width: 40px;
+  padding: 8px 14px;
+  font-size: 0.9rem;
+}
+/* Screen-reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+@media (max-width: 600px) {
+  .mq-search-wrap { flex: 1 1 100%; }
+  .mq-filter-field { flex: 1 1 calc(50% - 5px); }
+  .mq-select { width: 100%; }
+  .mq-clear { width: 100%; }
+}
+
 /* CTA + footer */
 .cta { background: var(--hero); color: #fff; border-radius: 22px; padding: 48px; display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; }
 .cta p { color: rgba(255, 255, 255, 0.75); margin: 0; }
