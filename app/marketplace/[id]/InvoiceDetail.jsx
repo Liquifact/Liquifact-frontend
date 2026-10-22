@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import StatusBadge from "@/components/StatusBadge";
 import ContractCard from "@/components/ContractCard";
+import { useToast } from "@/components/toast/ToastProvider";
 import { fundInvoice, getInvoice } from "@/lib/api";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 
 export default function InvoiceDetail({ id }) {
+  const { push } = useToast();
   const [state, setState] = useState({ loading: true, data: null, offline: false });
   const [amount, setAmount] = useState("");
   const [msg, setMsg] = useState(null);
@@ -34,9 +36,18 @@ export default function InvoiceDetail({ id }) {
       const { data } = await fundInvoice(id, n);
       setState((s) => ({ ...s, data }));
       setAmount("");
-      setMsg({ kind: "ok", text: `Contribution of ${formatAmount(n, data.currency)} recorded.` });
+      push({
+        kind: "success",
+        title: "Contribution recorded",
+        description: `Contribution of ${formatAmount(n, data.currency)} recorded.`,
+      });
     } catch (err) {
-      setMsg({ kind: "err", text: err.message || "Funding failed." });
+      const text = err.message || "Funding failed.";
+      push({
+        kind: "error",
+        title: "Funding failed",
+        description: text,
+      });
     } finally {
       setBusy(false);
     }
@@ -106,14 +117,13 @@ export default function InvoiceDetail({ id }) {
                 <div className="field">
                   <label htmlFor="amount">Amount ({inv.currency})</label>
                   <input id="amount" type="number" min="0" step="any" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={`Up to ${remaining}`} />
-                  <span className="hint">Demo mode: contributions are recorded by the API; on-chain funding uses the escrow&apos;s <code>fund</code> entrypoint.</span>
+                  <span className="hint">Demo mode: contributions are recorded by the API; on-chain funding uses the escrow&pos; <code>fund</code> entrypoint.</span>
                 </div>
                 <button className="btn btn-primary" disabled={busy || state.offline}>{busy ? "Submitting…" : "Fund invoice"}</button>
               </form>
             ) : (
               <p className="muted" style={{ marginTop: 12 }}>This invoice is <strong>{inv.status}</strong> and no longer accepts contributions.</p>
             )}
-            {msg && <div className={`notice notice-${msg.kind}`} style={{ marginTop: 14 }}>{msg.text}</div>}
           </div>
         </div>
 
