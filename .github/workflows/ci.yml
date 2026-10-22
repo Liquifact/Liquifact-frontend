@@ -10,7 +10,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  malware-guard:
+    name: Malware guard (PolinRider)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Scan for supply-chain malware markers
+        run: bash .github/scripts/malware-scan.sh
+
   build-test:
+    needs: malware-guard
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -21,4 +35,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run test:ui
       - run: npm run build
