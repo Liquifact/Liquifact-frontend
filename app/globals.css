@@ -193,6 +193,19 @@ a.invoice-card:hover { transform: translateY(-2px); border-color: color-mix(in s
 .notice-warn { border-color: color-mix(in srgb, var(--warn) 40%, var(--border)); background: color-mix(in srgb, var(--warn) 10%, var(--surface)); }
 .notice-err { border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); background: color-mix(in srgb, var(--danger) 10%, var(--surface)); }
 
+/* SME-only escrow actions */
+.sme-actions { display: grid; gap: 16px; }
+.sme-actions h3, .sme-actions h4, .sme-actions p { margin: 0; }
+.sme-action { display: grid; gap: 10px; min-width: 0; }
+.sme-action + .sme-action { border-top: 1px solid var(--border); padding-top: 16px; }
+.sme-action-reasons { margin: 0; padding-left: 1.25rem; color: var(--fg); }
+.sme-actions .btn-primary, .sme-confirm-dialog .btn-primary { background: var(--brand); color: var(--brand-ink); }
+.sme-confirm-dialog { width: min(500px, calc(100% - 32px)); max-width: 500px; border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+.sme-confirm-dialog::backdrop { background: rgb(0 0 0 / 55%); }
+.sme-confirm-dialog h3 { margin-bottom: 12px; }
+.sme-confirm-dialog p { margin-bottom: 20px; }
+.sme-confirm-dialog .btn-row { flex-wrap: wrap; }
+
 /* Contract strip */
 .contract { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
 .addr { font-family: ui-monospace, Menlo, monospace; font-size: 0.85rem; word-break: break-all; background: var(--surface-2); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; }
