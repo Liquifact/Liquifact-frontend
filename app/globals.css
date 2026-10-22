@@ -16,11 +16,38 @@
   --shadow: 0 1px 2px rgba(14, 21, 48, 0.04), 0 8px 24px rgba(14, 21, 48, 0.06);
   --hero: radial-gradient(1200px 500px at 80% -10%, rgba(6, 182, 212, 0.35), transparent 60%),
     radial-gradient(900px 500px at 0% 0%, rgba(79, 70, 229, 0.45), transparent 60%), #0b1024;
+  --code-bg: #eef1fb;
+  --code-fg: #0e1530;
+  --on-hero-eyebrow: #a5b4fc;
+  --on-hero-link: #67e8f9;
   color-scheme: light;
 }
 
+:root[data-theme="light"] { color-scheme: light; }
+
+:root[data-theme="dark"] {
+  --bg: #0a0e1f;
+  --surface: #111733;
+  --surface-2: #161d3f;
+  --fg: #eef1fb;
+  --muted: #9aa3c4;
+  --border: #232b52;
+  --brand: #818cf8;
+  --brand-2: #22d3ee;
+  --brand-ink: #0a0e1f;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --info: #60a5fa;
+  --danger: #f87171;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+  --code-bg: #0b1024;
+  --code-fg: #e2e8f0;
+  color-scheme: dark;
+}
+
+/* No-JS fallback: only when the pre-paint script has not set data-theme */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --bg: #0a0e1f;
     --surface: #111733;
     --surface-2: #161d3f;
@@ -35,6 +62,8 @@
     --info: #60a5fa;
     --danger: #f87171;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+    --code-bg: #0b1024;
+    --code-fg: #e2e8f0;
     color-scheme: dark;
   }
 }
@@ -185,7 +214,7 @@ a.invoice-card:hover { transform: translateY(-2px); border-color: color-mix(in s
 .table th, .table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
 .table th { color: var(--muted); font-weight: 600; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
 .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
-pre { background: #0b1024; color: #e2e8f0; padding: 16px; border-radius: 12px; overflow-x: auto; font-size: 0.85rem; }
+pre { background: var(--code-bg); color: var(--code-fg); padding: 16px; border-radius: 12px; overflow-x: auto; font-size: 0.85rem; }
 @media (max-width: 860px) {
   .docs-layout { grid-template-columns: 1fr; }
   .docs-nav { position: static; grid-auto-flow: column; overflow-x: auto; }
@@ -204,3 +233,7 @@ pre { background: #0b1024; color: #e2e8f0; padding: 16px; border-radius: 12px; o
 .skeleton { background: linear-gradient(90deg, var(--surface-2), var(--border), var(--surface-2)); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 8px; min-height: 180px; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } * { transition: none !important; } }
+
+.theme-toggle { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); }
+.theme-toggle button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.85rem; padding: 4px 10px; border-radius: 999px; cursor: pointer; }
+.theme-toggle button[aria-checked="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }

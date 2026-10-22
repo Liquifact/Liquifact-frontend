@@ -110,7 +110,7 @@ export default function Home() {
           <div className="cta">
             <div>
               <h2 style={{ margin: "0 0 6px" }}>Ready to see it in action?</h2>
-              <p>Browse live invoices or inspect the escrow contract on <a href={EXPLORER_URL} style={{ color: "#67e8f9" }}>stellar.expert</a>.</p>
+              <p>Browse live invoices or inspect the escrow contract on <a href={EXPLORER_URL} style={{ color: "var(--on-hero-link)" }}>stellar.expert</a>.</p>
             </div>
             <div className="btn-row">
               <Link href="/marketplace" className="btn btn-primary">Go to marketplace</Link>
