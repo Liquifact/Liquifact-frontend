@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import StatusBadge from "@/components/StatusBadge";
 import ContractCard from "@/components/ContractCard";
 import { fundInvoice, getInvoice } from "@/lib/api";
+import { validateContribution, creditedAmount } from "@/lib/contribution";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 
 export default function InvoiceDetail({ id }) {
@@ -23,20 +24,40 @@ export default function InvoiceDetail({ id }) {
 
   async function onFund(e) {
     e.preventDefault();
-    const n = Number(amount);
-    if (!(n > 0)) {
-      setMsg({ kind: "err", text: "Enter a positive amount." });
+    const validation = validateContribution(amount, inv);
+    if (!validation.ok) {
+      let text = "Enter a valid positive amount.";
+      if (validation.error === "REQUIRED") text = "Amount is required.";
+      else if (validation.error === "NOT_A_NUMBER") text = "Amount must be a number.";
+      else if (validation.error === "NON_POSITIVE") text = "Enter a positive amount.";
+      else if (validation.error === "TOO_MANY_DECIMALS") text = "Maximum 7 decimal places allowed.";
+      else if (validation.error === "EXCEEDS_REMAINING") text = `Exceeds remaining capacity of ${formatAmount(remaining, inv.currency)}.` ;
+      else if (validation.error === "NOT_OPEN") text = "Invoice is no longer open for funding.";
+      setMsg({ kind: "err", text });
       return;
     }
+    const n = validation.amount;
+    const beforeInv = inv;
     setBusy(true);
     setMsg(null);
     try {
       const { data } = await fundInvoice(id, n);
+      const credited = creditedAmount(beforeInv, data);
       setState((s) => ({ ...s, data }));
       setAmount("");
-      setMsg({ kind: "ok", text: `Contribution of ${formatAmount(n, data.currency)} recorded.` });
+      if (credited < n) {
+        setMsg({ kind: "warn", text: `Only ${formatAmount(credited, data.currency)} was needed to complete funding; ${formatAmount(credited, data.currency)} recorded.` });
+      } else {
+        setMsg({ kind: "ok", text: `Contribution of ${formatAmount(credited, data.currency)} recorded.` });
+      }
     } catch (err) {
-      setMsg({ kind: "err", text: err.message || "Funding failed." });
+      if (err.status === 409) {
+        const refreshed = await getInvoice(id);
+        setState((s) => ({ ...s, ...refreshed }));
+        setMsg({ kind: "err", text: "Invoice is funded; only open invoices can be funded." });
+      } else {
+        setMsg({ kind: "err", text: err.message || "Funding failed." });
+      }
     } finally {
       setBusy(false);
     }
@@ -105,15 +126,53 @@ export default function InvoiceDetail({ id }) {
               <form className="form" onSubmit={onFund} style={{ marginTop: 12 }}>
                 <div className="field">
                   <label htmlFor="amount">Amount ({inv.currency})</label>
-                  <input id="amount" type="number" min="0" step="any" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={`Up to ${remaining}`} />
-                  <span className="hint">Demo mode: contributions are recorded by the API; on-chain funding uses the escrow&apos;s <code>fund</code> entrypoint.</span>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      id="amount"
+                      type="number"
+                      min="0"
+                      max={remaining}
+                      step="any"
+                      inputMode="decimal"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder={`Up to ${remaining}`}
+                      aria-describedby="amount-error amount-hint"
+                      aria-invalid={msg && msg.kind === "err" ? "true" : "false"}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ padding: "8px 12px", fontSize: "0.85rem" }}
+                      onClick={() => setAmount(String(remaining))}
+                    >
+                      Max
+                    </button>
+                  </div>
+                  <span id="amount-hint" className="hint">Demo mode: contributions are recorded by the API; on-chain funding uses the escrow&apos;s <code>fund</code> entrypoint.</span>
                 </div>
-                <button className="btn btn-primary" disabled={busy || state.offline}>{busy ? "Submitting…" : "Fund invoice"}</button>
+                <button className="btn btn-primary" disabled={busy || !validateContribution(amount, inv).ok}>
+                  {busy ? "Submitting…" : "Fund invoice"}
+                </button>
+                {state.offline && (
+                  <div className="muted" style={{ marginTop: 8, fontSize: "0.85rem" }}>
+                    Funding is unavailable while the API is unreachable
+                  </div>
+                )}
               </form>
             ) : (
               <p className="muted" style={{ marginTop: 12 }}>This invoice is <strong>{inv.status}</strong> and no longer accepts contributions.</p>
             )}
-            {msg && <div className={`notice notice-${msg.kind}`} style={{ marginTop: 14 }}>{msg.text}</div>}
+            {msg && (
+              <div
+                id="amount-error"
+                className={`notice notice-${msg.kind}`}
+                style={{ marginTop: 14 }}
+                role={msg.kind === "err" || msg.kind === "warn" ? "alert" : "status"}
+              >
+                {msg.text}
+              </div>
+            )}
           </div>
         </div>
 
