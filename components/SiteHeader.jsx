@@ -8,6 +8,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/marketplace", label: "Marketplace" },
+  { href: "/portfolio", label: "Portfolio" },
   { href: "/submit", label: "Submit invoice" },
   { href: "/get-started", label: "Get started" },
   { href: "/docs", label: "Docs" },
@@ -31,9 +32,9 @@ export default function SiteHeader() {
           aria-label="Toggle navigation"
           onClick={() => setOpen((o) => !o)}
         >
-          {open ? "✕" : "☰"}
+          {open ? "▇" : "☱"}
         </button>
-        <nav id="main-nav" className={`nav${open ? " open" : ""}`} aria-label="Main">
+        <nav id="main-nav" className={`navs${open ? " open" : ""}`} aria-label="Main">
           {LINKS.map((l) => (
             <Link
               key={l.href}
