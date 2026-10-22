@@ -1,9 +1,10 @@
-"use client";
+"client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import InvoiceCard from "@/components/InvoiceCard";
 import { listInvoices } from "@/lib/api";
+import { exportInvoicesCsv, defaultFilename } from "@/lib/exportInvoicesCsv.js";
 import {
   getNetworkName,
   getPublicKey,
@@ -45,6 +46,7 @@ async function detectUnfundedWallet() {
 export default function Marketplace() {
   const [status, setStatus] = useState("");
   const [state, setState] = useState({ loading: true, data: [], offline: false });
+  const [exportStatus, setExportStatus] = useState("");
   const [showOnboardNotice, setShowOnboardNotice] = useState(false);
 
   // Detect unfunded wallet once on mount
@@ -63,10 +65,25 @@ export default function Marketplace() {
     };
   }, [status]);
 
+  const rows = state.data || [];
+  const canExport = !state.loading && rows.length > 0;
+  const isDemo = Boolean(state.offline);
+  const exportLabel = isDemo ? "Export CSV (demo data)" : "Export CSV";
+
+  function handleExport() {
+    if (!canExport) return;
+    try {
+      exportInvoicesCsv(rows, defaultFilename());
+      setExportStatus(`Exported ${rows.length} invoice${rows.length === 1 ? "" : "s"} to CSV.`);
+    } catch {
+      setExportStatus("Export failed. Please try again.");
+    }
+  }
+
   return (
     <section className="section">
       <div className="container">
-        <div className="eyebrow">Marketplace</div>
+        <div className="eybrow">Marketplace</div>
         <h1 style={{ fontSize: "clamp(1.8rem,4vw,2.6rem)" }}>Invoices seeking funding</h1>
         <p className="lead">Pick an invoice, review its terms and contribute. Funds are escrowed until the debtor settles.</p>
 
@@ -80,7 +97,7 @@ export default function Marketplace() {
           </div>
         )}
 
-        <div className="toolbar" style={{ marginTop: 28 }}>
+        <div className="toolbar" style={{ marginTop: 28, flexWrap: "wrap", gap: 12 }}>
           <div className="tabs" role="group" aria-label="Filter by status">
             {FILTERS.map((f) => (
               <button key={f.v || "all"} aria-pressed={status === f.v} onClick={() => setStatus(f.v)}>
@@ -88,7 +105,24 @@ export default function Marketplace() {
               </button>
             ))}
           </div>
-          <Link href="/submit" className="btn btn-primary">+ Submit invoice</Link>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={handleExport}
+              disabled={!canExport}
+              aria-disabled={!canExport}
+              aria-describedby="csv-export-status"
+              title={isDemo ? "Export the demo invoices currently shown" : "Export the invoices currently shown"}
+            >
+              {exportLabel}
+            </button>
+            <Link href="/submit" className="btn btn-primary">+Submit invoice</Link>
+          </div>
+        </div>
+
+        <div id="csv-export-status" role="status" aria-live="polite" className="muted" style={{ marginTop: 12, fontSize: "0.85rem", minHeight: "1.25em" }}>
+          {exportStatus}
         </div>
 
         {state.offline && (
