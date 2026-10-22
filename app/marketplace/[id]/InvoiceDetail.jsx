@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import StatusBadge from "@/components/StatusBadge";
 import ContractCard from "@/components/ContractCard";
+import ReturnCalculator from "@/components/invest/ReturnCalculator";
 import { fundInvoice, getInvoice } from "@/lib/api";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 
@@ -107,6 +108,14 @@ export default function InvoiceDetail({ id }) {
                   <label htmlFor="amount">Amount ({inv.currency})</label>
                   <input id="amount" type="number" min="0" step="any" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={`Up to ${remaining}`} />
                   <span className="hint">Demo mode: contributions are recorded by the API; on-chain funding uses the escrow&apos;s <code>fund</code> entrypoint.</span>
+                  <ReturnCalculator
+                    amount={amount}
+                    dueDate={inv.dueDate}
+                    currency={inv.currency}
+                    remaining={remaining}
+                    yieldBps={inv.yieldBps}
+                    onAmountChange={setAmount}
+                  />
                 </div>
                 <button className="btn btn-primary" disabled={busy || state.offline}>{busy ? "Submitting…" : "Fund invoice"}</button>
               </form>
