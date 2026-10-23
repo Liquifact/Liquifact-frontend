@@ -9,9 +9,11 @@
   --brand-2: #06b6d4;
   --brand-ink: #ffffff;
   --ok: #059669;
+  --ok-ink: #047857;
   --warn: #d97706;
   --info: #2563eb;
   --danger: #dc2626;
+  --danger-ink: #b91c1c;
   --radius: 14px;
   --shadow: 0 1px 2px rgba(14, 21, 48, 0.04), 0 8px 24px rgba(14, 21, 48, 0.06);
   --hero: radial-gradient(1200px 500px at 80% -10%, rgba(6, 182, 212, 0.35), transparent 60%),
@@ -58,9 +60,11 @@
     --brand-2: #22d3ee;
     --brand-ink: #0a0e1f;
     --ok: #34d399;
+    --ok-ink: #34d399;
     --warn: #fbbf24;
     --info: #60a5fa;
     --danger: #f87171;
+    --danger-ink: #fca5a5;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
     --code-bg: #0b1024;
     --code-fg: #e2e8f0;
@@ -197,6 +201,22 @@ a.invoice-card:hover { transform: translateY(-2px); border-color: color-mix(in s
 .contract { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
 .addr { font-family: ui-monospace, Menlo, monospace; font-size: 0.85rem; word-break: break-all; background: var(--surface-2); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; }
 .copy { border: 1px solid var(--border); background: var(--surface); color: var(--fg); border-radius: 8px; padding: 7px 12px; cursor: pointer; font: inherit; font-size: 0.85rem; }
+
+/* Yield tier selector */
+.tier-selector { display: grid; gap: 8px; }
+.tier-legend { font-weight: 600; font-size: 0.9rem; }
+.tier-selector [role="radiogroup"] { display: grid; gap: 8px; }
+.tier-option { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; cursor: pointer; background: var(--surface); transition: border-color 0.15s ease, background 0.15s ease; }
+.tier-option:hover { border-color: color-mix(in srgb, var(--brand) 45%, var(--border)); }
+.tier-option input { accent-color: var(--brand); width: 18px; height: 18px; margin: 0; }
+.tier-option.selected { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 8%, var(--surface)); }
+.tier-option.disabled { cursor: not-allowed; border-style: dashed; }
+.tier-option.disabled .tier-label { color: var(--muted); }
+.tier-label { font-weight: 600; font-size: 0.92rem; }
+.tier-reason { grid-column: 2; font-size: 0.8rem; color: var(--muted); }
+.tier-quote { margin: 0; font-size: 0.9rem; color: var(--fg); }
+.tier-quote strong { color: var(--ok-ink); font-weight: 700; }
+.tier-quote-err { color: var(--danger-ink); }
 
 /* Docs */
 .docs-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; align-items: start; }

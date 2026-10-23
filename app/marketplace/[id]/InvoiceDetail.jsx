@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import StatusBadge from "@/components/StatusBadge";
 import ContractCard from "@/components/ContractCard";
+import OnChainFundForm from "@/components/invest/OnChainFundForm";
 import { fundInvoice, getInvoice } from "@/lib/api";
+import { CONTRACT_ID } from "@/lib/config";
+import { getEscrowInfo, getYieldTiers } from "@/lib/stellar/simulate";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 
 export default function InvoiceDetail({ id }) {
@@ -12,6 +15,7 @@ export default function InvoiceDetail({ id }) {
   const [amount, setAmount] = useState("");
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [chain, setChain] = useState({ loading: false, tiers: [], escrow: null, nowSec: 0 });
 
   useEffect(() => {
     let alive = true;
@@ -20,6 +24,31 @@ export default function InvoiceDetail({ id }) {
       alive = false;
     };
   }, [id]);
+
+  // For on-chain escrows, read the yield tier table + maturity via simulation.
+  // Failures fall back to the plain fund form — never block the page.
+  useEffect(() => {
+    if (!state.data?.onChain) return undefined;
+    let alive = true;
+    const controller = new AbortController();
+    setChain((c) => ({ ...c, loading: true }));
+    (async () => {
+      try {
+        const [tiers, escrow] = await Promise.all([
+          getYieldTiers({ contractId: CONTRACT_ID, signal: controller.signal }),
+          getEscrowInfo({ contractId: CONTRACT_ID, signal: controller.signal }),
+        ]);
+        if (!alive) return;
+        setChain({ loading: false, tiers, escrow, nowSec: Math.floor(Date.now() / 1000) });
+      } catch {
+        if (alive) setChain({ loading: false, tiers: [], escrow: null, nowSec: 0 });
+      }
+    })();
+    return () => {
+      alive = false;
+      controller.abort();
+    };
+  }, [state.data?.onChain]);
 
   async function onFund(e) {
     e.preventDefault();
@@ -101,7 +130,9 @@ export default function InvoiceDetail({ id }) {
 
           <div className="card">
             <h3>Fund this invoice</h3>
-            {inv.status === "open" ? (
+            {inv.status === "open" && inv.onChain && chain.escrow && chain.tiers.length > 0 ? (
+              <OnChainFundForm inv={inv} tiers={chain.tiers} escrow={chain.escrow} nowSec={chain.nowSec} />
+            ) : inv.status === "open" ? (
               <form className="form" onSubmit={onFund} style={{ marginTop: 12 }}>
                 <div className="field">
                   <label htmlFor="amount">Amount ({inv.currency})</label>
