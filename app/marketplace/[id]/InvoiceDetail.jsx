@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import StatusBadge from "@/components/StatusBadge";
 import ContractCard from "@/components/ContractCard";
 import { fundInvoice, getInvoice } from "@/lib/api";
+import { NETWORK } from "@/lib/config";
+import { escrowFor } from "@/lib/escrow/registry";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 
 export default function InvoiceDetail({ id }) {
@@ -62,6 +64,7 @@ export default function InvoiceDetail({ id }) {
   }
 
   const pct = fundedPercent(inv);
+  const escrow = escrowFor(inv);
   const remaining = Math.max(0, inv.amount - inv.fundedAmount);
 
   return (
@@ -117,7 +120,17 @@ export default function InvoiceDetail({ id }) {
           </div>
         </div>
 
-        {inv.onChain && <div style={{ marginTop: 20 }}><ContractCard /></div>}
+        {inv.onChain && (
+          <div style={{ marginTop: 20 }}>
+            {escrow ? (
+              <ContractCard contractId={escrow.contractId} network={NETWORK} />
+            ) : (
+              <div className="notice notice-warn" role="alert">
+                On-chain contract not registered for this invoice
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );
