@@ -46,6 +46,8 @@ All variables are optional (see [`.env.local.example`](.env.local.example)):
 |----------|---------|
 | `NEXT_PUBLIC_API_URL` | `https://liquifact-backend.vercel.app` |
 | `NEXT_PUBLIC_CONTRACT_ID` | `CDQCKR2YU6IVQ4GYPBMXBPZ4FGFQB5H25AI7ZSETHS2CZ5ZRCWQDSO6P` |
+| `NEXT_PUBLIC_CONTRACT_INVOICE_ID` | `INV_0001` |
+| `NEXT_PUBLIC_ESCROW_REGISTRY` | _(empty)_ |
 | `NEXT_PUBLIC_STELLAR_NETWORK` | `testnet` |
 | `NEXT_PUBLIC_SITE_URL` | `https://liquifact-frontend.vercel.app` |
 
