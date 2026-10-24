@@ -6,6 +6,14 @@ vi.mock("@/lib/api", () => ({
   getInvoice: vi.fn(),
   fundInvoice: vi.fn(),
 }));
+vi.mock("@/components/NotificationsProvider", () => ({
+  useNotifications: () => ({ follow: vi.fn(), unfollow: vi.fn(), isFollowing: () => false }),
+}));
+// The escrow funding token (#1381) resolves to the native XLM SAC, matching the invoice currency.
+vi.mock("@/lib/escrow/token", async (importOriginal) => ({
+  ...(await importOriginal()),
+  resolveFundingToken: vi.fn(async () => "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"),
+}));
 vi.mock("next/link", () => ({
   default: ({ children, href }) => <a href={href}>{children}</a>,
 }));
@@ -46,7 +54,8 @@ describe("InvoiceDetail fund form with escrow constraints", () => {
     const input = await screen.findByLabelText(/Amount/);
     expect(await screen.findByText(/Checking escrow rules/)).toBeTruthy();
     expect(input.disabled).toBe(false);
-    expect(screen.getByRole("button", { name: "Fund invoice" }).disabled).toBe(false);
+    // Only the funding-token check (fail-closed) gates the button; pending rules do not.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Fund invoice" }).disabled).toBe(false));
   });
 
   it("Max button fills min(cap - contribution, remaining capacity)", async () => {

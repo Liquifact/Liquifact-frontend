@@ -5,7 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 import StatusBadge from "@/components/StatusBadge";
 import ContractCard from "@/components/ContractCard";
 import EscrowRules from "@/components/escrow/EscrowRules";
+import { useNotifications } from "@/components/NotificationsProvider";
+import FundersTable from "@/components/escrow/FundersTable";
+import TokenCheck, { useFundingTokenCheck } from "@/components/escrow/TokenCheck";
 import { fundInvoice, getInvoice } from "@/lib/api";
+import BalanceHint from "@/components/wallet/BalanceHint";
+import { getWalletAddress } from "@/lib/stellar/freighter";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 import { loadConstraints, validateContribution, maxFillAmount, CODES } from "@/lib/escrow/constraints";
 import { parseToStroops, stroopsToDisplay } from "@/lib/stellar/amount";
@@ -19,6 +24,18 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   const [rules, setRules] = useState({ loading: false, data: null, error: null });
+  const { follow, unfollow, isFollowing } = useNotifications();
+  const [walletAddress, setWalletAddress] = useState(null);
+  const [balanceValidation, setBalanceValidation] = useState({ ok: true, message: null });
+  const tokenCheck = useFundingTokenCheck(state.data, { enabled: Boolean(state.data?.onChain) });
+
+  useEffect(() => {
+    let alive = true;
+    getWalletAddress().then((a) => alive && setWalletAddress(a));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -92,6 +109,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
       const { data } = await fundInvoice(id, Number(amount));
       setState((s) => ({ ...s, data }));
       setAmount("");
+      follow(id); // auto-follow so future status changes surface in the bell
       setMsg({ kind: "ok", text: `Contribution of ${formatAmount(Number(amount), data.currency)} recorded.` });
     } catch (err) {
       setMsg({ kind: "err", text: err.message || "Funding failed." });
@@ -134,6 +152,14 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
           <div style={{ display: "flex", gap: 8 }}>
             <StatusBadge status={inv.status} />
             {inv.onChain && <span className="badge badge-chain">on-chain</span>}
+            <button
+              className="btn-ghost"
+              aria-pressed={isFollowing(id)}
+              aria-label={isFollowing(id) ? "Unfollow invoice" : "Follow invoice"}
+              onClick={() => (isFollowing(id) ? unfollow(id) : follow(id))}
+            >
+              {isFollowing(id) ? "Following ✓" : "Follow"}
+            </button>
           </div>
         </div>
         {state.offline && <div className="notice notice-warn" style={{ marginBottom: 20 }}>API unreachable — showing demo data.</div>}
@@ -172,7 +198,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                       onChange={(e) => setAmount(e.target.value)}
                       placeholder={`Up to ${remaining}`}
                       aria-invalid={validation && !validation.ok ? true : undefined}
-                      aria-describedby="amount-error amount-hint"
+                      aria-describedby="amount-error amount-hint amount-balance"
                     />
                     {inv.onChain && maxFill !== null && maxFill > 0n && (
                       <button
@@ -192,13 +218,17 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                   <span className="field-error" id="amount-error" aria-live="polite">
                     {validation && !validation.ok ? validation.message : ""}
                   </span>
+                  <span id="amount-balance">
+                    <BalanceHint currency={inv.currency} address={walletAddress} amount={amount} onUseMax={(v) => setAmount(v)} onValidation={setBalanceValidation} />
+                  </span>
                 </div>
                 {inv.onChain && rules.error && (
                   <div className="notice notice-warn" role="status" style={{ marginBottom: 10 }}>
                     Couldn’t read the escrow rules — falling back to basic validation.
                   </div>
                 )}
-                <button className="btn btn-primary" disabled={fundDisabled}>
+                {inv.onChain && <TokenCheck invoice={inv} check={tokenCheck} />}
+                <button className="btn btn-primary" disabled={fundDisabled || !balanceValidation.ok || !tokenCheck.ok}>
                   {busy ? "Submitting…" : blocking ? blocking.message : "Fund invoice"}
                 </button>
               </form>
@@ -209,7 +239,12 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
           </div>
         </div>
 
-        {inv.onChain && <div style={{ marginTop: 20 }}><ContractCard /></div>}
+        {inv.onChain && (
+          <>
+            <div style={{ marginTop: 20 }}><ContractCard /></div>
+            <FundersTable currency={inv.currency} />
+          </>
+        )}
       </div>
     </section>
   );
