@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import StatusBadge from "@/components/StatusBadge";
 import ContractCard from "@/components/ContractCard";
+import FundersTable from "@/components/escrow/FundersTable";
 import { fundInvoice, getInvoice } from "@/lib/api";
 import BalanceHint from "@/components/wallet/BalanceHint";
 import { getWalletAddress } from "@/lib/stellar/freighter";
@@ -132,7 +133,12 @@ export default function InvoiceDetail({ id }) {
           </div>
         </div>
 
-        {inv.onChain && <div style={{ marginTop: 20 }}><ContractCard /></div>}
+        {inv.onChain && (
+          <>
+            <div style={{ marginTop: 20 }}><ContractCard /></div>
+            <FundersTable currency={inv.currency} />
+          </>
+        )}
       </div>
     </section>
   );

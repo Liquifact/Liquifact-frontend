@@ -244,3 +244,19 @@ pre { background: var(--code-bg); color: var(--code-fg); padding: 16px; border-r
 .balance-err { color: var(--danger); display: block; margin-top: 4px; }
 .linklike { background: none; border: none; padding: 0; color: var(--brand); font: inherit; cursor: pointer; text-decoration: underline; }
 .linklike[disabled] { opacity: 0.55; cursor: not-allowed; }
+/* Funders table (#1378) */
+.funders { margin-top: 20px; }
+.funders-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.funders-head h3 { margin: 0; }
+.funders-table caption { text-align: left; color: var(--muted); font-size: 0.85rem; padding: 10px 12px 0; }
+.funders-actions { display: inline-flex; gap: 8px; margin-left: 10px; align-items: center; }
+.funders-explorer { font-size: 0.82rem; color: var(--brand); }
+.concentration-low { color: var(--ok); }
+.concentration-medium { color: var(--warn); }
+.concentration-high { color: var(--danger); }
+.pagination { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
+.pagination .btn { padding: 8px 14px; font-size: 0.88rem; }
+@media (max-width: 600px) {
+  .funders-actions { margin-left: 0; width: 100%; margin-top: 6px; }
+  .funders-table td { padding: 10px 8px; }
+}
