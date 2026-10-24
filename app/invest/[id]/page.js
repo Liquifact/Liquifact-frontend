@@ -11,6 +11,7 @@ import WalletStatus from "@/components/WalletStatus";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import { INVALID_VALUE_FALLBACK, formatAmount, formatCurrency } from "@/lib/format/currency";
 import { getInvoiceById } from "../lib";
+import LifecycleTimeline from "@/components/invoice/LifecycleTimeline";
 
 const DEV_DELAY = process.env.NODE_ENV === "development" ? 800 : 0;
 
@@ -239,6 +240,8 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
               assumptions. Invoice contracts settle at maturity. Funding commits principal and is
               subject to wallet approval.
             </div>
+
+            <LifecycleTimeline invoice={invoice} escrow={null} />
           </>
         )}
       </main>
