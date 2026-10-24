@@ -1,4 +1,5 @@
 import "./globals.css";
+import { NotificationsProvider } from "@/components/NotificationsProvider";
 import SiteHeader from "@/components/SiteHeader";
 import ServiceWorkerRegistrar from "@/components/pwa/ServiceWorkerRegistrar";
 import SiteFooter from "@/components/SiteFooter";
@@ -28,9 +29,11 @@ export default function RootLayout({ children }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>
-        <SiteHeader />
-        <main id="main">{children}</main>
-        <SiteFooter />
+        <NotificationsProvider>
+          <SiteHeader />
+          <main id="main">{children}</main>
+          <SiteFooter />
+        </NotificationsProvider>
         <ServiceWorkerRegistrar />
       </body>
     </html>

@@ -1,9 +1,13 @@
 import Link from "next/link";
 import StatusBadge from "./StatusBadge";
+import RiskBadge from "./RiskBadge";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent } from "@/lib/format";
+import { scoreInvoice } from "@/lib/risk";
 
-export default function InvoiceCard({ invoice }) {
+export default function InvoiceCard({ invoice, medians }) {
   const pct = fundedPercent(invoice);
+  const risk = scoreInvoice(invoice, undefined, medians);
+
   return (
     <Link href={`/marketplace/${invoice.id}`} className="card invoice-card">
       <div className="invoice-head">
@@ -12,8 +16,9 @@ export default function InvoiceCard({ invoice }) {
           <h3 style={{ margin: "4px 0 0" }}>{invoice.sme}</h3>
           <div className="muted" style={{ fontSize: "0.9rem" }}>Debtor: {invoice.debtor}</div>
         </div>
-        <div style={{ display: "grid", gap: 6, justifyItems: "end" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
           <StatusBadge status={invoice.status} />
+          {risk.band && <RiskBadge band={risk.band} score={risk.score} factors={risk.factors} />}
           {invoice.onChain && <span className="badge badge-chain">on-chain</span>}
         </div>
       </div>

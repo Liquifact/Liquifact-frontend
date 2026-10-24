@@ -5,7 +5,7 @@ import ServiceWorkerRegistrar from "../components/pwa/ServiceWorkerRegistrar.jsx
 import OfflineNotice from "../components/pwa/OfflineNotice.jsx";
 import OfflinePage from "../app/offline/page.js";
 
-afterEach(() => { cleanup(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 function workerMock(waiting = { postMessage: vi.fn() }) {
   const registration = Object.assign(new EventTarget(), { waiting, installing: null });
