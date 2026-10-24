@@ -6,6 +6,9 @@ import SiteHeader from "@/components/SiteHeader";
 
 let mockPathname = "/";
 vi.mock("next/navigation", () => ({ usePathname: () => mockPathname }));
+// The theme toggle and notification bell have their own suites; keep this one focused on navigation.
+vi.mock("@/components/ThemeToggle", () => ({ default: () => null }));
+vi.mock("@/components/NotificationBell", () => ({ default: () => null }));
 
 function renderHeader() {
   return render(

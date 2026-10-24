@@ -4,11 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { isActivePath } from "@/lib/nav";
+import ThemeToggle from "@/components/ThemeToggle";
+import NotificationBell from "@/components/NotificationBell";
 
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/marketplace", label: "Marketplace" },
   { href: "/submit", label: "Submit invoice" },
+  { href: "/get-started", label: "Get started" },
   { href: "/docs", label: "Docs" },
 ];
 
@@ -93,7 +96,9 @@ export default function SiteHeader() {
               </Link>
             );
           })}
+          <ThemeToggle />
         </nav>
+        <NotificationBell />
       </div>
     </header>
   );
