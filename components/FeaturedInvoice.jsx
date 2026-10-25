@@ -1,123 +1,57 @@
 import Link from "next/link";
-import { API_URL } from "../lib/config";
-import { pickFeatured } from "../lib/featured.js";
-import {
-  formatAmount,
-  bpsToPercent,
-  formatDate,
-  fundedPercent,
-} from "../lib/format";
+import FundingProgress from "@/components/FundingProgress";
+import { API_URL } from "@/lib/config";
+import { DEMO_INVOICES } from "@/lib/demo";
+import { pickFeatured } from "@/lib/featured";
+import { bpsToPercent, formatAmount, formatDate } from "@/lib/format";
 
 const FETCH_TIMEOUT_MS = 3000;
 
-export const DEMO_INVOICES = [
-  {
-    id: "INV_0002",
-    issuer: "Northwind Textiles",
-    amount: 25000,
-    currency: "USDC",
-    yieldBps: 650,
-    dueDate: "2026-12-30T00:00:00.000Z",
-    funded: 18000,
-    status: "open",
-  },
-];
-
-function getInvoices(invoices) {
-  if (Array.isArray(invoices)) return invoices;
-  if (invoices && Array.isArray(invoices.invoices)) return invoices.invoices;
-  if (invoices && Array.isArray(invoices.data)) return invoices.data;
+function invoicesFrom(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.invoices)) return payload.invoices;
   return [];
 }
 
+/** Open invoices from the API (revalidated every 2 minutes), or null when unreachable. */
 async function fetchOpenInvoices() {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(`${API_URL}/api/invoices?status=open`, {
-      signal: controller.signal,
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       next: { revalidate: 120 },
     });
     if (!res.ok) return null;
-    return getInvoices(await res.json());
+    return invoicesFrom(await res.json());
   } catch {
     return null;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
-function resolveDueDate(invoice) {
-  return invoice.dueDate || invoice.due_date || invoice.dueAt || null;
+export function FeaturedInvoiceSkeleton() {
+  return (
+    <div className="glass" aria-hidden="true">
+      <div className="skeleton" style={{ minHeight: 210, background: "rgba(255,255,255,0.08)" }} />
+    </div>
+  );
 }
 
-function resolveIssuer(invoice) {
-  return invoice.issuer || invoice.issuerName || invoice.issuer_name || "Unknown issuer";
-}
-
-function resolveFunded(ignored) {
-  return 0;
-}
-
-export default async function FeaturedInvoice() {
-  const now = Date.now();
-  const live = await fetchOpenInvoices();
+/** Server component: live featured listing in the hero, demo data as fallback. */
+export default async function FeaturedInvoice({ now = Date.now(), loadInvoices = fetchOpenInvoices } = {}) {
+  const live = await loadInvoices();
   const livePick = live ? pickFeatured(live, now) : null;
-  const isLive = Boolean(livePick);
   const invoice = livePick || pickFeatured(DEMO_INVOICES, now);
-
   if (!invoice) return null;
 
-  const id = invoice.id;
-  const issuer = resolveIssuer(invoice);
-  const amount = formatAmount(invoice.amount, invoice.currency);
-  const yield = bpsToPercent(invoice.yieldBps);
-  const dueDate = formatDate(resolveDueDate(invoice));
-  const percent = fundedPercent(invoice);
-  const label = isLive ? "Featured listing" : "Example listing";
-  const ariaLabel = `Featured invoice ${id}, ${issuer}, ${percent}% funded`;
-
+  const label = livePick ? "Featured listing" : "Example listing";
   return (
-    <Link
-      href={`/marketplace/${id}`}
-      aria-label={ariaLabel}
-      className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary"
-    >
-      <div className="rounded-2xl border border-border bg-surface/20 p-6 backdrop-blur">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted">
-            {label}
-          </span>
-          <span className="rounded-full border border-border bg-surface/40 px-2 py-0.5 text-xs font-medium text-foreground">
-            {yield}
-          </span>
-        </div>
-        <div className="mt-4 text-sm text-muted">
-          {id} &#8877; {issuer}
-        </div>
-        <div className="mt-1 text-2xl font-semibold text-foreground">
-          {amount}
-        </div>
-        <div className="mt-4 space-y-2">
-          <div className="flex items-center justify-between text-xs text-muted">
-            <span>Due {dueDate}</span>
-            <span>{percent}% funded</span>
-          </div>
-          <div
-            className="h-2 w-full overflow-hidden rounded-full bg-surface/40"
-            role="progressbar"
-            aria-valuemin="0"
-            aria-valuemax="100"
-            aria-valuenow={percent}
-            aria-label={`${percent}% funded`}
-          >
-            <Y
-              className="h-full rounded-full bg-primary"
-              style={{ width: `${percent}%` }}
-            />
-          </div>
-        </div>
-      </div>
+    <Link href={`/marketplace/${encodeURIComponent(invoice.id)}`} className="glass featured-invoice" aria-label={`${label}: ${invoice.id} · ${invoice.sme}`}>
+      <div className="eyebrow" style={{ color: "var(--on-hero-eyebrow)" }}>{label}</div>
+      <h3 style={{ margin: "6px 0 14px" }}>{invoice.id} · {invoice.sme}</h3>
+      <div className="row"><span className="k">Face value</span><span>{formatAmount(invoice.amount, invoice.currency)}</span></div>
+      <div className="row"><span className="k">Investor yield</span><span>{bpsToPercent(invoice.yieldBps)}</span></div>
+      <div className="row"><span className="k">Due</span><span>{formatDate(invoice.dueDate)}</span></div>
+      <FundingProgress funded={invoice.fundedAmount} target={invoice.amount} currency={invoice.currency} size="md" showLabel />
     </Link>
   );
 }
