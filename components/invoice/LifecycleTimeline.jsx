@@ -16,41 +16,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { buildTimeline, formatRelative } from "@/lib/timeline";
-import { formatInvoiceDate } from "@/lib/format/date";
+import { formatDate } from "@/lib/format";
 
-/** ─── Style maps ──────────────────────────────────────────────────────────── */
+/** ─── Style helpers (classes live in app/globals.css) ─────────────────────── */
 
-const STEP_ICON_CLASS = {
-  done: "bg-emerald-500 text-slate-950",
-  current: "bg-cyan-400 text-slate-950 ring-2 ring-cyan-400/50",
-  upcoming: "bg-slate-700 text-slate-400",
-  missed: "bg-amber-500 text-slate-950",
-  terminal: "bg-red-500 text-slate-950",
-};
+const STATES = new Set(["done", "current", "upcoming", "missed", "terminal"]);
+const tone = (state) => (STATES.has(state) ? state : "upcoming");
 
-const STEP_LABEL_CLASS = {
-  done: "text-emerald-300",
-  current: "text-cyan-300 font-semibold",
-  upcoming: "text-slate-400",
-  missed: "text-amber-300",
-  terminal: "text-red-300 font-semibold",
-};
-
-const STEP_DATE_CLASS = {
-  done: "text-slate-400",
-  current: "text-cyan-200",
-  upcoming: "text-slate-500",
-  missed: "text-amber-200",
-  terminal: "text-slate-500",
-};
-
-const CONNECTOR_CLASS = {
-  done: "bg-emerald-600",
-  current: "bg-cyan-600",
-  upcoming: "bg-slate-700",
-  missed: "bg-amber-600",
-  terminal: "bg-slate-700",
-};
+/** Absolute UTC date for a step, "—" when unknown. */
+function formatStepDate(value) {
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? "—" : formatDate(d.toISOString());
+}
 
 /** ─── Helper components ──────────────────────────────────────────────────── */
 
@@ -95,7 +72,7 @@ function StepIcon({ state, index }) {
   const dot = (
     <span
       aria-hidden="true"
-      className="block w-2 h-2 rounded-full bg-current"
+      className="timeline-dot"
     />
   );
 
@@ -108,7 +85,7 @@ function StepIcon({ state, index }) {
 
   return (
     <span
-      className={`flex items-center justify-center w-7 h-7 rounded-full shrink-0 ${STEP_ICON_CLASS[state] ?? STEP_ICON_CLASS.upcoming}`}
+      className={`timeline-icon timeline-icon-${tone(state)}`}
       aria-hidden="true"
     >
       {content}
@@ -183,12 +160,12 @@ export default function LifecycleTimeline({ invoice, escrow = null, _nowMs }) {
   return (
     <section
       aria-labelledby="lifecycle-timeline-heading"
-      className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 mt-6"
+      className="card timeline"
       data-testid="lifecycle-timeline"
     >
       <h2
         id="lifecycle-timeline-heading"
-        className="text-base font-semibold text-slate-200 mb-5"
+        className="timeline-title"
       >
         Invoice lifecycle
       </h2>
@@ -196,7 +173,7 @@ export default function LifecycleTimeline({ invoice, escrow = null, _nowMs }) {
       {/* Ordered list — semantically conveys progression */}
       <ol
         aria-label="Invoice lifecycle steps"
-        className="timeline-steps flex flex-col gap-0 sm:flex-row sm:gap-0"
+        className="timeline-steps"
       >
         {steps.map((step, idx) => {
           const isLast = idx === steps.length - 1;
@@ -205,14 +182,7 @@ export default function LifecycleTimeline({ invoice, escrow = null, _nowMs }) {
 
           // Format the date for this step
           const dateStr = step.at
-            ? formatInvoiceDate(step.at, {
-                format: {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                  timeZone: "UTC",
-                },
-              })
+            ? formatStepDate(step.at)
             : null;
 
           // Relative countdown — only rendered client-side after hydration
@@ -233,35 +203,28 @@ export default function LifecycleTimeline({ invoice, escrow = null, _nowMs }) {
             <li
               key={step.id}
               aria-current={isCurrent ? "step" : undefined}
-              className="timeline-step relative flex sm:flex-col items-start sm:items-center flex-1 min-w-0"
+              className="timeline-step"
               data-state={step.state}
               data-testid={`timeline-step-${step.id}`}
             >
-              {/* Vertical connector line (mobile) / hidden on desktop */}
+              {/* Connector to the next step (vertical on mobile, horizontal on desktop) */}
               {!isLast && (
                 <span
                   aria-hidden="true"
-                  className={`timeline-connector-v absolute left-3.5 top-7 w-0.5 h-full sm:hidden ${CONNECTOR_CLASS[connectorVariant] ?? CONNECTOR_CLASS.upcoming}`}
+                  className={`timeline-connector timeline-connector-${tone(connectorVariant)}`}
                 />
               )}
 
-              {/* Horizontal connector line (desktop) / hidden on mobile */}
-              {!isLast && (
-                <span
-                  aria-hidden="true"
-                  className={`timeline-connector-h hidden sm:block absolute top-3.5 left-1/2 w-full h-0.5 ${CONNECTOR_CLASS[connectorVariant] ?? CONNECTOR_CLASS.upcoming}`}
-                />
-              )}
 
               {/* Step icon */}
-              <div className="relative z-10 sm:mb-3">
+              <div className="timeline-icon-wrap">
                 <StepIcon state={step.state} index={idx} />
               </div>
 
               {/* Step content */}
-              <div className="sm:text-center pl-4 sm:pl-0 pb-6 sm:pb-0">
+              <div className="timeline-content">
                 <span
-                  className={`block text-xs font-medium ${STEP_LABEL_CLASS[step.state] ?? STEP_LABEL_CLASS.upcoming}`}
+                  className={`timeline-label timeline-label-${tone(step.state)}`}
                 >
                   {step.label}
                 </span>
@@ -271,7 +234,7 @@ export default function LifecycleTimeline({ invoice, escrow = null, _nowMs }) {
                   <span
                     role="status"
                     aria-live="polite"
-                    className="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                    className="badge badge-withdrawn timeline-overdue"
                     data-testid="overdue-badge"
                   >
                     OVERDUE
@@ -282,11 +245,11 @@ export default function LifecycleTimeline({ invoice, escrow = null, _nowMs }) {
                 {dateStr && (
                   <time
                     dateTime={step.at ? step.at.toISOString() : undefined}
-                    className={`block text-[10px] mt-0.5 ${STEP_DATE_CLASS[step.state] ?? STEP_DATE_CLASS.upcoming}`}
+                    className="timeline-date"
                   >
                     {dateStr}
                     {relStr && (
-                      <span className="block opacity-80">{relStr}</span>
+                      <span className="timeline-rel">{relStr}</span>
                     )}
                   </time>
                 )}

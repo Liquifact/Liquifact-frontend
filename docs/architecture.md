@@ -57,6 +57,8 @@ loads); `error.js` is the route error boundary; `not-found.js` backs
                                          (data via InvestMarketplace → fetchInvestableInvoices)
 /invest/[id]     app/invest/[id]/page → NavMenu, StatusPill, WalletStatus, Button,
                                          ErrorBanner (data via getInvoiceById)
+                                         See the [Invoice Detail Data Flow diagram](invoice-detail-data-flow.md)
+                                         for the full fetch → transform → render pipeline.
 ```
 
 Shared presentational components live in `components/` and are framework-route
@@ -74,7 +76,7 @@ There are **two** invoice data paths today, and they are intentionally separate:
    `{ id, issuer, amount, currency, dueDate, yield, status }` (missing fields
    default to `null`, unknown fields are dropped). Consumed by `/invest` via the
    `InvestMarketplace({ loadInvoices = fetchInvestableInvoices })` seam, which
-   makes the data source injectable for tests.
+   makes the data source injectable for tests. For a visual map of the marketplace data loading, filtering, sorting, and rendering pipeline, see the [Marketplace Data Flow diagram](marketplace-data-flow.md).
 
 2. **Mock layer — `app/invest/lib.js`** (`MOCK_INVOICES`, `loadMockInvoices`,
    `getInvoiceById`)
@@ -94,13 +96,27 @@ single place new backend fields should be mapped.
 Other live clients: `lib/api/health.js` (`/health`, used on the home page) and
 `lib/api/fetchWithRetry.js` (shared retry wrapper).
 
+**Funding concurrency primitives.** Mutating actions that must not run twice are
+guarded at three layers:
+
+- `lib/concurrency/tabLock.js` — `withExclusiveTabLock` takes a Web Locks
+exclusive lock (`ifAvailable: true`) named per invoice so only one browser tab
+can be inside a funding submission at a time; browsers without Web Locks fall
+back to the advisory `BroadcastChannel` protocol in `useFundingSubmit`.
+- `lib/idempotency/index.js` — a deterministic, collision-free idempotency key
+per `(wallet, invoice, amount)` triple, cached in memory as well as
+`sessionStorage` so retries always replay the same key even when storage is
+unavailable or throws.
+- `lib/api/fetchWithRetry.js` — non-idempotent requests are only retried with a
+stable `Idempotency-Key` header, and never when the body cannot be replayed.
+
 ---
 
 ## Where state lives
 
 | State              | Owner                                        | Notes                                                              |
 | ------------------ | -------------------------------------------- | ----------------------------------------------------------------- |
-| Wallet connection  | `components/WalletProvider.jsx` (`useWallet`) | Mounted once in `app/layout.js`; persists a minimal, non-secret snapshot to `localStorage`. |
+| Wallet connection  | `components/WalletProvider.jsx` (`useWallet`) | Mounted once in `app/layout.js`; persists a minimal, non-secret snapshot to `localStorage`. See [`docs/wallet-data-flow.md`](wallet-data-flow.md) for the full fetch → transform → render diagram. |
 | Toasts             | `components/ToastProvider.jsx` (`useToast`)   | Mounted once in `app/layout.js`.                                  |
 | Theme              | `components/ThemeToggle.jsx` + pre-paint script | Persisted in `localStorage`; applied before hydration.           |
 | Marketplace filters| `/invest` page + `lib/hooks/useInvoiceFilters.js` | Search/filter/sort state is serialized to the URL query string.  |
@@ -117,3 +133,86 @@ import from `@/components/WalletProvider`.
 - Environment config is read through `lib/config/env.js` (only `NEXT_PUBLIC_*`).
 - Tests: Jest for units/components (`*.test.jsx?`), Playwright for e2e under
   `tests/` (see [`../TESTING.md`](../TESTING.md)).
+
+---
+
+## Repository hygiene (Issue #453)
+
+This is a **JavaScript/TypeScript frontend** only. The repo must never contain
+Rust build tooling or Soroban contract files — those live in the separate
+`Liquifact-contracts` repository.
+
+### What does not belong here
+
+| Category | Examples | Action |
+| -------- | -------- | ------ |
+| Rust manifests | `Cargo.toml`, `Cargo.lock` | Delete — `.gitignore` blocks re-addition |
+| Rust source / WASM | `*.rs`, `*.wasm`, `src/*.rs`, `contracts/` | Delete — `.gitignore` blocks re-addition |
+| Binary installers | `rustup-init.exe`, `*.exe`, `*.so`, `*.dylib` | Delete — `.gitignore` blocks re-addition |
+| Transient PR bodies | `PR_BODY_*.md`, `PR_DESCRIPTION*.md` | Delete — `.gitignore` blocks re-addition |
+| One-off implementation notes | `ISSUE_*_IMPLEMENTATION.md`, `*_REFACTOR_SUMMARY.md`, `DELIVERY_CHECKLIST.md` | Archive useful content to `docs/` then delete — `.gitignore` blocks re-addition |
+
+### What lives in `docs/`
+
+All permanent reference material for this frontend belongs in `docs/`:
+
+| File | Purpose |
+| ---- | ------- |
+| `docs/architecture.md` | This file — routes, data flow, state, conventions |
+| `docs/api-integration.md` | HTTP payload / endpoint contract with the Express backend |
+| `docs/configuration.md` | Every `NEXT_PUBLIC_*` env variable, validation rules, defaults |
+| `docs/design-tokens.md` | CSS custom properties, Tailwind token mapping |
+| `docs/accessibility.md` | Accessibility statement and WCAG notes — includes [marketplace roles, keyboard, and focus](accessibility.md#marketplace-accessibility-issue-692) |
+| `docs/wallet-api-reference.md` | Wallet component API reference — props, hook shape, utility exports |
+| `docs/wallet-developer-guide.md` | Stellar / Freighter integration guide |
+| `docs/wallet-data-flow.md` | Wallet data-flow diagrams (fetch → transform → render) |
+| `docs/observability.md` | `reportError` sink and pluggable observability |
+| `docs/performance.md` | Bundle-size targets and code-splitting notes |
+| `docs/security.md` | CSP policy rationale and threat model |
+| `docs/getting-started.md` | Onboarding walkthrough for new contributors |
+| `docs/marketplace-data-flow.md` | Marketplace data-flow diagram (fetch -> transform -> render) |
+| `docs/invoice-detail-data-flow.md` | Invoice detail data-flow diagram (fetch → transform → render → client islands) |
+| `docs/settings-api.md` | Settings component props/API reference and minimal usage examples |
+| `docs/issue-334-cpu-budget-median-throttling.md` | Archived: CPU budget fix for median price oracle (contracts context) |
+| `docs/issue-334-flow-diagram.md` | Archived: Flow diagram for Issue #334 buffer truncation |
+
+### `.gitignore` guard rails
+
+The `.gitignore` was extended (Issue #453) with two labelled sections:
+
+```
+# ── Repo hygiene: block Rust/binary artifacts ──────────────────────────────
+Cargo.toml
+Cargo.lock
+*.exe  *.wasm  *.so  *.dylib
+rustup-init*
+/src/*.rs  /contracts/  /examples/*.rs  /test_snapshots/
+
+# ── Repo hygiene: block generated PR-body / one-off note files ──────────────
+PR_BODY_*.md
+PR_DESCRIPTION*.md
+ISSUE_*_IMPLEMENTATION.md
+ISSUE_*_FLOW_DIAGRAM.md
+DELIVERY_CHECKLIST.md
+*_REFACTOR_SUMMARY.md
+REFACTORING_*.md
+*_IMPLEMENTATION_SUMMARY.md
+*_INTEGRATION_SUMMARY.md
+IMPLEMENTATION_COMPLETE.md
+*_QUICK_REFERENCE.md
+LEDGER_GAP_TESTS.md
+```
+
+### Hygiene tests
+
+`tests/lint/repo-hygiene.test.tsx` (Jest, `node` environment) asserts the above
+rules on every CI run. It checks:
+
+1. Named Rust artefacts and directories are absent.
+2. Named transient note / PR-body files are absent.
+3. `.gitignore` contains every required pattern.
+4. Archived notes exist in `docs/`.
+5. Core frontend files (`package.json`, `next.config.mjs`, `app/layout.js`, …)
+   are still present after cleanup.
+6. Helper predicate functions (`isPrBodyFile`, `isTransientNote`, `isRustSource`,
+   `isBinary`) behave correctly.

@@ -94,21 +94,50 @@ curl -X POST -F "invoice=@invoice.pdf" http://localhost:3001/invoices
 
 ## Mock Data Wiring
 
-The frontend currently uses mock invoice data during development. The fixtures are defined in `app/invest/lib.js` which populates the global `window.__TEST_MOCK_INVOICES__` array. This array is consumed by the investment marketplace components to render invoices without a real backend. The `UploadZone.jsx` component posts to `${API_URL}/invoices`, but the response is simulated by the mock layer.
+The frontend currently uses mock invoice data during development. All mock invoice
+fixtures are defined **exclusively** in `app/invest/lib.js` — this is the single source
+of truth until the real backend `/invoices` endpoint is wired up (see _Retrieve Invoices_
+below).
 
 ### Source
 
-- **Fixture source**: `app/invest/lib.js` defines `window.__TEST_MOCK_INVOICES__`.
+- **Fixture source**: `app/invest/lib.js` — exports `MOCK_INVOICES` (the canonical array),
+  `loadMockInvoices` (the async loader used as the default `loadInvoices` prop in
+  `InvestMarketplace`), and `getInvoiceById` (used by the detail route `app/invest/[id]`).
+  Do **not** redeclare these fixtures inline in any other module.
 - **Health helper**: `lib/api/health.js` provides a real fetch wrapper for the health check.
+
+### Test hook
+
+`loadMockInvoices` checks `window.__TEST_MOCK_INVOICES__` before returning the canonical
+array. Playwright and Jest tests can override the fixture at runtime by setting this
+global before the component mounts. The override is ignored in non-browser (SSR)
+environments and has no effect in production builds.
 
 ### Consumption
 
-- Components import the mock via `import '@/app/invest/lib'` which populates the global variable.
-- The mock is used in the investment marketplace pages to display invoice listings.
+- `app/invest/page.js` imports `loadMockInvoices` from `./lib` and passes it as the
+  default value for the `loadInvoices` prop of `InvestMarketplace`.
+- `app/invest/[id]/page.js` calls `getInvoiceById` from `./lib` for the detail view.
+- Tests import `MOCK_INVOICES`, `loadMockInvoices`, and `getInvoiceById` from `./lib`
+  to assert against the shared fixture directly.
 
-### Environment Hook
+### Swapping to the real API
 
-- The mock is activated when `NEXT_PUBLIC_API_URL` points to the default `http://localhost:3001` and no real backend is reachable.
+When the backend is ready, replace the default prop in `InvestMarketplace`:
+
+```js
+// Before (mock)
+import { loadMockInvoices } from "./lib";
+export function InvestMarketplace({ loadInvoices = loadMockInvoices }) { … }
+
+// After (real API)
+import { fetchInvestableInvoices } from "../../lib/api/invoices";
+export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) { … }
+```
+
+No other files need to change — the injectable `loadInvoices` prop keeps the mock and
+production paths fully interchangeable.
 
 ---
 
@@ -384,3 +413,7 @@ These utilities clean, depth-limit, and truncate data before rendering or parsin
 **Last updated:** 2026-06-29
 
 This contract reflects the mocked frontend state as of today and sets the baseline for the upcoming full backend integration.
+
+## Mock Data Architecture
+- All mock invoice fixtures are sourced from `app/invest/lib.js`. 
+- Please do not define duplicate mock arrays in UI components.
