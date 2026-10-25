@@ -17,7 +17,7 @@ import FundersTable from "@/components/escrow/FundersTable";
 import TokenCheck, { useFundingTokenCheck } from "@/components/escrow/TokenCheck";
 import { fundInvoice, getEscrowLive, getInvoice, listInvoices } from "@/lib/api";
 import BalanceHint from "@/components/wallet/BalanceHint";
-import { validateContribution, creditedAmount } from "@/lib/contribution";
+import { validateContribution as checkApiContribution, creditedAmount } from "@/lib/contribution";
 import { getWalletAddress } from "@/lib/stellar/freighter";
 import SmeActionsCard from "@/components/sme/SmeActionsCard";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
@@ -35,6 +35,25 @@ function onChainRemaining(inv) {
     return stroopsToDisplay(remainingStroops(inv));
   } catch {
     return Math.max(0, Number(inv.amount) - Number(inv.fundedAmount));
+  }
+}
+
+function contributionErrorText(error, remaining, currency) {
+  switch (error) {
+    case "REQUIRED":
+      return "Amount is required.";
+    case "NOT_A_NUMBER":
+      return "Amount must be a number.";
+    case "NON_POSITIVE":
+      return "Enter a positive amount.";
+    case "TOO_MANY_DECIMALS":
+      return "Maximum 7 decimal places allowed.";
+    case "EXCEEDS_REMAINING":
+      return `Exceeds the remaining capacity of ${formatAmount(remaining, currency)}.`;
+    case "NOT_OPEN":
+      return "This invoice is no longer open for funding.";
+    default:
+      return "Enter a valid positive amount.";
   }
 }
 
@@ -150,28 +169,15 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
 
   async function onFund(e) {
     e.preventDefault();
-if (inv?.onChain && rules.data) {
+    if (inv?.onChain && rules.data) {
       const stroops = parseToStroops(amount);
       if (stroops === null || stroops <= 0n) {
-        setMsg({ kind: "err", text: "Enter a positive amount (up to 7 decimals)." });
+        setMsg({ kind: "err", text: "Enter a positive amount." });
         return;
       }
       const v = validateContribution(stroops, rules.data);
       if (!v.ok) {
         setMsg({ kind: "err", text: v.message });
-        return;
-      }
-} else {
-      const validation = validateContribution(amount, inv);
-      if (!validation.ok) {
-        let text = "Enter a valid positive amount.";
-        if (validation.error === "REQUIRED") text = "Amount is required.";
-        else if (validation.error === "NOT_A_NUMBER") text = "Amount must be a number.";
-        else if (validation.error === "NON_POSITIVE") text = "Enter a positive amount.";
-        else if (validation.error === "TOO_MANY_DECIMALS") text = "Maximum 7 decimal places allowed.";
-        else if (validation.error === "EXCEEDS_REMAINING") text = `Exceeds remaining capacity of ${formatAmount(remaining, inv.currency)}.`;
-        else if (validation.error === "NOT_OPEN") text = "Invoice is no longer open for funding.";
-        setMsg({ kind: "err", text });
         return;
       }
     }
@@ -184,45 +190,49 @@ if (inv?.onChain && rules.data) {
       }
       return;
     }
-}
     if (apiLock.current) return;
-// Exact decimal validation (no float coercion); unknown currencies fall back to a numeric check.
+    // API invoices: reject amounts above the remaining capacity or on closed invoices (#1396).
+    const check = checkApiContribution(amount, inv);
+    if (!check.ok) {
+      setMsg({ kind: "err", text: contributionErrorText(check.error, remaining, inv.currency) });
+      return;
+    }
+    // Exact decimal validation (no float coercion); unknown currencies fall back to a numeric check.
     let valid;
     try {
       valid = money.parse(amount.trim(), inv?.currency || "USDC") > 0n;
     } catch (err) {
       valid = err instanceof RangeError && /Unsupported currency/.test(err.message) ? Number(amount) > 0 : false;
     }
-    const n = validation.amount;
-    const beforeInv = inv;
+    const n = Number(amount);
     if (!valid) {
       setMsg({ kind: "err", text: "Enter a positive amount." });
       return;
     }
+    const before = inv;
     apiLock.current = true;
     setBusy(true);
     setMsg(null);
     try {
-const { data } = await fundInvoice(id, n);
-    const credited = creditedAmount(beforeInv, data);
+      const { data } = await fundInvoice(id, n);
       setState((s) => ({ ...s, data }));
       setAmount("");
-follow(id); // auto-follow so future status changes surface in the bell
-      if (credited < n) {
-        const text = `Only ${formatAmount(credited, data.currency)} was needed to complete funding; ${formatAmount(credited, data.currency)} recorded.`;
-        if (toast) toast.push({ kind: "warning", title: "Contribution recorded", description: text });
-        else setMsg({ kind: "warn", text });
-      } else {
-        const text = `Contribution of ${formatAmount(credited, data.currency)} recorded.`;
-        // Fund results are announced as toasts when the app shell provides them (#1399).
-        if (toast) toast.push({ kind: "success", title: "Contribution recorded", description: text });
-        else setMsg({ kind: "ok", text });
-      }
+      follow(id); // auto-follow so future status changes surface in the bell
+      // Report what the API actually credited, not what was typed (#1396).
+      const credited = creditedAmount(before, data);
+      const partial = credited > 0 && credited < n;
+      const text = partial
+        ? `Only ${formatAmount(credited, data.currency)} was needed to complete funding; ${formatAmount(credited, data.currency)} recorded.`
+        : `Contribution of ${formatAmount(credited > 0 ? credited : n, data.currency)} recorded.`;
+      // Fund results are announced as toasts when the app shell provides them (#1399).
+      if (toast) toast.push({ kind: partial ? "warning" : "success", title: "Contribution recorded", description: text });
+      else setMsg({ kind: partial ? "warn" : "ok", text });
     } catch (err) {
-if (err.status === 409) {
+      if (err.status === 409) {
+        // The invoice closed meanwhile: refresh it and explain instead of a raw API error.
         const refreshed = await getInvoice(id);
         setState((s) => ({ ...s, ...refreshed }));
-        setMsg({ kind: "err", text: "Invoice is funded; only open invoices can be funded." });
+        setMsg({ kind: "err", text: "This invoice is no longer open for funding." });
       } else {
         const text = err.message || "Funding failed.";
         if (toast) toast.push({ kind: "error", title: "Funding failed", description: text });
@@ -341,23 +351,20 @@ if (err.status === 409) {
               <form className="form" onSubmit={onFund} style={{ marginTop: 12 }}>
                 <div className="field">
                   <label htmlFor="amount">Amount ({inv.currency})</label>
-<div className="amount-row">
+                  <div className="amount-row">
                     <input
                       id="amount"
                       className="focus-ring"
                       type="text"
-                      min="0"
-                      max={remaining}
-                      step="any"
                       inputMode="decimal"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       placeholder={`Up to ${remaining}`}
-                      aria-invalid={(msg && msg.kind === "err") || (validation && !validation.ok) ? "true" : "false"}
+                      aria-invalid={validation && !validation.ok ? true : undefined}
                       aria-describedby="amount-error amount-hint amount-balance"
                       disabled={fundingBusy || (inv.onChain && chain.pending)}
                     />
-                    {inv.onChain && maxFill !== null && maxFill > 0n ? (
+                    {inv.onChain && maxFill !== null && maxFill > 0n && (
                       <button
                         type="button"
                         className="btn btn-ghost btn-max"
@@ -365,13 +372,9 @@ if (err.status === 409) {
                       >
                         Max
                       </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        style={{ padding: "8px 12px", fontSize: "0.85rem" }}
-                        onClick={() => setAmount(String(remaining))}
-                      >
+                    )}
+                    {!inv.onChain && Number(remaining) > 0 && (
+                      <button type="button" className="btn btn-ghost btn-max" onClick={() => setAmount(String(remaining))}>
                         Max
                       </button>
                     )}
@@ -379,9 +382,9 @@ if (err.status === 409) {
                   <span className="hint" id="amount-hint">
                     {inv.onChain && rules.loading
                       ? "Checking escrow rules…"
-: inv.onChain
+                      : inv.onChain
                         ? `Up to ${remaining} ${inv.currency}. Review the amount and network in Freighter before signing.`
-                        : "Demo mode: contributions are recorded by the API; on-chain funding uses the escrow&apos;s <code>fund</code> entrypoint."}
+                        : "Demo mode: contributions are recorded by the API."}
                   </span>
                   <span className="field-error" id="amount-error" aria-live="polite">
                     {validation && !validation.ok ? validation.message : ""}
@@ -390,15 +393,22 @@ if (err.status === 409) {
                     <BalanceHint currency={inv.currency} address={investorAddress} amount={amount} onUseMax={(v) => setAmount(v)} onValidation={setBalanceValidation} />
                   </span>
                 </div>
-{inv.onChain && rules.error && (
+                {inv.onChain && rules.error && (
                   <div className="notice notice-warn" role="status" style={{ marginBottom: 10 }}>
                     Couldn’t read the escrow rules — falling back to basic validation.
                   </div>
                 )}
                 {inv.onChain && <TokenCheck invoice={inv} check={tokenCheck} />}
-<button
+                <button
                   className="btn btn-primary focus-ring"
-                  disabled={fundDisabled || fundingBusy || !balanceValidation.ok || !tokenCheck.ok || !validateContribution(amount, inv).ok || (inv.onChain && (!chain.address || chain.pending))}
+                  disabled={
+                    fundDisabled ||
+                    fundingBusy ||
+                    !balanceValidation.ok ||
+                    !tokenCheck.ok ||
+                    (inv.onChain && (!chain.address || chain.pending)) ||
+                    (!inv.onChain && amount.trim() !== "" && !checkApiContribution(amount, inv).ok)
+                  }
                 >
                   {inv.onChain && chain.busy
                     ? `${chain.state.phase}...`
@@ -412,7 +422,7 @@ if (err.status === 409) {
                 </button>
                 {state.offline && (
                   <div className="muted" style={{ marginTop: 8, fontSize: "0.85rem" }}>
-                    Funding is unavailable while the API is unreachable
+                    Funding is unavailable while the API is unreachable.
                   </div>
                 )}
               </form>
@@ -455,17 +465,6 @@ if (err.status === 409) {
               <p className="muted exit-wallet-prompt" style={{ marginTop: 16, fontSize: "0.9rem" }}>
                 Connect your Freighter wallet to manage your position.
               </p>
-            )}
-{msg && (
-              <div
-                id="amount-error"
-                role="status"
-                aria-live="polite"
-                className={`notice notice-${msg.kind}`}
-                style={{ marginTop: 14 }}
-              >
-                {msg.text}
-              </div>
             )}
           </div>
         </div>
