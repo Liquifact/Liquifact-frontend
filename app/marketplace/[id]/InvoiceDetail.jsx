@@ -17,6 +17,7 @@ import FundersTable from "@/components/escrow/FundersTable";
 import TokenCheck, { useFundingTokenCheck } from "@/components/escrow/TokenCheck";
 import { fundInvoice, getEscrowLive, getInvoice, listInvoices } from "@/lib/api";
 import BalanceHint from "@/components/wallet/BalanceHint";
+import { validateContribution, creditedAmount } from "@/lib/contribution";
 import { getWalletAddress } from "@/lib/stellar/freighter";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 import * as money from "@/lib/money";
@@ -148,15 +149,28 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
 
   async function onFund(e) {
     e.preventDefault();
-    if (inv?.onChain && rules.data) {
+if (inv?.onChain && rules.data) {
       const stroops = parseToStroops(amount);
       if (stroops === null || stroops <= 0n) {
-        setMsg({ kind: "err", text: "Enter a positive amount." });
+        setMsg({ kind: "err", text: "Enter a positive amount (up to 7 decimals)." });
         return;
       }
       const v = validateContribution(stroops, rules.data);
       if (!v.ok) {
         setMsg({ kind: "err", text: v.message });
+        return;
+      }
+} else {
+      const validation = validateContribution(amount, inv);
+      if (!validation.ok) {
+        let text = "Enter a valid positive amount.";
+        if (validation.error === "REQUIRED") text = "Amount is required.";
+        else if (validation.error === "NOT_A_NUMBER") text = "Amount must be a number.";
+        else if (validation.error === "NON_POSITIVE") text = "Enter a positive amount.";
+        else if (validation.error === "TOO_MANY_DECIMALS") text = "Maximum 7 decimal places allowed.";
+        else if (validation.error === "EXCEEDS_REMAINING") text = `Exceeds remaining capacity of ${formatAmount(remaining, inv.currency)}.`;
+        else if (validation.error === "NOT_OPEN") text = "Invoice is no longer open for funding.";
+        setMsg({ kind: "err", text });
         return;
       }
     }
@@ -169,15 +183,17 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
       }
       return;
     }
+}
     if (apiLock.current) return;
-    // Exact decimal validation (no float coercion); unknown currencies fall back to a numeric check.
+// Exact decimal validation (no float coercion); unknown currencies fall back to a numeric check.
     let valid;
     try {
       valid = money.parse(amount.trim(), inv?.currency || "USDC") > 0n;
     } catch (err) {
       valid = err instanceof RangeError && /Unsupported currency/.test(err.message) ? Number(amount) > 0 : false;
     }
-    const n = Number(amount);
+    const n = validation.amount;
+    const beforeInv = inv;
     if (!valid) {
       setMsg({ kind: "err", text: "Enter a positive amount." });
       return;
@@ -186,18 +202,31 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
     setBusy(true);
     setMsg(null);
     try {
-      const { data } = await fundInvoice(id, n);
+const { data } = await fundInvoice(id, n);
+    const credited = creditedAmount(beforeInv, data);
       setState((s) => ({ ...s, data }));
       setAmount("");
-      follow(id); // auto-follow so future status changes surface in the bell
-      const text = `Contribution of ${formatAmount(Number(amount), data.currency)} recorded.`;
-      // Fund results are announced as toasts when the app shell provides them (#1399).
-      if (toast) toast.push({ kind: "success", title: "Contribution recorded", description: text });
-      else setMsg({ kind: "ok", text });
+follow(id); // auto-follow so future status changes surface in the bell
+      if (credited < n) {
+        const text = `Only ${formatAmount(credited, data.currency)} was needed to complete funding; ${formatAmount(credited, data.currency)} recorded.`;
+        if (toast) toast.push({ kind: "warning", title: "Contribution recorded", description: text });
+        else setMsg({ kind: "warn", text });
+      } else {
+        const text = `Contribution of ${formatAmount(credited, data.currency)} recorded.`;
+        // Fund results are announced as toasts when the app shell provides them (#1399).
+        if (toast) toast.push({ kind: "success", title: "Contribution recorded", description: text });
+        else setMsg({ kind: "ok", text });
+      }
     } catch (err) {
-      const text = err.message || "Funding failed.";
-      if (toast) toast.push({ kind: "error", title: "Funding failed", description: text });
-      else setMsg({ kind: "err", text });
+if (err.status === 409) {
+        const refreshed = await getInvoice(id);
+        setState((s) => ({ ...s, ...refreshed }));
+        setMsg({ kind: "err", text: "Invoice is funded; only open invoices can be funded." });
+      } else {
+        const text = err.message || "Funding failed.";
+        if (toast) toast.push({ kind: "error", title: "Funding failed", description: text });
+        else setMsg({ kind: "err", text });
+      }
     } finally {
       apiLock.current = false;
       setBusy(false);
@@ -294,24 +323,36 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
               <form className="form" onSubmit={onFund} style={{ marginTop: 12 }}>
                 <div className="field">
                   <label htmlFor="amount">Amount ({inv.currency})</label>
-                  <div className="amount-row">
+<div className="amount-row">
                     <input
                       id="amount"
                       className="focus-ring"
                       type="text"
+                      min="0"
+                      max={remaining}
+                      step="any"
                       inputMode="decimal"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       placeholder={`Up to ${remaining}`}
-                      aria-invalid={validation && !validation.ok ? true : undefined}
+                      aria-invalid={(msg && msg.kind === "err") || (validation && !validation.ok) ? "true" : "false"}
                       aria-describedby="amount-error amount-hint amount-balance"
                       disabled={fundingBusy || (inv.onChain && chain.pending)}
                     />
-                    {inv.onChain && maxFill !== null && maxFill > 0n && (
+                    {inv.onChain && maxFill !== null && maxFill > 0n ? (
                       <button
                         type="button"
                         className="btn btn-ghost btn-max"
                         onClick={() => setAmount(stroopsToDisplay(maxFill))}
+                      >
+                        Max
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        style={{ padding: "8px 12px", fontSize: "0.85rem" }}
+                        onClick={() => setAmount(String(remaining))}
                       >
                         Max
                       </button>
@@ -320,9 +361,9 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                   <span className="hint" id="amount-hint">
                     {inv.onChain && rules.loading
                       ? "Checking escrow rules…"
-                      : inv.onChain
+: inv.onChain
                         ? `Up to ${remaining} ${inv.currency}. Review the amount and network in Freighter before signing.`
-                        : "Demo mode: contributions are recorded by the API."}
+                        : "Demo mode: contributions are recorded by the API; on-chain funding uses the escrow&apos;s <code>fund</code> entrypoint."}
                   </span>
                   <span className="field-error" id="amount-error" aria-live="polite">
                     {validation && !validation.ok ? validation.message : ""}
@@ -331,15 +372,15 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                     <BalanceHint currency={inv.currency} address={investorAddress} amount={amount} onUseMax={(v) => setAmount(v)} onValidation={setBalanceValidation} />
                   </span>
                 </div>
-                {inv.onChain && rules.error && (
+{inv.onChain && rules.error && (
                   <div className="notice notice-warn" role="status" style={{ marginBottom: 10 }}>
                     Couldn’t read the escrow rules — falling back to basic validation.
                   </div>
                 )}
                 {inv.onChain && <TokenCheck invoice={inv} check={tokenCheck} />}
-                <button
+<button
                   className="btn btn-primary focus-ring"
-                  disabled={fundDisabled || fundingBusy || !balanceValidation.ok || !tokenCheck.ok || (inv.onChain && (!chain.address || chain.pending))}
+                  disabled={fundDisabled || fundingBusy || !balanceValidation.ok || !tokenCheck.ok || !validateContribution(amount, inv).ok || (inv.onChain && (!chain.address || chain.pending))}
                 >
                   {inv.onChain && chain.busy
                     ? `${chain.state.phase}...`
@@ -351,6 +392,11 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                           ? "Sign & fund"
                           : "Fund invoice"}
                 </button>
+                {state.offline && (
+                  <div className="muted" style={{ marginTop: 8, fontSize: "0.85rem" }}>
+                    Funding is unavailable while the API is unreachable
+                  </div>
+                )}
               </form>
             ) : (
               <p className="muted" style={{ marginTop: 12 }}>
@@ -391,6 +437,17 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
               <p className="muted exit-wallet-prompt" style={{ marginTop: 16, fontSize: "0.9rem" }}>
                 Connect your Freighter wallet to manage your position.
               </p>
+            )}
+{msg && (
+              <div
+                id="amount-error"
+                role="status"
+                aria-live="polite"
+                className={`notice notice-${msg.kind}`}
+                style={{ marginTop: 14 }}
+              >
+                {msg.text}
+              </div>
             )}
           </div>
         </div>
