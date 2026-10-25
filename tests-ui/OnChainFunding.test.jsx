@@ -24,6 +24,7 @@ vi.mock("@/components/wallet/BalanceHint", () => ({ default: () => null }));
 vi.mock("@/components/escrow/FundersTable", () => ({ default: () => null }));
 vi.mock("@/components/invest/ExitPanel", () => ({ default: () => null }));
 vi.mock("@/app/marketplace/[id]/ActivityFeed", () => ({ default: () => null }));
+vi.mock("@/components/sme/SmeActionsCard", () => ({ default: () => null }));
 const invoice = { id: "INV_0001", sme: "Acme", debtor: "Globex", amount: 100, fundedAmount: 0, currency: "XLM", status: "open", onChain: true, yieldBps: 800, dueDate: "2027-01-17" };
 const address = "GA7TXEBMEPQCLHIYCWDN7RKAO5IMRD2UV7O7TZXMEW6VZUMEXNR4XBB5";
 const hash = "a".repeat(64);

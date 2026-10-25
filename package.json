@@ -11,7 +11,7 @@
     "dev": "next dev",
     "build": "node scripts/prepare-pwa.mjs && next build",
     "start": "next start",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node scripts/check-i18n.mjs && node --test tests/*.test.mjs",
     "test:ui": "vitest run"
   },
   "dependencies": {

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import OfflineNotice from "@/components/pwa/OfflineNotice";
 import InvoiceCard from "@/components/InvoiceCard";
 import { listInvoices } from "@/lib/api";
+import { useT } from "@/lib/i18n/I18nProvider";
 import { computeListMedians } from "@/lib/risk";
 import { defaultFilename, exportInvoicesCsv } from "@/lib/csv";
 import {
@@ -26,10 +27,10 @@ import {
   serializeQuery,
 } from "@/lib/marketplaceQuery";
 
-// Status tab definitions: "" = All, plus each named status
+// Status tab definitions: "" = All, plus each named status (labels are translated)
 const STATUS_TABS = [
-  { v: "", l: "All" },
-  ...STATUSES.map((s) => ({ v: s, l: s.charAt(0).toUpperCase() + s.slice(1) })),
+  { v: "", key: "marketplace.filter.all" },
+  ...STATUSES.map((s) => ({ v: s, key: `marketplace.filter.${s}` })),
 ];
 
 /**
@@ -65,6 +66,7 @@ function useDebounce(value, delay) {
 }
 
 export default function MarketplaceClient() {
+  const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -201,33 +203,29 @@ export default function MarketplaceClient() {
   return (
     <section className="section">
       <div className="container">
-        <div className="eyebrow">Marketplace</div>
-        <h1 style={{ fontSize: "clamp(1.8rem,4vw,2.6rem)" }}>Invoices seeking funding</h1>
-        <p className="lead">
-          Pick an invoice, review its terms and contribute. Funds are escrowed until the debtor
-          settles.
-        </p>
+        <div className="eyebrow">{t("marketplace.eyebrow")}</div>
+        <h1 style={{ fontSize: "clamp(1.8rem,4vw,2.6rem)" }}>{t("marketplace.heading")}</h1>
+        <p className="lead">{t("marketplace.lead")}</p>
 
         {showOnboardNotice && (
           <div className="notice notice-warn" style={{ marginBottom: 20 }}>
-            Your wallet account doesn&apos;t exist on the ledger yet — any
-            funding attempt will fail.{" "}
+            {t("marketplace.unfundedWallet")}{" "}
             <Link href="/get-started" style={{ fontWeight: 600 }}>
-              Complete the Get&nbsp;started checklist →
+              {t("marketplace.unfundedWalletCta")}
             </Link>
           </div>
         )}
 
         {/* ---- Toolbar row 1: status tabs + submit button ---- */}
         <div className="toolbar" style={{ marginTop: 28 }}>
-          <div className="tabs" role="group" aria-label="Filter by status">
+          <div className="tabs" role="group" aria-label={t("marketplace.filterLabel")}>
             {STATUS_TABS.map((f) => (
               <button
                 key={f.v || "all"}
                 aria-pressed={urlState.status === f.v}
                 onClick={() => pushFilter({ status: f.v })}
               >
-                {f.l}
+                {t(f.key)}
               </button>
             ))}
           </div>
@@ -243,7 +241,7 @@ export default function MarketplaceClient() {
               {exportLabel}
             </button>
             <Link href="/submit" className="btn btn-primary">
-              + Submit invoice
+              {t("marketplace.submit")}
             </Link>
           </div>
         </div>
@@ -364,7 +362,7 @@ export default function MarketplaceClient() {
           </div>
         ) : items.length === 0 ? (
           <div className="card center">
-            <h3>{isFiltered ? "No invoices match these filters" : "No invoices here yet"}</h3>
+            <h3>{isFiltered ? "No invoices match these filters" : t("marketplace.empty.title")}</h3>
             <p className="muted">
               {isFiltered ? (
                 <>
@@ -379,10 +377,10 @@ export default function MarketplaceClient() {
                 </>
               ) : (
                 <>
-                  Try another filter or submit the first one.
+                  {t("marketplace.empty.body")}
                   <br />
                   <Link href="/submit" className="btn btn-primary" style={{ marginTop: 12 }}>
-                    Submit invoice
+                    {t("marketplace.empty.cta")}
                   </Link>
                 </>
               )}

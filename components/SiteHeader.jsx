@@ -5,18 +5,20 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { isActivePath } from "@/lib/nav";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useT } from "@/lib/i18n/I18nProvider";
 import NotificationBell from "@/components/NotificationBell";
 import TxActivityButton from "@/components/TxActivityButton";
 
 const LINKS = [
-  { href: "/", label: "Home" },
-  { href: "/marketplace", label: "Marketplace" },
-  { href: "/submit", label: "Submit invoice" },
-  { href: "/get-started", label: "Get started" },
-  { href: "/docs", label: "Docs" },
+  { href: "/", labelKey: "nav.home" },
+  { href: "/marketplace", labelKey: "nav.marketplace" },
+  { href: "/submit", labelKey: "nav.submit" },
+  { href: "/get-started", labelKey: "nav.getStarted" },
+  { href: "/docs", labelKey: "nav.docs" },
 ];
 
 export default function SiteHeader() {
+  const t = useT();
   const pathname = usePathname() || "/";
   const [open, setOpen] = useState(false);
   const navRef = useRef(null);
@@ -71,7 +73,7 @@ export default function SiteHeader() {
           className="menu-btn"
           aria-expanded={open}
           aria-controls="main-nav"
-          aria-label={open ? "Close menu" : "Open menu"}
+          aria-label={open ? t("nav.closeMenu") : t("nav.openMenu")}
           onClick={() => setOpen((o) => !o)}
         >
           <span aria-hidden="true">{open ? "✕" : "☰"}</span>
@@ -80,7 +82,7 @@ export default function SiteHeader() {
           ref={navRef}
           id="main-nav"
           className={`nav${open ? " open" : ""}`}
-          aria-label="Main"
+          aria-label={t("nav.label")}
           onBlur={onNavBlur}
         >
           {LINKS.map((l) => {
@@ -93,7 +95,7 @@ export default function SiteHeader() {
                 aria-current={active ? "page" : undefined}
                 onClick={() => setOpen(false)}
               >
-                {l.label}
+                {t(l.labelKey)}
               </Link>
             );
           })}

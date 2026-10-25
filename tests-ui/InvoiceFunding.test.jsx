@@ -25,6 +25,7 @@ vi.mock("@/components/wallet/BalanceHint", () => ({ default: () => null }));
 vi.mock("@/components/escrow/FundersTable", () => ({ default: () => null }));
 vi.mock("@/components/invest/ExitPanel", () => ({ default: () => null }));
 vi.mock("@/app/marketplace/[id]/ActivityFeed", () => ({ default: () => null }));
+vi.mock("@/components/sme/SmeActionsCard", () => ({ default: () => null }));
 vi.mock("next/link", () => ({
   default: ({ children, href }) => <a href={href}>{children}</a>,
 }));
