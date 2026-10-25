@@ -1,4 +1,4 @@
-"use client";
+"client";
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -23,6 +23,7 @@ import SmeActionsCard from "@/components/sme/SmeActionsCard";
 import LifecycleTimeline from "@/components/invoice/LifecycleTimeline";
 import { escrowFor } from "@/lib/escrow/registry";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
+import { decodeStellarError } from "@/lib/stellar/errors";
 import * as money from "@/lib/money";
 import { computeListMedians, scoreInvoice } from "@/lib/risk";
 import { loadConstraints, validateContribution, maxFillAmount, CODES } from "@/lib/escrow/constraints";
@@ -235,8 +236,14 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
         const refreshed = await getInvoice(id);
         setState((s) => ({ ...s, ...refreshed }));
         setMsg({ kind: "err", text: "This invoice is no longer open for funding." });
-      } else {
+      } else if (err && err.isApiError) {
         const text = err.message || "Funding failed.";
+        if (toast) toast.push({ kind: "error", title: "Funding failed", description: text });
+        else setMsg({ kind: "err", text });
+      } else {
+        // On-chain failures are decoded into actionable copy.
+        const decoded = decodeStellarError(err);
+        const text = [decoded.title, decoded.message, decoded.action].filter(Boolean).join(" ") || "Funding failed.";
         if (toast) toast.push({ kind: "error", title: "Funding failed", description: text });
         else setMsg({ kind: "err", text });
       }

@@ -1,0 +1,18 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "main",
+    "origin",
+    "security/issue-1374-translate-soroban-escrow-error-codes-into"
+  ],
+  "parent": {
+    "main": null,
+    "origin": "main",
+    "security/issue-1374-translate-soroban-escrow-error-codes-into": "main"
+  },
+  "order": [
+    "main",
+    "origin",
+    "security/issue-1374-translate-soroban-escrow-error-codes-into"
+  ]
+}
