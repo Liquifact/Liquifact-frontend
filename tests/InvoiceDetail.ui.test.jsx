@@ -22,6 +22,21 @@ vi.mock("@/lib/api", () => ({
   fundInvoice: apiMock.fundInvoice,
 }));
 
+// Isolate escrow resolution from the other on-chain panels on the page (no network in tests).
+vi.mock("@/components/NotificationsProvider", () => ({
+  useNotifications: () => ({ follow: vi.fn(), unfollow: vi.fn(), isFollowing: () => false }),
+}));
+vi.mock("@/components/escrow/TokenCheck", () => ({
+  default: () => null,
+  useFundingTokenCheck: () => ({ loading: false, ok: true, reason: "match" }),
+}));
+vi.mock("@/lib/escrow/constraints", async (original) => ({ ...(await original()), loadConstraints: vi.fn(() => new Promise(() => {})) }));
+vi.mock("@/components/wallet/BalanceHint", () => ({ default: () => null }));
+vi.mock("@/components/escrow/FundersTable", () => ({ default: () => null }));
+vi.mock("@/components/invest/ExitPanel", () => ({ default: () => null }));
+vi.mock("@/app/marketplace/[id]/ActivityFeed", () => ({ default: () => null }));
+vi.mock("@/components/sme/SmeActionsCard", () => ({ default: () => null }));
+
 // Mock next/link to render simple <a> tag
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }) => (

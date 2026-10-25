@@ -33,6 +33,8 @@ const ENTRYPOINTS = [
   ["claim_investor_payout", "Investors claim principal plus yield after settlement and maturity."],
   ["set_legal_hold / clear_legal_hold", "Compliance freeze that blocks risky transitions."],
   ["get_escrow", "Read the full escrow state (used by the API's live endpoint)."],
+  ["get_settlement_readiness", "Read whether funding, maturity, and legal-hold conditions permit settlement."],
+  ["get_protocol_fee_bps", "Read the protocol fee rate applied to SME withdrawals."],
 ];
 
 export default function DocsPage() {
@@ -84,6 +86,7 @@ export default function DocsPage() {
               <li>Your invoice appears in the <Link href="/marketplace">Marketplace</Link> with status <em>open</em>.</li>
               <li>When investors reach the funding target the status becomes <em>funded</em> and you can withdraw liquidity from the escrow.</li>
               <li>At maturity the debtor pays; the escrow is settled and investors are repaid.</li>
+              <li>On an on-chain invoice page, connect the SME Freighter wallet to withdraw funded liquidity or settle when the escrow reports settlement readiness.</li>
             </ol>
             <h3>As an investor</h3>
             <ol>
