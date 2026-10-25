@@ -5,6 +5,14 @@ import { getHealth, getStats } from "@/lib/api";
 import { bpsToPercent } from "@/lib/format";
 import * as money from "@/lib/money";
 
+function formatFaceValue(value) {
+  try {
+    return money.format(money.parse(value ?? 0, "USDC"), "USDC", { includeCurrency: false });
+  } catch {
+    return Number(value || 0).toLocaleString("en-US");
+  }
+}
+
 export default function LiveStats() {
   const [stats, setStats] = useState(null);
   const [online, setOnline] = useState(null);
@@ -21,7 +29,7 @@ export default function LiveStats() {
   const items = [
     { label: "Invoices listed", value: stats ? stats.invoices : "—" },
     { label: "Open for funding", value: stats ? stats.open : "—" },
-    { label: "Face value (all)", value: stats ? money.format(money.parse(stats.totalFaceValue ?? 0, "USDC"), "USDC", { includeCurrency: false }) : "—" },
+    { label: "Face value (all)", value: stats ? formatFaceValue(stats.totalFaceValue) : "—" },
     { label: "Average yield", value: stats ? bpsToPercent(stats.averageYieldBps) : "—" },
   ];
 
