@@ -182,7 +182,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
     setBusy(true);
     setMsg(null);
     try {
-      const { data } = await fundInvoice(id, amount);
+      const { data } = await fundInvoice(id, n);
       setState((s) => ({ ...s, data }));
       setAmount("");
       follow(id); // auto-follow so future status changes surface in the bell
