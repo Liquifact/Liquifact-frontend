@@ -39,8 +39,7 @@ chunk stays out of the initial bundle.
 | `/`            | `app/page.js`              | `app/error.js`                                                            | `getHealth()` → `lib/api/health.js` (live `/health`) |
 | `/invoices`    | `app/invoices/page.js`     | `app/invoices/loading.js`                                                 | `UploadZone` POST `${API_URL}/invoices`; `InvoiceList` |
 | `/invest`      | `app/invest/page.js`       | `app/invest/loading.js`                                                   | `fetchInvestableInvoices()` → `lib/api/invoices.js` (live client) |
-| `/invest/[id]` | `app/invest/[id]/page.js`  | `app/invest/[id]/loading.js`, `app/invest/[id]/not-found.js`             | Legacy detail view; canonical metadata points to `/marketplace/[id]` |
-| `/marketplace/[id]` | `app/marketplace/[id]/page.js` | `app/marketplace/[id]/opengraph-image.js` | Timed invoice API lookup with demo fallback; server-rendered detail, metadata, and JSON-LD |
+| `/invest/[id]` | `app/invest/[id]/page.js`  | `app/invest/[id]/loading.js`, `app/invest/[id]/not-found.js`             | `getInvoiceById()` → `app/invest/lib.js` (mock layer) |
 
 `loading.js` files are App Router Suspense fallbacks (rendered while a segment
 loads); `error.js` is the route error boundary; `not-found.js` backs
@@ -58,6 +57,8 @@ loads); `error.js` is the route error boundary; `not-found.js` backs
                                          (data via InvestMarketplace → fetchInvestableInvoices)
 /invest/[id]     app/invest/[id]/page → NavMenu, StatusPill, WalletStatus, Button,
                                          ErrorBanner (data via getInvoiceById)
+                                         See the [Invoice Detail Data Flow diagram](invoice-detail-data-flow.md)
+                                         for the full fetch → transform → render pipeline.
 ```
 
 Shared presentational components live in `components/` and are framework-route
@@ -75,14 +76,14 @@ There are **two** invoice data paths today, and they are intentionally separate:
    `{ id, issuer, amount, currency, dueDate, yield, status }` (missing fields
    default to `null`, unknown fields are dropped). Consumed by `/invest` via the
    `InvestMarketplace({ loadInvoices = fetchInvestableInvoices })` seam, which
-   makes the data source injectable for tests.
+   makes the data source injectable for tests. For a visual map of the marketplace data loading, filtering, sorting, and rendering pipeline, see the [Marketplace Data Flow diagram](marketplace-data-flow.md).
 
-2. **Mock layer — `lib/invoiceFixtures.js` + `app/invest/lib.js`**
-   (`MOCK_INVOICES`, `loadMockInvoices`, `getInvoiceById`)
+2. **Mock layer — `app/invest/lib.js`** (`MOCK_INVOICES`, `loadMockInvoices`,
+   `getInvoiceById`)
    Static fixtures used by the **detail** route (`/invest/[id]`) and as a
    deterministic source for e2e tests via the `window.__TEST_MOCK_INVOICES__`
    hook. `loadMockInvoices()` prefers that global when present, otherwise returns
-   the shared fixtures after a dev-only delay.
+   the in-file fixtures after a dev-only delay.
 
 **Migration boundary:** the marketplace list (`/invest`) already consumes the
 live client; the detail page (`/invest/[id]`) still reads the mock layer via
@@ -95,13 +96,27 @@ single place new backend fields should be mapped.
 Other live clients: `lib/api/health.js` (`/health`, used on the home page) and
 `lib/api/fetchWithRetry.js` (shared retry wrapper).
 
+**Funding concurrency primitives.** Mutating actions that must not run twice are
+guarded at three layers:
+
+- `lib/concurrency/tabLock.js` — `withExclusiveTabLock` takes a Web Locks
+exclusive lock (`ifAvailable: true`) named per invoice so only one browser tab
+can be inside a funding submission at a time; browsers without Web Locks fall
+back to the advisory `BroadcastChannel` protocol in `useFundingSubmit`.
+- `lib/idempotency/index.js` — a deterministic, collision-free idempotency key
+per `(wallet, invoice, amount)` triple, cached in memory as well as
+`sessionStorage` so retries always replay the same key even when storage is
+unavailable or throws.
+- `lib/api/fetchWithRetry.js` — non-idempotent requests are only retried with a
+stable `Idempotency-Key` header, and never when the body cannot be replayed.
+
 ---
 
 ## Where state lives
 
 | State              | Owner                                        | Notes                                                              |
 | ------------------ | -------------------------------------------- | ----------------------------------------------------------------- |
-| Wallet connection  | `components/WalletProvider.jsx` (`useWallet`) | Mounted once in `app/layout.js`; persists a minimal, non-secret snapshot to `localStorage`. |
+| Wallet connection  | `components/WalletProvider.jsx` (`useWallet`) | Mounted once in `app/layout.js`; persists a minimal, non-secret snapshot to `localStorage`. See [`docs/wallet-data-flow.md`](wallet-data-flow.md) for the full fetch → transform → render diagram. |
 | Toasts             | `components/ToastProvider.jsx` (`useToast`)   | Mounted once in `app/layout.js`.                                  |
 | Theme              | `components/ThemeToggle.jsx` + pre-paint script | Persisted in `localStorage`; applied before hydration.           |
 | Marketplace filters| `/invest` page + `lib/hooks/useInvoiceFilters.js` | Search/filter/sort state is serialized to the URL query string.  |
@@ -147,12 +162,17 @@ All permanent reference material for this frontend belongs in `docs/`:
 | `docs/api-integration.md` | HTTP payload / endpoint contract with the Express backend |
 | `docs/configuration.md` | Every `NEXT_PUBLIC_*` env variable, validation rules, defaults |
 | `docs/design-tokens.md` | CSS custom properties, Tailwind token mapping |
-| `docs/accessibility.md` | Accessibility statement and WCAG notes |
+| `docs/accessibility.md` | Accessibility statement and WCAG notes — includes [marketplace roles, keyboard, and focus](accessibility.md#marketplace-accessibility-issue-692) |
+| `docs/wallet-api-reference.md` | Wallet component API reference — props, hook shape, utility exports |
 | `docs/wallet-developer-guide.md` | Stellar / Freighter integration guide |
+| `docs/wallet-data-flow.md` | Wallet data-flow diagrams (fetch → transform → render) |
 | `docs/observability.md` | `reportError` sink and pluggable observability |
 | `docs/performance.md` | Bundle-size targets and code-splitting notes |
 | `docs/security.md` | CSP policy rationale and threat model |
 | `docs/getting-started.md` | Onboarding walkthrough for new contributors |
+| `docs/marketplace-data-flow.md` | Marketplace data-flow diagram (fetch -> transform -> render) |
+| `docs/invoice-detail-data-flow.md` | Invoice detail data-flow diagram (fetch → transform → render → client islands) |
+| `docs/settings-api.md` | Settings component props/API reference and minimal usage examples |
 | `docs/issue-334-cpu-budget-median-throttling.md` | Archived: CPU budget fix for median price oracle (contracts context) |
 | `docs/issue-334-flow-diagram.md` | Archived: Flow diagram for Issue #334 buffer truncation |
 

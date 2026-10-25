@@ -12,6 +12,14 @@ LiquiFact Frontend is committed to meeting **WCAG 2.1 AA** accessibility sta
 - **Form Labels** – All form controls include associated `<label>` elements or `aria-label` attributes.
 - **Button Roles** – Buttons are native `<button>` elements; where custom elements are used, `role="button"` and keyboard handlers are added.
 
+### Upload Component Accessibility (issue #31)
+
+The `UploadZone` component (`components/UploadZone.jsx`) implements a comprehensive accessibility contract covering drag-and-drop, file validation, and upload progress. Full documentation is available in [docs/upload-a11y.md](upload-a11y.md).
+
+### Invoice Detail Accessibility
+
+The invoice-detail components (`InvoiceDetailClient`, `InvoiceDetailItems`, `InvoiceDetailExport`, and related shared components) implement comprehensive accessibility contracts covering inline editing, bulk selection, export, and confirmation dialogs. Full documentation is available in [docs/invoice-detail-a11y.md](invoice-detail-a11y.md).
+
 ### Focus‑Ring Audit
 
 A comprehensive focus‑ring audit was performed across all interactive components to ensure
@@ -33,9 +41,7 @@ a consistent, high‑contrast focus indicator.
 **Automated checks:**
   - Class‑presence test in `components/focus-ring.a11y.test.tsx`
   - WCAG AA contrast verification in `app/globals.contrast-ratio.test.tsx`
-  - Keyboard traversal test (Tab order) using `@testing-library/user-event`
-
-### Roving Tabindex for Filter Chips (issue #466)
+  - Keyboard traversal test (Tab order) using `@testing-library/user-event`### Roving Tabindex for Filter Chips (issue #466)
 
 The marketplace currency filter chips (`components/InvoiceFilters.jsx`) implement a **roving tabindex** pattern conforming to the [ARIA Authoring Practices Guide (APG) toolbar pattern](https://www.w3.org/WAI/ARIA/apg/patterns/toolbar/).
 
@@ -80,6 +86,40 @@ The marketplace currency filter chips (`components/InvoiceFilters.jsx`) implemen
   - `aria-pressed` correctness across keyboard and mouse interactions
   - focus-ring class presence (compatible with `focus-ring.a11y.test.tsx`)
 
+### Marketplace Sort Controls – aria-sort (issue #468)
+
+The marketplace sort controls in `components/InvoiceFilters.jsx` expose the current
+sort state programmatically through the `aria-sort` attribute on direction toggle buttons.
+
+**Direction toggle `aria-sort` values:**
+
+| State                          | `aria-sort` value | Button state |
+| ------------------------------ | ----------------- | ------------ |
+| Column is active, dir = `asc`  | `ascending`       | Enabled      |
+| Column is active, dir = `desc` | `descending`      | Enabled      |
+| Column is **not** active       | `none`            | Disabled     |
+
+Only `amount` and `yield` columns have direction toggles.
+Maturity sorting is available via the select dropdown but does not have its own
+direction toggle, so no `aria-sort` is set to `ascending`/`descending` for maturity.
+
+**Sort announcement live region:**
+
+A dedicated polite live region (`role="status"`, `aria-live="polite"`, `aria-atomic="true"`)
+with `data-testid="sort-live-region"` announces sort changes to screen readers without
+duplicating the results-summary announcement in `app/invest/page.js`. The announcement
+format is:
+
+```
+Sorted by {Column}, {ascending|descending}
+```
+
+Examples:
+- `"Sorted by Amount, ascending"`
+- `"Sorted by Yield, descending"`
+
+The region is empty when no sort column is active.
+
 ### Pagination Announcements (issue #276)
 
 `components/Pagination.jsx` announces page position to screen readers when the caller
@@ -98,15 +138,17 @@ Page X of Y, showing items A–B
 - The region is populated only when the `page` prop changes — initial render is skipped
   using a `useRef` guard so screen readers do not hear an announcement on first mount.
 - The region is **only rendered in page mode** (when `page` and `totalPages` are
-  provided). In load-more mode the region is absent entirely, preventing any conflict with
-  the marketplace list announcer in `app/invest/page.js`.
+  provided). In load-more mode the region is absent entirely, so callers that already
+  own a list announcer (for example the marketplace page) will not get competing output.
 
 **Coordination with the marketplace list announcer:**
 
 `app/invest/page.js` owns its own `role="status" aria-live="polite"` region that
-announces load results, filter counts, and load-more updates.  The `Pagination`
-component is used there in load-more mode (no `page` prop), so its announcement region
-is not rendered and the two live regions never compete or produce duplicate output.
+announces load results, filter counts, and load-more updates, and currently renders an
+**inline** Load more button (not `components/Pagination.jsx`). When adopting the shared
+`Pagination` component on `/invest`, use it in **load-more mode** (omit `page` /
+`totalPages`) so its page-mode announcer stays unmounted and the two live regions never
+compete.
 
 Callers that adopt page-based mode should ensure they do not additionally wrap
 `Pagination` in another live region for the same paging event.
@@ -204,6 +246,110 @@ Practices for modal dialogs:
    registry wiring and `components/InvoiceSearch.shortcut.test.tsx` will continue
    to assert the existing `/` shortcut is preserved.
 
+### Marketplace accessibility (issue #692)
+
+This section is the accessibility contract for the Invest marketplace (`/invest` and
+`/invest/[id]`). It documents **roles**, **keyboard interactions**, and **focus
+behaviour** as implemented today. Related deep-dives live above:
+
+- [Roving Tabindex for Filter Chips (#466)](#roving-tabindex-for-filter-chips-issue-466)
+- [Pagination Announcements (#276)](#pagination-announcements-issue-276)
+- [Keyboard Shortcut Help (#464)](#keyboard-shortcut-help-issue-464)
+
+Per-component notes also live in [`COMPONENTS.md`](../COMPONENTS.md).
+
+#### Surfaces in scope
+
+| Surface | Primary files | Notes |
+| ------- | ------------- | ----- |
+| Marketplace list | `app/invest/page.js` | Search, status chips, preview filters, list, Load more |
+| Invoice detail | `app/invest/[id]/page.js`, `FundActions.jsx` | Summary, timeline, fund / copy / print |
+| Shared marketplace UI | `InvoiceSearch`, `InvoiceFilters` (+ `StatusLegendFilter`, `ActiveFilterSummary`), `InvoiceCard`, `Pagination`, `InvoiceListSkeleton`, `StatusPill`, `FundAmountInput`, `InvoiceTimeline`, `ErrorBanner` | Reusable contracts; some are not yet mounted on `/invest` |
+
+**Wiring accuracy:** the live list currently renders **inline** `<li>` rows and an
+**inline** Load more button. `InvoiceCard`, `Pagination`, and `ActiveFilterSummary` are
+shared components with tests and documented contracts; adopt them without changing the
+live-region ownership rules below.
+
+#### Roles and ARIA (list page)
+
+| Element | Role / ARIA | Purpose |
+| ------- | ----------- | ------- |
+| List announcer | `role="status"` · `aria-live="polite"` · `aria-atomic="true"` · `sr-only` | Announces load, filter, and “Showing N of M” updates |
+| Search input | `aria-label` (from page copy) | Names the issuer search field |
+| Status chips | `role="group"` · `aria-pressed` per chip · Clear `aria-label` | Multi-select status filter (`StatusLegendFilter`) |
+| Advanced filters wrapper | `<fieldset aria-disabled="true" aria-describedby="filters-coming-soon">` · `sr-only` `<legend>` | Preview “coming soon” filters while keeping controls discoverable |
+| Currency chips (inside `InvoiceFilters`) | `role="toolbar"` · roving `tabindex` · `aria-pressed` | See [#466](#roving-tabindex-for-filter-chips-issue-466) |
+| Yield / maturity / sort controls | `sr-only` legends · control `aria-label`s | Accessible names for numeric and date filters |
+| Invoice list | `<ul aria-label="…">` | Named list of investable invoices |
+| Issuer link (inline row) | Native `<Link>` with visible text | Focusable navigation to detail |
+| Load more | `<button>` · `aria-label` | Appends the next page of results |
+| Load failure | `ErrorBanner` → `role="alert"` · `aria-live="assertive"` | Error + retry; assertive so it supersedes the polite announcer |
+| Loading skeleton | `ul aria-busy="true"` · labelled | Busy state while invoices load |
+| Route loading shells | `aria-busy="true"` on root | `/invest/loading.js`, `/invest/[id]/loading.js` |
+
+#### Roles and ARIA (detail page)
+
+| Element | Role / ARIA | Purpose |
+| ------- | ----------- | ------- |
+| Main landmark | `<main id="main-content">` | Skip-link target |
+| Back link | `aria-label` | Return to marketplace |
+| Summary | `<section aria-labelledby="…">` | Labels the invoice facts region |
+| Status | `StatusPill` → `role="status"` · `aria-label="Status: …"` | Text + tone (not colour-only) |
+| Timeline | `<section>` · `<ol aria-label>` · `aria-current="step"` | Lifecycle stages |
+| Fund / Copy / Print | Constant `aria-label`s on native buttons | Actions stay named when labels are icon-heavy |
+| Fund amount | `aria-describedby` · `aria-invalid` · error `role="alert"` · yield `aria-live="polite"` | Validation and expected yield feedback |
+
+#### Keyboard interactions
+
+| Key | Where | Action |
+| --- | ----- | ------ |
+| **Tab** / **Shift+Tab** | Entire marketplace | Moves through search, status chips, preview filter controls, issuer links, Load more, and detail actions in DOM order |
+| **/** | Global (list) | Focuses the marketplace search input (`InvoiceSearch` via `lib/shortcuts.js`); ignored inside editable fields |
+| **?** | Global | Opens the shortcut help dialog ([#464](#keyboard-shortcut-help-issue-464)) |
+| **Enter** / **Space** | Buttons and chips | Activates Load more, status / currency chips, Clear, Fund / Copy / Print |
+| **ArrowLeft** / **ArrowRight** / **Home** / **End** | Currency toolbar | Roving focus inside the currency chip toolbar ([#466](#roving-tabindex-for-filter-chips-issue-466)) |
+| **Escape** | Shortcut help dialog | Closes the dialog and restores prior focus |
+
+Status chips use **normal Tab** stops (each chip is its own tab stop). Only the currency
+toolbar uses the roving-tabindex pattern.
+
+#### Focus behaviour
+
+- **Load more:** after a successful append, focus is restored to the Load more button via
+  `loadMoreRef` when the button remains mounted (hidden once all items are visible).
+- **Search shortcut:** `/` calls `inputRef.focus()` on the search field.
+- **Preview filters fieldset:** `aria-disabled="true"` (not native `disabled`) keeps
+  controls in the tab order and discoverable; interaction is blocked with
+  `pointer-events-none` and no-op handlers while the “Soon” badge is linked via
+  `aria-describedby`.
+- **Shared `Pagination`:** forwards a ref to the Load more button for the same
+  focus-restore pattern when adopted by callers.
+- **Detail actions / search:** use cyan `focus-visible` / `focus:ring` outlines (some
+  surfaces still use Tailwind rings instead of `.focus-ring` — see Known Limitations).
+- **Shortcut dialog:** focus moves in on open, is trapped while open, and restores to
+  the previously focused element on close.
+
+#### Shared components not currently mounted on `/invest`
+
+| Component | Contract to preserve when wiring |
+| --------- | -------------------------------- |
+| `InvoiceCard` | Whole card is one `Link` with a composed `aria-label` (issuer + optional status); embeds `StatusPill` |
+| `Pagination` | Load-more mode: named button + forwarded ref; page mode: hidden status announcer only when `page` / `totalPages` are set |
+| `ActiveFilterSummary` | `ul aria-label="Active filters"`; remove chips with `aria-label={`Remove ${label}`}`; decorative `×` is `aria-hidden` |
+
+#### Test pointers
+
+| Area | Test file(s) |
+| ---- | ------------ |
+| Coming-soon fieldset | `app/invest/filters.a11y.test.tsx` |
+| List live region / Load more | `app/invest/page.test.jsx`, `tests/invest.spec.jsx` |
+| Currency roving tabindex | `components/InvoiceFilters.roving.test.tsx` |
+| Search `/` shortcut | `components/InvoiceSearch.shortcut.test.tsx` |
+| Card / status / timeline / fund input | `components/InvoiceCard.test.tsx`, `StatusPill.test.tsx`, `InvoiceTimeline.test.tsx`, `FundAmountInput.test.tsx` |
+| Pagination announcer | `components/Pagination.announce.test.tsx` |
+| Detail labels | `app/invest/[id]/page.test.tsx` |
+
 ## Automated Accessibility Tests (CI)
 
 - **jest‑axe** is configured in `jest.setup.js` and executed via `npm run test`.
@@ -284,4 +430,4 @@ When adding or modifying UI:
 
 ---
 
-_Last updated: 2026‑06‑28_
+_Last updated: 2026‑07‑26_

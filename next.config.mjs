@@ -1,18 +1,22 @@
-import { buildSecurityHeaders } from "./lib/securityHeaders.mjs";
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  reactStrictMode: true,
+  poweredByHeader: false,
   async headers() {
     return [
       {
+        source: "/:worker(sw|pwa-policy|pwa-config).js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+      {
         source: "/:path*",
         headers: [
-          ...buildSecurityHeaders({
-            apiUrl: process.env.NEXT_PUBLIC_API_URL,
-          }),
-          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-          { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "DENY" },
         ],
       },
     ];

@@ -95,22 +95,21 @@ curl -X POST -F "invoice=@invoice.pdf" http://localhost:3001/invoices
 ## Mock Data Wiring
 
 The frontend currently uses mock invoice data during development. All mock invoice
-fixtures are defined **exclusively** in `lib/invoiceFixtures.js` — this is the single
-source of truth until the real backend `/invoices` endpoint is wired up (see _Retrieve
-Invoices_ below).
+fixtures are defined **exclusively** in `app/invest/lib.js` — this is the single source
+of truth until the real backend `/invoices` endpoint is wired up (see _Retrieve Invoices_
+below).
 
 ### Source
 
-- **Fixture source**: `lib/invoiceFixtures.js` — exports `MOCK_INVOICES` (the canonical array).
-  `app/invest/lib.js` re-exports it and supplies `loadMockInvoices` (the async loader used
-  as the default `loadInvoices` prop in `InvestMarketplace`) and `getInvoiceById` (used by
-  the legacy detail route `app/invest/[id]`).
+- **Fixture source**: `app/invest/lib.js` — exports `MOCK_INVOICES` (the canonical array),
+  `loadMockInvoices` (the async loader used as the default `loadInvoices` prop in
+  `InvestMarketplace`), and `getInvoiceById` (used by the detail route `app/invest/[id]`).
   Do **not** redeclare these fixtures inline in any other module.
 - **Health helper**: `lib/api/health.js` provides a real fetch wrapper for the health check.
 
 ### Test hook
 
-`app/invest/lib.js` re-exports that fixture. `loadMockInvoices` checks `window.__TEST_MOCK_INVOICES__` before returning the canonical
+`loadMockInvoices` checks `window.__TEST_MOCK_INVOICES__` before returning the canonical
 array. Playwright and Jest tests can override the fixture at runtime by setting this
 global before the component mounts. The override is ignored in non-browser (SSR)
 environments and has no effect in production builds.

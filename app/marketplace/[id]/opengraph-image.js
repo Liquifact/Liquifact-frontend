@@ -1,18 +1,17 @@
 import { ImageResponse } from "next/og";
-import { fetchInvoiceById } from "../../../lib/invoiceSeoData.js";
-import { cleanText, numericAmount, yieldPercent } from "../../../lib/seo.js";
-import { formatAmount, fundedPercent } from "../../../lib/format.js";
+import { fetchInvoiceById } from "@/lib/invoiceSeoData";
+import { cleanText, yieldPercent } from "@/lib/seo";
+import { formatAmount, fundedPercent } from "@/lib/format";
 
-export const runtime = "edge";
 export const alt = "LiquiFact invoice investment details";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 function InvoiceOpenGraphCard({ invoice, id }) {
-  const issuer = cleanText(invoice?.issuer ?? invoice?.sme ?? invoice?.smeName, "Invoice unavailable");
+  const issuer = cleanText(invoice?.sme ?? invoice?.issuer, "Invoice unavailable");
   const invoiceId = cleanText(invoice?.id ?? id, "Invoice");
   const currency = cleanText(invoice?.currency, "USDC");
-  const amount = invoice ? formatAmount(numericAmount(invoice)) : "Invoice not found";
+  const amount = invoice ? formatAmount(invoice.amount, currency) : "Invoice not found";
   const rate = invoice ? yieldPercent(invoice) : null;
   const funded = invoice ? Math.round(fundedPercent(invoice)) : 0;
   const status = cleanText(invoice?.status, "Unavailable");
@@ -86,7 +85,7 @@ function InvoiceOpenGraphCard({ invoice, id }) {
             <div style={{ display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", color: "#94a3b8", fontSize: "18px" }}>FACE VALUE</div>
               <div style={{ display: "flex", fontSize: "34px", fontWeight: 700, marginTop: "6px" }}>
-                {amount} {currency}
+                {amount}
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>

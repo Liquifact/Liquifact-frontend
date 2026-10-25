@@ -26,6 +26,10 @@ All other content is rendered via:
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | `app/layout.js:55` | Pre-hydration theme script — content is a compile-time constant (`THEME_SCRIPT`), no user input involved. Required for flash-free theme toggle. | ✅       |
 
+### CSP nonce policy
+
+The application now issues a per-request CSP nonce via middleware and applies it to the inline pre-hydration theme script in [app/layout.js](app/layout.js). This removes the need for `'unsafe-inline'` in `script-src` while keeping the script functional for Next.js hydration and theme initialization.
+
 ### CI Enforcement
 
 The lint step in CI runs `npm run lint`, which includes the `react/no-danger` rule. Any new introduction of `dangerouslySetInnerHTML` will be caught and block the pipeline.
