@@ -124,9 +124,14 @@ export default function SubmitForm() {
     focusErrors.current = false;
     dispatch({ type: "submitStart" });
     try {
-      const { data } = await createInvoice(toPayload(form));
+      const res = await createInvoice(toPayload(form));
+      const invoice = res?.data;
+      if (!invoice || !invoice.id) {
+        dispatch({ type: "submitError", message: "API returned no invoice data", details: [] });
+        return;
+      }
       clearDraft();
-      dispatch({ type: "submitSuccess", invoice: data });
+      dispatch({ type: "submitSuccess", invoice });
     } catch (err) {
       dispatch({ type: "submitError", message: err.message, details: err.details });
     }
@@ -162,10 +167,12 @@ export default function SubmitForm() {
       <div>
         <h2 tabIndex={-1} ref={headingRef}>Invoice submitted</h2>
         <div className="notice notice-ok">
-          Invoice <strong>{status.invoice.id}</strong> created.
+          Invoice <strong>{status.invoice?.id || "—"}</strong> created.
         </div>
         <div className="btn-row" style={{ marginTop: 16 }}>
-          <Link className="btn btn-primary" href={`/marketplace/${status.invoice.id}`}>View listing →</Link>
+          {status.invoice?.id && (
+            <Link className="btn btn-primary" href={`/marketplace/${status.invoice.id}`}>View listing →</Link>
+          )}
           <button type="button" className="btn btn-ghost" onClick={() => { dispatch({ type: "reset" }); setRestored(false); }}>
             Submit another
           </button>
@@ -288,7 +295,7 @@ export default function SubmitForm() {
           {body}
           <div aria-live="polite" role="status" style={{ marginTop: 16 }}>
             {status.state === "submitting" && <span className="muted">Submitting your invoice…</span>}
-            {status.state === "success" && <span>Invoice {status.invoice.id} was created.</span>}
+            {status.state === "success" && <span>Invoice {status.invoice?.id || "—"} was created.</span>}
             {status.state === "error" && (
               <div className="notice notice-err">
                 Could not submit: {status.message}
