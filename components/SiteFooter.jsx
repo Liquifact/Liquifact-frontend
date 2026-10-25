@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { API_DOCS_URL, API_URL, EXPLORER_URL, NETWORK_LABEL, REPOS } from "@/lib/config";
+import { getDictionary, t } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n/server";
+import LocaleSwitcher from "@/components/LocaleSwitcher";
 
-export default function SiteFooter() {
+export default async function SiteFooter() {
+  const dict = getDictionary(await getLocale());
+  const tr = (key, vars) => t(dict, key, vars);
   return (
     <footer className="site-footer">
       <div className="container cols">
@@ -10,36 +15,37 @@ export default function SiteFooter() {
             <span className="logo" aria-hidden="true">L</span>
             LiquiFact
           </div>
-          <p className="muted">Invoice liquidity on Stellar. SMEs get paid today, investors earn real-economy yield.</p>
+          <p className="muted">{tr("footer.tagline")}</p>
         </div>
         <div>
-          <h4>Product</h4>
+          <h4>{tr("footer.product")}</h4>
           <ul>
-            <li><Link href="/marketplace">Marketplace</Link></li>
-            <li><Link href="/submit">Submit invoice</Link></li>
-            <li><Link href="/get-started">Get started</Link></li>
-            <li><Link href="/docs">Documentation</Link></li>
+            <li><Link href="/marketplace">{tr("nav.marketplace")}</Link></li>
+            <li><Link href="/submit">{tr("nav.submit")}</Link></li>
+            <li><Link href="/get-started">{tr("nav.getStarted")}</Link></li>
+            <li><Link href="/docs">{tr("footer.documentation")}</Link></li>
           </ul>
         </div>
         <div>
-          <h4>Developers</h4>
+          <h4>{tr("footer.developers")}</h4>
           <ul>
-            <li><a href={API_DOCS_URL}>API docs</a></li>
-            <li><a href={`${API_URL}/health`}>API status</a></li>
-            <li><a href={EXPLORER_URL}>Escrow contract</a></li>
+            <li><a href={API_DOCS_URL}>{tr("footer.apiDocs")}</a></li>
+            <li><a href={`${API_URL}/health`}>{tr("footer.apiStatus")}</a></li>
+            <li><a href={EXPLORER_URL}>{tr("footer.escrow")}</a></li>
           </ul>
         </div>
         <div>
-          <h4>Source</h4>
+          <h4>{tr("footer.source")}</h4>
           <ul>
-            <li><a href={REPOS.frontend}>Frontend</a></li>
-            <li><a href={REPOS.backend}>Backend</a></li>
-            <li><a href={REPOS.contracts}>Contracts</a></li>
+            <li><a href={REPOS.frontend}>{tr("footer.frontend")}</a></li>
+            <li><a href={REPOS.backend}>{tr("footer.backend")}</a></li>
+            <li><a href={REPOS.contracts}>{tr("footer.contracts")}</a></li>
           </ul>
         </div>
       </div>
-      <div className="container muted" style={{ marginTop: 28, fontSize: "0.85rem" }}>
-        © {new Date().getFullYear()} LiquiFact · Running on Stellar {NETWORK_LABEL} · MIT licensed
+      <div className="container muted footer-bottom" style={{ marginTop: 28, fontSize: "0.85rem" }}>
+        <div>© {new Date().getFullYear()} LiquiFact · Running on Stellar {NETWORK_LABEL} · MIT licensed</div>
+        <LocaleSwitcher />
       </div>
     </footer>
   );
