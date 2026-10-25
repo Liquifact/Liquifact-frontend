@@ -97,14 +97,22 @@ export default function MarketplaceClient() {
 
   useEffect(() => {
     let alive = true;
+    const ctrl = new AbortController();
     setFetchState((s) => ({ ...s, loading: true }));
     // Fetch the full list once — filter client-side
-    listInvoices().then((r) => {
-      // Keep cache metadata (stale / cachedAt) for the offline notice.
-      if (alive) setFetchState({ loading: false, ...r, data: r.data || [] });
-    });
+    listInvoices("", { signal: ctrl.signal })
+      .then((r) => {
+        // Keep cache metadata (stale / cachedAt) for the offline notice.
+        if (alive) setFetchState({ loading: false, ...r, data: r.data || [] });
+      })
+      .catch((err) => {
+        if (!alive) return;
+        if (err && err.name === "AbortError") return;
+        setFetchState((prev) => ({ ...prev, loading: false, data: [], offline: false }));
+      });
     return () => {
       alive = false;
+      ctrl.abort();
     };
   }, []); // intentionally empty — one fetch for the lifetime of the component
 

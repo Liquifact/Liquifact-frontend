@@ -77,7 +77,7 @@ const ExitPanel = dynamic(() => import("@/components/invest/ExitPanel"), { ssr: 
 const BLOCKING_CODES = new Set([CODES.PAUSED, CODES.LEGAL_HOLD, CODES.DEADLINE_PASSED, CODES.NOT_OPEN]);
 
 export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints }) {
-  const [state, setState] = useState({ loading: true, data: null, offline: false });
+  const [state, setState] = useState({ loading: true, data: null, offline: false, error: null });
   const [medians, setMedians] = useState(null);
   const [amount, setAmount] = useState("");
   const [msg, setMsg] = useState(null);
@@ -105,7 +105,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
         status: ESCROW_STATUSES[escrow.status] ?? invoice.data.status,
       };
     }
-    setState({ loading: false, ...invoice });
+    setState({ loading: false, ...invoice, error: null });
   }
 
   useEffect(() => {
@@ -118,7 +118,23 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
 
   useEffect(() => {
     let alive = true;
-    getInvoice(id).then((r) => alive && setState({ loading: false, ...r }));
+    const ctrl = new AbortController();
+    setState(s => ({ ...s, loading: true, error: null }));
+    getInvoice(id, { signal: ctrl.signal })
+      .then((r) => {
+        if (!alive) return;
+        setState({ loading: false, data: r.data, offline: !!r.offline, error: null });
+      })
+      .catch((err) => {
+        if (!alive) return;
+        if (err && (err.name === "AbortError" || err.name === "TimeoutError")) return;
+        setState({
+          loading: false,
+          data: null,
+          offline: false,
+          error: { message: (err && err.message) || "Something went wrong" },
+        });
+      });
     // List medians only refine the risk score; a failed list load never blocks the page.
     Promise.resolve()
       .then(() => listInvoices())
@@ -128,6 +144,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
       .catch(() => {});
     return () => {
       alive = false;
+      ctrl.abort();
     };
   }, [id]);
 
@@ -194,6 +211,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
     }
     if (apiLock.current) return;
     // API invoices: reject amounts above the remaining capacity or on closed invoices (#1396).
+    const remaining = offChainRemaining(inv);
     const check = checkApiContribution(amount, inv);
     if (!check.ok) {
       setMsg({ kind: "err", text: contributionErrorText(check.error, remaining, inv.currency) });
@@ -217,7 +235,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
     setMsg(null);
     try {
       const { data } = await fundInvoice(id, n);
-      setState((s) => ({ ...s, data }));
+      setState(s => ({ ...s, data }));
       setAmount("");
       follow(id); // auto-follow so future status changes surface in the bell
       // Report what the API actually credited, not what was typed (#1396).
@@ -248,12 +266,24 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
 
   // Refresh invoice data after a successful exit action
   function onContribRefresh() {
-    getInvoice(id).then((r) => setState({ loading: false, ...r }));
+    getInvoice(id).then((r) => setState({ loading: false, ...r, error: null }));
   }
 
   if (state.loading) {
     return (
       <section className="section"><div className="container"><div className="skeleton" style={{ minHeight: 320 }} /></div></section>
+    );
+  }
+
+  if (state.error) {
+    return (
+      <section className="section">
+        <div className="container center">
+          <h1 style={{ fontSize: "2rem" }}>Something went wrong</h1>
+          <p className="lead">{state.error.message}</p>
+          <button className="btn btn-primary" onClick={() => setState(s => ({ ...s, loading: true, error: null }))}>Retry</button>
+        </div>
+      </section>
     );
   }
 
