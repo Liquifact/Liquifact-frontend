@@ -9,11 +9,15 @@ import assert from "node:assert/strict";
 import { computeStats, primaryCurrency } from "../lib/stats.js";
 import { DEMO_INVOICES } from "../lib/demo.js";
 
+// The original four seed invoices (the demo list later gained a cancelled XLM
+// invoice, INV_0005, for the investor-exit flow).
+const SEED = DEMO_INVOICES.filter((i) => ["INV_0001", "INV_0002", "INV_0003", "INV_0004"].includes(i.id));
+
 // Seed data: 100 XLM + (25,000 + 42,000 + 12,500) USDC.
 // The old home page summed these to a meaningless "79,600".
 
 test("seed data: per-currency face values, never summed across currencies", () => {
-  const stats = computeStats(DEMO_INVOICES);
+  const stats = computeStats(SEED);
 
   assert.equal(stats.count, 4);
   assert.equal(stats.open, 2); // INV_0001, INV_0002
@@ -28,7 +32,7 @@ test("seed data: per-currency face values, never summed across currencies", () =
 });
 
 test("seed data: weighted yield per currency", () => {
-  const stats = computeStats(DEMO_INVOICES);
+  const stats = computeStats(SEED);
 
   // USDC: (25000*650 + 42000*720 + 12500*900) / 79500 = 726.29 bps (approx)
   const usdc = stats.byCurrency.USDC.weightedYieldBps;
@@ -77,7 +81,7 @@ test("decimal-safe: minor-unit rounding does not drift", () => {
 });
 
 test("primaryCurrency picks the largest face value", () => {
-  const stats = computeStats(DEMO_INVOICES);
+  const stats = computeStats(SEED);
   assert.equal(primaryCurrency(stats.byCurrency), "USDC"); // 79,500 > 100
 });
 
