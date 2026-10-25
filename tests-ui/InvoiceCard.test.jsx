@@ -19,7 +19,7 @@ describe("InvoiceCard component", () => {
 
     render(<InvoiceCard invoice={invoice} medians={{ medianYield: 700, medianTicketSize: 20000 }} />);
 
-    expect(screen.getByText("open")).not.toBeNull();
+    expect(screen.getByLabelText("Status: Open")).not.toBeNull();
     // Risk badge should be rendered
     const riskBadge = screen.getByRole("status");
     expect(riskBadge.getAttribute("aria-label")).toMatch(/Risk:/);
@@ -41,7 +41,7 @@ describe("InvoiceCard component", () => {
 
     render(<InvoiceCard invoice={invoice} />);
 
-    expect(screen.getByText("settled")).not.toBeNull();
+    expect(screen.getByLabelText("Status: Settled")).not.toBeNull();
     expect(screen.queryByRole("status")).toBeNull();
   });
 
@@ -61,7 +61,7 @@ describe("InvoiceCard component", () => {
 
     render(<InvoiceCard invoice={invoice} />);
 
-    expect(screen.getByText("cancelled")).not.toBeNull();
+    expect(screen.getByLabelText("Status: Cancelled")).not.toBeNull();
     expect(screen.queryByRole("status")).toBeNull();
   });
 });
