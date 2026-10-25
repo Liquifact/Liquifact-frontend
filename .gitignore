@@ -3,7 +3,11 @@ node_modules/
 out/
 .vercel
 .env*.local
-.env
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
+
+# Generated from the tested worker policy and build inputs.
+public/pwa-policy.js
+public/pwa-config.js
+config.bat

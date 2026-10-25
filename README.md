@@ -25,7 +25,15 @@ Part of the LiquiFact stack: **frontend** (this repo) ·
 | `/submit` | Submit an invoice for financing |
 | `/docs` | Product overview, architecture, usage guide, API and contract reference |
 
-If the API is unreachable the marketplace falls back to bundled demo data.
+The production app can be installed from the browser. Previously viewed invoices
+remain available offline with a saved-data timestamp; bundled demo data is used
+only when no cached response is available. Unvisited pages show an offline screen.
+
+`npm run build` prepares the versioned worker policy/config before building Next.
+The worker registers only in production on HTTPS or localhost; use `npm start`
+to verify offline behavior. `npm run test:ui` runs the PWA keyboard/status tests.
+Updates activate only after the user selects **Reload**. Funding, escrow, wallet,
+and RPC traffic are not cached. [Browser evidence](docs/pwa-evidence/README.md).
 
 ## Development
 
@@ -35,6 +43,7 @@ Requires Node.js 20.9+.
 npm ci
 npm run dev      # http://localhost:3000
 npm test         # unit tests (node:test)
+npm run test:ui  # funding component tests (Vitest)
 npm run build
 ```
 
@@ -46,7 +55,10 @@ All variables are optional (see [`.env.local.example`](.env.local.example)):
 |----------|---------|
 | `NEXT_PUBLIC_API_URL` | `https://liquifact-backend.vercel.app` |
 | `NEXT_PUBLIC_CONTRACT_ID` | `CDQCKR2YU6IVQ4GYPBMXBPZ4FGFQB5H25AI7ZSETHS2CZ5ZRCWQDSO6P` |
+| `NEXT_PUBLIC_CONTRACT_INVOICE_ID` | `INV_0001` |
+| `NEXT_PUBLIC_ESCROW_REGISTRY` | _(empty)_ |
 | `NEXT_PUBLIC_STELLAR_NETWORK` | `testnet` |
+| `NEXT_PUBLIC_STELLAR_RPC_URL` | `https://soroban-testnet.stellar.org` |
 | `NEXT_PUBLIC_SITE_URL` | `https://liquifact-frontend.vercel.app` |
 
 ## Deployment
