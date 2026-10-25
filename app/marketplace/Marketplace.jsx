@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import OfflineNotice from "@/components/pwa/OfflineNotice";
 import InvoiceCard from "@/components/InvoiceCard";
 import { listInvoices } from "@/lib/api";
+import { computeListMedians } from "@/lib/risk";
 import {
   getNetworkName,
   getPublicKey,
@@ -94,7 +96,8 @@ export default function MarketplaceClient() {
     setFetchState((s) => ({ ...s, loading: true }));
     // Fetch the full list once — filter client-side
     listInvoices().then((r) => {
-      if (alive) setFetchState({ loading: false, data: r.data, offline: r.offline });
+      // Keep cache metadata (stale / cachedAt) for the offline notice.
+      if (alive) setFetchState({ loading: false, ...r, data: r.data || [] });
     });
     return () => {
       alive = false;
@@ -156,6 +159,9 @@ export default function MarketplaceClient() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchState.loading, pages, urlState.page]);
+
+  // Risk-band medians are computed once per dataset (#1384).
+  const medians = useMemo(() => computeListMedians(fetchState.data), [fetchState.data]);
 
   // Build currency options from loaded data
   const currencies = [
@@ -302,11 +308,7 @@ export default function MarketplaceClient() {
         </div>
 
         {/* ---- Offline notice ---- */}
-        {fetchState.offline && (
-          <div className="notice notice-warn" style={{ marginBottom: 20 }}>
-            The API is unreachable right now — showing demo data.
-          </div>
-        )}
+        <OfflineNotice {...fetchState} />
 
         {/* ---- Result count (aria-live for async announcements) ---- */}
         {!fetchState.loading && (
@@ -357,7 +359,7 @@ export default function MarketplaceClient() {
         ) : (
           <div className="grid grid-3">
             {items.map((inv) => (
-              <InvoiceCard key={inv.id} invoice={inv} />
+              <InvoiceCard key={inv.id} invoice={inv} medians={medians} />
             ))}
           </div>
         )}

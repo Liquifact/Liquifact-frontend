@@ -5,6 +5,13 @@ const nextConfig = {
   async headers() {
     return [
       {
+        source: "/:worker(sw|pwa-policy|pwa-config).js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+      {
         source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
