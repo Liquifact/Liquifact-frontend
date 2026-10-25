@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ContractCard from "@/components/ContractCard";
 import { API_DOCS_URL, API_URL, CONTRACT_ID, EXPLORER_URL, NETWORK, REPOS } from "@/lib/config";
+import { ANALYTICS_PATH } from "@/lib/analytics.js";
 
 export const metadata = { title: "Docs", description: "LiquiFact product overview, architecture and usage guide." };
 
@@ -8,6 +9,7 @@ const TOC = [
   ["overview", "Overview"],
   ["architecture", "Architecture"],
   ["how-to-use", "How to use"],
+  ["analytics", "Market analytics"],
   ["lifecycle", "Invoice lifecycle"],
   ["api", "API"],
   ["contract", "Smart contract"],
@@ -96,6 +98,21 @@ export default function DocsPage() {
               <li>After settlement, claim your payout (<code>claim_investor_payout</code>).</li>
             </ol>
             <div className="notice">This public deployment runs in demo mode on Stellar testnet: invoice data lives in the API&apos;s in-memory store, while invoice <code>INV_0001</code> is backed by the real escrow contract below.</div>
+          </section>
+
+          <section id="analytics">
+            <h2>Market analytics</h2>
+            <p>
+              The <Link href={ANALYTICS_PATH}>analytics page</Link> turns the invoice list from{" "}
+              <code>GET /api/invoices</code> into three charts: a yield distribution histogram, a maturity ladder
+              (overdue, ≤ 30d, 31–60d, 61–90d, &gt; 90d) and funding status by currency. Each chart has a
+              &quot;Show as table&quot; toggle for screen-reader and keyboard users, and a currency selector so
+              amounts are never mixed across currencies (defaults to the currency with the largest face value).
+            </p>
+            <p className="muted" style={{ margin: 0 }}>
+              All figures are computed client-side from the invoice list — no historical time series or on-chain data is
+              required.
+            </p>
           </section>
 
           <section id="lifecycle">

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { getHealth, listInvoices } from "@/lib/api";
 import { computeStats, primaryCurrency } from "@/lib/stats";
@@ -160,6 +161,9 @@ export default function LiveStats() {
             {status}
           </strong>
         )}
+      </p>
+      <p style={{ marginTop: 8 }}>
+        <Link href="/analytics">See market analytics →</Link>
       </p>
     </div>
   );
