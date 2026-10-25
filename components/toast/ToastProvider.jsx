@@ -6,6 +6,11 @@ import { reducer } from "../../lib/toast/queue.js";
 
 const ToastContext = createContext(null);
 
+/** Toast API, or null when rendered outside a <ToastProvider> (standalone components/tests). */
+export function useOptionalToast() {
+  return useContext(ToastContext);
+}
+
 export function useToast() {
   const ctx = useContext(ToastContext);
   if (!ctx) {

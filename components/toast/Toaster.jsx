@@ -67,6 +67,12 @@ function ToastItem({ toast, onDismiss, index }) {
       onBlurCapture={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false);
       }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          onDismiss(toast.id);
+        }
+      }}
     >
       <div className="toast-body">
         <div className="toast-title">{toast.title}</div>
