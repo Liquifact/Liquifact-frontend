@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { API_DOCS_URL, API_URL, EXPLORER_URL, REPOS } from "@/lib/config";
+import { API_DOCS_URL, API_URL, EXPLORER_URL, NETWORK_LABEL, REPOS } from "@/lib/config";
 import { getDictionary, t } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n/server";
 import LocaleSwitcher from "@/components/LocaleSwitcher";
@@ -44,7 +44,7 @@ export default async function SiteFooter() {
         </div>
       </div>
       <div className="container muted footer-bottom" style={{ marginTop: 28, fontSize: "0.85rem" }}>
-        <div>{tr("footer.legal", { year: new Date().getFullYear() })}</div>
+        <div>© {new Date().getFullYear()} LiquiFact · Running on Stellar {NETWORK_LABEL} · MIT licensed</div>
         <LocaleSwitcher />
       </div>
     </footer>

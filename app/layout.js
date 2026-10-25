@@ -3,6 +3,7 @@ import { NotificationsProvider } from "@/components/NotificationsProvider";
 import SiteHeader from "@/components/SiteHeader";
 import ServiceWorkerRegistrar from "@/components/pwa/ServiceWorkerRegistrar";
 import SiteFooter from "@/components/SiteFooter";
+import { SITE_URL } from "@/lib/config";
 import SkipLink from "@/components/SkipLink";
 import ToastProvider from "@/components/toast/ToastProvider";
 import { TxTrackerProvider } from "@/components/TxTrackerProvider";
@@ -13,7 +14,7 @@ import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import { getLocale } from "@/lib/i18n/server";
 
 export const metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://liquifact-frontend.vercel.app"),
+  metadataBase: new URL(SITE_URL),
   title: { default: "LiquiFact — Invoice liquidity on Stellar", template: "%s · LiquiFact" },
   description:
     "LiquiFact turns unpaid invoices into instant liquidity. SMEs tokenize invoices, investors fund them, and a Soroban escrow on Stellar holds funds until settlement.",

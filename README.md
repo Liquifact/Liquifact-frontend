@@ -5,9 +5,9 @@
 - **Website:** https://liquifact-frontend.vercel.app
 - **Docs:** https://liquifact-frontend.vercel.app/docs
 - **API:** https://liquifact-backend.vercel.app (API docs: https://liquifact-backend.vercel.app/docs)
-- **Contract (testnet):** [`CDQCKR2YU6IVQ4GYPBMXBPZ4FGFQB5H25AI7ZSETHS2CZ5ZRCWQDSO6P`](https://stellar.expert/explorer/testnet/contract/CDQCKR2YU6IVQ4GYPBMXBPZ4FGFQB5H25AI7ZSETHS2CZ5ZRCWQDSO6P)
+- **Contract (testnet):** [`CCQCKR2YU6IVQ4GYPBMXBPZ4FGFQB5H25AI7ZSETHS2CZ5ZRCWQDSO6P`](https://stellar.expert/explorer/testnet/contract/CDQCKR2YU6IVQ4GYPBMXBPZ4FGFQB5H25AI7ZSETHS2CZ5ZRCWQDSO6P)
 
-Web app for **LiquiFact**, the invoice liquidity network on Stellar. SMEs list
+Web app for **LiquFact**, the invoice liquidity network on Stellar. SMEs list
 unpaid invoices and get paid today; investors fund them through a Soroban
 escrow contract and earn yield when the debtor settles.
 
@@ -49,7 +49,9 @@ npm run build
 
 ## Configuration
 
-All variables are optional (see [`.env.local.example`](.env.local.example)):
+All variables are optional (see [`.env.local.example`](.env.local.example)). Values are
+validated at build time by `lib/config.js`; invalid values fail `npm run build`
+with a list of problems.
 
 | Variable | Default |
 |----------|---------|
@@ -57,9 +59,15 @@ All variables are optional (see [`.env.local.example`](.env.local.example)):
 | `NEXT_PUBLIC_CONTRACT_ID` | `CDQCKR2YU6IVQ4GYPBMXBPZ4FGFQB5H25AI7ZSETHS2CZ5ZRCWQDSO6P` |
 | `NEXT_PUBLIC_CONTRACT_INVOICE_ID` | `INV_0001` |
 | `NEXT_PUBLIC_ESCROW_REGISTRY` | _(empty)_ |
-| `NEXT_PUBLIC_STELLAR_NETWORK` | `testnet` |
+| `NEXT_PUBLIC_STELLAR_NETWORK` | `testnet` (accepts: `testnet`, `futurenet`, `mainnet` or `public`) |
 | `NEXT_PUBLIC_STELLAR_RPC_URL` | `https://soroban-testnet.stellar.org` |
 | `NEXT_PUBLIC_SITE_URL` | `https://liquifact-frontend.vercel.app` |
+| `NEXT_PUBLIC_SOROBAN_RPC_URL` | derived from network (testnet: `https://soroban-testnet.stellar.org`) |
+| `NEXT_PUBLIC_HORIZON_URL` | derived from network (testnet: `https://horizon-testnet.stellar.org`) |
+
+Network-specific constants (passphrase, RPC, Horizon, explorer slug) are
+derived from `NEXT_PUBLIC_STELLAR_NETWORK`. Mainnet maps to the `public`
+explorer slug on stellar.expert.
 
 ## Deployment
 

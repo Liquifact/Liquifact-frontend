@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import LiveStats from "@/components/LiveStats";
 import ContractCard from "@/components/ContractCard";
 import FeaturedInvoice, { FeaturedInvoiceSkeleton } from "@/components/FeaturedInvoice";
-import { API_DOCS_URL, CONTRACT_ID, EXPLORER_URL, NETWORK } from "@/lib/config";
+import { API_DOCS_URL, CONTRACT_ID, EXPLORER_URL, NETWORK, NETWORK_LABEL } from "@/lib/config";
 
 const STEPS = [
   { t: "SME submits an invoice", d: "Upload an unpaid B2B invoice with amount, debtor and due date. LiquiFact lists it on the marketplace." },
@@ -13,7 +13,7 @@ const STEPS = [
 ];
 
 const FEATURES = [
-  { i: "⛍", t: "On-chain escrow", d: "A Soroban smart contract holds every investor contribution, with explicit states for open, funded and settled." },
+  { i: "⛭", t: "On-chain escrow", d: "A Soroban smart contract holds every investor contribution, with explicit states for open, funded and settled." },
   { i: "⚡", t: "Fast and low-cost", d: "Stellar settles in seconds for fractions of a cent, so small invoices are economical to finance." },
   { i: "🛡", t: "Built-in safeguards", d: "Legal holds, allowlists, investor caps, funding deadlines and maturity locks are enforced by the contract." },
   { i: "📈", t: "Transparent yield", d: "Yield is set in basis points per invoice and visible before you commit — no hidden spreads." },
@@ -28,7 +28,7 @@ export default function Home() {
       <section className="hero">
         <div className="container hero-grid">
           <div>
-            <div className="pill"><span className="dot" /> Live on Stellar testnet</div>
+            <div className="pill"><span className="dot" /> Live on Stellar {NETWORK_LABEL}</div>
             <h1>
               Turn unpaid invoices into <span>instant liquidity</span>
             </h1>
