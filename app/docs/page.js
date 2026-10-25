@@ -33,6 +33,8 @@ const ENTRYPOINTS = [
   ["claim_investor_payout", "Investors claim principal plus yield after settlement and maturity."],
   ["set_legal_hold / clear_legal_hold", "Compliance freeze that blocks risky transitions."],
   ["get_escrow", "Read the full escrow state (used by the API's live endpoint)."],
+  ["get_settlement_readiness", "Read whether funding, maturity, and legal-hold conditions permit settlement."],
+  ["get_protocol_fee_bps", "Read the protocol fee rate applied to SME withdrawals."],
 ];
 
 export default function DocsPage() {
@@ -84,6 +86,7 @@ export default function DocsPage() {
               <li>Your invoice appears in the <Link href="/marketplace">Marketplace</Link> with status <em>open</em>.</li>
               <li>When investors reach the funding target the status becomes <em>funded</em> and you can withdraw liquidity from the escrow.</li>
               <li>At maturity the debtor pays; the escrow is settled and investors are repaid.</li>
+              <li>On an on-chain invoice page, connect the SME Freighter wallet to withdraw funded liquidity or settle when the escrow reports settlement readiness.</li>
             </ol>
             <h3>As an investor</h3>
             <ol>
@@ -139,7 +142,7 @@ curl -X POST ${API_URL}/api/invoices \\
               The escrow is deployed on Stellar <strong>{NETWORK}</strong> as{" "}
               <a href={EXPLORER_URL}><code>{CONTRACT_ID}</code></a>.
             </p>
-            <ContractCard />
+            <ContractCard contractId={CONTRACT_ID} network={NETWORK} />
             <div className="table-wrap" style={{ marginTop: 20 }}>
               <table className="table">
                 <thead><tr><th>Entrypoint</th><th>Purpose</th></tr></thead>
@@ -160,7 +163,7 @@ curl -X POST ${API_URL}/api/invoices \\
 cd Liquifact-frontend
 npm ci
 NEXT_PUBLIC_API_URL=http://localhost:3001 npm run dev`}</pre>
-            <p>Environment variables (all optional): <code>NEXT_PUBLIC_API_URL</code>, <code>NEXT_PUBLIC_CONTRACT_ID</code>, <code>NEXT_PUBLIC_STELLAR_NETWORK</code>.</p>
+            <p>Environment variables (all optional): <code>NEXT_PUBLIC_API_URL</code>, <code>NEXT_PUBLIC_CONTRACT_ID</code>, <code>NEXT_PUBLIC_CONTRACT_INVOICE_ID</code>, <code>NEXT_PUBLIC_ESCROW_REGISTRY</code>, <code>NEXT_PUBLIC_STELLAR_NETWORK</code>.</p>
           </section>
         </div>
       </div>
