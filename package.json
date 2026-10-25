@@ -12,6 +12,7 @@
     "build": "node scripts/prepare-pwa.mjs && next build",
     "start": "next start",
     "test": "node scripts/check-i18n.mjs && node --test tests/*.test.mjs",
+    "e2e": "playwright test",
     "test:ui": "vitest run"
   },
   "dependencies": {
@@ -22,6 +23,8 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "1.48.2",
+    "@axe-core/playwright": "4.10.1",
     "@testing-library/jest-dom": "6.6.3",
     "@testing-library/react": "16.3.0",
     "@testing-library/user-event": "14.6.1",
