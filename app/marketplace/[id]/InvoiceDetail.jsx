@@ -72,6 +72,8 @@ function offChainRemaining(inv) {
 // ExitPanel uses @stellar/stellar-sdk and the Freighter browser API — SSR-unsafe.
 // Lazy-load so the Soroban SDK never runs on the server.
 const ExitPanel = dynamic(() => import("@/components/invest/ExitPanel"), { ssr: false });
+// ClaimPanel signs claim_investor_payout through Freighter — SSR-unsafe for the same reason.
+const ClaimPanel = dynamic(() => import("@/components/invest/ClaimPanel"), { ssr: false });
 
 // Codes that disable the Fund button outright (amount edits cannot fix them).
 const BLOCKING_CODES = new Set([CODES.PAUSED, CODES.LEGAL_HOLD, CODES.DEADLINE_PASSED, CODES.NOT_OPEN]);
@@ -430,6 +432,8 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                   </div>
                 )}
               </form>
+            ) : inv.onChain && inv.status === "settled" ? (
+              <ClaimPanel investorAddress={investorAddress} currency={inv.currency} />
             ) : (
               <p className="muted" style={{ marginTop: 12 }}>
                 This invoice is <strong>{inv.status}</strong>
