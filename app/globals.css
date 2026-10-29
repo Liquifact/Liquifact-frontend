@@ -467,6 +467,93 @@ pre { background: var(--code-bg); color: var(--code-fg); padding: 16px; border-r
   margin-top: 24px;
   padding-top: 20px;
 }
+
+/* ── Yield-tier selector ─────────────────────────────────────────────────── */
+.tier-selector { margin-top: 4px; }
+.tier-fixed {
+  margin-top: 4px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.tier-selector .field-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--fg);
+  display: block;
+  margin-bottom: 8px;
+}
+.tier-selector [role="radiogroup"] {
+  display: grid;
+  gap: 8px;
+}
+.tier-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  min-width: 0;
+}
+.tier-option:hover { border-color: color-mix(in srgb, var(--brand) 40%, var(--border)); }
+.tier-option-selected {
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 8%, var(--surface));
+}
+.tier-option-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.tier-option-disabled:hover { border-color: var(--border); }
+.tier-radio {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  cursor: inherit;
+  accent-color: var(--brand);
+}
+.tier-label {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--fg);
+}
+.tier-disabled-reason {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+  padding-left: 8px;
+}
+.tier-quote {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 0.88rem;
+  min-height: 1.5em;
+}
+.tier-quote strong { color: var(--ok); }
+.tier-quote-error { color: var(--danger); }
+/* Focus ring for the radio inputs inside the funding card */
+.funding-card .tier-radio.focus-ring:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 3px;
+}
+/* 375 px — stack cleanly at narrow widths */
+@media (max-width: 480px) {
+  .tier-option { flex-wrap: wrap; }
+  .tier-disabled-reason {
+    margin-left: 0;
+    width: 100%;
+    padding-left: 28px;
+  }
+}
 .exit-panel-heading {
   font-size: 1rem;
   margin: 0 0 10px;

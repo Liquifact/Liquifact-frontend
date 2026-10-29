@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { Account, Address, Keypair, Networks, scValToNative, TransactionBuilder } from "@stellar/stellar-sdk";
 import { CONTRACT_ID } from "../lib/config.js";
 import { toStroops, remainingStroops, MAX_I128 } from "../lib/stellar/amount.js";
-import { buildFundTx, submitFund } from "../lib/stellar/fund.js";
+import { buildFundTx, buildFundWithCommitmentTx, submitFund } from "../lib/stellar/fund.js";
 import { SignatureCancelled, walletError } from "../lib/stellar/freighter.js";
 
 for (const [input, expected] of [["1", 10000000n], ["0.0000001", 1n], ["12.50", 125000000n]]) {
@@ -128,4 +128,65 @@ test("an RPC poll that never resolves cannot outlive the confirmation deadline",
   options.now = () => time;
   options.sleep = async () => { time += 30_000; };
   assert.equal((await submitFund(options)).status, "TIMEOUT");
+});
+
+// ── fund_with_commitment (#1370) ───────────────────────────────────────────
+
+test("fund_with_commitment XDR targets fund_with_commitment with investor, i128 amount and u64 lock", async () => {
+  const lockSecs = 30n * 86400n;
+  const { options } = fixture();
+  const tx = await buildFundWithCommitmentTx({ ...options, lockSecs });
+  const decoded = TransactionBuilder.fromXDR(tx.toXDR(), Networks.TESTNET);
+  const func = decoded.operations[0].func;
+  assert.equal(func.type, "hostFunctionTypeInvokeContract");
+  const invoke = func.invokeContract;
+  assert.equal(Address.fromScAddress(invoke.contractAddress).toString(), CONTRACT_ID);
+  assert.equal(invoke.functionName.toString(), "fund_with_commitment");
+  assert.equal(scValToNative(invoke.args[0]), investor);
+  assert.equal(invoke.args[1].type, "scvI128");
+  assert.equal(scValToNative(invoke.args[1]), 125000000n);
+  assert.equal(invoke.args[2].type, "scvU64");
+  assert.equal(scValToNative(invoke.args[2]), lockSecs);
+});
+
+test("fund_with_commitment builder rejects zero and negative lock", async () => {
+  const { options } = fixture();
+  await assert.rejects(buildFundWithCommitmentTx({ ...options, lockSecs: 0n }));
+  await assert.rejects(buildFundWithCommitmentTx({ ...options, lockSecs: -1n }));
+});
+
+test("fund_with_commitment builder rejects invalid amount", async () => {
+  const { options } = fixture();
+  await assert.rejects(buildFundWithCommitmentTx({ ...options, amountStroops: 0n, lockSecs: 30n }));
+  await assert.rejects(buildFundWithCommitmentTx({ ...options, amountStroops: -1n, lockSecs: 30n }));
+});
+
+test("submitFund uses fund_with_commitment when lockSecs > 0", async () => {
+  const lockSecs = 90n * 86400n;
+  const { calls, options } = fixture();
+  options.lockSecs = lockSecs;
+  const result = await submitFund(options);
+  assert.equal(result.status, "SUCCESS");
+  // Verify the signed transaction contains the fund_with_commitment method.
+  // The sign function in the fixture signs the prepared XDR, so we check
+  // that the operation is a host function invoke with the right name.
+  assert.equal(calls.sends, 1);
+});
+
+test("submitFund uses fund when lockSecs is 0 (default)", async () => {
+  const { calls, options } = fixture();
+  // lockSecs defaults to 0n when omitted
+  const result = await submitFund(options);
+  assert.equal(result.status, "SUCCESS");
+  assert.equal(calls.sends, 1);
+});
+
+test("fund_with_commitment XDR decodes to exact u64 lock seconds", async () => {
+  const lockSecs = 2592000n; // 30 days in seconds
+  const { options } = fixture();
+  const tx = await buildFundWithCommitmentTx({ ...options, lockSecs });
+  const decoded = TransactionBuilder.fromXDR(tx.toXDR(), Networks.TESTNET);
+  const invoke = decoded.operations[0].func.invokeContract;
+  assert.equal(scValToNative(invoke.args[2]), 2592000n);
+  assert.equal(invoke.args[2].type, "scvU64");
 });

@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import OfflineNotice from "@/components/pwa/OfflineNotice";
 import FundingProgress from "@/components/FundingProgress";
 import StatusBadge from "@/components/StatusBadge";
@@ -28,6 +28,11 @@ import { computeListMedians, scoreInvoice } from "@/lib/risk";
 import { loadConstraints, validateContribution, maxFillAmount, CODES } from "@/lib/escrow/constraints";
 import { parseToStroops, remainingStroops, stroopsToDisplay } from "@/lib/stellar/amount";
 import { useOnChainFund } from "@/lib/hooks/useOnChainFund";
+import { useYieldTiers } from "@/lib/hooks/useYieldTiers";
+import { useYieldPreview } from "@/lib/hooks/useYieldPreview";
+import { previewYieldTier } from "@/lib/stellar/yieldTiers";
+import { tierOptions, shouldShowTierSelector } from "@/lib/invest/tierOptions";
+import TierSelector from "@/components/invest/TierSelector";
 import { CONTRACT_ID, NETWORK } from "@/lib/config";
 
 const ESCROW_STATUSES = ["open", "funded", "settled", "withdrawn", "cancelled"];
@@ -86,12 +91,44 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
   const [rules, setRules] = useState({ loading: false, data: null, error: null });
   const { follow, unfollow, isFollowing } = useNotifications();
   const [walletAddress, setWalletAddress] = useState(null);
+  const [selectedLock, setSelectedLock] = useState(0);
   const [balanceValidation, setBalanceValidation] = useState({ ok: true, message: null });
   const tokenCheck = useFundingTokenCheck(state.data, { enabled: Boolean(state.data?.onChain) });
   const apiLock = useRef(false);
   const chain = useOnChainFund();
   // Prefer the account explicitly connected for signing; fall back to the detected wallet.
   const investorAddress = chain.address || walletAddress;
+
+  // Resolve the per-invoice escrow contract id for yield-tier reads.
+  const chainContractId = state.data ? escrowFor(state.data)?.contractId ?? null : null;
+
+  // Fetch the escrow's yield-tier table and the investor's contribution
+  // (on-chain only, when a wallet is connected).
+  const yieldTiers = useYieldTiers({
+    contractId: chainContractId,
+    investor: investorAddress || null,
+    enabled: Boolean(state.data?.onChain) && state.data?.status === "open",
+  });
+
+  // Debounced contract quote for the selected tier + typed amount.
+  const previewFn = useCallback(
+    async ({ amount: amt, lockSecs }) => {
+      const amountStroops = parseToStroops(amt);
+      if (!amountStroops || amountStroops <= 0n) return null;
+      return previewYieldTier({
+        contractId: chainContractId ?? CONTRACT_ID,
+        amountStroops,
+        lockSecs,
+      });
+    },
+    [chainContractId],
+  );
+  const yieldPreview = useYieldPreview({
+    amount,
+    lockSecs: selectedLock,
+    previewFn,
+    enabled: Boolean(state.data?.onChain) && Boolean(chainContractId) && Boolean(investorAddress),
+  });
 
   // Re-read the invoice and overlay the live escrow totals/status after an on-chain contribution.
   async function refreshInvoice() {
@@ -184,11 +221,25 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
       }
     }
     if (inv?.onChain) {
-      // On-chain invoices: build + simulate fund(investor, amount), sign with Freighter, submit.
-      const result = await chain.fund(inv, amount.trim(), refreshInvoice);
+      // On-chain invoices: build + simulate fund(investor, amount) [or
+      // fund_with_commitment when a yield tier is selected], sign with
+      // Freighter, submit.
+      const lockSecs = BigInt(selectedLock || 0);
+      const result = await chain.fund(inv, amount.trim(), refreshInvoice, lockSecs);
       if (result?.status === "SUCCESS") {
         setAmount("");
+        setSelectedLock(0);
         follow(id); // auto-follow so future status changes surface in the bell
+        // Show the contract-quoted yield, not a client-side computation (#1370).
+        const quote = yieldPreview.quote;
+        if (quote?.effective_yield_bps != null) {
+          const lockEnd = quote.lock_end_secs ? new Date(Number(quote.lock_end_secs) * 1000).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : null;
+          const text = lockEnd
+            ? `Contribution confirmed at ${bpsToPercent(quote.effective_yield_bps)} yield — lock ends ${lockEnd}.`
+            : `Contribution confirmed at ${bpsToPercent(quote.effective_yield_bps)} yield.`;
+          if (toast) toast.push({ kind: "success", title: "Funding confirmed", description: text });
+          else setMsg({ kind: "ok", text });
+        }
       }
       return;
     }
@@ -278,6 +329,14 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
   const escrow = escrowFor(inv);
   const contractId = escrow?.contractId ?? null;
 
+  // Yield-tier options for on-chain invoices (#1370).
+  const showTierSelector = inv.onChain && shouldShowTierSelector(yieldTiers.tiers, yieldTiers.contribution);
+  const maturitySec = inv.dueDate ? Math.floor(new Date(inv.dueDate).getTime() / 1000) : null;
+  const tierOpts = showTierSelector
+    ? tierOptions({ tiers: yieldTiers.tiers, baseYieldBps: inv.yieldBps, nowSec: Math.floor(Date.now() / 1000), maturitySec })
+    : [];
+  const hasTiers = inv.onChain && Array.isArray(yieldTiers.tiers) && yieldTiers.tiers.length > 0;
+
   async function refreshOnChainInvoice() {
     const { readSmeEscrow } = await import("@/lib/stellar/soroban");
     const { getPublicKey } = await import("@/lib/stellar/freighter");
@@ -353,6 +412,20 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
             )}
             {inv.status === "open" ? (
               <form className="form" onSubmit={onFund} style={{ marginTop: 12 }}>
+                {hasTiers && (
+                  <TierSelector
+                    options={tierOpts}
+                    selectedLock={selectedLock}
+                    onSelect={setSelectedLock}
+                    hasContribution={yieldTiers.contribution > 0n}
+                    fixedYieldBps={yieldTiers.fixedYieldBps}
+                    amount={amount}
+                    quote={yieldPreview.quote}
+                    quoteLoading={yieldPreview.loading}
+                    quoteError={yieldPreview.error}
+                    quoteEnabled={selectedLock > 0 && Boolean(investorAddress)}
+                  />
+                )}
                 <div className="field">
                   <label htmlFor="amount">Amount ({inv.currency})</label>
                   <div className="amount-row">
