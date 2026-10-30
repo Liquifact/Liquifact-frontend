@@ -12,6 +12,7 @@ import TxActivityButton from "@/components/TxActivityButton";
 const LINKS = [
   { href: "/", labelKey: "nav.home" },
   { href: "/marketplace", labelKey: "nav.marketplace" },
+  { href: "/portfolio", labelKey: "nav.portfolio" },
   { href: "/submit", labelKey: "nav.submit" },
   { href: "/get-started", labelKey: "nav.getStarted" },
   { href: "/docs", labelKey: "nav.docs" },

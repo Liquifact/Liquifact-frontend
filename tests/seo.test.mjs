@@ -72,6 +72,7 @@ test("sitemap lists invoice pages and omits cancelled invoices", async () => {
   });
   const urls = (await sitemap()).map((e) => e.url);
   assert.ok(urls.some((u) => u.endsWith("/marketplace")));
+  assert.ok(!urls.some((u) => u.endsWith("/portfolio")));
   assert.ok(urls.some((u) => u.endsWith("/marketplace/INV_A")));
   assert.ok(!urls.some((u) => u.endsWith("/marketplace/INV_B")));
 });
