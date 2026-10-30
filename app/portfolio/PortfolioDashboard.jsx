@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatAmount, bpsToPercent } from '../../lib/format.js';
 import { summarise } from '../../lib/portfolio/summary.js';
 import { listPositions, resolveSources } from '../../lib/portfolio/sources.js';
+import { connectFreighter, getWalletAddress } from '../../lib/stellar/freighter.js';
 
 const FILTERS = [
   { id: 'all', label: 'All' },
@@ -11,8 +12,8 @@ const FILTERS = [
   { id: 'settled', label: 'Settled' },
 ];
 
-const ACTIVE_STATUSES = new Set(['funding', 'active', 'repaying', 'partially-repaid']);
-const SETTLED_STATUSES = new Set(['settled', 'repaid', 'claimed']);
+const ACTIVE_STATUSES = new Set(['open', 'funding', 'funded', 'active', 'repaying', 'partially-repaid']);
+const SETTLED_STATUSES = new Set(['settled', 'repaid', 'claimed', 'withdrawn']);
 
 function statusBucket(status) {
   if (ACTIVE_STATUSES.has(status)) return 'active';
@@ -42,13 +43,30 @@ function actionForPosition(position) {
   return null;
 }
 
-export default function PortfolioDashboard({ address = null, demo = false }) {
+export default function PortfolioDashboard({ address: addressProp = null, demo = false }) {
+  const [walletAddress, setWalletAddress] = useState(addressProp);
   const [positions, setPositions] = useState([]);
   const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [nowMs, setNowMs] = useState(Date.now());
+  const [walletError, setWalletError] = useState('');
+  const [connecting, setConnecting] = useState(false);
   const statusRef = useRef();
+
+  useEffect(() => {
+    let cancelled = false;
+    if (addressProp) {
+      setWalletAddress(addressProp);
+      return undefined;
+    }
+    getWalletAddress().then((address) => {
+      if (!cancelled) setWalletAddress(address);
+    }).catch(() => {
+      if (!cancelled) setWalletAddress(null);
+    });
+    return () => { cancelled = true; };
+  }, [addressProp]);
 
   useEffect(() => {
     setNowMs(Date.now());
@@ -58,8 +76,8 @@ export default function PortfolioDashboard({ address = null, demo = false }) {
     let cancelled = false;
     setLoading(true);
     setErrors([]);
-    const sources = resolveSources({ address, demo });
-    listPositions(sources, { address })
+    const sources = resolveSources({ address: walletAddress, demo });
+    listPositions(sources, { address: walletAddress })
       .then((result) => {
         if (cancelled) return;
         setPositions(Array.isArray(result.positions) ? result.positions : []);
@@ -76,7 +94,7 @@ export default function PortfolioDashboard({ address = null, demo = false }) {
     return () => {
       cancelled = true;
     };
-  }, [address, demo]);
+  }, [walletAddress, demo]);
 
   const summary = useMemo(() => summarise(positions, nowMs), [positions, nowMs]);
 
@@ -85,8 +103,8 @@ export default function PortfolioDashboard({ address = null, demo = false }) {
     return positions.filter((p) => statusBucket(p.status) === filter);
   }, [positions, filter]);
 
-  const currencies = summary.currencies || [];
-  const disconnected = !address && positions.length === 0;
+  const currencies = summary.totalsByCurrency || [];
+  const disconnected = !walletAddress && positions.length === 0 && !loading;
   const hasPositions = positions.length > 0;
 
   const onFilterKeyDown = (event, idx) => {
@@ -101,16 +119,39 @@ export default function PortfolioDashboard({ address = null, demo = false }) {
     if (btn) btn.focus();
   };
 
+  const connectWallet = async () => {
+    setConnecting(true);
+    setWalletError('');
+    try {
+      const address = await connectFreighter();
+      setWalletAddress(address);
+    } catch (error) {
+      setWalletError(error?.message || 'Unable to connect your wallet.');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
   return (
     <section className="portfolio" aria-labelledby="portfolio-heading">
       <header className="portfolio-header">
         <h1 id="portfolio-heading">Portfolio</h1>
         <p className="portfolio-subtitle">
-          {address
-            ? `Positions for ${address.slice(0, 4)}…${address.slice(-4)}`
+          {walletAddress
+            ? `Positions for ${walletAddress.slice(0, 4)}…${walletAddress.slice(-4)}`
             : 'Showing anonymous local contributions and on-chain positions'}
         </p>
       </header>
+
+      {!walletAddress && !demo && positions.length > 0 && (
+        <div className="portfolio-wallet-note" role="status">
+          <p>Connect your wallet to include its on-chain positions. Browser contributions are shown below.</p>
+          <button type="button" className="button" onClick={connectWallet} disabled={connecting}>
+            {connecting ? 'Connecting…' : 'Connect wallet'}
+          </button>
+        </div>
+      )}
+      {walletError && <p className="portfolio-error" role="alert">{walletError}</p>}
 
       <div className="portfolio-live" role="status" aria-live="polite">
         {loading ? 'Loading positions...' : ''}
@@ -134,6 +175,9 @@ export default function PortfolioDashboard({ address = null, demo = false }) {
         <div className="portfolio-empty">
           <h2>Connect your wallet</h2>
           <p>Connect a wallet to see your on-chain positions and projected yield.</p>
+          <button type="button" className="button" onClick={connectWallet} disabled={connecting}>
+            {connecting ? 'Connecting…' : 'Connect wallet'}
+          </button>
         </div>
       ) : !hasPositions && !loading ? (
         <div className="portfolio-empty">
@@ -142,6 +186,8 @@ export default function PortfolioDashboard({ address = null, demo = false }) {
             <a className="button" href="/marketplace">Browse the Marketplace</a>
           </p>
         </div>
+      ) : !hasPositions && loading ? (
+        <div className="portfolio-empty" aria-hidden="true" />
       ) : (
         <>
           <div className="portfolio-kpis">
@@ -150,7 +196,7 @@ export default function PortfolioDashboard({ address = null, demo = false }) {
             ) : (
               currencies.map((curr) => (
                 <div className="portfolio-kpi-group" key={curr.currency}>
-                  <h3 className="portfolio-kpi-currency">{curr.currency}</h3>
+                  <h2 className="portfolio-kpi-currency">{curr.currency}</h2>
                   <dl className="portfolio-kpi-list">
                     <div className="portfolio-kpi">
                       <dt>Invested</dt>
@@ -162,7 +208,7 @@ export default function PortfolioDashboard({ address = null, demo = false }) {
                     </div>
                     <div className="portfolio-kpi">
                       <dt>Avg yield</dt>
-                      <dd>{formatPercent(curr.weightedYieldBps).replace(' ', '')}</dd>
+                      <dd>{formatPercent(curr.avgYieldBps).replace(' ', '')}</dd>
                     </div>
                     <div className="portfolio-kpi">
                       <dt>Claimable</dt>
@@ -173,6 +219,15 @@ export default function PortfolioDashboard({ address = null, demo = false }) {
               ))
             )}
           </div>
+
+          <section className="portfolio-status-summary" aria-label="Positions by status">
+            <h2>Position status</h2>
+            <ul>
+              {Object.entries(summary.countsByStatus || {}).map(([status, count]) => (
+                <li key={status}><span>{status}</span><strong>{count}</strong></li>
+              ))}
+            </ul>
+          </section>
 
           <div className="portfolio-filters" role="group" aria-label="Filter positions" ref={statusRef}>
             {FILTERS.map((opt, idx) => (
@@ -215,12 +270,12 @@ export default function PortfolioDashboard({ address = null, demo = false }) {
                     return (
                       <tr key={`${pos.source || 'pos'}:${pos.invoiceId}:${pos.address || ''}`}>
                         <th scope="row">{pos.invoiceId}</th>
-                        <td><span className={`badge badge-${statusBucket(pos.status)}`}>{pos.status || 'unknown'}</span></td>
-                        <td>{formatAmount(pos.principal, pos.currency)}</td>
-                        <td>{formatPercent(pos.yieldBps)}</td>
-                        <td>{formatAmount(pos.projectedPayout, pos.currency)}</td>
-                        <td>{formatDue(pos.due)}</td>
-                        <td>
+                        <td data-label="Status"><span className={`badge badge-${statusBucket(pos.status)}`}>{pos.status || 'unknown'}</span></td>
+                        <td data-label="Principal">{formatAmount(pos.amount ?? pos.principal, pos.currency)}</td>
+                        <td data-label="Yield">{formatPercent(pos.yieldBps)}</td>
+                        <td data-label="Projected payout">{formatAmount(pos.projectedPayout, pos.currency)}</td>
+                        <td data-label="Due">{formatDue(pos.dueAt ?? pos.due)}</td>
+                        <td data-label="Action">
                           {action ? (
                             <a className="action-link" href={action.href} aria-label={action.aria}>{action.label}</a>
                           ) : (
@@ -240,8 +295,8 @@ export default function PortfolioDashboard({ address = null, demo = false }) {
               <h2 id="portfolio-upcoming-heading">Upcoming maturities (next 30 days)</h2>
               <ul>
                 {summary.upcomingMaturities.map((pos) => (
-                  <li key={`${pos.invoiceId}-${pos.due}`}>
-                    {pos.invoiceId} — {formatDue(pos.due)} — {formatAmount(pos.projectedPayout, pos.currency)}
+                  <li key={`${pos.invoiceId}-${pos.dueAt ?? pos.due}`}>
+                    {pos.invoiceId} — {formatDue(pos.dueAt ?? pos.due)} — {formatAmount(pos.projectedPayout, pos.currency)}
                   </li>
                 ))}
               </ul>

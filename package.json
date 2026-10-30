@@ -8,9 +8,9 @@
     "node": ">=20.9"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "node scripts/prepare-pwa.mjs && next build",
-    "start": "next start",
+    "dev": "node init && next dev",
+    "build": "node init && node scripts/prepare-pwa.mjs && next build",
+    "start": "node init && next start",
     "test": "node scripts/check-i18n.mjs && node --test tests/*.test.mjs",
     "test:ui": "vitest run"
   },
