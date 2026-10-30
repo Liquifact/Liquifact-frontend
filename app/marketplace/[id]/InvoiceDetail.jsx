@@ -23,6 +23,7 @@ import SmeActionsCard from "@/components/sme/SmeActionsCard";
 import LifecycleTimeline from "@/components/invoice/LifecycleTimeline";
 import { escrowFor } from "@/lib/escrow/registry";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
+import { recordContribution } from "@/lib/portfolio/sources";
 import * as money from "@/lib/money";
 import { computeListMedians, scoreInvoice } from "@/lib/risk";
 import { loadConstraints, validateContribution, maxFillAmount, CODES } from "@/lib/escrow/constraints";
@@ -217,6 +218,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
     setMsg(null);
     try {
       const { data } = await fundInvoice(id, n);
+      recordContribution({ at: Date.now(), invoiceId: id, amount: n, currency: data.currency });
       setState((s) => ({ ...s, data }));
       setAmount("");
       follow(id); // auto-follow so future status changes surface in the bell
@@ -388,7 +390,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                       ? "Checking escrow rules…"
                       : inv.onChain
                         ? `Up to ${remaining} ${inv.currency}. Review the amount and network in Freighter before signing.`
-                        : "Demo mode: contributions are recorded by the API."}
+                        : "Demo mode: contributions are recorded by the API; on-chain funding uses the escrow's <code>fund</code> entrypoint."}
                   </span>
                   <span className="field-error" id="amount-error" aria-live="polite">
                     {validation && !validation.ok ? validation.message : ""}

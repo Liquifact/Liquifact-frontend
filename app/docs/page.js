@@ -93,6 +93,7 @@ export default function DocsPage() {
               <li>Browse the <Link href="/marketplace">Marketplace</Link> and filter by status.</li>
               <li>Open an invoice to review face value, yield, due date and funding progress.</li>
               <li>Enter an amount and choose <em>Fund invoice</em>. On-chain, this maps to the escrow&apos;s <code>fund</code> entrypoint.</li>
+              <li>Track every position and projected yield on your <Link href="/portfolio">Portfolio</Link>.</li>
               <li>After settlement, claim your payout (<code>claim_investor_payout</code>).</li>
             </ol>
             <div className="notice">This public deployment runs in demo mode on Stellar testnet: invoice data lives in the API&apos;s in-memory store, while invoice <code>INV_0001</code> is backed by the real escrow contract below.</div>
