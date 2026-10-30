@@ -218,7 +218,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
     setMsg(null);
     try {
       const { data } = await fundInvoice(id, n);
-      recordContribution({ at: Date.now(), invoiceId: id, amount: n, currency: data.currency });
+      await recordContribution({ at: Date.now(), invoiceId: id, amount: n, currency: data.currency || inv.currency });
       setState((s) => ({ ...s, data }));
       setAmount("");
       follow(id); // auto-follow so future status changes surface in the bell
@@ -390,7 +390,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                       ? "Checking escrow rules…"
                       : inv.onChain
                         ? `Up to ${remaining} ${inv.currency}. Review the amount and network in Freighter before signing.`
-                        : "Demo mode: contributions are recorded by the API; on-chain funding uses the escrow's <code>fund</code> entrypoint."}
+                        : "Demo mode: contributions are recorded by the API; on-chain funding uses the escrow fund entrypoint."}
                   </span>
                   <span className="field-error" id="amount-error" aria-live="polite">
                     {validation && !validation.ok ? validation.message : ""}
