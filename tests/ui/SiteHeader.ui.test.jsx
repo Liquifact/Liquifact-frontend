@@ -101,6 +101,9 @@ describe("SiteHeader", () => {
     links[links.length - 1].focus();
     expect(menuButton().getAttribute("aria-expanded")).toBe("true");
     await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: /connect wallet/i }));
+    expect(menuButton().getAttribute("aria-expanded")).toBe("true");
+    await user.tab();
     expect(menuButton().getAttribute("aria-expanded")).toBe("false");
   });
 
