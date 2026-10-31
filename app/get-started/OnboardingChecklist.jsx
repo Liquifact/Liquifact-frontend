@@ -136,7 +136,7 @@ export default function OnboardingChecklist() {
     const ac = new AbortController();
     abortRef.current = ac;
 
-    const ext = hasFreighter();
+    const ext = await hasFreighter();
     const conn = ext ? await isConnected() : false;
     const networkName = conn ? await getNetworkName() : null;
     const pubkey = conn ? await getPublicKey() : null;

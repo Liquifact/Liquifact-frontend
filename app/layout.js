@@ -1,5 +1,6 @@
 import "./globals.css";
 import { NotificationsProvider } from "@/components/NotificationsProvider";
+import { WalletProvider } from "@/components/wallet/WalletProvider";
 import SiteHeader from "@/components/SiteHeader";
 import ServiceWorkerRegistrar from "@/components/pwa/ServiceWorkerRegistrar";
 import SiteFooter from "@/components/SiteFooter";
@@ -46,6 +47,7 @@ export default async function RootLayout({ children }) {
       <body>
         <I18nProvider locale={locale} dict={dict}>
           <SkipLink />
+          <WalletProvider>
           <ToastProvider>
             <TxTrackerProvider>
               <NotificationsProvider>
@@ -55,6 +57,7 @@ export default async function RootLayout({ children }) {
               </NotificationsProvider>
             </TxTrackerProvider>
           </ToastProvider>
+          </WalletProvider>
           <ServiceWorkerRegistrar />
         </I18nProvider>
       </body>

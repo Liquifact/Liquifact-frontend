@@ -1,3 +1,4 @@
+import { WalletProvider } from "@/components/wallet/WalletProvider";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -14,7 +15,7 @@ vi.mock("@/components/TxActivityButton", () => ({ default: () => null }));
 function renderHeader() {
   return render(
     <>
-      <SiteHeader />
+      <WalletProvider><SiteHeader /></WalletProvider>
       <main id="main" tabIndex={-1}>
         <button type="button">Page action</button>
       </main>
@@ -100,6 +101,9 @@ describe("SiteHeader", () => {
     links[links.length - 1].focus();
     expect(menuButton().getAttribute("aria-expanded")).toBe("true");
     await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: /connect wallet/i }));
+    expect(menuButton().getAttribute("aria-expanded")).toBe("true");
+    await user.tab();
     expect(menuButton().getAttribute("aria-expanded")).toBe("false");
   });
 
@@ -120,7 +124,7 @@ describe("SiteHeader", () => {
     mockPathname = "/marketplace";
     rerender(
       <>
-        <SiteHeader />
+        <WalletProvider><SiteHeader /></WalletProvider>
         <main id="main" tabIndex={-1} />
       </>
     );

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { isActivePath } from "@/lib/nav";
+import { WalletButton } from "@/components/wallet/WalletButton";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useT } from "@/lib/i18n/I18nProvider";
 import NotificationBell from "@/components/NotificationBell";
@@ -100,6 +101,7 @@ export default function SiteHeader() {
             );
           })}
           <ThemeToggle />
+          <div className="wallet"><WalletButton /></div>
         </nav>
         <TxActivityButton />
         <NotificationBell />

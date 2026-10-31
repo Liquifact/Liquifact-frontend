@@ -643,3 +643,28 @@ pre { background: var(--code-bg); color: var(--code-fg); padding: 16px; border-r
 .featured-invoice { display: block; color: inherit; text-decoration: none; transition: transform 0.15s ease; }
 .featured-invoice:hover { transform: translateY(-2px); }
 .featured-invoice:focus-visible { outline: 3px solid var(--on-hero-link); outline-offset: 4px; }
+
+/* Wallet */
+.wallet { position: relative; margin-left: auto; display: flex; align-items: center; }
+.wallet-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 10px; padding: 9px 14px; font-weight: 600; font-size: 0.9rem; border: 1px solid var(--border); background: var(--surface); color: var(--fg); cursor: pointer; font-family: inherit; text-decoration: none !important; }
+.wallet-btn:hover { background: var(--surface-2); text-decoration: none; }
+.wallet-btn[disabled] { opacity: 0.6; cursor: progress; }
+.wallet-btn-connected { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.wallet-btn-install { border-color: var(--brand); color: var(--brand); }
+.wallet-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
+.wallet-spinner { width: 12px; height: 12px; border-radius: 999px; border: 2px solid color-mix(in srgb, var(--fg) 25%, transparent); border-top-color: var(--fg); animation: wallet-spin 0.7s linear infinite; }
+@keyframes wallet-spin { to { transform: rotate(360deg); } }
+.wallet-menu { position: absolute; right: 0; top: calc(100% + 8px); min-width: 210px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 6px; display: grid; gap: 2px; z-index: 60; }
+.wallet-menu button, .wallet-menu a { display: block; width: 100%; text-align: left; padding: 9px 10px; border: 0; border-radius: 8px; background: none; color: var(--fg); font: inherit; font-size: 0.9rem; cursor: pointer; }
+.wallet-menu button:hover, .wallet-menu a:hover { background: var(--surface-2); text-decoration: none; }
+.wallet-notice { position: absolute; right: 0; top: calc(100% + 8px); z-index: 60; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 0.83rem; color: var(--muted); }
+.wallet-alert { margin-top: 6px; color: var(--danger); font-size: 0.83rem; }
+.wallet-retry { border: 0; background: none; color: var(--danger); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 0; }
+@media (max-width: 760px) {
+  .wallet { margin-left: 0; width: 100%; }
+  .wallet-btn { width: 100%; }
+  .wallet-menu { position: static; width: 100%; margin-top: 8px; }
+  .wallet-notice { position: static; margin-top: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) { .wallet-spinner { animation: none; } }
