@@ -207,3 +207,15 @@ test("the Freighter SEP-43 rejection code is normalized", async () => {
   await assert.rejects(connect(), error => error.code === WALLET_ERROR_CODE.USER_REJECTED);
   resetFreighterApi();
 });
+
+test("legacy network-passphrase signing uses the current address", async () => {
+  let seen;
+  setFreighterApi(fakeApi({ signTransaction: async (xdr, options) => {
+    seen = { xdr, options };
+    return { signedXdr: "legacy-signed" };
+  } }));
+  try {
+    assert.equal(await signTransaction("raw", "test-passphrase"), "legacy-signed");
+    assert.deepEqual(seen, { xdr: "raw", options: { networkPassphrase: "test-passphrase", address: ADDRESS } });
+  } finally { resetFreighterApi(); }
+});
