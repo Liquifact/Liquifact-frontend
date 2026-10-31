@@ -1,3 +1,4 @@
+import { WalletProvider } from "@/components/wallet/WalletProvider";
 /**
  * Component tests for the i18n layer (nav, invoice card, locale switcher).
  * Run with: npm run test:ui
@@ -49,7 +50,7 @@ function Harness() {
   refreshRef.current = () => setLocale(readCookieLocale());
   return (
     <I18nProvider locale={locale} dict={getDictionary(locale)}>
-      <SiteHeader />
+      <WalletProvider><SiteHeader /></WalletProvider>
       <InvoiceCard invoice={invoice} />
       <LocaleSwitcher />
     </I18nProvider>
