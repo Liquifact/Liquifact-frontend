@@ -145,7 +145,7 @@ export default function SubmitForm() {
       <div className="field">
         <label htmlFor={k}>{label}</label>
         <input id={k} data-field={k} value={form[k]} onChange={set(k)} onBlur={blur(k)} aria-invalid={!!errors[k]} aria-describedby={describedBy} {...props} />
-        {errors[k] && <span className="err" id={errId}>{errors[k]}</span>}
+        {errors[k] && <span className="err" id={errId} role="alert">{errors[k]}</span>}
         {hint && <span className="hint" id={hintId}>{hint}</span>}
       </div>
     );
@@ -241,7 +241,7 @@ export default function SubmitForm() {
                 />
                 <span>I confirm this invoice is genuine and unpaid</span>
               </label>
-              {errors.confirmed && <span className="err" id="confirmed-err">{errors.confirmed}</span>}
+              {errors.confirmed && <span className="err" id="confirmed-err" role="alert">{errors.confirmed}</span>}
             </div>
           </>
         )}
