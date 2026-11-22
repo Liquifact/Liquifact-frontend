@@ -414,6 +414,24 @@ pre { background: var(--code-bg); color: var(--code-fg); padding: 16px; border-r
   padding: 8px 14px;
   font-size: 0.9rem;
 }
+.invoice-table-wrap { margin-top: 12px; }
+.invoice-table { min-width: 900px; }
+.invoice-table th, .invoice-table td { vertical-align: middle; }
+.invoice-table-sort {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+.invoice-table-sort:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand) 60%, transparent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
 /* Screen-reader only utility */
 .sr-only {
   position: absolute;
