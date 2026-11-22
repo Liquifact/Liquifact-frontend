@@ -128,7 +128,7 @@ describe("parseQuery", () => {
   });
 
   test("accepts valid sort values", () => {
-    for (const s of ["due_asc", "due_desc", "yield_desc", "yield_asc", "funded_desc", "amount_desc"]) {
+    for (const s of ["due_asc", "due_desc", "yield_desc", "yield_asc", "apr_desc", "funded_desc", "amount_desc"]) {
       assert.equal(parseQuery(sp({ sort: s })).sort, s);
     }
   });
@@ -445,5 +445,92 @@ describe("applyQuery — pagination", () => {
     // Only the 22 USDC open invoices, not EXTRA
     assert.equal(total, 22);
     assert.equal(items.length, 9);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyQuery — apr_desc (annualized rate) sorting
+// ---------------------------------------------------------------------------
+describe("applyQuery — apr_desc", () => {
+  const DAY_MS = 86400000;
+
+  // Whole UTC days from today, so the fixture stays deterministic as time passes.
+  function inDays(days) {
+    return new Date(Date.now() + days * DAY_MS).toISOString().slice(0, 10);
+  }
+
+  function inv(id, yieldBps, days) {
+    return {
+      id,
+      sme: id,
+      debtor: id,
+      amount: 1000,
+      currency: "USDC",
+      fundedAmount: 0,
+      yieldBps,
+      dueDate: inDays(days),
+      status: "open",
+    };
+  }
+
+  // APR = (yieldBps / 100) * 365 / days
+  const APR_INVOICES = [
+    inv("APR_A", 800, 73), // 40.00%
+    inv("APR_B", 500, 100), // 18.25%
+    inv("APR_C", 300, 30), // 36.50%
+    inv("APR_PAST", 1000, -5), // past due -> no rate
+    inv("APR_TODAY", 1000, 0), // zero days -> no rate
+  ];
+
+  test("orders by annualized rate, highest first", () => {
+    const { items } = applyQuery(APR_INVOICES, { ...DEFAULTS, sort: "apr_desc" });
+    assert.deepEqual(items.map((i) => i.id), ["APR_A", "APR_C", "APR_B", "APR_PAST", "APR_TODAY"]);
+  });
+
+  test("invoices with no valid rate sort last, with the id tiebreak", () => {
+    const { items } = applyQuery(APR_INVOICES, { ...DEFAULTS, sort: "apr_desc" });
+    const ids = items.map((i) => i.id);
+    assert.deepEqual(ids.slice(-2), ["APR_PAST", "APR_TODAY"]);
+  });
+
+  test("equal rates fall back to the stable id tiebreak", () => {
+    const dupes = [
+      { ...inv("Z_INV", 1600, 146), id: "Z_INV" }, // 40.00%
+      inv("A_INV", 800, 73), // 40.00%
+    ];
+    const { items } = applyQuery(dupes, { ...DEFAULTS, sort: "apr_desc" });
+    assert.deepEqual(items.map((i) => i.id), ["A_INV", "Z_INV"]);
+  });
+
+  test("missing or invalid due dates sort last without throwing", () => {
+    const fixtures = [
+      { ...inv("BAD_DATE", 900, 90), dueDate: "not-a-date" },
+      inv("GOOD_DATE", 400, 90),
+    ];
+    const { items } = applyQuery(fixtures, { ...DEFAULTS, sort: "apr_desc" });
+    assert.deepEqual(items.map((i) => i.id), ["GOOD_DATE", "BAD_DATE"]);
+  });
+
+  test("existing sorts are unchanged", () => {
+    const yieldDesc = applyQuery(INVOICES, { ...DEFAULTS, sort: "yield_desc" });
+    assert.deepEqual(yieldDesc.items.map((i) => i.id), [
+      "INV_0005",
+      "INV_0004",
+      "INV_0001",
+      "INV_0003",
+      "INV_0002",
+    ]);
+
+    const dueAsc = applyQuery(INVOICES, { ...DEFAULTS, sort: "due_asc" });
+    assert.deepEqual(dueAsc.items.map((i) => i.id), [
+      "INV_0004",
+      "INV_0005",
+      "INV_0003",
+      "INV_0002",
+      "INV_0001",
+    ]);
+
+    const defaultSort = applyQuery(INVOICES, { ...DEFAULTS });
+    assert.equal(defaultSort.items.length, INVOICES.length);
   });
 });

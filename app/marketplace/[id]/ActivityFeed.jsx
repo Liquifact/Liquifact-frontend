@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CONTRACT_ID, NETWORK } from "@/lib/config";
-import { RPC_URL as SOROBAN_RPC_URL } from "@/lib/stellar/rpc";
+import { getRpcEndpoints, withFailover } from "@/lib/stellar/rpc";
 import { eventMatchesInvoice, fetchEscrowActivity } from "@/lib/escrow-activity";
 
-async function latestLedger() {
-  const response = await fetch(SOROBAN_RPC_URL, {
+async function latestLedger(rpcUrl) {
+  const response = await fetch(rpcUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getLatestLedger", params: {} }),
@@ -35,13 +35,14 @@ export default function ActivityFeed({ invoiceId }) {
     setBusy(true);
     setStatus("loading");
     try {
-      const startLedger = older ? undefined : Math.max(1, (await latestLedger()) - 1000);
-      const page = await fetchEscrowActivity({
-        rpcUrl: SOROBAN_RPC_URL,
+      const endpoints = getRpcEndpoints();
+      const startLedger = older ? undefined : Math.max(1, (await withFailover("rpc", (rpcUrl) => latestLedger(rpcUrl), { endpoints })) - 1000);
+      const page = await withFailover("rpc", (rpcUrl) => fetchEscrowActivity({
+        rpcUrl,
         contractId: CONTRACT_ID,
         cursor: older ? cursor : null,
         startLedger,
-      });
+      }), { endpoints });
       const matching = page.events.filter((event) => eventMatchesInvoice(event, invoiceId));
       setEvents((current) => older ? [...current, ...matching] : matching);
       setCursor(page.cursor);

@@ -9,6 +9,7 @@ import InvoiceTable from "@/components/InvoiceTable";
 import { listInvoices } from "@/lib/api";
 import { useT } from "@/lib/i18n/I18nProvider";
 import { computeListMedians } from "@/lib/risk";
+import { MAX_COMPARE, serializeCompareIds } from "@/lib/compare";
 import { defaultFilename, exportInvoicesCsv } from "@/lib/csv";
 import {
   getNetworkName,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/stellar/freighter";
 import { getAccountState } from "@/lib/stellar/horizon";
 import { CONFIGURED_NETWORK } from "@/lib/stellar/networks";
+import { normalizeNetworkName } from "@/lib/stellar/networkGuard";
 import {
   DEFAULTS,
   MIN_YIELD_OPTIONS,
@@ -48,9 +50,7 @@ async function detectUnfundedWallet() {
   const netName = await getNetworkName();
   if (!netName) return false;
   const configuredNet = CONFIGURED_NETWORK;
-  const netOk =
-    netName === configuredNet ||
-    (configuredNet === "testnet" && netName.includes("test"));
+  const netOk = normalizeNetworkName(netName) === normalizeNetworkName(configuredNet);
   if (!netOk) return false;
   const pubkey = await getPublicKey();
   if (!pubkey) return false;
@@ -90,6 +90,17 @@ export default function MarketplaceClient() {
 
   const [showOnboardNotice, setShowOnboardNotice] = useState(false);
   const [exportStatus, setExportStatus] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  const toggleCompare = useCallback((id) => {
+    setSelectedIds((prev) => {
+      if (prev.includes(id)) return prev.filter((item) => item !== id);
+      if (prev.length >= MAX_COMPARE) return prev;
+      return [...prev, id];
+    });
+  }, []);
+
+  const compareHref = `/marketplace/compare?ids=${encodeURIComponent(serializeCompareIds(selectedIds))}`;
 
   // Detect unfunded wallet once on mount
   useEffect(() => {
@@ -489,6 +500,29 @@ export default function MarketplaceClient() {
               Next →
             </button>
           </nav>
+        )}
+        {/* ---- Sticky compare bar ---- */}
+        {selectedIds.length > 0 && (
+          <div className="compare-bar" role="region" aria-label="Invoice comparison selection">
+            <div className="compare-bar-inner">
+              <div className="compare-bar-info">
+                <strong>{selectedIds.length} / {MAX_COMPARE} selected</strong>
+                <span className="muted compare-bar-ids">{selectedIds.join(", ")}</span>
+              </div>
+              <div className="compare-bar-actions">
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setSelectedIds([])}
+                >
+                  Clear
+                </button>
+                <Link href={compareHref} className="btn btn-primary">
+                  Compare ({selectedIds.length})
+                </Link>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </section>
