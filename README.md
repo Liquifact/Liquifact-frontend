@@ -59,7 +59,12 @@ All variables are optional (see [`.env.local.example`](.env.local.example)):
 | `NEXT_PUBLIC_ESCROW_REGISTRY` | _(empty)_ |
 | `NEXT_PUBLIC_STELLAR_NETWORK` | `testnet` |
 | `NEXT_PUBLIC_STELLAR_RPC_URL` | `https://soroban-testnet.stellar.org` |
+| `NEXT_PUBLIC_HORIZON_URL` | `https://horizon-testnet.stellar.org` |
 | `NEXT_PUBLIC_SITE_URL` | `https://liquifact-frontend.vercel.app` |
+
+`NEXT_PUBLIC_STELLAR_RPC_URL` and `NEXT_PUBLIC_HORIZON_URL` accept comma-separated
+endpoint pools. RPC and Horizon reads try the next healthy endpoint on network or
+5xx failures; failed endpoints enter a 60-second cooldown.
 
 ## Deployment
 
