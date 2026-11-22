@@ -18,6 +18,7 @@ import {
 } from "@/lib/stellar/freighter";
 import { getAccountState } from "@/lib/stellar/horizon";
 import { CONFIGURED_NETWORK } from "@/lib/stellar/networks";
+import { normalizeNetworkName } from "@/lib/stellar/networkGuard";
 import {
   DEFAULTS,
   MIN_YIELD_OPTIONS,
@@ -46,9 +47,7 @@ async function detectUnfundedWallet() {
   const netName = await getNetworkName();
   if (!netName) return false;
   const configuredNet = CONFIGURED_NETWORK;
-  const netOk =
-    netName === configuredNet ||
-    (configuredNet === "testnet" && netName.includes("test"));
+  const netOk = normalizeNetworkName(netName) === normalizeNetworkName(configuredNet);
   if (!netOk) return false;
   const pubkey = await getPublicKey();
   if (!pubkey) return false;
