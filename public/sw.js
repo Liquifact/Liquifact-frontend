@@ -1,5 +1,6 @@
 import { API_URL, VERSION } from "./pwa-config.js";
-import { routeFor, isPublicNavigation, cacheableApiResponse, staleResponse } from "./pwa-policy.js";
+import { routeFor, isPublicNavigation, cacheableApiResponse, staleResponse, STATIC_CACHE_LIMITS } from "./pwa-policy.js";
+import { markProtectedAssets, touchStaticEntry, putAndTrimStatic } from "./pwa-lru.js";
 
 const PREFIX = "liquifact-pwa-";
 const SHELL = `${PREFIX}${VERSION}-shell`;
@@ -18,7 +19,9 @@ self.addEventListener("install", (event) => {
       for (const match of html.matchAll(/(?:src|href)="(\/_next\/static\/[^"\s]+)"/g)) assets.add(match[1].replaceAll("&amp;", "&"));
       await cache.put(path, response);
     }
-    await (await caches.open(STATIC)).addAll([...assets]);
+    const staticCache = await caches.open(STATIC);
+    await staticCache.addAll([...assets]);
+    await markProtectedAssets(staticCache, assets, { origin: context.origin });
   })());
 });
 
@@ -74,9 +77,14 @@ self.addEventListener("fetch", (event) => {
   if (route === "static") event.respondWith((async () => {
     const cache = await caches.open(STATIC);
     const cached = await cache.match(event.request);
-    if (cached) return cached;
+    if (cached) {
+      event.waitUntil(touchStaticEntry(cache, event.request.url).catch(() => {}));
+      return cached;
+    }
     const response = await fetch(event.request);
-    if (response.ok) await cache.put(event.request.url, response.clone());
+    if (response.ok || response.type === "opaque") {
+      await putAndTrimStatic(cache, event.request.url, response.clone(), STATIC_CACHE_LIMITS);
+    }
     return response;
   })());
 });
