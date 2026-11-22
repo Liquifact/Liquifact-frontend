@@ -90,6 +90,7 @@ describe("parseQuery", () => {
       minYieldBps: DEFAULTS.minYieldBps,
       q: DEFAULTS.q,
       sort: DEFAULTS.sort,
+      view: DEFAULTS.view,
       page: DEFAULTS.page,
       pageSize: DEFAULTS.pageSize,
     });
@@ -134,6 +135,12 @@ describe("parseQuery", () => {
 
   test("drops unknown sort", () => {
     assert.equal(parseQuery(sp({ sort: "magic" })).sort, DEFAULTS.sort);
+  });
+
+  test("accepts table view and defaults invalid values to cards", () => {
+    assert.equal(parseQuery(sp({ view: "table" })).view, "table");
+    assert.equal(parseQuery(sp({ view: "grid" })).view, "cards");
+    assert.equal(parseQuery(sp({})).view, "cards");
   });
 
   test("page clamped to >= 1", () => {
@@ -186,6 +193,7 @@ describe("serializeQuery", () => {
       minYieldBps: 700,
       q: "north",
       sort: "yield_desc",
+      view: "table",
       page: 2,
     };
     const qs = serializeQuery(state);
@@ -195,6 +203,7 @@ describe("serializeQuery", () => {
     assert.equal(parsed.minYieldBps, state.minYieldBps);
     assert.equal(parsed.q, state.q);
     assert.equal(parsed.sort, state.sort);
+    assert.equal(parsed.view, state.view);
     assert.equal(parsed.page, state.page);
   });
 
@@ -202,6 +211,10 @@ describe("serializeQuery", () => {
     const qs = serializeQuery(DEFAULTS);
     const parsed = parseQuery(new URLSearchParams(qs));
     assert.deepEqual(parsed, DEFAULTS);
+  });
+
+  test("omits the default cards view", () => {
+    assert.equal(serializeQuery({ ...DEFAULTS, view: "cards" }), "");
   });
 });
 

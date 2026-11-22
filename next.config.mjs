@@ -17,6 +17,9 @@ if (isProd) {
 }
 
 const nextConfig = {
+  experimental: {
+    agentUpgrade: "security",
+  },
   reactStrictMode: true,
   poweredByHeader: false,
   async headers() {

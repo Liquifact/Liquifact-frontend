@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import OfflineNotice from "@/components/pwa/OfflineNotice";
 import InvoiceCard from "@/components/InvoiceCard";
+import InvoiceTable from "@/components/InvoiceTable";
 import { listInvoices } from "@/lib/api";
 import { useT } from "@/lib/i18n/I18nProvider";
 import { computeListMedians } from "@/lib/risk";
@@ -18,6 +19,7 @@ import {
 } from "@/lib/stellar/freighter";
 import { getAccountState } from "@/lib/stellar/horizon";
 import { CONFIGURED_NETWORK } from "@/lib/stellar/networks";
+import { normalizeNetworkName } from "@/lib/stellar/networkGuard";
 import {
   DEFAULTS,
   MIN_YIELD_OPTIONS,
@@ -34,6 +36,8 @@ const STATUS_TABS = [
   ...STATUSES.map((s) => ({ v: s, key: `marketplace.filter.${s}` })),
 ];
 
+const VIEW_STORAGE_KEY = "liquifact-marketplace-view";
+
 /**
  * Detect whether a connected wallet's account is absent from the ledger.
  * Returns true only when: Freighter is present + connected + on the right
@@ -46,9 +50,7 @@ async function detectUnfundedWallet() {
   const netName = await getNetworkName();
   if (!netName) return false;
   const configuredNet = CONFIGURED_NETWORK;
-  const netOk =
-    netName === configuredNet ||
-    (configuredNet === "testnet" && netName.includes("test"));
+  const netOk = normalizeNetworkName(netName) === normalizeNetworkName(configuredNet);
   if (!netOk) return false;
   const pubkey = await getPublicKey();
   if (!pubkey) return false;
@@ -141,6 +143,30 @@ export default function MarketplaceClient() {
     [router, searchParams],
   );
 
+  // An explicit URL view wins; otherwise restore the saved non-default view.
+  useEffect(() => {
+    if (searchParams.has("view")) {
+      try {
+        window.localStorage.setItem(VIEW_STORAGE_KEY, urlState.view);
+      } catch {
+        // The URL remains authoritative when browser storage is unavailable.
+      }
+      return;
+    }
+
+    let rememberedView;
+    try {
+      rememberedView = window.localStorage.getItem(VIEW_STORAGE_KEY);
+    } catch {
+      return;
+    }
+
+    if (rememberedView === "table") {
+      const qs = serializeQuery({ ...parseQuery(searchParams), view: "table" });
+      router.replace(`/marketplace?${qs}`, { scroll: false });
+    }
+  }, [router, searchParams, urlState.view]);
+
   // Keep search input in sync when URL changes externally (e.g. Back/Forward)
   const prevQRef = useRef(urlState.q);
   useEffect(() => {
@@ -209,7 +235,17 @@ export default function MarketplaceClient() {
 
   function clearFilters() {
     setSearchInput("");
-    router.push("/marketplace", { scroll: false });
+    const qs = serializeQuery({ ...DEFAULTS, view: urlState.view });
+    router.push(`/marketplace${qs ? `?${qs}` : ""}`, { scroll: false });
+  }
+
+  function changeView(view) {
+    try {
+      window.localStorage.setItem(VIEW_STORAGE_KEY, view);
+    } catch {
+      // Keep the URL toggle usable when browser storage is unavailable.
+    }
+    pushFilter({ view });
   }
 
   return (
@@ -242,6 +278,22 @@ export default function MarketplaceClient() {
             ))}
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <div className="tabs" role="group" aria-label="Marketplace view">
+              <button
+                type="button"
+                aria-pressed={urlState.view === "cards"}
+                onClick={() => changeView("cards")}
+              >
+                Cards
+              </button>
+              <button
+                type="button"
+                aria-pressed={urlState.view === "table"}
+                onClick={() => changeView("table")}
+              >
+                Table
+              </button>
+            </div>
             <button
               type="button"
               className="btn btn-ghost"
@@ -399,8 +451,20 @@ export default function MarketplaceClient() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-3">
-            {items.map((inv) => (
+          urlState.view === "table" ? (
+            <InvoiceTable
+              invoices={items}
+              sort={urlState.sort}
+              onSortChange={(sort) => pushFilter({ sort })}
+              medians={medians}
+            />
+          ) : (
+            <div className="grid grid-3">
+              {items.map((inv) => (
+                <InvoiceCard key={inv.id} invoice={inv} medians={medians} />
+              ))}
+            </div>
+          )
               <InvoiceCard
                 key={inv.id}
                 invoice={inv}
@@ -409,8 +473,6 @@ export default function MarketplaceClient() {
                 compareDisabled={selectedIds.length >= MAX_COMPARE}
                 onToggleCompare={toggleCompare}
               />
-            ))}
-          </div>
         )}
 
         {/* ---- Pagination ---- */}
