@@ -126,3 +126,60 @@ When changing the invoice contract or data source:
 3. Verify both `/invest` and `/invest/[id]`, not only the marketplace list.
 4. Keep the `loadInvoices` injection point for deterministic component tests.
 5. Run `npm run format:check`, `npm run lint`, `npm test`, and `npm run build`.
+
+## Yield calculator and APR sort (issue #1474)
+
+`lib/yield.js` is the single pure implementation used by the invoice detail
+calculator, the marketplace `apr_desc` sort and their tests.
+
+### Formula
+
+All rates are simple interest on an ACT/365 day count — no compounding:
+
+```
+projected payout = amount + amount × yieldBps / 10000
+profit           = payout − amount
+days to due      = whole UTC calendar days from now to dueDate
+annualized rate  = (yieldBps / 100) × 365 / days      (percent per year)
+```
+
+`annualizedRate()` returns percentage points, not a fraction: `800` bps with
+`73` days left is `8 × 365 / 73 = 40`, i.e. `40.00%` per year.
+
+### Rounding and guards
+
+- `expectedPayout()` parses the amount with `lib/money.js` and keeps everything
+  in BigInt minor units, so no floating-point math touches money. Interest is
+  rounded half-up at the currency's smallest unit (7 decimals / stroops for
+  XLM, USDC and EURC): 1 stroop at 5000 bps earns 0.5 stroops, which rounds to
+  1 stroop.
+- Malformed or negative amounts and unsupported currencies throw; the
+  calculator catches them and shows a message instead of a result.
+- `daysToDue()` counts whole UTC calendar days so the time of day never changes
+  the answer. Past-due dates, a due date of today, and invalid dates all return
+  `0` — never `NaN`.
+- `annualizedRate()` returns `null` when the rate is undefined: zero, negative
+  or non-finite days, or an invalid yield. The UI renders `null` as
+  "Not available" with an explanation, and `apr_desc` sorts those invoices
+  last. It never returns `Infinity` or `NaN`.
+
+### `apr_desc` marketplace sort
+
+`SORT_OPTIONS` in `lib/marketplaceQuery.js` includes `apr_desc` ("Highest APR"),
+which ranks invoices by `annualizedRate()` for their remaining tenor, highest
+first. Invoices with no valid rate (past due, due today, invalid due date) sort
+after every invoice that has one. Ties keep the existing stable id tiebreak, and
+all other sort options behave exactly as before.
+
+### Worked example
+
+A 1,000 USDC invoice yielding 800 bps (8%) with 73 days left:
+
+| Value | Calculation | Result |
+| --- | --- | --- |
+| Projected payout | 1000 + 1000 × 800 / 10000 | 1,080 USDC |
+| Profit | 1080 − 1000 | 80 USDC |
+| Days to due | UTC calendar days | 73 |
+| Annualized rate | 8 × 365 / 73 | 40.00% |
+
+The same numbers are asserted in `tests/yield.test.mjs`.

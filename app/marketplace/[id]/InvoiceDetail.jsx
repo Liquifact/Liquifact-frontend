@@ -21,6 +21,7 @@ import { validateContribution as checkApiContribution, creditedAmount } from "@/
 import { getWalletAddress } from "@/lib/stellar/freighter";
 import SmeActionsCard from "@/components/sme/SmeActionsCard";
 import LifecycleTimeline from "@/components/invoice/LifecycleTimeline";
+import YieldCalculator from "@/components/invest/YieldCalculator";
 import { escrowFor } from "@/lib/escrow/registry";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 import * as money from "@/lib/money";
@@ -471,6 +472,15 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
               </p>
             )}
           </div>
+        </div>
+
+        <div style={{ marginTop: 20 }}>
+          <YieldCalculator
+            amount={amount}
+            yieldBps={inv.yieldBps}
+            dueDate={inv.dueDate}
+            currency={inv.currency || "USDC"}
+          />
         </div>
 
         {inv.onChain && (
