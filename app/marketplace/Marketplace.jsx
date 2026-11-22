@@ -465,6 +465,14 @@ export default function MarketplaceClient() {
               ))}
             </div>
           )
+              <InvoiceCard
+                key={inv.id}
+                invoice={inv}
+                medians={medians}
+                compareSelected={selectedIds.includes(inv.id)}
+                compareDisabled={selectedIds.length >= MAX_COMPARE}
+                onToggleCompare={toggleCompare}
+              />
         )}
 
         {/* ---- Pagination ---- */}
