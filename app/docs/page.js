@@ -1,8 +1,13 @@
 import Link from "next/link";
 import ContractCard from "@/components/ContractCard";
 import { API_DOCS_URL, API_URL, CONTRACT_ID, EXPLORER_URL, NETWORK, REPOS } from "@/lib/config";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata = { title: "Docs", description: "LiquiFact product overview, architecture and usage guide." };
+export const metadata = pageMeta({
+  path: "/docs",
+  title: "Docs",
+  description: "LiquiFact product overview, architecture and usage guide.",
+});
 
 const TOC = [
   ["overview", "Overview"],

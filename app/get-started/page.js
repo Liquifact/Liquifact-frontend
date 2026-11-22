@@ -1,10 +1,12 @@
+import { pageMeta } from "@/lib/seo";
 import OnboardingChecklist from "./OnboardingChecklist";
 
-export const metadata = {
+export const metadata = pageMeta({
+  path: "/get-started",
   title: "Get started",
   description:
     "Set up your Stellar wallet and fund a testnet account in minutes. LiquiFact detects each prerequisite and offers one-click Friendbot funding.",
-};
+});
 
 export default function GetStartedPage() {
   return (
