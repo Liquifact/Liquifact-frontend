@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { afterEach, describe, expect, it } from "vitest";
 import FundingProgress from "../components/FundingProgress.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
+import { I18nProvider } from "../lib/i18n/I18nProvider.jsx";
+import { getDictionary } from "../lib/i18n/index.js";
 
 afterEach(cleanup);
 
@@ -54,5 +56,59 @@ describe("StatusBadge", () => {
   it("uses the shared badge primitive for on-chain state", () => {
     render(<StatusBadge kind="chain" />);
     assert.ok(screen.getByLabelText("Status: On-chain").textContent.includes("On-chain"));
+  });
+
+  it("allows overriding the translated label via the label prop", () => {
+    render(
+      <I18nProvider locale="es" dict={getDictionary("es")}>
+        <StatusBadge status="open" label="Custom" />
+      </I18nProvider>,
+    );
+    const badge = screen.getByLabelText("Estado: Custom");
+    assert.ok(badge.textContent.includes("Custom"));
+  });
+
+  it.each([
+    ["open", "Open"],
+    ["funded", "Funded"],
+    ["settled", "Settled"],
+    ["withdrawn", "Withdrawn"],
+    ["cancelled", "Cancelled"],
+    ["unknown-state", "Unknown"],
+  ])("renders %s in en via I18nProvider", (status, label) => {
+    render(
+      <I18nProvider locale="en" dict={getDictionary("en")}>
+        <StatusBadge status={status} />
+      </I18nProvider>,
+    );
+    const badge = screen.getByLabelText(`Status: ${label}`);
+    assert.ok(badge.textContent.includes(label));
+  });
+
+  it.each([
+    ["open", "Abierta"],
+    ["funded", "Financiada"],
+    ["settled", "Liquidada"],
+    ["withdrawn", "Retirada"],
+    ["cancelled", "Cancelada"],
+    ["unknown-state", "Desconocido"],
+  ])("renders %s in es via I18nProvider", (status, label) => {
+    render(
+      <I18nProvider locale="es" dict={getDictionary("es")}>
+        <StatusBadge status={status} />
+      </I18nProvider>,
+    );
+    const badge = screen.getByLabelText(`Estado: ${label}`);
+    assert.ok(badge.textContent.includes(label));
+  });
+
+  it("renders on-chain badge in es via I18nProvider", () => {
+    render(
+      <I18nProvider locale="es" dict={getDictionary("es")}>
+        <StatusBadge kind="chain" />
+      </I18nProvider>,
+    );
+    const badge = screen.getByLabelText("Estado: On-chain");
+    assert.ok(badge.textContent.includes("On-chain"));
   });
 });
