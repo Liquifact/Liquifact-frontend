@@ -21,12 +21,16 @@ export function NotificationsProvider({ children }) {
 
   const [events, setEvents] = useState(store.getEvents());
   const [unreadCount, setUnreadCount] = useState(store.unreadCount());
+  const [followedIds, setFollowedIds] = useState(() => Array.from(store.getFollowed()));
+  const [snapshot, setSnapshot] = useState(() => store.getSnapshot());
   const [permission, setPermission] = useState(DEFAULT_PERMISSION);
   const [supported, setSupported] = useState(false);
 
   const refresh = useCallback(() => {
     setEvents(store.getEvents());
     setUnreadCount(store.unreadCount());
+    setFollowedIds(Array.from(store.getFollowed()));
+    setSnapshot(store.getSnapshot());
   }, [store]);
 
   useEffect(() => {
@@ -101,6 +105,8 @@ export function NotificationsProvider({ children }) {
   const value = {
     events,
     unreadCount,
+    followedIds,
+    snapshot,
     follow,
     unfollow,
     isFollowing,

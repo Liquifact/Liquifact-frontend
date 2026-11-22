@@ -21,6 +21,7 @@ export default async function SiteFooter() {
           <h4>{tr("footer.product")}</h4>
           <ul>
             <li><Link href="/marketplace">{tr("nav.marketplace")}</Link></li>
+            <li><Link href="/watchlist">{tr("nav.watchlist")}</Link></li>
             <li><Link href="/submit">{tr("nav.submit")}</Link></li>
             <li><Link href="/get-started">{tr("nav.getStarted")}</Link></li>
             <li><Link href="/docs">{tr("footer.documentation")}</Link></li>
