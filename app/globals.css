@@ -643,3 +643,38 @@ pre { background: var(--code-bg); color: var(--code-fg); padding: 16px; border-r
 .featured-invoice { display: block; color: inherit; text-decoration: none; transition: transform 0.15s ease; }
 .featured-invoice:hover { transform: translateY(-2px); }
 .featured-invoice:focus-visible { outline: 3px solid var(--on-hero-link); outline-offset: 4px; }
+
+/* Printable funding receipt */
+.receipt-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.receipt-card { padding: 28px; }
+.receipt-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+.receipt-section { padding: 18px 0; border-bottom: 1px solid var(--border); }
+.receipt-section h2 { font-size: 1rem; margin: 0; }
+.receipt-footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 16px; font-size: 0.82rem; }
+
+@media print {
+  .site-header,
+  .site-footer,
+  .skip-link,
+  .no-print,
+  .receipt-actions {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .section,
+  .receipt-page {
+    padding: 0 !important;
+  }
+
+  .receipt-card {
+    box-shadow: none !important;
+    border: 1px solid #d1d5db !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+}

@@ -27,6 +27,7 @@ import * as money from "@/lib/money";
 import { computeListMedians, scoreInvoice } from "@/lib/risk";
 import { loadConstraints, validateContribution, maxFillAmount, CODES } from "@/lib/escrow/constraints";
 import { parseToStroops, remainingStroops, stroopsToDisplay } from "@/lib/stellar/amount";
+import { getDefaultStore } from "@/lib/stellar/txStore";
 import { useOnChainFund } from "@/lib/hooks/useOnChainFund";
 import { CONTRACT_ID, NETWORK } from "@/lib/config";
 
@@ -185,8 +186,22 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
     }
     if (inv?.onChain) {
       // On-chain invoices: build + simulate fund(investor, amount), sign with Freighter, submit.
-      const result = await chain.fund(inv, amount.trim(), refreshInvoice);
+      const fundedInput = amount.trim();
+      const result = await chain.fund(inv, fundedInput, refreshInvoice);
       if (result?.status === "SUCCESS") {
+        if (result.hash) {
+          try {
+            const store = getDefaultStore();
+            store.add({
+              hash: result.hash,
+              label: `Fund ${inv.id} (${fundedInput} ${inv.currency || "USDC"})`,
+              invoiceId: inv.id,
+            });
+            store.update(result.hash, { status: "SUCCESS" });
+          } catch {
+            // Non-fatal: localStorage may be unavailable.
+          }
+        }
         setAmount("");
         follow(id); // auto-follow so future status changes surface in the bell
       }
@@ -448,6 +463,16 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                       <a className="focus-ring tx-hash" href={`https://stellar.expert/explorer/${NETWORK}/tx/${chain.state.hash}`} target="_blank" rel="noopener noreferrer">
                         View transaction: {chain.state.hash}
                       </a>
+                    )}
+                    {chain.state.phase === "Confirmed" && chain.state.hash && (
+                      <div style={{ marginTop: 10 }}>
+                        <Link
+                          className="btn btn-ghost focus-ring"
+                          href={`/marketplace/${encodeURIComponent(inv.id)}/receipt?tx=${encodeURIComponent(chain.state.hash)}`}
+                        >
+                          View receipt
+                        </Link>
+                      </div>
                     )}
                   </div>
                 )}
