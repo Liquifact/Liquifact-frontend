@@ -2,19 +2,23 @@ import { NextResponse } from "next/server";
 import { buildCsp } from "./lib/security/csp.js";
 import { API_URL } from "./lib/config.js";
 import { getNetwork, CONFIGURED_NETWORK } from "./lib/stellar/networks.js";
+import { getEndpoints } from "./lib/stellar/endpoints.js";
 
 export function proxy(request) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const dev = process.env.NODE_ENV === "development";
 
   const networkConfig = getNetwork(CONFIGURED_NETWORK);
-  const horizonUrl = process.env.NEXT_PUBLIC_HORIZON_URL || networkConfig?.horizonUrl;
-  // Must match the Soroban RPC used by lib/stellar/rpc.js (escrow reads, funding, tx tracking).
-  const rpcUrl =
-    process.env.NEXT_PUBLIC_STELLAR_RPC_URL ||
-    process.env.NEXT_PUBLIC_SOROBAN_RPC_URL ||
-    process.env.SOROBAN_RPC_URL ||
-    (CONFIGURED_NETWORK === "testnet" ? "https://soroban-testnet.stellar.org" : "https://soroban-rpc.stellar.org");
+  const horizonEndpoints = getEndpoints("horizon", {
+    env: process.env,
+    network: CONFIGURED_NETWORK,
+    defaultEndpoints: networkConfig?.horizonUrl,
+  });
+  const rpcEndpoints = getEndpoints("rpc", {
+    env: process.env,
+    network: CONFIGURED_NETWORK,
+    defaultEndpoints: CONFIGURED_NETWORK === "testnet" ? "https://soroban-testnet.stellar.org" : "https://soroban-rpc.stellar.org",
+  });
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || API_URL;
 
   const reportUri = process.env.CSP_REPORT_URI || process.env.NEXT_PUBLIC_CSP_REPORT_URI;
@@ -23,8 +27,8 @@ export function proxy(request) {
   const csp = buildCsp({
     nonce,
     apiUrl,
-    rpcUrl,
-    horizonUrl,
+    rpcUrl: rpcEndpoints,
+    horizonUrl: horizonEndpoints,
     dev,
     reportUri,
     reportTo,

@@ -1,0 +1,12 @@
+{
+  "maxSingleChunkGzipBytes": 153600,
+  "maxTotalGzipBytes": 614400,
+  "routes": {
+    "app/page": 153600,
+    "app/marketplace/page": 204800,
+    "app/marketplace/[id]/page": 204800,
+    "app/submit/page": 204800,
+    "app/get-started/page": 153600,
+    "app/docs/page": 153600
+  }
+}

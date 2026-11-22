@@ -16,4 +16,5 @@ for (const path of ["app", "components", "lib", "public/icons"]) await include(p
 for (const file of ["public/sw.js", "package-lock.json", "next.config.mjs"]) hash.update(await readFile(file));
 await mkdir("public", { recursive: true });
 await copyFile("lib/pwa/policy.js", "public/pwa-policy.js");
+await copyFile("lib/pwa/lru.js", "public/pwa-lru.js");
 await writeFile("public/pwa-config.js", `export const API_URL = ${JSON.stringify(apiUrl)};\nexport const VERSION = ${JSON.stringify(hash.digest("hex").slice(0, 16))};\n`);

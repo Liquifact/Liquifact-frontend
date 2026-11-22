@@ -92,3 +92,67 @@ test("malformed input (null items, missing fields) does not throw", () => {
   assert.equal(stats.byCurrency.XLM.faceValue, 0);
   assert.equal(stats.byCurrency.USDC.faceValue, 50);
 });
+
+test("sub-cent 7-decimal amounts (0.0000001) are preserved in totals", () => {
+  const stats = computeStats([
+    { amount: "0.0000001", fundedAmount: "0.0000001", currency: "XLM", yieldBps: 500, status: "funded" },
+    { amount: 0.0000002, fundedAmount: 0.0000001, currency: "XLM", yieldBps: 800, status: "open" },
+  ]);
+
+  assert.equal(stats.byCurrency.XLM.faceValue, 0.0000003);
+  assert.equal(stats.byCurrency.XLM.funded, 0.0000002);
+  // (1 * 500 + 2 * 800) / 3 = 700
+  assert.equal(stats.byCurrency.XLM.weightedYieldBps, 700);
+});
+
+test("many small 7-decimal additions accumulate without drift", () => {
+  const invoices = Array.from({ length: 1000 }, () => ({
+    amount: "0.0000001",
+    fundedAmount: "0.0000001",
+    currency: "USDC",
+    yieldBps: 600,
+    status: "funded",
+  }));
+  const stats = computeStats(invoices);
+
+  assert.equal(stats.count, 1000);
+  assert.equal(stats.byCurrency.USDC.faceValue, 0.0001);
+  assert.equal(stats.byCurrency.USDC.funded, 0.0001);
+  assert.equal(stats.byCurrency.USDC.weightedYieldBps, 600);
+});
+
+test("mixed currencies preserve 7-decimal precision and per-currency weighted yield", () => {
+  const stats = computeStats([
+    { amount: "0.0000001", fundedAmount: "0.0000001", currency: "XLM", yieldBps: 400, status: "funded" },
+    { amount: "0.0000003", fundedAmount: "0.0000001", currency: "XLM", yieldBps: 800, status: "open" },
+    { amount: "0.0050005", fundedAmount: "0.0025002", currency: "USDC", yieldBps: 650, status: "open" },
+    { amount: "0.0049995", fundedAmount: "0.0024998", currency: "USDC", yieldBps: 650, status: "open" },
+    { amount: "1.2345678", fundedAmount: "0.0000002", currency: "EURC", yieldBps: 500, status: "open" },
+  ]);
+
+  assert.deepEqual(Object.keys(stats.byCurrency).sort(), ["EURC", "USDC", "XLM"]);
+  assert.equal(stats.byCurrency.XLM.faceValue, 0.0000004);
+  assert.equal(stats.byCurrency.XLM.funded, 0.0000002);
+  // (1 * 400 + 3 * 800) / 4 = 700
+  assert.equal(stats.byCurrency.XLM.weightedYieldBps, 700);
+
+  assert.equal(stats.byCurrency.USDC.faceValue, 0.01);
+  assert.equal(stats.byCurrency.USDC.funded, 0.005);
+  assert.equal(stats.byCurrency.USDC.weightedYieldBps, 650);
+
+  assert.equal(stats.byCurrency.EURC.faceValue, 1.2345678);
+  assert.equal(stats.byCurrency.EURC.funded, 0.0000002);
+  assert.equal(stats.byCurrency.EURC.weightedYieldBps, 500);
+});
+
+test("large sums stay exact with BigInt accumulation", () => {
+  const stats = computeStats([
+    { amount: "500000000", fundedAmount: "250000000", currency: "USDC", yieldBps: 500, status: "open" },
+    { amount: "500000000", fundedAmount: "250000000", currency: "USDC", yieldBps: 700, status: "open" },
+  ]);
+
+  // 1,000,000,000 USDC = 10^16 minor units (> Number.MAX_SAFE_INTEGER)
+  assert.equal(stats.byCurrency.USDC.faceValue, 1_000_000_000);
+  assert.equal(stats.byCurrency.USDC.funded, 500_000_000);
+  assert.equal(stats.byCurrency.USDC.weightedYieldBps, 600);
+});

@@ -1,10 +1,12 @@
 import { Suspense } from "react";
+import { pageMeta } from "@/lib/seo";
 import Marketplace from "./Marketplace";
 
-export const metadata = {
+export const metadata = pageMeta({
+  path: "/marketplace",
   title: "Marketplace",
   description: "Browse invoices open for funding on LiquiFact.",
-};
+});
 
 // useSearchParams() inside Marketplace.jsx requires a Suspense boundary when
 // the page is rendered as a server component (Next.js 13+).

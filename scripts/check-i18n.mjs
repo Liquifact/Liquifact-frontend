@@ -1,5 +1,6 @@
 import en from "../lib/i18n/dictionaries/en.js";
 import es from "../lib/i18n/dictionaries/es.js";
+import { comparePlaceholders } from "./i18n-placeholders.mjs";
 
 const dictionaries = { en, es };
 const reference = Object.keys(en).sort();
@@ -17,5 +18,13 @@ for (const [name, dict] of Object.entries(dictionaries)) {
   }
 }
 
+const placeholderCheck = comparePlaceholders(en, dictionaries, "en");
+if (!placeholderCheck.ok) {
+  failed = true;
+  for (const error of placeholderCheck.errors) {
+    console.error(error);
+  }
+}
+
 if (failed) process.exit(1);
-console.log(`[check-i18n] OK — ${Object.keys(dictionaries).join(", ")} share ${reference.length} keys.`);
+console.log(`[check-i18n] OK — ${Object.keys(dictionaries).join(", ")} share ${reference.length} keys with matching placeholders.`);
