@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { createInvoice } from "@/lib/api";
 import { formatAmount } from "@/lib/format";
+import { createOutbox, isNetworkError } from "@/lib/outbox";
 import {
   DRAFT_KEY,
   STEPS,
@@ -41,6 +42,7 @@ export default function SubmitForm() {
   const [state, dispatch] = useReducer(reducer, undefined, () => initialState());
   const { step, form, errors, status } = state;
   const [restored, setRestored] = useState(false);
+  const [queued, setQueued] = useState(null);
   const headingRef = useRef(null);
   const formRef = useRef(null);
   const focusErrors = useRef(false);
@@ -87,7 +89,7 @@ export default function SubmitForm() {
       return;
     }
     if (headingRef.current) headingRef.current.focus();
-  }, [step, status.state]);
+  }, [step, status.state, queued]);
 
   // Move focus to the first invalid field.
   useEffect(() => {
@@ -123,16 +125,27 @@ export default function SubmitForm() {
     }
     focusErrors.current = false;
     dispatch({ type: "submitStart" });
+    const payload = toPayload(form);
     try {
-      const res = await createInvoice(toPayload(form));
+      const res = await createInvoice(payload);
       const invoice = res?.data;
       if (!invoice || !invoice.id) {
         dispatch({ type: "submitError", message: "API returned no invoice data", details: [] });
         return;
       }
       clearDraft();
+      setQueued(null);
       dispatch({ type: "submitSuccess", invoice });
     } catch (err) {
+      if (isNetworkError(err)) {
+        const outbox = createOutbox(typeof window !== "undefined" ? window.localStorage : null);
+        const entry = outbox.enqueue(payload);
+        clearDraft();
+        dispatch({ type: "reset" });
+        setRestored(false);
+        setQueued(entry);
+        return;
+      }
       dispatch({ type: "submitError", message: err.message, details: err.details });
     }
   }
@@ -174,6 +187,20 @@ export default function SubmitForm() {
             <Link className="btn btn-primary" href={`/marketplace/${status.invoice.id}`}>View listing →</Link>
           )}
           <button type="button" className="btn btn-ghost" onClick={() => { dispatch({ type: "reset" }); setRestored(false); }}>
+            Submit another
+          </button>
+        </div>
+      </div>
+    );
+  } else if (queued) {
+    body = (
+      <div>
+        <h2 tabIndex={-1} ref={headingRef}>Invoice queued</h2>
+        <div className="notice" role="status">
+          Queued, will send when online. Your submission is saved locally and will be sent automatically once your connection returns.
+        </div>
+        <div className="btn-row" style={{ marginTop: 16 }}>
+          <button type="button" className="btn btn-ghost" onClick={() => { setQueued(null); dispatch({ type: "reset" }); setRestored(false); }}>
             Submit another
           </button>
         </div>
@@ -274,7 +301,7 @@ export default function SubmitForm() {
           <p className="muted">Read the <Link href="/docs#how-to-use">step-by-step guide</Link>.</p>
         </div>
         <div className="card">
-          {status.state !== "success" && (
+          {status.state !== "success" && !queued && (
             <ol aria-label="Progress" style={{ display: "flex", flexWrap: "wrap", gap: 8, listStyle: "none", padding: 0, margin: "0 0 16px" }}>
               {STEPS.map((s, i) => (
                 <li key={s.id} aria-current={i === step ? "step" : undefined} style={{ fontWeight: i === step ? 700 : 400, color: i === step ? "var(--fg)" : "var(--muted)" }}>
@@ -284,7 +311,7 @@ export default function SubmitForm() {
               ))}
             </ol>
           )}
-          {restored && status.state !== "success" && (
+          {restored && status.state !== "success" && !queued && (
             <div className="notice" role="status" style={{ marginBottom: 16 }}>
               Restored your draft.{" "}
               <button type="button" className="btn btn-ghost" style={{ padding: "2px 8px", fontSize: "0.85rem" }} onClick={discard}>
