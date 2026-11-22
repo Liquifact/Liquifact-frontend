@@ -1,14 +1,80 @@
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { invoiceJsonLd, invoiceMeta, stringifyJsonLd } from "../lib/seo.js";
+import { SITE_NAME, canonicalUrl, cleanText, invoiceJsonLd, invoiceMeta, pageMeta, stringifyJsonLd } from "../lib/seo.js";
 import { fetchInvoiceById, fetchInvoicesForSitemap, isCancelledInvoice } from "../lib/invoiceSeoData.js";
 import sitemap from "../app/sitemap.js";
 import robots from "../app/robots.js";
 
 const invoice = { id: "INV_0002", sme: "Northwind Textiles", amount: 25000, currency: "USDC", yieldBps: 650, fundedAmount: 18000, status: "open" };
 const originalFetch = globalThis.fetch;
+const originalSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 afterEach(() => {
   globalThis.fetch = originalFetch;
+  if (originalSiteUrl === undefined) {
+    delete process.env.NEXT_PUBLIC_SITE_URL;
+  } else {
+    process.env.NEXT_PUBLIC_SITE_URL = originalSiteUrl;
+  }
+});
+
+test("cleanText strips HTML tags, stray angle brackets and collapses whitespace", () => {
+  assert.equal(cleanText("  <b>Hello</b>   <i>world</i>  "), "Hello world");
+  assert.equal(cleanText("a < b > c"), "a c");
+  assert.equal(cleanText(null, "fallback"), "fallback");
+  assert.equal(cleanText("   ", "fallback"), "fallback");
+});
+
+test("pageMeta builds canonical, Open Graph and Twitter metadata respecting NEXT_PUBLIC_SITE_URL", () => {
+  process.env.NEXT_PUBLIC_SITE_URL = "https://app.liquifact.example/";
+  const meta = pageMeta({
+    path: "/marketplace",
+    title: " <b>Marketplace</b> ",
+    description: "Browse   invoices <script>x</script> open for funding on LiquiFact.",
+  });
+  assert.equal(meta.title, "Marketplace");
+  assert.equal(meta.description, "Browse invoices x open for funding on LiquiFact.");
+  assert.equal(meta.alternates.canonical, "https://app.liquifact.example/marketplace");
+  assert.deepEqual(meta.openGraph, {
+    title: "Marketplace",
+    description: "Browse invoices x open for funding on LiquiFact.",
+    url: "https://app.liquifact.example/marketplace",
+    siteName: SITE_NAME,
+    type: "website",
+  });
+  assert.deepEqual(meta.twitter, {
+    card: "summary",
+    title: "Marketplace",
+    description: "Browse invoices x open for funding on LiquiFact.",
+  });
+});
+
+test("canonicalUrl normalizes paths and defaults when NEXT_PUBLIC_SITE_URL is unset", () => {
+  delete process.env.NEXT_PUBLIC_SITE_URL;
+  assert.equal(canonicalUrl("submit"), "https://liquifact-frontend.vercel.app/submit");
+  assert.equal(canonicalUrl("/docs"), "https://liquifact-frontend.vercel.app/docs");
+});
+
+test("static pages define unique titles and canonical/OG/Twitter metadata", () => {
+  process.env.NEXT_PUBLIC_SITE_URL = "https://liquifact.stellar.example";
+  const pages = [
+    pageMeta({ path: "/marketplace", title: "Marketplace", description: "Browse invoices open for funding on LiquiFact." }),
+    pageMeta({ path: "/submit", title: "Submit invoice", description: "List an unpaid invoice on LiquiFact for financing." }),
+    pageMeta({ path: "/docs", title: "Docs", description: "LiquiFact product overview, architecture and usage guide." }),
+    pageMeta({
+      path: "/get-started",
+      title: "Get started",
+      description: "Set up your Stellar wallet and fund a testnet account in minutes. LiquiFact detects each prerequisite and offers one-click Friendbot funding.",
+    }),
+  ];
+  const titles = new Set(pages.map((p) => p.title));
+  assert.equal(titles.size, pages.length);
+  for (const p of pages) {
+    assert.ok(p.alternates?.canonical.startsWith("https://liquifact.stellar.example/"));
+    assert.equal(p.openGraph?.siteName, SITE_NAME);
+    assert.equal(p.openGraph?.type, "website");
+    assert.equal(p.openGraph?.url, p.alternates.canonical);
+    assert.equal(p.twitter?.card, "summary");
+  }
 });
 
 test("invoiceMeta builds canonical, Open Graph and Twitter metadata", () => {

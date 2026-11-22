@@ -7,3 +7,4 @@
 
 Styling lives in `app/globals.css` (design tokens at the top, light and dark
 themes). Shared UI is in `components/`, API access and config in `lib/`.
+See the [Documentation Index](docs/README.md) for an overview of all repository docs under `docs/`.

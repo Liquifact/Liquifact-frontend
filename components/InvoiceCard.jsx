@@ -8,14 +8,20 @@ import { bpsToPercent, formatAmount, formatDate, fundedPercent } from "@/lib/for
 import { useLocale, useT } from "@/lib/i18n/I18nProvider";
 import { scoreInvoice } from "@/lib/risk";
 
-export default function InvoiceCard({ invoice, medians }) {
+export default function InvoiceCard({
+  invoice,
+  medians,
+  compareSelected = false,
+  compareDisabled = false,
+  onToggleCompare,
+}) {
   const t = useT();
   const locale = useLocale();
   const pct = fundedPercent(invoice);
   const risk = scoreInvoice(invoice, undefined, medians);
 
-  return (
-    <Link href={`/marketplace/${invoice.id}`} className="card invoice-card">
+  const cardBody = (
+    <>
       <div className="invoice-head">
         <div>
           <div className="invoice-id">{invoice.id}</div>
@@ -35,6 +41,34 @@ export default function InvoiceCard({ invoice, medians }) {
         <div><span className="k">{t("invoice.funded")}</span>{pct}%</div>
       </div>
       <FundingProgress funded={invoice.fundedAmount} target={invoice.amount} currency={invoice.currency} size="sm" />
-    </Link>
+    </>
+  );
+
+  if (!onToggleCompare) {
+    return (
+      <Link href={`/marketplace/${invoice.id}`} className="card invoice-card">
+        {cardBody}
+      </Link>
+    );
+  }
+
+  return (
+    <article className={`card invoice-card${compareSelected ? " invoice-card-selected" : ""}`}>
+      <Link href={`/marketplace/${invoice.id}`} className="invoice-card-link">
+        {cardBody}
+      </Link>
+      <div className="invoice-card-compare">
+        <label className="compare-checkbox-label">
+          <input
+            type="checkbox"
+            checked={compareSelected}
+            disabled={!compareSelected && compareDisabled}
+            onChange={() => onToggleCompare(invoice.id)}
+            aria-label={`Select ${invoice.id} (${invoice.sme}) to compare`}
+          />
+          <span>{compareSelected ? "Selected for compare" : "Compare"}</span>
+        </label>
+      </div>
+    </article>
   );
 }

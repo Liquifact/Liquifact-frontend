@@ -5,6 +5,7 @@ import ServiceWorkerRegistrar from "@/components/pwa/ServiceWorkerRegistrar";
 import SiteFooter from "@/components/SiteFooter";
 import SkipLink from "@/components/SkipLink";
 import ToastProvider from "@/components/toast/ToastProvider";
+import OutboxSync from "@/components/OutboxSync";
 import { TxTrackerProvider } from "@/components/TxTrackerProvider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { headers } from "next/headers";
@@ -47,6 +48,7 @@ export default async function RootLayout({ children }) {
         <I18nProvider locale={locale} dict={dict}>
           <SkipLink />
           <ToastProvider>
+            <OutboxSync />
             <TxTrackerProvider>
               <NotificationsProvider>
                 <SiteHeader />
