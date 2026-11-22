@@ -100,6 +100,7 @@ beforeEach(() => {
   _qs = "";
   pushLog.length = 0;
   replaceLog.length = 0;
+  window.localStorage.removeItem("liquifact-marketplace-view");
   listInvoicesMock.mockClear();
   listInvoicesMock.mockResolvedValue({ data: MOCK_INVOICES, offline: false });
 });
@@ -267,6 +268,35 @@ describe("Marketplace component", () => {
     renderMarketplace();
     await waitFor(() => expect(screen.getByText("Acme Components")).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+  });
+
+  it("persists a selected table view in the URL and localStorage", async () => {
+    const user = userEvent.setup();
+    renderMarketplace();
+    await waitFor(() => expect(screen.getByText("Acme Components")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: "Table" }));
+
+    expect(pushLog.some((url) => url.includes("view=table"))).toBe(true);
+    expect(window.localStorage.getItem("liquifact-marketplace-view")).toBe("table");
+  });
+
+  it("restores a remembered table view when the URL has no view parameter", async () => {
+    window.localStorage.setItem("liquifact-marketplace-view", "table");
+    renderMarketplace();
+
+    await waitFor(() => expect(replaceLog.some((url) => url.includes("view=table"))).toBe(true));
+    expect(screen.getByRole("button", { name: "Table" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("uses an explicit cards URL view instead of a remembered table view", async () => {
+    window.localStorage.setItem("liquifact-marketplace-view", "table");
+    renderMarketplace("view=cards");
+
+    await waitFor(() =>
+      expect(window.localStorage.getItem("liquifact-marketplace-view")).toBe("cards"),
+    );
+    expect(screen.getByRole("button", { name: "Cards" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("Clear filters button calls router.push to /marketplace (no query string)", async () => {
