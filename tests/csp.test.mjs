@@ -47,6 +47,21 @@ describe("lib/security/csp", () => {
     assert.match(csp, /connect-src 'self' https:\/\/friendbot\.stellar\.org https:\/\/backend\.liquifact\.io https:\/\/soroban-rpc\.stellar\.org https:\/\/horizon\.stellar\.org/);
   });
 
+  it("includes every RPC and Horizon pool origin in connect-src", () => {
+    const csp = buildCsp({
+      nonce: dummyNonce,
+      rpcUrl: ["https://rpc-a.test/rpc", "https://rpc-b.test:8443/rpc"],
+      horizonUrl: "https://horizon-a.test,https://horizon-b.test/accounts/123",
+    });
+    const connectSrc = csp.match(/connect-src ([^;]+)/)?.[1] ?? "";
+
+    assert.match(connectSrc, /https:\/\/rpc-a\.test/);
+    assert.match(connectSrc, /https:\/\/rpc-b\.test:8443/);
+    assert.match(connectSrc, /https:\/\/horizon-a\.test/);
+    assert.match(connectSrc, /https:\/\/horizon-b\.test/);
+    assert.doesNotMatch(connectSrc, /rpc-a\.test\/rpc|\/accounts\/123/);
+  });
+
   it("normalizes URLs to origins, stripping paths, queries, and fragments", () => {
     const origin1 = normalizeOrigin("https://api.liquifact.io/v1/endpoints?query=1#frag");
     assert.equal(origin1, "https://api.liquifact.io");
