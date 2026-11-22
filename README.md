@@ -35,6 +35,10 @@ to verify offline behavior. `npm run test:ui` runs the PWA keyboard/status tests
 Updates activate only after the user selects **Reload**. Funding, escrow, wallet,
 and RPC traffic are not cached. [Browser evidence](docs/pwa-evidence/README.md).
 
+## Documentation
+
+See the [Documentation Index](docs/README.md) for a categorized overview of all contributor guides, architecture diagrams, API references, and current vs. planned/outdated documentation in `docs/`.
+
 ## Development
 
 Requires Node.js 20.9+.
