@@ -1,12 +1,20 @@
 import { fundedPercent } from "@/lib/format";
+import { useLocale, useT } from "@/lib/i18n/I18nProvider.jsx";
 
 export default function FundingProgress({ funded, target, currency, size = "md", showLabel = false }) {
   const fundedAmount = Number.isFinite(Number(funded)) ? Number(funded) : 0;
   const targetAmount = Number.isFinite(Number(target)) ? Number(target) : 0;
   const percent = fundedPercent({ amount: targetAmount, fundedAmount });
-  const formattedFunded = fundedAmount.toLocaleString("en-US", { maximumFractionDigits: 2 });
-  const formattedTarget = targetAmount.toLocaleString("en-US", { maximumFractionDigits: 2 });
-  const valueText = `${percent}% funded, ${formattedFunded} of ${formattedTarget} ${currency}`;
+  const locale = useLocale();
+  const t = useT();
+  const formattedFunded = fundedAmount.toLocaleString(locale, { maximumFractionDigits: 2 });
+  const formattedTarget = targetAmount.toLocaleString(locale, { maximumFractionDigits: 2 });
+  const valueText = t("progress.valueText", {
+    percent,
+    funded: formattedFunded,
+    target: formattedTarget,
+    currency,
+  });
 
   return (
     <div className={`funding-progress funding-progress-${size}`}>
