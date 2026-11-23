@@ -111,6 +111,7 @@ export default function MarketplaceClient() {
 
   useEffect(() => {
     let alive = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial invoice list fetch on mount
     setFetchState((s) => ({ ...s, loading: true }));
     // Fetch the full list once — filter client-side
     listInvoices().then((r) => {

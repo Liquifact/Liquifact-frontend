@@ -36,6 +36,7 @@ export default function BalanceHint({ currency, address, amount, onUseMax, onVal
   }, [address, asset, loadBalancesFn]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Load wallet balances on mount
     load();
   }, [load]);
 

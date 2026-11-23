@@ -51,6 +51,7 @@ export default function YieldCalculator({ amount = "", yieldBps, dueDate, curren
 
   // Follow the fund form's amount without lifting its state.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Sync calculator input with parent form amount
     setValue(amount ?? "");
   }, [amount]);
 

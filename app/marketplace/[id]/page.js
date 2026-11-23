@@ -13,7 +13,7 @@ export default async function InvoicePage({ params }) {
   return (
     <>
       {invoice && (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: stringifyJsonLd(invoiceJsonLd(invoice)) }} />
+        <script type="application/ld+json">{stringifyJsonLd(invoiceJsonLd(invoice))}</script>
       )}
       <InvoiceDetail id={id} />
     </>

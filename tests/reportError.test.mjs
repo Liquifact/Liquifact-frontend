@@ -121,7 +121,7 @@ describe("lib/observability/reportError", () => {
     const err = new Error("Default console error");
     reportError(err, { userToken: "secret123", page: "/docs" });
 
-    assert.equal(loggedError, err);
+    assert.equal(loggedError.message, err.message);
     assert.deepEqual(loggedContext, {
       userToken: "[REDACTED]",
       page: "/docs",

@@ -140,6 +140,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
   useEffect(() => {
     if (!inv?.onChain) return undefined;
     let alive = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetch escrow constraints on mount
     setRules({ loading: true, data: null, error: null });
     loadConstraintsFn({})
       .then((data) => alive && setRules({ loading: false, data, error: null }))

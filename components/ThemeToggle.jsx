@@ -19,6 +19,7 @@ function apply(pref) {
 export default function ThemeToggle() {
   const [pref, setPref] = useState("system"); // matches server render
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Read theme preference from localStorage on mount
   useEffect(() => setPref(readPref(window.localStorage)), []);
 
   useEffect(() => {

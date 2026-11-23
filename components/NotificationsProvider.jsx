@@ -34,6 +34,7 @@ export function NotificationsProvider({ children }) {
   }, [store]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial notification refresh on mount
     refresh();
   }, [refresh]);
 
@@ -89,6 +90,7 @@ export function NotificationsProvider({ children }) {
 
   // Lifecycle: attach visibility/focus listeners, start polling when applicable.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Detect browser Notification API support on mount
     setSupported(typeof Notification !== "undefined");
     const onVisibility = () => monitor.onVisibilityChange();
     const onFocus = () => monitor.onFocus();

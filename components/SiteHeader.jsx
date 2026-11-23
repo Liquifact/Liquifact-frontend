@@ -27,6 +27,7 @@ export default function SiteHeader() {
 
   // Close on any route change (link click, Back/Forward).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Close navigation menu on route change
     setOpen(false);
   }, [pathname]);
 
