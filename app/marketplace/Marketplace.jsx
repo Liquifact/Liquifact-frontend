@@ -461,18 +461,17 @@ export default function MarketplaceClient() {
           ) : (
             <div className="grid grid-3">
               {items.map((inv) => (
-                <InvoiceCard key={inv.id} invoice={inv} medians={medians} />
+                <InvoiceCard
+                  key={inv.id}
+                  invoice={inv}
+                  medians={medians}
+                  compareSelected={selectedIds.includes(inv.id)}
+                  compareDisabled={selectedIds.length >= MAX_COMPARE}
+                  onToggleCompare={toggleCompare}
+                />
               ))}
             </div>
           )
-              <InvoiceCard
-                key={inv.id}
-                invoice={inv}
-                medians={medians}
-                compareSelected={selectedIds.includes(inv.id)}
-                compareDisabled={selectedIds.length >= MAX_COMPARE}
-                onToggleCompare={toggleCompare}
-              />
         )}
 
         {/* ---- Pagination ---- */}
