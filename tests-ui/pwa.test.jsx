@@ -1,14 +1,17 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import ServiceWorkerRegistrar from "../components/pwa/ServiceWorkerRegistrar.jsx";
+import ServiceWorkerRegistrar, { UPDATE_INTERVAL_MS, UPDATE_THROTTLE_MS } from "../components/pwa/ServiceWorkerRegistrar.jsx";
 import OfflineNotice from "../components/pwa/OfflineNotice.jsx";
 import OfflinePage from "../app/offline/page.js";
 
-afterEach(() => { cleanup(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+afterEach(() => {
+  cleanup(); vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks();
+  delete document.visibilityState;
+});
 
 function workerMock(waiting = { postMessage: vi.fn() }) {
-  const registration = Object.assign(new EventTarget(), { waiting, installing: null });
+  const registration = Object.assign(new EventTarget(), { waiting, installing: null, update: vi.fn().mockResolvedValue(undefined) });
   const serviceWorker = Object.assign(new EventTarget(), { controller: {}, register: vi.fn().mockResolvedValue(registration) });
   vi.stubGlobal("navigator", Object.assign(Object.create(navigator), { serviceWorker }));
   return { serviceWorker, registration, waiting };
@@ -64,6 +67,81 @@ test("announces registration failure without disrupting online use", async () =>
   serviceWorker.register.mockRejectedValue(new Error("blocked"));
   render(<ServiceWorkerRegistrar />);
   await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Offline access could not be enabled"));
+});
+
+function setVisibility(state) {
+  Object.defineProperty(document, "visibilityState", { configurable: true, get: () => state });
+  document.dispatchEvent(new Event("visibilitychange"));
+}
+
+async function renderRegistered() {
+  vi.useFakeTimers();
+  const mocks = workerMock(null);
+  vi.stubGlobal("location", { protocol: "https:", hostname: "example.test", reload: vi.fn() });
+  Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+  const view = render(<ServiceWorkerRegistrar />);
+  await act(() => vi.advanceTimersByTimeAsync(0));
+  expect(mocks.serviceWorker.register).toHaveBeenCalledOnce();
+  return { ...mocks, ...view };
+}
+
+test("checks for a worker update when the tab becomes visible again, throttled to once per 5 minutes", async () => {
+  const { registration } = await renderRegistered();
+  // Registration itself counts as a check, so an immediate return is throttled.
+  setVisibility("hidden"); setVisibility("visible");
+  expect(registration.update).not.toHaveBeenCalled();
+  await act(() => vi.advanceTimersByTimeAsync(UPDATE_THROTTLE_MS));
+  setVisibility("hidden");
+  expect(registration.update).not.toHaveBeenCalled();
+  setVisibility("visible");
+  expect(registration.update).toHaveBeenCalledOnce();
+  setVisibility("hidden"); setVisibility("visible");
+  await act(() => vi.advanceTimersByTimeAsync(UPDATE_THROTTLE_MS - 1));
+  setVisibility("visible");
+  expect(registration.update).toHaveBeenCalledOnce();
+  await act(() => vi.advanceTimersByTimeAsync(1));
+  setVisibility("visible");
+  expect(registration.update).toHaveBeenCalledTimes(2);
+});
+
+test("checks every 30 minutes only while visible", async () => {
+  const { registration } = await renderRegistered();
+  await act(() => vi.advanceTimersByTimeAsync(UPDATE_INTERVAL_MS));
+  expect(registration.update).toHaveBeenCalledOnce();
+  setVisibility("hidden");
+  await act(() => vi.advanceTimersByTimeAsync(UPDATE_INTERVAL_MS * 2));
+  expect(registration.update).toHaveBeenCalledOnce();
+});
+
+test("ignores update() rejections and synchronous throws", async () => {
+  const { registration } = await renderRegistered();
+  registration.update.mockRejectedValueOnce(new Error("offline"));
+  await act(() => vi.advanceTimersByTimeAsync(UPDATE_INTERVAL_MS));
+  registration.update.mockImplementationOnce(() => { throw new Error("invalid state"); });
+  await act(() => vi.advanceTimersByTimeAsync(UPDATE_INTERVAL_MS));
+  expect(registration.update).toHaveBeenCalledTimes(2);
+  expect(screen.getByRole("status").textContent).toBe("");
+});
+
+test("clears the interval and visibility listener on unmount", async () => {
+  const { registration, unmount } = await renderRegistered();
+  const removeSpy = vi.spyOn(document, "removeEventListener");
+  unmount();
+  expect(removeSpy).toHaveBeenCalledWith("visibilitychange", expect.any(Function));
+  expect(vi.getTimerCount()).toBe(0);
+  await vi.advanceTimersByTimeAsync(UPDATE_INTERVAL_MS * 2);
+  setVisibility("visible");
+  expect(registration.update).not.toHaveBeenCalled();
+});
+
+test("does not schedule update checks when service workers are unsupported", () => {
+  vi.useFakeTimers();
+  vi.stubGlobal("navigator", Object.create(navigator));
+  vi.stubGlobal("location", { protocol: "https:", hostname: "example.test" });
+  const addSpy = vi.spyOn(document, "addEventListener");
+  render(<ServiceWorkerRegistrar />);
+  expect(addSpy).not.toHaveBeenCalledWith("visibilitychange", expect.any(Function));
+  expect(vi.getTimerCount()).toBe(0);
 });
 
 test("stale status includes a saved timestamp and distinguishes uncached demo fallback", () => {
