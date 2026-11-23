@@ -32,6 +32,18 @@ test("money helpers support exact addition, subtraction, comparison, and minimum
   assert.equal(money.min(one, two), one);
 });
 
+test("contribution remaining capacity is decimal-safe for float-drift amounts", () => {
+  const remaining = money.sub(money.parse("0.3", "XLM"), money.parse("0.1", "XLM"));
+  assert.equal(remaining, money.parse("0.2", "XLM"));
+  assert.equal(money.cmp(money.add(money.parse("0.1", "XLM"), money.parse("0.2", "XLM")), money.parse("0.3", "XLM")), 0);
+});
+
+test("seven-decimal amounts compare exactly against remaining funds", () => {
+  const remaining = money.parse("1.2345678", "XLM");
+  assert.equal(money.cmp(money.parse("1.2345678", "XLM"), remaining), 0);
+  assert.equal(money.cmp(money.parse("1.2345679", "XLM"), remaining), 1);
+});
+
 test("funding percentages floor until fully funded", () => {
   assert.equal(fundedPercent({ amount: 1000, fundedAmount: 996 }), 99);
   assert.equal(fundedPercent({ amount: 1000, fundedAmount: 4 }), 0);
