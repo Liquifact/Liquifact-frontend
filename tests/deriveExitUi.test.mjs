@@ -122,3 +122,41 @@ test("formatStroops: 1 stroop", () => {
 test("formatStroops: trims trailing zeros", () => {
   assert.equal(formatStroops(10_100_000n), "1.01");
 });
+
+// -- Deduplication tests (issue #1498) ------------------------------------
+// Verify that the thin-wrapper parseStroops and delegating formatStroops
+// agree with the canonical lib/stellar/amount.js implementations.
+
+import { parseToStroops, stroopsToDisplay, STROOPS_PER_UNIT as AMOUNT_STROOPS_PER_UNIT } from "../lib/stellar/amount.js";
+
+test("STROOPS_PER_UNIT re-export matches lib/stellar/amount value", () => {
+  assert.equal(STROOPS_PER_UNIT, AMOUNT_STROOPS_PER_UNIT);
+});
+
+test("formatStroops delegates to stroopsToDisplay (round-trip agreement)", () => {
+  const cases = [0n, 1n, 5_000_000n, 10_000_000n, 10_100_000n, 123_456_789n];
+  for (const v of cases) {
+    assert.equal(formatStroops(v), stroopsToDisplay(v), `mismatch at ${v}`);
+  }
+});
+
+test("parseStroops agrees with parseToStroops for valid inputs", () => {
+  const inputs = ["1", "0.5", "0.0000001", "1.5", "12.3456789"];
+  const max = 1_000_000_000_000n;
+  for (const inp of inputs) {
+    const wrapped = parseStroops(inp, max);
+    const direct = parseToStroops(inp);
+    assert.ok(!wrapped.error, `expected success for "${inp}"`);
+    assert.equal(wrapped.stroops, direct, `stroops mismatch for "${inp}"`);
+  }
+});
+
+test("parseStroops max-bound rejection is wrapper-only logic (not in parseToStroops)", () => {
+  // parseToStroops has no max-bound concept; parseStroops adds it.
+  const twoXlm = 20_000_000n;
+  const oneXlm = 10_000_000n;
+  const direct = parseToStroops("2");
+  assert.equal(direct, twoXlm, "parseToStroops should return 2 XLM");
+  const wrapped = parseStroops("2", oneXlm); // max is 1 XLM
+  assert.ok(wrapped.error, "parseStroops should reject when over max");
+});
