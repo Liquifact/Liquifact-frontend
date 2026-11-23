@@ -7,7 +7,7 @@ import { LOCALE_COOKIE, SUPPORTED_LOCALES, getDictionary, t as translate } from 
 
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
-export default function LocaleSwitcher() {
+export default function LocaleSwitcher({ id = "locale-select" } = {}) {
   const t = useT();
   const locale = useLocale();
   const router = useRouter();
@@ -24,8 +24,8 @@ export default function LocaleSwitcher() {
 
   return (
     <div className="locale-switcher">
-      <label htmlFor="locale-select">{t("locale.label")}</label>
-      <select id="locale-select" value={locale} onChange={onChange}>
+      <label htmlFor={id}>{t("locale.label")}</label>
+      <select id={id} value={locale} onChange={onChange}>
         {SUPPORTED_LOCALES.map((code) => (
           <option key={code} value={code} lang={code}>
             {t(`locale.${code}`)}
