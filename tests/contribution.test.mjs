@@ -34,6 +34,22 @@ describe("validateContribution", () => {
   it("rejects closed invoice with NOT_OPEN", () => {
     assert.deepEqual(validateContribution("100", closedInvoice), { ok: false, amount: 0, error: "NOT_OPEN" });
   });
+
+  it("accepts exact remaining amount in float-drift case", () => {
+    const inv = { amount: 1, fundedAmount: 0.1, status: "open" };
+    assert.deepEqual(validateContribution("0.9", inv), { ok: true, amount: 0.9, error: null });
+  });
+
+  it("rejects one minor unit over remaining", () => {
+    const inv = { amount: 1, fundedAmount: 0.1, status: "open" };
+    assert.deepEqual(validateContribution("0.9000001", inv), { ok: false, amount: 0.9000001, error: "EXCEEDS_REMAINING" });
+  });
+
+  it("avoids 0.1+0.2 float drift against remaining", () => {
+    const inv = { amount: 0.3, fundedAmount: 0.1, status: "open" };
+    assert.deepEqual(validateContribution("0.2", inv), { ok: true, amount: 0.2, error: null });
+    assert.deepEqual(validateContribution("0.2000001", inv), { ok: false, amount: 0.2000001, error: "EXCEEDS_REMAINING" });
+  });
 });
 
 describe("creditedAmount", () => {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import FundingProgress from "./FundingProgress";
 import StatusBadge from "./StatusBadge";
 import RiskBadge from "./RiskBadge";
+import DueStatusBadge from "./invoice/DueStatusBadge";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent } from "@/lib/format";
 import { useLocale, useT } from "@/lib/i18n/I18nProvider";
 import { scoreInvoice } from "@/lib/risk";
@@ -37,7 +38,10 @@ export default function InvoiceCard({
       <div className="kv">
         <div><span className="k">{t("invoice.faceValue")}</span>{formatAmount(invoice.amount, invoice.currency, locale)}</div>
         <div><span className="k">{t("invoice.yield")}</span>{bpsToPercent(invoice.yieldBps, locale)}</div>
-        <div><span className="k">{t("invoice.due")}</span>{formatDate(invoice.dueDate, locale)}</div>
+        <div>
+          <span className="k">{t("invoice.due")}</span>{formatDate(invoice.dueDate, locale)}
+          <div style={{ marginTop: 4 }}><DueStatusBadge invoice={invoice} /></div>
+        </div>
         <div><span className="k">{t("invoice.funded")}</span>{pct}%</div>
       </div>
       <FundingProgress funded={invoice.fundedAmount} target={invoice.amount} currency={invoice.currency} size="sm" />

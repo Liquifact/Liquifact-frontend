@@ -93,12 +93,23 @@ test("notification memory rehydrates empty after persisted data is cleared", () 
   assert.deepEqual(store.getSnapshot(), {});
 });
 
-test("in-flight invoice polling cannot recreate data after settings clears it", async () => {
+test("in-flight invoice polling cannot recreate data or restart timers after settings clears it", async (t) => {
+  t.mock.timers.enable({ toFake: ["setTimeout", "clearTimeout"] });
   const storage = memoryStorage();
   const store = createNotificationStore({ storage });
   store.follow("synthetic-invoice");
   let finish;
-  const monitor = createInvoiceMonitor({ store, listInvoices: () => new Promise((resolve) => { finish = resolve; }) });
+  let calls = 0;
+  const monitor = createInvoiceMonitor({
+    store,
+    document: { visibilityState: "visible" },
+    random: () => 0.5,
+    listInvoices: () => {
+      calls += 1;
+      return new Promise((resolve) => { finish = resolve; });
+    },
+  });
+  monitor.start();
   const pending = monitor.poll();
   clearLocalData(storage);
   store.reload();
@@ -106,4 +117,10 @@ test("in-flight invoice polling cannot recreate data after settings clears it", 
   await pending;
   assert.equal(storage.getItem("liquifact.notifications.v1"), null);
   assert.deepEqual(store.getSnapshot(), {});
+  t.mock.timers.tick(600000);
+  await Promise.resolve();
+  assert.equal(calls, 1);
+  assert.equal(storage.getItem("liquifact.notifications.v1"), null);
+  monitor.stop();
+  t.mock.timers.reset();
 });

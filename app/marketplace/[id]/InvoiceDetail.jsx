@@ -21,6 +21,7 @@ import { validateContribution as checkApiContribution, creditedAmount } from "@/
 import { getWalletAddress } from "@/lib/stellar/freighter";
 import SmeActionsCard from "@/components/sme/SmeActionsCard";
 import LifecycleTimeline from "@/components/invoice/LifecycleTimeline";
+import DueStatusBadge from "@/components/invoice/DueStatusBadge";
 import YieldCalculator from "@/components/invest/YieldCalculator";
 import { escrowFor } from "@/lib/escrow/registry";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
@@ -342,7 +343,12 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
             <div className="kv" style={{ marginTop: 12 }}>
               <div><span className="k">Face value</span>{formatAmount(inv.amount, inv.currency)}</div>
               <div><span className="k">Investor yield</span>{bpsToPercent(inv.yieldBps)}</div>
-              <div><span className="k">Due date</span>{formatDate(inv.dueDate)}</div>
+              <div>
+                <span className="k">Due date</span>
+                <span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                  {formatDate(inv.dueDate)} <DueStatusBadge invoice={inv} />
+                </span>
+              </div>
               <div><span className="k">Remaining</span>{formatAmount(remaining, inv.currency)}</div>
               {inv.smeAddress && <div style={{ gridColumn: "1 / -1" }}><span className="k">SME wallet</span><span className="mono">{shortAddress(inv.smeAddress, 8)}</span></div>}
             </div>

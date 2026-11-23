@@ -226,7 +226,7 @@ export default function MarketplaceClient() {
   function handleExport() {
     if (!canExport) return;
     try {
-      exportInvoicesCsv(exportRows, defaultFilename());
+      exportInvoicesCsv(exportRows, defaultFilename(), { context: { medians, now: Date.now() } });
       setExportStatus(`Exported ${exportRows.length} invoice${exportRows.length === 1 ? "" : "s"} to CSV.`);
     } catch {
       setExportStatus("Export failed. Please try again.");
@@ -461,18 +461,17 @@ export default function MarketplaceClient() {
           ) : (
             <div className="grid grid-3">
               {items.map((inv) => (
-                <InvoiceCard key={inv.id} invoice={inv} medians={medians} />
+                <InvoiceCard
+                  key={inv.id}
+                  invoice={inv}
+                  medians={medians}
+                  compareSelected={selectedIds.includes(inv.id)}
+                  compareDisabled={selectedIds.length >= MAX_COMPARE}
+                  onToggleCompare={toggleCompare}
+                />
               ))}
             </div>
           )
-              <InvoiceCard
-                key={inv.id}
-                invoice={inv}
-                medians={medians}
-                compareSelected={selectedIds.includes(inv.id)}
-                compareDisabled={selectedIds.length >= MAX_COMPARE}
-                onToggleCompare={toggleCompare}
-              />
         )}
 
         {/* ---- Pagination ---- */}
