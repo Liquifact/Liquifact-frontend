@@ -35,7 +35,15 @@ export function NotificationsProvider({ children }) {
 
   useEffect(() => {
     refresh();
-  }, [refresh]);
+    const unsubscribe = store.subscribe(() => {
+      refresh();
+      monitor.start();
+    });
+    return () => {
+      unsubscribe();
+      store.dispose();
+    };
+  }, [store, monitor, refresh]);
 
   const follow = useCallback(
     (id) => {
