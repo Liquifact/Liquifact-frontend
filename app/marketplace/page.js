@@ -1,6 +1,9 @@
 import { Suspense } from "react";
 import { pageMeta } from "@/lib/seo";
+import { listInvoices } from "@/lib/api";
 import Marketplace from "./Marketplace";
+
+export const revalidate = 30;
 
 export const metadata = pageMeta({
   path: "/marketplace",
@@ -8,9 +11,19 @@ export const metadata = pageMeta({
   description: "Browse invoices open for funding on LiquiFact.",
 });
 
-// useSearchParams() inside Marketplace.jsx requires a Suspense boundary when
-// the page is rendered as a server component (Next.js 13+).
-export default function MarketplacePage() {
+// Fetch the first page of invoices on the server so the initial HTML contains
+// invoice cards. Errors propagate to app/marketplace/error.js.
+async function loadInitialInvoices(status) {
+  const result = await listInvoices({ status, revalidate: 30 });
+  const invoices = Array.isArray(result) ? result : result?.invoices ?? result?.data ?? [];
+  return { invoices, offline: Boolean(result?.offline) };
+}
+
+export default async function MarketplacePage({ searchParams }) {
+  const params = (await searchParams) ?? {};
+  const status = typeof params.status === "string" ? params.status : undefined;
+  const { invoices, offline } = await loadInitialInvoices(status);
+
   return (
     <Suspense
       fallback={
@@ -25,7 +38,7 @@ export default function MarketplacePage() {
         </section>
       }
     >
-      <Marketplace />
+      <Marketplace initialInvoices={invoices} initialOffline={offline} initialStatus={status ?? ""} />
     </Suspense>
   );
 }

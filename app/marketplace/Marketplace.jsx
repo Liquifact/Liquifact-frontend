@@ -226,7 +226,7 @@ export default function MarketplaceClient() {
   function handleExport() {
     if (!canExport) return;
     try {
-      exportInvoicesCsv(exportRows, defaultFilename());
+      exportInvoicesCsv(exportRows, defaultFilename(), { context: { medians, now: Date.now() } });
       setExportStatus(`Exported ${exportRows.length} invoice${exportRows.length === 1 ? "" : "s"} to CSV.`);
     } catch {
       setExportStatus("Export failed. Please try again.");
