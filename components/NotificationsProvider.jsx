@@ -42,7 +42,15 @@ export function NotificationsProvider({ children }) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial notification refresh on mount
     refresh();
-  }, [refresh]);
+    const unsubscribe = store.subscribe(() => {
+      refresh();
+      monitor.start();
+    });
+    return () => {
+      unsubscribe();
+      store.dispose();
+    };
+  }, [store, monitor, refresh]);
 
   const follow = useCallback(
     (id) => {
