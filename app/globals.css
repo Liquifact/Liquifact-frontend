@@ -197,6 +197,17 @@ p { margin: 0 0 1em; }
 .glass .k { color: rgba(255, 255, 255, 0.65); }
 
 /* Cards & grids */
+.settings-heading { margin-bottom: 28px; }
+.settings-grid h2 { font-size: 1.35rem; }
+.settings-themes { border: 0; padding: 0; margin: 20px 0; }
+.settings-themes legend { font-weight: 600; margin-bottom: 10px; }
+.settings-theme { display: inline-flex; align-items: center; gap: 8px; margin: 0 16px 10px 0; cursor: pointer; }
+.settings-theme input, .settings-check input { accent-color: var(--brand); width: 18px; height: 18px; }
+.settings-language .locale-switcher { display: grid; gap: 8px; }
+.settings-language select { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--fg); padding: 10px; font: inherit; }
+.settings-check { display: flex; align-items: center; gap: 10px; margin: 18px 0; }
+.settings-data { grid-column: 1 / -1; }
+.settings-data .btn { border-color: var(--danger); color: var(--fg); transition: none; }
 .grid { display: grid; gap: 20px; }
 .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
