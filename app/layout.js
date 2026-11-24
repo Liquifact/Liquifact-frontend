@@ -12,6 +12,7 @@ import { headers } from "next/headers";
 import { getDictionary } from "@/lib/i18n";
 import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import { getLocale } from "@/lib/i18n/server";
+import GlobalErrorListener from "@/components/observability/GlobalErrorListener";
 
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://liquifact-frontend.vercel.app"),
@@ -48,6 +49,7 @@ export default async function RootLayout({ children }) {
       </head>
       <body>
         <I18nProvider locale={locale} dict={dict}>
+          <GlobalErrorListener />
           <SkipLink />
           <ToastProvider>
             <OutboxSync />
