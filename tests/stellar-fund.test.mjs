@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Account, Address, Keypair, Networks, scValToNative, TransactionBuilder } from "@stellar/stellar-sdk";
+import { Account, Address, Keypair, Networks, scValToNative, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
 import { CONTRACT_ID } from "../lib/config.js";
 import { toStroops, remainingStroops, MAX_I128 } from "../lib/stellar/amount.js";
 import { buildFundTx, submitFund } from "../lib/stellar/fund.js";
@@ -75,6 +75,52 @@ test("sendTransaction ERROR fails without polling", async () => {
   const { calls, options } = fixture({ sendTransaction: async () => ({ status: "ERROR" }) });
   await assert.rejects(submitFund(options), /submission failed/);
   assert.equal(calls.polls, 0);
+});
+
+function resultXdr(code) {
+  return xdr.TransactionResult.fromXdrObject({ feeCharged: 100n, result: { code }, ext: { v: 0 } });
+}
+
+test("tx_bad_seq rebuilds with a fresh account and re-signs exactly once", async () => {
+  let sequence = 42;
+  const { calls, options } = fixture({
+    getAccount: async (address) => { assert.equal(address, investor); return new Account(address, String(sequence)); },
+    sendTransaction: async (tx) => {
+      calls.sends++;
+      if (calls.sends === 1) {
+        sequence++;
+        return { status: "ERROR", errorResult: resultXdr(-5) };
+      }
+      return { status: "PENDING", hash: tx.hash().toString("hex") };
+    },
+  });
+
+  assert.equal((await submitFund(options)).status, "SUCCESS");
+  assert.equal(calls.signatures, 2);
+  assert.equal(calls.sends, 2);
+  assert.equal(calls.phases.filter((phase) => phase === "Retrying with updated account…").length, 1);
+});
+
+test("non-sequence send errors and repeat bad sequences are not retried", async () => {
+  let otherSends = 0;
+  const other = fixture({ sendTransaction: async () => {
+    otherSends++;
+    return { status: "ERROR", errorResult: resultXdr(-6) };
+  } });
+  await assert.rejects(submitFund(other.options), /submission failed/);
+  assert.equal(other.calls.signatures, 1);
+  assert.equal(otherSends, 1);
+  assert.equal(other.calls.phases.includes("Retrying with updated account…"), false);
+
+  let sends = 0;
+  const twice = fixture({ sendTransaction: async () => {
+    sends++;
+    return sends === 1 ? { status: "ERROR", errorResult: resultXdr(-5) } : { status: "ERROR", errorResult: resultXdr(-5) };
+  } });
+  await assert.rejects(submitFund(twice.options), /submission failed/);
+  assert.equal(twice.calls.signatures, 2);
+  assert.equal(sends, 2);
+  assert.equal(twice.calls.phases.filter((phase) => phase === "Retrying with updated account…").length, 1);
 });
 for (const status of ["FAILED", "SUCCESS"]) {
   test(`poll resolves ${status} with transaction hash`, async () => {
