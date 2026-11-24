@@ -129,8 +129,8 @@ test("unfollowing removes row and stops monitor polling when none remain", () =>
     listInvoices: async () => ({ data: [] }),
     store,
     document: { visibilityState: "visible" },
-    setInterval: () => ++intervalId,
-    clearInterval: () => {
+    setTimeout: () => ++intervalId,
+    clearTimeout: () => {
       cleared += 1;
     },
   });

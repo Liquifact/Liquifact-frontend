@@ -242,7 +242,7 @@ export default function TxActivityButton() {
                 )}
               </>
             )}
-            <Link href="/activity" role="listitem" className="tx-full-history" onClick={closeDrawer}>
+            <Link href="/activity" className="tx-full-history" onClick={closeDrawer}>
               View full transaction history
             </Link>
           </div>

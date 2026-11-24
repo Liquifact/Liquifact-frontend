@@ -1,11 +1,16 @@
 import { pageMeta } from "@/lib/seo";
+import { getDictionary, t } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n/server";
 import SubmitForm from "./SubmitForm";
 
-export const metadata = pageMeta({
-  path: "/submit",
-  title: "Submit invoice",
-  description: "List an unpaid invoice on LiquiFact for financing.",
-});
+export async function generateMetadata() {
+  const dict = getDictionary(await getLocale());
+  return pageMeta({
+    path: "/submit",
+    title: t(dict, "submit.meta.title"),
+    description: t(dict, "submit.meta.description"),
+  });
+}
 
 export default function SubmitPage() {
   return <SubmitForm />;

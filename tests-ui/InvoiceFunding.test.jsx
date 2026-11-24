@@ -19,6 +19,7 @@ vi.mock("@/lib/stellar/freighter", async (importOriginal) => ({
   ...(await importOriginal()),
   connectFreighter: vi.fn(),
   signWithFreighter: vi.fn(),
+  getNetworkName: vi.fn(async () => "testnet"),
 }));
 vi.mock("@/lib/stellar/fund", () => ({ submitFund: vi.fn() }));
 vi.mock("@/components/wallet/BalanceHint", () => ({ default: () => null }));

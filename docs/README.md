@@ -2,14 +2,14 @@
 
 Entry point for all contributor and developer documentation under `docs/`.
 
-> **Status Note:** Documents marked **`[planned/outdated]`** reference routes (such as `/invest`, `/invoices`, or `/settings`) or components (such as `NavMenu`, `WalletProvider`, `WalletStatus`, `UploadZone`, `InvoiceFilters`, or `SettingsView`) that do not exist in `app/` or `components/`. Current production routes live under `/`, `/marketplace`, `/marketplace/[id]`, `/submit`, `/get-started`, `/docs`, and `/offline`.
+> **Status Note:** Documents marked **`[planned/outdated]`** reference routes (such as `/invest`, `/invoices`, or `/settings`) or components (such as `NavMenu`, `WalletProvider`, `WalletStatus`, `InvoiceFilters`, or `SettingsView`) that do not exist in `app/` or `components/`. Current production routes live under `/`, `/marketplace`, `/marketplace/[id]`, `/submit`, `/get-started`, `/docs`, and `/offline`.
 
 ---
 
 ## Architecture
 
-- [`architecture.md`](architecture.md) — **`[planned/outdated]`** App Router structure, route-to-component map, mock vs. live data boundaries, and repository hygiene rules. *(Note: references non-existent `/invest` and `/invoices` routes and components such as `NavMenu`, `WalletProvider`, `WalletStatus`, `UploadZone`, `InvoiceList`, and `StatusPill`; active routes are `/marketplace` and `/submit` with `SiteHeader` and `SiteFooter`.)*
-- [`api-integration.md`](api-integration.md) — **`[planned/outdated]`** HTTP payload contracts, mock data wiring, error handling, and timeout/truncation guards for backend communication. *(Note: references non-existent `app/invest/page.js`, `app/invest/[id]/page.js`, `components/UploadZone.jsx`, and `ErrorBanner`.)*
+- [`architecture.md`](architecture.md) — **`[planned/outdated]`** App Router structure, route-to-component map, mock vs. live data boundaries, and repository hygiene rules. *(Note: references non-existent `/invest` and `/invoices` routes and components such as `NavMenu`, `WalletProvider`, `WalletStatus`, `InvoiceList`, and `StatusPill`; active routes are `/marketplace` and `/submit` with `SiteHeader` and `SiteFooter`.)*
+- [`api-integration.md`](api-integration.md) — **`[planned/outdated]`** HTTP payload contracts, mock data wiring, error handling, and timeout/truncation guards for backend communication. *(Note: references non-existent `app/invest/page.js`, `app/invest/[id]/page.js`, and `ErrorBanner`; current submission uses `app/submit/SubmitForm.jsx` and `components/UploadZone.jsx`.)*
 - [`observability.md`](observability.md) — Route-level and root error boundaries (`app/**/error.js`, `components/ErrorState.jsx`) and the `reportError` telemetry sink with sensitive-key scrubbing.
 - [`issue-334-cpu-budget-median-throttling.md`](issue-334-cpu-budget-median-throttling.md) — **`[planned/outdated]`** Archived implementation summary for Soroban price-oracle median buffer truncation to prevent CPU budget exhaustion. *(Note: describes Rust smart contract code in `contracts/price-oracle/` with no components in `app/` or `components/`.)*
 - [`issue-334-flow-diagram.md`](issue-334-flow-diagram.md) — **`[planned/outdated]`** Archived ASCII flow and weight-prioritization diagrams for Issue #334 price-oracle buffer truncation. *(Note: describes external Soroban contract logic with no frontend components in `app/` or `components/`.)*
@@ -20,9 +20,9 @@ Entry point for all contributor and developer documentation under `docs/`.
 - [`marketplace-api.md`](marketplace-api.md) — **`[planned/outdated]`** Component prop reference and usage example for the marketplace UI controls. *(Note: references non-existent `InvestMarketplace` in `app/invest/page.js` and `InvoiceSearch`, `InvoiceFilters`, `StatusLegendFilter`, and `Pagination` in `components/`.)*
 - [`marketplace-data-flow.md`](marketplace-data-flow.md) — **`[planned/outdated]`** Lifecycle diagrams for fetching, filtering, sorting, and announcing marketplace invoices. *(Note: describes `app/invest/page.js`, `InvoiceListSkeleton`, `ErrorBanner`, and `EmptyState`, which do not exist in `app/` or `components/`.)*
 - [`invoice-data.md`](invoice-data.md) — **`[planned/outdated]`** Mock invoice object shape, display vs. numeric fields, and live API migration checklist. *(Note: references non-existent `app/invest/lib.js`, `app/invest/page.js`, `app/invest/[id]/page.js`, and `components/InvoiceList.jsx`.)*
-- [`upload-api.md`](upload-api.md) — **`[planned/outdated]`** Prop and validation reference for the PDF invoice drag-and-drop upload form. *(Note: describes `components/UploadZone.jsx`, `components/ProgressBar.jsx`, and `components/InvoiceList.jsx`, which do not exist in `components/`; invoice submission is currently handled by `app/submit/SubmitForm.jsx`.)*
-- [`upload-data-flow.md`](upload-data-flow.md) — **`[planned/outdated]`** State machine and data lifecycle diagrams for PDF selection, validation, tokenization delay, and optimistic list updates. *(Note: references non-existent `components/UploadZone.jsx`, `components/InvoiceList.jsx`, and `app/invoices/page.js`.)*
-- [`upload-a11y.md`](upload-a11y.md) — **`[planned/outdated]`** Accessibility contract, ARIA attributes, keyboard interactions, and screen-reader announcements for PDF uploading. *(Note: documents `components/UploadZone.jsx`, which does not exist in `components/`.)*
+- [`upload-api.md`](upload-api.md) — Props, exports and validation reference for `components/UploadZone.jsx` and `lib/validation/pdf.js`, including the SHA-256 fingerprint and submit-wizard payload integration.
+- [`upload-data-flow.md`](upload-data-flow.md) — **`[planned/outdated]`** State machine and data lifecycle diagrams for the former tokenization-delay and optimistic-list upload flow. *(Note: describes `components/InvoiceList.jsx` and `app/invoices/page.js`, which do not exist; current submission is handled by `app/submit/SubmitForm.jsx`.)*
+- [`upload-a11y.md`](upload-a11y.md) — Accessibility contract, ARIA attributes, keyboard interactions and screen-reader announcements for `components/UploadZone.jsx`.
 
 ## Wallet
 
@@ -40,7 +40,7 @@ Entry point for all contributor and developer documentation under `docs/`.
 ## PWA/Performance
 
 - [`performance.md`](performance.md) — **`[planned/outdated]`** Bundle-size budgets with `size-limit` and React Server Component split metrics for the detail route. *(Note: references non-existent `app/invest/page.js`, `app/invoices/page.js`, `app/invest/[id]/page.js`, and `app/invest/[id]/FundActions.jsx`.)*
-- [`accessibility.md`](accessibility.md) — **`[planned/outdated]`** WCAG 2.1 AA statement, focus-ring audit, roving tabindex, keyboard shortcuts, and contrast harness. *(Note: references non-existent components including `NavMenu`, `UploadZone`, `WalletStatus`, `Pagination`, `InvoiceFilters`, `ShortcutHelpDialog`, and `app/invest/page.js`.)*
+- [`accessibility.md`](accessibility.md) — **`[planned/outdated]`** WCAG 2.1 AA statement, focus-ring audit, roving tabindex, keyboard shortcuts, and contrast harness. *(Note: references non-existent components including `NavMenu`, `WalletStatus`, `Pagination`, `InvoiceFilters`, `ShortcutHelpDialog`, and `app/invest/page.js`.)*
 - [`pwa-evidence/README.md`](pwa-evidence/README.md) — Browser verification report and before/after screenshots for offline caching, service worker reload prompts, and installability (`components/pwa/OfflineNotice.jsx`, `components/pwa/ServiceWorkerRegistrar.jsx`, `app/offline/page.js`).
 
 ## Security

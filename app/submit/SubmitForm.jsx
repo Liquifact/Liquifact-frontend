@@ -5,12 +5,16 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import { createInvoice } from "@/lib/api";
 import { formatAmount } from "@/lib/format";
 import { createOutbox, isNetworkError } from "@/lib/outbox";
+import UploadZone from "@/components/UploadZone";
+import { useLocale, useT } from "@/lib/i18n/I18nProvider";
 import {
   DRAFT_KEY,
   STEPS,
   LAST_STEP,
+  errorMessageKey,
   reducer,
   initialState,
+  stepFromSearch,
   toPayload,
   validateAll,
   bpsLabel,
@@ -34,11 +38,12 @@ function clearDraft() {
 }
 
 function urlStep() {
-  const n = Number(new URLSearchParams(window.location.search).get("step"));
-  return Number.isInteger(n) && n >= 1 && n <= STEPS.length ? n - 1 : 0;
+  return stepFromSearch(window.location.search);
 }
 
 export default function SubmitForm() {
+  const t = useT();
+  const locale = useLocale();
   const [state, dispatch] = useReducer(reducer, undefined, () => initialState());
   const { step, form, errors, status } = state;
   const [restored, setRestored] = useState(false);
@@ -67,13 +72,13 @@ export default function SubmitForm() {
   // Debounced draft persistence.
   useEffect(() => {
     if (!hydrated.current || status.state === "success") return undefined;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       try {
         const { confirmed, ...rest } = form;
         window.sessionStorage.setItem(DRAFT_KEY, JSON.stringify(rest));
       } catch {}
     }, 400);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [form, status.state]);
 
   // Keep ?step= in sync (pushState so browser Back goes to the previous step).
@@ -104,6 +109,11 @@ export default function SubmitForm() {
   const set = (field) => (e) => dispatch({ type: "set", field, value: e.target.type === "checkbox" ? e.target.checked : e.target.value });
   const blur = (field) => () => dispatch({ type: "blur", field });
 
+  function errorText(code) {
+    const key = errorMessageKey(code);
+    return key ? t(key) : String(code || "");
+  }
+
   function discard() {
     clearDraft();
     dispatch({ type: "discard" });
@@ -130,7 +140,7 @@ export default function SubmitForm() {
       const res = await createInvoice(payload);
       const invoice = res?.data;
       if (!invoice || !invoice.id) {
-        dispatch({ type: "submitError", message: "API returned no invoice data", details: [] });
+        dispatch({ type: "submitError", message: t("submit.error.noInvoiceData"), details: [] });
         return;
       }
       clearDraft();
@@ -158,7 +168,7 @@ export default function SubmitForm() {
       <div className="field">
         <label htmlFor={k}>{label}</label>
         <input id={k} data-field={k} value={form[k]} onChange={set(k)} onBlur={blur(k)} aria-invalid={!!errors[k]} aria-describedby={describedBy} {...props} />
-        {errors[k] && <span className="err" id={errId} role="alert">{errors[k]}</span>}
+        {errors[k] && <span className="err" id={errId} role="alert">{errorText(errors[k])}</span>}
         {hint && <span className="hint" id={hintId}>{hint}</span>}
       </div>
     );
@@ -166,28 +176,30 @@ export default function SubmitForm() {
 
   const payout = payoutPer1000(form.yieldPercent);
   const summary = [
-    [0, "Company", form.sme],
-    [0, "Debtor", form.debtor],
-    [0, "Amount", formatAmount(form.amount, form.currency)],
-    [1, "Investor yield", `${form.yieldPercent}% (${bpsLabel(form.yieldPercent)})`],
-    [1, "Due date", form.dueDate],
-    [1, "Stellar wallet", form.smeAddress.trim() || "Not provided"],
+    [0, t("submit.summary.company"), form.sme],
+    [0, t("submit.summary.debtor"), form.debtor],
+    [0, t("submit.summary.amount"), formatAmount(form.amount, form.currency, locale)],
+    [1, t("submit.summary.yield"), `${form.yieldPercent}% (${bpsLabel(form.yieldPercent)})`],
+    [1, t("submit.summary.dueDate"), form.dueDate],
+    [1, t("submit.summary.wallet"), form.smeAddress.trim() || t("submit.summary.notProvided")],
   ];
 
   let body;
   if (status.state === "success") {
     body = (
       <div>
-        <h2 tabIndex={-1} ref={headingRef}>Invoice submitted</h2>
+        <h2 tabIndex={-1} ref={headingRef}>{t("submit.success.title")}</h2>
         <div className="notice notice-ok">
-          Invoice <strong>{status.invoice?.id || "—"}</strong> created.
+          {t("submit.success.bodyPrefix")}
+          {status.invoice?.id || "—"}
+          {t("submit.success.bodySuffix")}
         </div>
         <div className="btn-row" style={{ marginTop: 16 }}>
           {status.invoice?.id && (
-            <Link className="btn btn-primary" href={`/marketplace/${status.invoice.id}`}>View listing →</Link>
+            <Link className="btn btn-primary" href={`/marketplace/${status.invoice.id}`}>{t("submit.success.view")}</Link>
           )}
           <button type="button" className="btn btn-ghost" onClick={() => { dispatch({ type: "reset" }); setRestored(false); }}>
-            Submit another
+            {t("submit.submitAnother")}
           </button>
         </div>
       </div>
@@ -195,13 +207,13 @@ export default function SubmitForm() {
   } else if (queued) {
     body = (
       <div>
-        <h2 tabIndex={-1} ref={headingRef}>Invoice queued</h2>
+        <h2 tabIndex={-1} ref={headingRef}>{t("submit.queued.title")}</h2>
         <div className="notice" role="status">
-          Queued, will send when online. Your submission is saved locally and will be sent automatically once your connection returns.
+          {t("submit.queued.body")}
         </div>
         <div className="btn-row" style={{ marginTop: 16 }}>
           <button type="button" className="btn btn-ghost" onClick={() => { setQueued(null); dispatch({ type: "reset" }); setRestored(false); }}>
-            Submit another
+            {t("submit.submitAnother")}
           </button>
         </div>
       </div>
@@ -210,16 +222,16 @@ export default function SubmitForm() {
     body = (
       <form className="form" onSubmit={onSubmit} noValidate ref={formRef}>
         <h2 tabIndex={-1} ref={headingRef} style={{ fontSize: "1.2rem" }}>
-          Step {step + 1} of {STEPS.length}: {STEPS[step].title}
+          {t("submit.stepHeading", { current: step + 1, total: STEPS.length, title: t(STEPS[step].titleKey) })}
         </h2>
         {step === 0 && (
           <>
-            {field("sme", "Company name", { placeholder: "Acme Components Ltd", autoComplete: "organization" })}
-            {field("debtor", "Debtor (who owes the invoice)", { placeholder: "Globex Retail" })}
+            {field("sme", t("submit.field.sme"), { placeholder: t("submit.placeholder.sme"), autoComplete: "organization" })}
+            {field("debtor", t("submit.field.debtor"), { placeholder: t("submit.placeholder.debtor") })}
             <div className="grid grid-2" style={{ gap: 14 }}>
-              {field("amount", "Amount", { type: "number", min: "0", step: "any", inputMode: "decimal", placeholder: "25000" })}
+              {field("amount", t("submit.field.amount"), { type: "number", min: "0", step: "any", inputMode: "decimal", placeholder: "25000" })}
               <div className="field">
-                <label htmlFor="currency">Currency</label>
+                <label htmlFor="currency">{t("submit.field.currency")}</label>
                 <select id="currency" data-field="currency" value={form.currency} onChange={set("currency")}>
                   <option>USDC</option>
                   <option>XLM</option>
@@ -231,9 +243,9 @@ export default function SubmitForm() {
         )}
         {step === 1 && (
           <>
-            {field("yieldPercent", "Investor yield (%)", { type: "number", min: "0", max: "100", step: "0.01", inputMode: "decimal" }, `${bpsLabel(form.yieldPercent)} — enter a percentage, e.g. 8 for 8%`)}
-            {field("dueDate", "Due date", { type: "date", min: tomorrowISO() })}
-            {field("smeAddress", "Stellar wallet (optional)", { placeholder: "G…", autoComplete: "off" })}
+            {field("yieldPercent", t("submit.field.yield"), { type: "number", min: "0", max: "100", step: "0.01", inputMode: "decimal" }, t("submit.hint.yield", { bps: bpsLabel(form.yieldPercent) }))}
+            {field("dueDate", t("submit.field.dueDate"), { type: "date", min: tomorrowISO() })}
+            {field("smeAddress", t("submit.field.wallet"), { placeholder: "G…", autoComplete: "off" })}
           </>
         )}
         {step === 2 && (
@@ -244,16 +256,18 @@ export default function SubmitForm() {
                   <dt className="muted">{k}</dt>
                   <dd style={{ margin: 0, overflowWrap: "anywhere" }}>
                     {v}{" "}
-                    <button type="button" className="btn btn-ghost" style={{ padding: "2px 8px", fontSize: "0.8rem" }} onClick={() => dispatch({ type: "edit", step: s })} aria-label={`Edit ${k}`}>
-                      Edit
+                    <button type="button" className="btn btn-ghost" style={{ padding: "2px 8px", fontSize: "0.8rem" }} onClick={() => dispatch({ type: "edit", step: s })} aria-label={t("submit.editAria", { field: k })}>
+                      {t("submit.edit")}
                     </button>
                   </dd>
                 </div>
               ))}
             </dl>
             <p className="muted">
-              Estimated investor payout per 1,000 {form.currency}: <strong>{payout === null ? "—" : `${payout.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${form.currency}`}</strong>
+              {t("submit.payout", { currency: form.currency })}{" "}
+              <strong>{payout === null ? "—" : `${payout.toLocaleString(locale, { maximumFractionDigits: 2 })} ${form.currency}`}</strong>
             </p>
+            <UploadZone value={form.document} onChange={(document) => dispatch({ type: "set", field: "document", value: document })} />
             <div className="field">
               <label style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <input
@@ -266,20 +280,20 @@ export default function SubmitForm() {
                   aria-invalid={!!errors.confirmed}
                   aria-describedby={errors.confirmed ? "confirmed-err" : undefined}
                 />
-                <span>I confirm this invoice is genuine and unpaid</span>
+                <span>{t("submit.field.confirmed")}</span>
               </label>
-              {errors.confirmed && <span className="err" id="confirmed-err" role="alert">{errors.confirmed}</span>}
+              {errors.confirmed && <span className="err" id="confirmed-err" role="alert">{errorText(errors.confirmed)}</span>}
             </div>
           </>
         )}
         <div className="btn-row">
           {step > 0 && (
             <button type="button" className="btn btn-ghost" onClick={() => dispatch({ type: "back" })} disabled={status.state === "submitting"}>
-              Back
+              {t("submit.back")}
             </button>
           )}
           <button type="submit" className="btn btn-primary" disabled={status.state === "submitting"}>
-            {step < LAST_STEP ? "Next" : status.state === "submitting" ? "Submitting…" : "Submit invoice"}
+            {step < LAST_STEP ? t("submit.next") : status.state === "submitting" ? t("submit.submitting") : t("submit.submit")}
           </button>
         </div>
       </form>
@@ -290,22 +304,26 @@ export default function SubmitForm() {
     <section className="section">
       <div className="container grid grid-2" style={{ alignItems: "start", gap: 40 }}>
         <div>
-          <div className="eyebrow">For SMEs</div>
-          <h1 style={{ fontSize: "clamp(1.8rem,4vw,2.6rem)" }}>Get paid today for tomorrow&apos;s invoices</h1>
-          <p className="lead">List an unpaid B2B invoice. Investors fund it through the LiquiFact escrow and you receive liquidity as soon as the target is reached.</p>
+          <div className="eyebrow">{t("submit.eyebrow")}</div>
+          <h1 style={{ fontSize: "clamp(1.8rem,4vw,2.6rem)" }}>{t("submit.title")}</h1>
+          <p className="lead">{t("submit.lead")}</p>
           <ul className="muted" style={{ paddingLeft: "1.2em" }}>
-            <li>Set the yield you offer investors as a percentage (8 = 8% = 800 bps).</li>
-            <li>Funds are held by the Soroban escrow until settlement.</li>
-            <li>The debtor pays at maturity and investors are repaid with yield.</li>
+            <li>{t("submit.bullet.yield")}</li>
+            <li>{t("submit.bullet.escrow")}</li>
+            <li>{t("submit.bullet.debtor")}</li>
           </ul>
-          <p className="muted">Read the <Link href="/docs#how-to-use">step-by-step guide</Link>.</p>
+          <p className="muted">
+            {t("submit.guidePrefix")}
+            <Link href="/docs#how-to-use">{t("submit.guideLink")}</Link>
+            {t("submit.guideSuffix")}
+          </p>
         </div>
         <div className="card">
           {status.state !== "success" && !queued && (
-            <ol aria-label="Progress" style={{ display: "flex", flexWrap: "wrap", gap: 8, listStyle: "none", padding: 0, margin: "0 0 16px" }}>
+            <ol aria-label={t("submit.progressLabel")} style={{ display: "flex", flexWrap: "wrap", gap: 8, listStyle: "none", padding: 0, margin: "0 0 16px" }}>
               {STEPS.map((s, i) => (
                 <li key={s.id} aria-current={i === step ? "step" : undefined} style={{ fontWeight: i === step ? 700 : 400, color: i === step ? "var(--fg)" : "var(--muted)" }}>
-                  {i + 1}. {s.title}
+                  {i + 1}. {t(s.titleKey)}
                   {i < STEPS.length - 1 ? " ›" : ""}
                 </li>
               ))}
@@ -313,19 +331,19 @@ export default function SubmitForm() {
           )}
           {restored && status.state !== "success" && !queued && (
             <div className="notice" role="status" style={{ marginBottom: 16 }}>
-              Restored your draft.{" "}
+              {t("submit.restored")}{" "}
               <button type="button" className="btn btn-ghost" style={{ padding: "2px 8px", fontSize: "0.85rem" }} onClick={discard}>
-                Discard
+                {t("submit.discard")}
               </button>
             </div>
           )}
           {body}
           <div aria-live="polite" role="status" style={{ marginTop: 16 }}>
-            {status.state === "submitting" && <span className="muted">Submitting your invoice…</span>}
-            {status.state === "success" && <span>Invoice {status.invoice?.id || "—"} was created.</span>}
+            {status.state === "submitting" && <span className="muted">{t("submit.status.submitting")}</span>}
+            {status.state === "success" && <span>{t("submit.status.success", { id: status.invoice?.id || "—" })}</span>}
             {status.state === "error" && (
               <div className="notice notice-err">
-                Could not submit: {status.message}
+                {t("submit.status.errorPrefix", { message: status.message })}
                 {status.details.length > 0 && (
                   <ul style={{ margin: "6px 0 0", paddingLeft: "1.2em" }}>
                     {status.details.map((d, i) => <li key={i}>{d}</li>)}

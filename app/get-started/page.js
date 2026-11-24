@@ -1,63 +1,64 @@
 import { pageMeta } from "@/lib/seo";
+import { getDictionary, t } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n/server";
 import OnboardingChecklist from "./OnboardingChecklist";
 
-export const metadata = pageMeta({
-  path: "/get-started",
-  title: "Get started",
-  description:
-    "Set up your Stellar wallet and fund a testnet account in minutes. LiquiFact detects each prerequisite and offers one-click Friendbot funding.",
-});
+export async function generateMetadata() {
+  const dict = getDictionary(await getLocale());
+  return pageMeta({
+    path: "/get-started",
+    title: t(dict, "getStarted.meta.title"),
+    description: t(dict, "getStarted.meta.description"),
+  });
+}
 
-export default function GetStartedPage() {
+export default async function GetStartedPage() {
+  const dict = getDictionary(await getLocale());
   return (
     <section className="section">
       <div className="container" style={{ maxWidth: 720 }}>
-        <div className="eyebrow">Investor onboarding</div>
+        <div className="eyebrow">{t(dict, "getStarted.eyebrow")}</div>
         <h1 style={{ fontSize: "clamp(1.8rem,4vw,2.6rem)" }}>
-          Get started on the testnet
+          {t(dict, "getStarted.title")}
         </h1>
         <p className="lead">
-          Complete the steps below to set up your Stellar wallet and fund your
-          first invoice. All five steps are detected automatically — click any
-          action to resolve them one by one.
+          {t(dict, "getStarted.lead")}
         </p>
 
         {/* Static explanation — visible without JavaScript */}
         <noscript>
           <div className="notice notice-warn" style={{ marginBottom: 24 }}>
-            JavaScript is disabled. The live checklist requires JS, but you can
-            follow these steps manually:
+            {t(dict, "getStarted.noscript.title")}
             <ol style={{ marginTop: 10, paddingLeft: "1.3em" }}>
               <li>
-                Install the{" "}
+                {t(dict, "getStarted.noscript.installPrefix")}
                 <a
                   href="https://freighter.app"
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Freighter
-                </a>{" "}
-                browser extension.
+                  {t(dict, "getStarted.noscript.installLink")}
+                </a>
+                {t(dict, "getStarted.noscript.installSuffix")}
               </li>
-              <li>Open Freighter and create or import a wallet.</li>
+              <li>{t(dict, "getStarted.noscript.open")}</li>
               <li>
-                Switch Freighter to <strong>Test Network</strong>.
+                {t(dict, "getStarted.noscript.networkPrefix")}
+                <strong>{t(dict, "getStarted.noscript.networkStrong")}</strong>
+                {t(dict, "getStarted.noscript.networkSuffix")}
               </li>
               <li>
-                Visit{" "}
+                {t(dict, "getStarted.noscript.friendbotPrefix")}
                 <a
                   href="https://friendbot.stellar.org"
                   target="_blank"
                   rel="noreferrer"
                 >
-                  friendbot.stellar.org
-                </a>{" "}
-                and paste your public key to receive testnet XLM.
+                  {t(dict, "getStarted.noscript.friendbotLink")}
+                </a>
+                {t(dict, "getStarted.noscript.friendbotSuffix")}
               </li>
-              <li>
-                In Freighter, add the USDC trustline if you plan to fund USDC
-                invoices.
-              </li>
+              <li>{t(dict, "getStarted.noscript.trustline")}</li>
             </ol>
           </div>
         </noscript>
