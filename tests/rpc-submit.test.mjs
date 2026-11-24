@@ -89,6 +89,7 @@ test("buildSignSubmit uses BASE_FEE + simulated resource fee and resolves on SUC
 
   await buildSignSubmit("refund", buildRefundArgs(signerAddress), signerAddress, onStatus, {
     network: "testnet",
+    getNetwork: async () => "testnet",
     server,
     sign,
     pollIntervalMs: 5,
@@ -121,6 +122,7 @@ test("buildSignSubmit throws on FAILED transaction status", async () => {
   await assert.rejects(
     buildSignSubmit("refund", buildRefundArgs(signerAddress), signerAddress, onStatus, {
       network: "testnet",
+      getNetwork: async () => "testnet",
       server,
       sign,
       pollIntervalMs: 5,
@@ -142,6 +144,7 @@ test("buildSignSubmit throws timeout error when polling expires", async () => {
   await assert.rejects(
     buildSignSubmit("refund", buildRefundArgs(signerAddress), signerAddress, onStatus, {
       network: "testnet",
+      getNetwork: async () => "testnet",
       server,
       sign,
       pollIntervalMs: 5,
@@ -161,6 +164,7 @@ test("buildSignSubmit preserves userCancelled error contract when user rejects s
   await assert.rejects(
     buildSignSubmit("refund", buildRefundArgs(signerAddress), signerAddress, onStatus, {
       network: "testnet",
+      getNetwork: async () => "testnet",
       server,
       sign,
     }),
@@ -186,6 +190,7 @@ test("buildSignSubmit aborts polling when AbortSignal fires", async () => {
   await assert.rejects(
     buildSignSubmit("refund", buildRefundArgs(signerAddress), signerAddress, onStatus, {
       network: "testnet",
+      getNetwork: async () => "testnet",
       server,
       sign,
       signal: controller.signal,
