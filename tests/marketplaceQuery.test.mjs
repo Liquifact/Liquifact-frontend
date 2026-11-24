@@ -10,6 +10,7 @@ import {
   serializeQuery,
   applyQuery,
   DEFAULTS,
+  DUE_WINDOW_OPTIONS,
 } from "../lib/marketplaceQuery.js";
 
 // ---------------------------------------------------------------------------
@@ -93,6 +94,7 @@ describe("parseQuery", () => {
       view: DEFAULTS.view,
       page: DEFAULTS.page,
       pageSize: DEFAULTS.pageSize,
+      due: DEFAULTS.due,
     });
   });
 
@@ -532,5 +534,239 @@ describe("applyQuery — apr_desc", () => {
 
     const defaultSort = applyQuery(INVOICES, { ...DEFAULTS });
     assert.equal(defaultSort.items.length, INVOICES.length);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseQuery — due-window filter
+// ---------------------------------------------------------------------------
+describe("parseQuery — due filter", () => {
+  test("defaults due to empty string (any)", () => {
+    assert.equal(parseQuery(sp({})).due, "");
+  });
+
+  test("accepts all valid due values", () => {
+    for (const v of ["lte14", "15to30", "31to90", "gt90"]) {
+      assert.equal(parseQuery(sp({ due: v })).due, v, `due=${v}`);
+    }
+  });
+
+  test("accepts empty string explicitly", () => {
+    assert.equal(parseQuery(sp({ due: "" })).due, "");
+  });
+
+  test("drops unknown due value silently", () => {
+    assert.equal(parseQuery(sp({ due: "1year" })).due, "");
+    assert.equal(parseQuery(sp({ due: "LTE14" })).due, "");   // case-sensitive
+    assert.equal(parseQuery(sp({ due: "14" })).due, "");
+  });
+
+  test("works with real URLSearchParams", () => {
+    assert.equal(parseQuery(new URLSearchParams("due=31to90")).due, "31to90");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// serializeQuery — due round-trip
+// ---------------------------------------------------------------------------
+describe("serializeQuery — due round-trip", () => {
+  test("omits due when it equals the default (empty string)", () => {
+    const qs = serializeQuery({ ...DEFAULTS });
+    assert.doesNotMatch(qs, /due=/);
+  });
+
+  test("includes due when non-default", () => {
+    for (const v of ["lte14", "15to30", "31to90", "gt90"]) {
+      const qs = serializeQuery({ ...DEFAULTS, due: v });
+      assert.match(qs, new RegExp(`due=${v}`), `should include due=${v}`);
+    }
+  });
+
+  test("round-trips through parseQuery for every option", () => {
+    for (const v of ["", "lte14", "15to30", "31to90", "gt90"]) {
+      const qs = serializeQuery({ ...DEFAULTS, due: v });
+      const parsed = parseQuery(new URLSearchParams(qs));
+      assert.equal(parsed.due, v, `round-trip failed for due=${v}`);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyQuery — due-window filtering (UTC day boundaries)
+// ---------------------------------------------------------------------------
+describe("applyQuery — due filter", () => {
+  // Fix the clock to 2026-11-01 00:00:00 UTC
+  //   = 1762041600000 ms
+  const NOW = Date.UTC(2026, 10, 1); // month is 0-indexed
+
+  function inv(id, dueDate) {
+    return {
+      id,
+      sme: id,
+      debtor: id,
+      amount: 1000,
+      currency: "USDC",
+      fundedAmount: 0,
+      yieldBps: 500,
+      dueDate,
+      status: "open",
+    };
+  }
+
+  // Relative to 2026-11-01:
+  //   day 0  = 2026-11-01  (due today   → daysToDue = 0)
+  //   day 1  = 2026-11-02  (1 day away  → daysToDue = 1)
+  //   day 14 = 2026-11-15  (14 days     → daysToDue = 14)
+  //   day 15 = 2026-11-16  (15 days     → daysToDue = 15)
+  //   day 30 = 2026-12-01  (30 days     → daysToDue = 30)
+  //   day 31 = 2026-12-02  (31 days     → daysToDue = 31)
+  //   day 90 = 2027-01-30  (90 days     → daysToDue = 90)
+  //   day 91 = 2027-01-31  (91 days     → daysToDue = 91)
+  // past     = 2026-10-01  (past due    → daysToDue = 0)
+
+  const PAST   = inv("PAST",   "2026-10-01");
+  const TODAY  = inv("TODAY",  "2026-11-01");
+  const DAY1   = inv("DAY1",   "2026-11-02");
+  const DAY14  = inv("DAY14",  "2026-11-15");
+  const DAY15  = inv("DAY15",  "2026-11-16");
+  const DAY30  = inv("DAY30",  "2026-12-01");
+  const DAY31  = inv("DAY31",  "2026-12-02");
+  const DAY90  = inv("DAY90",  "2027-01-30");
+  const DAY91  = inv("DAY91",  "2027-01-31");
+
+  const ALL = [PAST, TODAY, DAY1, DAY14, DAY15, DAY30, DAY31, DAY90, DAY91];
+
+  test("due='' returns all invoices (no filter applied)", () => {
+    const { total } = applyQuery(ALL, { ...DEFAULTS, due: "" }, { nowMs: NOW });
+    assert.equal(total, ALL.length);
+  });
+
+  test("due=lte14 includes today and past-due (daysToDue=0) through day 14", () => {
+    const { items } = applyQuery(ALL, { ...DEFAULTS, due: "lte14" }, { nowMs: NOW });
+    const ids = items.map((i) => i.id);
+    // days 0 (PAST, TODAY, DAY1 not past yet — PAST daysToDue=0, TODAY daysToDue=0)
+    // PAST→0, TODAY→0, DAY1→1, DAY14→14: all ≤14
+    assert.ok(ids.includes("PAST"),  "PAST (overdue, days=0) should be included");
+    assert.ok(ids.includes("TODAY"), "TODAY (days=0) should be included");
+    assert.ok(ids.includes("DAY1"),  "DAY1 (days=1) should be included");
+    assert.ok(ids.includes("DAY14"), "DAY14 (days=14) should be included");
+    assert.ok(!ids.includes("DAY15"), "DAY15 (days=15) should be excluded");
+    assert.ok(!ids.includes("DAY91"), "DAY91 (days=91) should be excluded");
+  });
+
+  test("due=lte14 boundary: exactly day 14 is included, day 15 is excluded", () => {
+    const fixtures = [DAY14, DAY15];
+    const { items } = applyQuery(fixtures, { ...DEFAULTS, due: "lte14" }, { nowMs: NOW });
+    assert.deepEqual(items.map((i) => i.id).sort(), ["DAY14"]);
+  });
+
+  test("due=15to30 includes days 15 through 30 inclusive", () => {
+    const { items } = applyQuery(ALL, { ...DEFAULTS, due: "15to30" }, { nowMs: NOW });
+    const ids = items.map((i) => i.id);
+    assert.ok(ids.includes("DAY15"), "DAY15 (days=15) should be included");
+    assert.ok(ids.includes("DAY30"), "DAY30 (days=30) should be included");
+    assert.ok(!ids.includes("DAY14"), "DAY14 (days=14) should be excluded");
+    assert.ok(!ids.includes("DAY31"), "DAY31 (days=31) should be excluded");
+  });
+
+  test("due=15to30 boundary: day 15 and day 30 are both included", () => {
+    const fixtures = [DAY14, DAY15, DAY30, DAY31];
+    const { items } = applyQuery(fixtures, { ...DEFAULTS, due: "15to30" }, { nowMs: NOW });
+    assert.deepEqual(items.map((i) => i.id).sort(), ["DAY15", "DAY30"]);
+  });
+
+  test("due=31to90 includes days 31 through 90 inclusive", () => {
+    const { items } = applyQuery(ALL, { ...DEFAULTS, due: "31to90" }, { nowMs: NOW });
+    const ids = items.map((i) => i.id);
+    assert.ok(ids.includes("DAY31"), "DAY31 (days=31) should be included");
+    assert.ok(ids.includes("DAY90"), "DAY90 (days=90) should be included");
+    assert.ok(!ids.includes("DAY30"), "DAY30 (days=30) should be excluded");
+    assert.ok(!ids.includes("DAY91"), "DAY91 (days=91) should be excluded");
+  });
+
+  test("due=31to90 boundary: day 31 and day 90 are both included", () => {
+    const fixtures = [DAY30, DAY31, DAY90, DAY91];
+    const { items } = applyQuery(fixtures, { ...DEFAULTS, due: "31to90" }, { nowMs: NOW });
+    assert.deepEqual(items.map((i) => i.id).sort(), ["DAY31", "DAY90"]);
+  });
+
+  test("due=gt90 includes only days > 90", () => {
+    const { items } = applyQuery(ALL, { ...DEFAULTS, due: "gt90" }, { nowMs: NOW });
+    const ids = items.map((i) => i.id);
+    assert.ok(ids.includes("DAY91"), "DAY91 (days=91) should be included");
+    assert.ok(!ids.includes("DAY90"), "DAY90 (days=90) should be excluded");
+    assert.ok(!ids.includes("PAST"),  "PAST should be excluded");
+  });
+
+  test("due=gt90 boundary: day 90 is excluded, day 91 is included", () => {
+    const fixtures = [DAY90, DAY91];
+    const { items } = applyQuery(fixtures, { ...DEFAULTS, due: "gt90" }, { nowMs: NOW });
+    assert.deepEqual(items.map((i) => i.id), ["DAY91"]);
+  });
+
+  test("due filter combines correctly with status filter", () => {
+    const mixed = [
+      { ...DAY14, status: "funded" },
+      { ...DAY30, status: "open" },
+      { ...DAY91, status: "open" },
+    ];
+    const { items } = applyQuery(mixed, { ...DEFAULTS, status: "open", due: "15to30" }, { nowMs: NOW });
+    assert.equal(items.length, 1);
+    assert.equal(items[0].id, "DAY30");
+  });
+
+  test("nowMs is injectable and shifts all boundaries correctly", () => {
+    // Move clock forward 7 days: DAY14 is now only 7 days away → still lte14
+    // DAY1 from new clock perspective would have already passed
+    const LATER = Date.UTC(2026, 10, 8); // 2026-11-08
+    const fixtures = [DAY14, DAY30];
+    // DAY14=2026-11-15 → 7 days from 2026-11-08 → lte14 ✓
+    // DAY30=2026-12-01 → 23 days from 2026-11-08 → 15to30 ✓
+    const lte14Result = applyQuery(fixtures, { ...DEFAULTS, due: "lte14" }, { nowMs: LATER });
+    assert.deepEqual(lte14Result.items.map((i) => i.id), ["DAY14"]);
+
+    const range15Result = applyQuery(fixtures, { ...DEFAULTS, due: "15to30" }, { nowMs: LATER });
+    assert.deepEqual(range15Result.items.map((i) => i.id), ["DAY30"]);
+  });
+
+  test("invoice with missing dueDate is treated as 0 days (included in lte14)", () => {
+    const noDate = { ...inv("NODATE", ""), dueDate: undefined };
+    const { items } = applyQuery([noDate], { ...DEFAULTS, due: "lte14" }, { nowMs: NOW });
+    // daysToDue(undefined) → 0 → satisfies ≤14
+    assert.equal(items.length, 1);
+  });
+
+  test("invoice with invalid dueDate string is treated as 0 days", () => {
+    const badDate = inv("BADDATE", "not-a-date");
+    const { items } = applyQuery([badDate], { ...DEFAULTS, due: "lte14" }, { nowMs: NOW });
+    assert.equal(items.length, 1);
+    const { items: items2 } = applyQuery([badDate], { ...DEFAULTS, due: "gt90" }, { nowMs: NOW });
+    assert.equal(items2.length, 0);
+  });
+
+  test("clear filters (due='') after active due filter returns all invoices", () => {
+    // Simulate: apply filter, get subset; then reset due to '' → all back
+    const filtered = applyQuery(ALL, { ...DEFAULTS, due: "gt90" }, { nowMs: NOW });
+    assert.equal(filtered.total, 1);
+
+    const cleared = applyQuery(ALL, { ...DEFAULTS, due: "" }, { nowMs: NOW });
+    assert.equal(cleared.total, ALL.length);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DUE_WINDOW_OPTIONS export
+// ---------------------------------------------------------------------------
+
+describe("DUE_WINDOW_OPTIONS", () => {
+  test("has exactly 5 options with correct values", () => {
+    const values = DUE_WINDOW_OPTIONS.map((o) => o.value);
+    assert.deepEqual(values, ["", "lte14", "15to30", "31to90", "gt90"]);
+  });
+
+  test("every option has a labelKey string", () => {
+    for (const o of DUE_WINDOW_OPTIONS) {
+      assert.ok(typeof o.labelKey === "string" && o.labelKey.length > 0, `option ${o.value} missing labelKey`);
+    }
   });
 });

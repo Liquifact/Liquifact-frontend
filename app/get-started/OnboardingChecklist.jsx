@@ -178,6 +178,7 @@ export default function OnboardingChecklist() {
 
   // Initial detection + re-detect on window focus
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial wallet detection on mount
     detectState();
     const onFocus = () => detectState();
     window.addEventListener("focus", onFocus);

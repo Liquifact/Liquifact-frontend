@@ -54,7 +54,9 @@ export default function ActivityFeed({ invoiceId }) {
     }
   }, [busy, cursor, invoiceId]);
 
-  useEffect(() => { load(false); /* initial RPC read */ // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial RPC activity fetch on invoice mount
+    load(false);
   }, [invoiceId]);
 
   return (

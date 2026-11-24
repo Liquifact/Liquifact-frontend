@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { listInvoices } from "@/lib/api";
 import { createNotificationStore } from "@/lib/notifications/store";
 import { createInvoiceMonitor } from "@/lib/notifications/monitor";
+import { BROWSER_NOTIFICATIONS_KEY, LOCAL_DATA_CHANGED_EVENT } from "@/lib/localData";
 
 const DEFAULT_PERMISSION = "default"; // "granted" | "denied" | "default"
 
@@ -16,7 +17,11 @@ export const NotificationsContext = createContext(null);
  * invoice is followed (paused on visibilitychange, refreshed on focus).
  */
 export function NotificationsProvider({ children }) {
-  const store = useMemo(() => createNotificationStore(), []);
+  const store = useMemo(() => {
+    let storage;
+    try { storage = localStorage; } catch { storage = null; }
+    return createNotificationStore({ storage });
+  }, []);
   const monitor = useMemo(() => createInvoiceMonitor({ listInvoices, store }), [listInvoices, store]);
 
   const [events, setEvents] = useState(store.getEvents());
@@ -25,6 +30,7 @@ export function NotificationsProvider({ children }) {
   const [snapshot, setSnapshot] = useState(() => store.getSnapshot());
   const [permission, setPermission] = useState(DEFAULT_PERMISSION);
   const [supported, setSupported] = useState(false);
+  const [browserEnabled, setEnabled] = useState(false);
 
   const refresh = useCallback(() => {
     setEvents(store.getEvents());
@@ -34,6 +40,7 @@ export function NotificationsProvider({ children }) {
   }, [store]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial notification refresh on mount
     refresh();
     const unsubscribe = store.subscribe(() => {
       refresh();
@@ -77,13 +84,22 @@ export function NotificationsProvider({ children }) {
     return perm;
   }, [supported]);
 
+  const setBrowserEnabled = useCallback(async (enabled) => {
+    if (!supported) return "unsupported";
+    const nextPermission = enabled && Notification.permission === "default" ? await requestPermission() : Notification.permission;
+    const nextEnabled = enabled && nextPermission === "granted";
+    setEnabled(nextEnabled);
+    try { localStorage.setItem(BROWSER_NOTIFICATIONS_KEY, String(nextEnabled)); } catch { /* Keep session preference when storage is unavailable. */ }
+    return enabled ? nextPermission : "disabled";
+  }, [supported, requestPermission]);
+
   // Dispatch newly detected events: refresh UI and show a system notification
   // when the tab is hidden and browser notifications are enabled.
   useEffect(() => {
     monitor.setOnEvent((event) => {
       refresh();
       if (
-        permission === "granted" &&
+        permission === "granted" && browserEnabled &&
         typeof document !== "undefined" &&
         document.visibilityState === "hidden"
       ) {
@@ -93,10 +109,41 @@ export function NotificationsProvider({ children }) {
         });
       }
     });
-  }, [monitor, permission, refresh]);
+  }, [monitor, permission, browserEnabled, refresh]);
+
+  useEffect(() => {
+    const syncPreference = () => {
+      const available = typeof Notification !== "undefined";
+      const current = available ? Notification.permission : DEFAULT_PERMISSION;
+      setSupported(available);
+      setPermission(current);
+      let enabled = false;
+      try { enabled = current === "granted" && localStorage.getItem(BROWSER_NOTIFICATIONS_KEY) === "true"; } catch { /* Keep alerts disabled. */ }
+      setEnabled(enabled);
+    };
+    const syncData = (event) => {
+      if (event.detail?.keys?.includes("liquifact.notifications.v1") || event.key === "liquifact.notifications.v1") {
+        monitor.stop();
+        store.reload();
+        refresh();
+        monitor.start();
+      }
+      syncPreference();
+    };
+    syncPreference();
+    window.addEventListener("focus", syncPreference);
+    window.addEventListener("storage", syncData);
+    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, syncData);
+    return () => {
+      window.removeEventListener("focus", syncPreference);
+      window.removeEventListener("storage", syncData);
+      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, syncData);
+    };
+  }, [store, monitor, refresh]);
 
   // Lifecycle: attach visibility/focus listeners, start polling when applicable.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Detect browser Notification API support on mount
     setSupported(typeof Notification !== "undefined");
     const onVisibility = () => monitor.onVisibilityChange();
     const onFocus = () => monitor.onFocus();
@@ -122,6 +169,8 @@ export function NotificationsProvider({ children }) {
     permission,
     requestPermission,
     supported,
+    browserEnabled,
+    setBrowserEnabled,
   };
 
   return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;
