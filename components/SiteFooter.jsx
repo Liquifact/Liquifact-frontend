@@ -25,6 +25,7 @@ export default async function SiteFooter() {
             <li><Link href="/submit">{tr("nav.submit")}</Link></li>
             <li><Link href="/get-started">{tr("nav.getStarted")}</Link></li>
             <li><Link href="/docs">{tr("footer.documentation")}</Link></li>
+            <li><Link href="/settings">{tr("settings.title")}</Link></li>
           </ul>
         </div>
         <div>

@@ -91,6 +91,7 @@ test("buildSignSubmit uses BASE_FEE + simulated resource fee and resolves on SUC
     network: "testnet",
     server,
     sign,
+    getNetwork: async () => "TESTNET", // Freighter reports the expected network
     getNetwork: async () => "testnet",
     pollIntervalMs: 5,
     pollTimeoutMs: 500,
@@ -124,6 +125,7 @@ test("buildSignSubmit throws on FAILED transaction status", async () => {
       network: "testnet",
       server,
       sign,
+      getNetwork: async () => "TESTNET", // Freighter reports the expected network
       getNetwork: async () => "testnet",
       pollIntervalMs: 5,
       pollTimeoutMs: 500,
@@ -146,6 +148,7 @@ test("buildSignSubmit throws timeout error when polling expires", async () => {
       network: "testnet",
       server,
       sign,
+      getNetwork: async () => "TESTNET", // Freighter reports the expected network
       getNetwork: async () => "testnet",
       pollIntervalMs: 5,
       pollTimeoutMs: 25,
@@ -166,6 +169,7 @@ test("buildSignSubmit preserves userCancelled error contract when user rejects s
       network: "testnet",
       server,
       sign,
+      getNetwork: async () => "TESTNET", // Freighter reports the expected network
       getNetwork: async () => "testnet",
     }),
     (err) => {
@@ -192,6 +196,7 @@ test("buildSignSubmit aborts polling when AbortSignal fires", async () => {
       network: "testnet",
       server,
       sign,
+      getNetwork: async () => "TESTNET", // Freighter reports the expected network
       getNetwork: async () => "testnet",
       signal: controller.signal,
       pollIntervalMs: 500,

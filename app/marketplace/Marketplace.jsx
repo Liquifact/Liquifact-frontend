@@ -11,6 +11,8 @@ import { useT } from "@/lib/i18n/I18nProvider";
 import { computeListMedians } from "@/lib/risk";
 import { MAX_COMPARE, serializeCompareIds } from "@/lib/compare";
 import { defaultFilename, exportInvoicesCsv } from "@/lib/csv";
+import { canonicalQuery } from "@/lib/savedSearches";
+import SavedSearches from "./SavedSearches";
 import {
   getNetworkName,
   getPublicKey,
@@ -239,6 +241,15 @@ export default function MarketplaceClient() {
     router.push(`/marketplace${qs ? `?${qs}` : ""}`, { scroll: false });
   }
 
+  // Apply a saved preset (#1526): its filters replace the current ones, the
+  // viewer's cards/table choice is kept, and the URL stays shareable.
+  function applyPreset(preset) {
+    const next = { ...parseQuery(new URLSearchParams(preset.query)), view: urlState.view, page: 1 };
+    setSearchInput(next.q);
+    const qs = serializeQuery(next);
+    router.push(`/marketplace${qs ? `?${qs}` : ""}`, { scroll: false });
+  }
+
   function changeView(view) {
     try {
       window.localStorage.setItem(VIEW_STORAGE_KEY, view);
@@ -392,6 +403,9 @@ export default function MarketplaceClient() {
               ))}
             </select>
           </div>
+
+          {/* Saved searches */}
+          <SavedSearches currentQuery={canonicalQuery(urlState)} onApply={applyPreset} />
 
           {/* Clear */}
           {isFiltered && (
