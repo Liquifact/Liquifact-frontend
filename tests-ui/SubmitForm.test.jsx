@@ -2,6 +2,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import SubmitForm from "@/app/submit/SubmitForm";
+import { I18nProvider } from "@/lib/i18n/I18nProvider";
+import es from "@/lib/i18n/dictionaries/es.js";
 
 vi.mock("@/lib/api", () => ({
   createInvoice: vi.fn(),
@@ -87,5 +89,21 @@ describe("SubmitForm SME Stellar address validation and accessibility", () => {
     expect(errElement).toBeInTheDocument();
     expect(errElement.textContent).not.toContain(SECRET_KEY);
     expect(errElement.textContent).not.toContain("SA7TX");
+  });
+
+  it("renders validation errors and step labels in Spanish", async () => {
+    const user = userEvent.setup();
+    render(
+      <I18nProvider locale="es" dict={es}>
+        <SubmitForm />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole("heading", { name: /Paso 1 de 3: Datos de la factura/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Siguiente$/i }));
+
+    expect(screen.getByText("El nombre de la empresa es obligatorio")).toBeInTheDocument();
+    expect(screen.getByText("El deudor es obligatorio")).toBeInTheDocument();
+    expect(screen.getByText("Introduce un importe positivo")).toBeInTheDocument();
   });
 });

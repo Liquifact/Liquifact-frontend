@@ -12,6 +12,7 @@ import { headers } from "next/headers";
 import { getDictionary } from "@/lib/i18n";
 import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import { getLocale } from "@/lib/i18n/server";
+import GlobalErrorListener from "@/components/observability/GlobalErrorListener";
 
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://liquifact-frontend.vercel.app"),
@@ -39,13 +40,16 @@ export default async function RootLayout({ children }) {
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        {/* eslint-disable react/no-danger -- Approved exception: Pre-hydration theme script uses static compile-time constant (THEME_INIT_SCRIPT) with no user input */}
         <script
           nonce={nonce}
           dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
         />
+        {/* eslint-enable react/no-danger */}
       </head>
       <body>
         <I18nProvider locale={locale} dict={dict}>
+          <GlobalErrorListener />
           <SkipLink />
           <ToastProvider>
             <OutboxSync />

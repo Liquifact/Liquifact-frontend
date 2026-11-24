@@ -11,6 +11,8 @@ import { useT } from "@/lib/i18n/I18nProvider";
 import { computeListMedians } from "@/lib/risk";
 import { MAX_COMPARE, serializeCompareIds } from "@/lib/compare";
 import { defaultFilename, exportInvoicesCsv } from "@/lib/csv";
+import { canonicalQuery } from "@/lib/savedSearches";
+import SavedSearches from "./SavedSearches";
 import {
   getNetworkName,
   getPublicKey,
@@ -22,6 +24,7 @@ import { CONFIGURED_NETWORK } from "@/lib/stellar/networks";
 import { normalizeNetworkName } from "@/lib/stellar/networkGuard";
 import {
   DEFAULTS,
+  DUE_WINDOW_OPTIONS,
   MIN_YIELD_OPTIONS,
   SORT_OPTIONS,
   STATUSES,
@@ -111,6 +114,7 @@ export default function MarketplaceClient() {
 
   useEffect(() => {
     let alive = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial invoice list fetch on mount
     setFetchState((s) => ({ ...s, loading: true }));
     // Fetch the full list once — filter client-side
     listInvoices().then((r) => {
@@ -216,7 +220,8 @@ export default function MarketplaceClient() {
     urlState.currency !== DEFAULTS.currency ||
     urlState.minYieldBps !== DEFAULTS.minYieldBps ||
     urlState.q !== DEFAULTS.q ||
-    urlState.sort !== DEFAULTS.sort;
+    urlState.sort !== DEFAULTS.sort ||
+    urlState.due !== DEFAULTS.due;
 
   // CSV export (#1387): every invoice matching the current filters, across pages.
   const exportRows = applyQuery(fetchState.data, { ...urlState, page: 1, pageSize: Math.max(1, fetchState.data.length) }).items;
@@ -236,6 +241,15 @@ export default function MarketplaceClient() {
   function clearFilters() {
     setSearchInput("");
     const qs = serializeQuery({ ...DEFAULTS, view: urlState.view });
+    router.push(`/marketplace${qs ? `?${qs}` : ""}`, { scroll: false });
+  }
+
+  // Apply a saved preset (#1526): its filters replace the current ones, the
+  // viewer's cards/table choice is kept, and the URL stays shareable.
+  function applyPreset(preset) {
+    const next = { ...parseQuery(new URLSearchParams(preset.query)), view: urlState.view, page: 1 };
+    setSearchInput(next.q);
+    const qs = serializeQuery(next);
     router.push(`/marketplace${qs ? `?${qs}` : ""}`, { scroll: false });
   }
 
@@ -393,6 +407,29 @@ export default function MarketplaceClient() {
             </select>
           </div>
 
+          {/* Saved searches */}
+          <SavedSearches currentQuery={canonicalQuery(urlState)} onApply={applyPreset} />
+
+          {/* Due-date window */}
+          <div className="mq-filter-field">
+            <label htmlFor="mq-due" className="sr-only">
+              {t("marketplace.dueWindow.label")}
+            </label>
+            <select
+              id="mq-due"
+              className="mq-select"
+              value={urlState.due}
+              onChange={(e) => pushFilter({ due: e.target.value })}
+              aria-label={t("marketplace.dueWindow.label")}
+            >
+              {DUE_WINDOW_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {t(o.labelKey)}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Clear */}
           {isFiltered && (
             <button className="btn btn-ghost mq-clear" onClick={clearFilters} type="button">
@@ -426,7 +463,7 @@ export default function MarketplaceClient() {
           </div>
         ) : items.length === 0 ? (
           <div className="card center">
-            <h3>{isFiltered ? "No invoices match these filters" : t("marketplace.empty.title")}</h3>
+            <h2>{isFiltered ? "No invoices match these filters" : t("marketplace.empty.title")}</h2>
             <p className="muted">
               {isFiltered ? (
                 <>

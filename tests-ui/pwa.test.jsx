@@ -3,7 +3,8 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ServiceWorkerRegistrar, { UPDATE_INTERVAL_MS, UPDATE_THROTTLE_MS } from "../components/pwa/ServiceWorkerRegistrar.jsx";
 import OfflineNotice from "../components/pwa/OfflineNotice.jsx";
-import OfflinePage from "../app/offline/page.js";
+import OfflineScreen from "../app/offline/OfflineScreen.jsx";
+import en from "../lib/i18n/dictionaries/en.js";
 
 afterEach(() => {
   cleanup(); vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks();
@@ -154,7 +155,7 @@ test("stale status includes a saved timestamp and distinguishes uncached demo fa
 });
 
 test("offline recovery uses a normal keyboard reachable full navigation link", async () => {
-  const user = userEvent.setup(); render(<OfflinePage />);
+  const user = userEvent.setup(); render(<OfflineScreen dict={en} />);
   const link = screen.getByRole("link", { name: "Open saved marketplace" });
   expect(link.getAttribute("href")).toBe("/marketplace");
   await user.tab(); expect(document.activeElement).toBe(link);

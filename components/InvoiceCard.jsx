@@ -26,7 +26,7 @@ export default function InvoiceCard({
       <div className="invoice-head">
         <div>
           <div className="invoice-id">{invoice.id}</div>
-          <h3 style={{ margin: "4px 0 0" }}>{invoice.sme}</h3>
+          <h2 style={{ margin: "4px 0 0" }}>{invoice.sme}</h2>
           <div className="muted" style={{ fontSize: "0.9rem" }}>{t("invoice.debtor", { name: invoice.debtor })}</div>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>

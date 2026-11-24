@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import { getDefaultStore } from "@/lib/stellar/txStore.js";
 import { pollTransaction, RESULT } from "@/lib/stellar/pollTx.js";
 import { getRpcServer } from "@/lib/stellar/rpc.js";
+import { LOCAL_DATA_CHANGED_EVENT } from "@/lib/localData";
 
 const TxTrackerContext = createContext(null);
 
@@ -21,6 +22,15 @@ export function TxTrackerProvider({ children }) {
   useEffect(() => {
     storeRef.current = getDefaultStore();
     refreshFromStore();
+    const sync = (event) => {
+      if (event.detail?.keys?.includes("liquifact-txs") || event.key === "liquifact-txs") refreshFromStore();
+    };
+    window.addEventListener("storage", sync);
+    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, sync);
+    };
   }, []);
 
   function refreshFromStore() {
