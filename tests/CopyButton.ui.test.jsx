@@ -48,7 +48,7 @@ describe("CopyButton component", () => {
 
     render(<CopyButton value="GABC1234" label="Copy ID" />);
 
-    const button = screen.getByRole("button", { name: "Copy ID" });
+    const button = screen.getByRole("button", { name: "Copy ID GABC1234" });
     await act(async () => {
       fireEvent.click(button);
       await Promise.resolve();
@@ -79,7 +79,7 @@ describe("CopyButton component", () => {
       </ToastProvider>
     );
 
-    const button = screen.getByRole("button", { name: "Copy" });
+    const button = screen.getByRole("button", { name: "Copy 0xdeadbeef" });
     await act(async () => {
       fireEvent.click(button);
       await Promise.resolve();
@@ -99,7 +99,7 @@ describe("CopyButton component", () => {
       </ToastProvider>
     );
 
-    const button = screen.getByRole("button", { name: "Copy" });
+    const button = screen.getByRole("button", { name: "Copy GXYZ9999" });
     await act(async () => {
       fireEvent.click(button);
       await Promise.resolve();
@@ -120,7 +120,7 @@ describe("CopyButton component", () => {
       </ToastProvider>
     );
 
-    const button = screen.getByRole("button", { name: "Copy" });
+    const button = screen.getByRole("button", { name: "Copy GXYZ9999" });
     await act(async () => {
       fireEvent.click(button);
       await Promise.resolve();
@@ -141,7 +141,7 @@ describe("CopyButton component", () => {
     setClipboard({ writeText: writeTextImmediate });
 
     const { unmount } = render(<CopyButton value="G1111" />);
-    const button = screen.getByRole("button", { name: "Copy" });
+    const button = screen.getByRole("button", { name: "Copy G1111" });
 
     await act(async () => {
       fireEvent.click(button);
@@ -164,7 +164,7 @@ describe("CopyButton component", () => {
     setClipboard({ writeText: vi.fn(() => pendingWrite) });
 
     const secondRender = render(<CopyButton value="G2222" />);
-    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy G2222" }));
     secondRender.unmount();
 
     await act(async () => {

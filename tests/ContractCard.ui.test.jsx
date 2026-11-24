@@ -8,6 +8,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import ContractCard, { explorerContractUrl } from "@/components/ContractCard";
+import CopyButton from "@/components/CopyButton";
 
 const TEST_CONTRACT_ID = "CDQCKR2YU6IVQ4GYPBMXBPZ4FGFQB5H25AI7ZSETHS2CZ5ZRCWQDSO6P";
 const ALT_CONTRACT_ID = "CA3D5KRYMCMUZKMAQTCZZRM5RUMSSS6RIYRHQD2ELHSH4ENCQA6KZ7PW";
@@ -22,6 +23,10 @@ describe("ContractCard component", () => {
 
     // Address is displayed in the contract box
     expect(screen.getByText(TEST_CONTRACT_ID)).toBeInTheDocument();
+
+    // Copy button exposes a descriptive accessible name
+    const copyBtn = screen.getByRole("button", { name: "Copy escrow contract ID" });
+    expect(copyBtn).toBeInTheDocument();
 
     // Explorer link points to stellar.expert with contractId
     const explorerLink = screen.getByRole("link", { name: /view on stellar\.expert/i });
@@ -41,12 +46,20 @@ describe("ContractCard component", () => {
     render(<ContractCard contractId={ALT_CONTRACT_ID} network="mainnet" />);
 
     expect(screen.getByText(ALT_CONTRACT_ID)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy escrow contract ID" })).toBeInTheDocument();
     const link = screen.getByRole("link", { name: /view on stellar\.expert/i });
     expect(link).toHaveAttribute(
       "href",
       `https://stellar.expert/explorer/mainnet/contract/${ALT_CONTRACT_ID}`
     );
     expect(screen.getByText(/soroban escrow · mainnet/i)).toBeInTheDocument();
+  });
+
+  it("CopyButton defaults to an accessible name with the truncated value", () => {
+    render(<CopyButton value={TEST_CONTRACT_ID} />);
+    expect(
+      screen.getByRole("button", { name: "Copy CDQCKR…SO6P" })
+    ).toBeInTheDocument();
   });
 
   it("returns null when contractId is not provided", () => {
