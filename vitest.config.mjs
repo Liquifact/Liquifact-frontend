@@ -25,6 +25,12 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./tests/setup.js"],
     include: ["tests/**/*.ui.test.{js,jsx,ts,tsx}", "tests-ui/**/*.test.{js,jsx}"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "lcov"],
+      include: ["components/**/*", "lib/**/*", "app/**/*.jsx"],
+      exclude: ["**/*.test.{js,jsx,ts,tsx}", "**/node_modules/**"],
+    },
     // Playwright specs in e2e/ run with `npm run test:e2e`, not vitest.
     exclude: [...configDefaults.exclude, "e2e/**"],
   },

@@ -28,6 +28,27 @@ import {
   parseStroops,
   formatStroops,
 } from "../../lib/invest/deriveExitUi.js";
+import { useT } from "../../lib/i18n/I18nProvider.jsx";
+import { rich, translateKnown } from "../../lib/i18n/rich.js";
+
+// Display-only translation of the fixed English messages produced by
+// deriveExitUi / parseStroops and buildSignSubmit's status callback.
+const KNOWN_MESSAGES = {
+  "You have already been refunded.": "exit.reason.refunded",
+  "No contribution to refund.": "exit.reason.noContribution",
+  "A legal hold is active — withdrawals are blocked.": "exit.reason.legalHold",
+  "The escrow is paused — withdrawals are temporarily unavailable.": "exit.reason.paused",
+  "Enter an amount.": "exit.error.enterAmount",
+  "Enter a valid positive number.": "exit.error.invalid",
+  "Maximum 7 decimal places (stroop precision).": "exit.error.precision",
+  "Amount must be greater than zero.": "exit.error.nonPositive",
+  "Amount exceeds your contribution.": "exit.error.exceeds",
+  "Building transaction…": "exit.status.building",
+  "Simulating…": "exit.status.simulating",
+  "Waiting for signature…": "exit.status.waitingSignature",
+  "Submitting…": "exit.status.submitting",
+  "Confirming on-chain…": "exit.status.confirming",
+};
 
 // ── Status-string → escrow integer (API record uses strings; contract uses ints)
 const STATUS_MAP = { open: 0, funded: 1, settled: 2, withdrawn: 3, cancelled: 4 };
@@ -115,6 +136,11 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
   const dialogRef = useRef(null);
   const firstFocusRef = useRef(null);
   const amountInputRef = useRef(null);
+  const t = useT();
+  // Read through a ref so a locale switch never re-runs the on-chain load.
+  const tRef = useRef(t);
+  tRef.current = t;
+  const tr = (text) => translateKnown(t, KNOWN_MESSAGES, text);
 
   // Derive UI mode from on-chain state
   const statusInt = toStatusInt(invoiceStatus);
@@ -128,7 +154,7 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
 
   // ── Load on-chain state ─────────────────────────────────────────────────
   const load = useCallback(async () => {
-    dispatch({ type: "BUSY", msg: "Reading your on-chain position…" });
+    dispatch({ type: "BUSY", msg: tRef.current("exit.reading") });
     try {
       const [contribution, refunded, legalHold, paused] = await Promise.all([
         fetchContribution(investorAddress),
@@ -140,7 +166,7 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
     } catch (e) {
       dispatch({
         type: "ERROR",
-        msg: "Could not read on-chain position: " + (e?.message || "unknown error"),
+        msg: tRef.current("exit.readError", { error: e?.message || tRef.current("exit.unknownError") }),
       });
       dispatch({ type: "LOADED", contribution: 0n, refunded: false, legalHold: false, paused: false });
     }
@@ -176,7 +202,7 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
 
   // ── Refund handler ──────────────────────────────────────────────────────
   async function onRefund() {
-    dispatch({ type: "BUSY", msg: "Preparing refund…" });
+    dispatch({ type: "BUSY", msg: t("exit.preparingRefund") });
     try {
       await buildSignSubmit(
         "refund",
@@ -187,7 +213,7 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
       const newContrib = await fetchContribution(investorAddress);
       const newRefunded = await fetchIsRefunded(investorAddress);
       dispatch({ type: "REFRESH_CONTRIBUTION", contribution: newContrib, refunded: newRefunded });
-      dispatch({ type: "SUCCESS", msg: "Refund successful — your contribution has been returned." });
+      dispatch({ type: "SUCCESS", msg: t("exit.refundSuccess") });
       onContribRefresh?.();
     } catch (e) {
       if (e?.userCancelled) {
@@ -197,7 +223,7 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
       }
       dispatch({
         type: "ERROR",
-        msg: extractSimError(e?.simulationError) || e?.message || "Refund failed.",
+        msg: extractSimError(e?.simulationError) || e?.message || t("exit.refundFailed"),
       });
     }
   }
@@ -229,7 +255,7 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
       dispatch({ type: "ERROR", msg: result.error });
       return;
     }
-    dispatch({ type: "BUSY", msg: "Preparing withdrawal…" });
+    dispatch({ type: "BUSY", msg: t("exit.preparingWithdrawal") });
     try {
       await buildSignSubmit(
         "unfund",
@@ -241,7 +267,7 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
       dispatch({ type: "REFRESH_CONTRIBUTION", contribution: newContrib, refunded: false });
       dispatch({
         type: "SUCCESS",
-        msg: `Withdrawal successful — ${formatStroops(result.stroops)} XLM returned to your wallet.`,
+        msg: t("exit.withdrawSuccess", { amount: formatStroops(result.stroops) }),
       });
       onContribRefresh?.();
     } catch (e) {
@@ -251,7 +277,7 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
       }
       dispatch({
         type: "ERROR",
-        msg: extractSimError(e?.simulationError) || e?.message || "Withdrawal failed.",
+        msg: extractSimError(e?.simulationError) || e?.message || t("exit.withdrawFailed"),
       });
     }
   }
@@ -260,7 +286,7 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
   if (s.loading && s.busy) {
     return (
       <div className="exit-panel" aria-busy="true">
-        <p className="muted" style={{ fontSize: "0.88rem" }}>{s.busyMsg}</p>
+        <p className="muted" style={{ fontSize: "0.88rem" }}>{tr(s.busyMsg)}</p>
       </div>
     );
   }
@@ -276,20 +302,21 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
   return (
     <section className="exit-panel" aria-labelledby={titleId}>
       <h3 id={titleId} className="exit-panel-heading">
-        {ui.mode === "refund" ? "Request refund" : ui.mode === "unfund" ? "Withdraw contribution" : "Exit position"}
+        {ui.mode === "refund" ? t("exit.heading.refund") : ui.mode === "unfund" ? t("exit.heading.unfund") : t("exit.heading.none")}
       </h3>
 
       {/* Blocked / none with reason */}
       {ui.mode === "none" && ui.reason && (
-        <p className="muted exit-panel-reason">{ui.reason}</p>
+        <p className="muted exit-panel-reason">{tr(ui.reason)}</p>
       )}
 
       {/* Refund mode */}
       {ui.mode === "refund" && (
         <>
           <p className="exit-panel-summary">
-            Your contribution of <strong>{formatStroops(ui.maxStroops)} XLM</strong> is
-            eligible for a refund — this escrow was cancelled.
+            {rich(t("exit.refundSummary"), {
+              amount: <strong>{t("exit.xlmAmount", { amount: formatStroops(ui.maxStroops) })}</strong>,
+            })}
           </p>
           <button
             id={`${uid}-refund-btn`}
@@ -298,7 +325,7 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
             disabled={s.busy}
             aria-describedby={statusId}
           >
-            {s.busy ? s.busyMsg || "Working…" : "Request refund"}
+            {s.busy ? tr(s.busyMsg) || t("exit.working") : t("exit.requestRefund")}
           </button>
         </>
       )}
@@ -307,11 +334,13 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
       {ui.mode === "unfund" && (
         <>
           <p className="exit-panel-summary">
-            Your contribution: <strong>{formatStroops(s.contribution)} XLM</strong>
+            {rich(t("exit.yourContribution"), {
+              amount: <strong>{t("exit.xlmAmount", { amount: formatStroops(s.contribution) })}</strong>,
+            })}
           </p>
           <form className="form exit-panel-form" onSubmit={onUnfundSubmit} noValidate>
             <div className="field">
-              <label htmlFor={`${uid}-amount`}>Amount to withdraw (XLM)</label>
+              <label htmlFor={`${uid}-amount`}>{t("exit.amountLabel")}</label>
               <div className="exit-amount-row">
                 <input
                   ref={amountInputRef}
@@ -320,7 +349,7 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
                   inputMode="decimal"
                   value={s.amountInput}
                   onChange={onAmountChange}
-                  placeholder={`up to ${formatStroops(s.contribution)}`}
+                  placeholder={t("exit.amountPlaceholder", { amount: formatStroops(s.contribution) })}
                   aria-describedby={`${amountDescId}${s.amountError ? ` ${amountErrId}` : ""}`}
                   aria-invalid={!!s.amountError}
                   disabled={s.busy}
@@ -330,17 +359,17 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
                   className="btn btn-ghost exit-max-btn"
                   onClick={onSetMax}
                   disabled={s.busy}
-                  aria-label="Set amount to maximum contribution"
+                  aria-label={t("exit.maxAria")}
                 >
-                  Max
+                  {t("exit.max")}
                 </button>
               </div>
               <span id={amountDescId} className="hint">
-                Withdrawing removes your place in this deal and is irreversible.
+                {t("exit.irreversible")}
               </span>
               {s.amountError && (
                 <span id={amountErrId} className="err" role="alert">
-                  {s.amountError}
+                  {tr(s.amountError)}
                 </span>
               )}
             </div>
@@ -351,7 +380,7 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
               disabled={s.busy}
               aria-describedby={statusId}
             >
-              {s.busy ? s.busyMsg || "Working…" : "Withdraw contribution"}
+              {s.busy ? tr(s.busyMsg) || t("exit.working") : t("exit.withdraw")}
             </button>
           </form>
         </>
@@ -372,12 +401,12 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
         )}
         {s.errorMsg && (
           <div className="notice notice-err" role="alert" style={{ marginTop: 12 }}>
-            {s.errorMsg}
+            {tr(s.errorMsg)}
           </div>
         )}
         {s.busy && !s.successMsg && !s.errorMsg && (
           <p className="muted" style={{ fontSize: "0.88rem", marginTop: 8 }}>
-            {s.busyMsg}
+            {tr(s.busyMsg)}
           </p>
         )}
       </div>
@@ -390,16 +419,20 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
           aria-labelledby={dialogTitleId}
           onCancel={(e) => { e.preventDefault(); dispatch({ type: "HIDE_CONFIRM" }); amountInputRef.current?.focus(); }}
         >
-          <h4 id={dialogTitleId}>Confirm withdrawal</h4>
+          <h4 id={dialogTitleId}>{t("exit.confirmTitle")}</h4>
           <p>
-            You will withdraw{" "}
-            <strong>
-              {parseStroops(s.amountInput, s.contribution).stroops != null
-                ? formatStroops(parseStroops(s.amountInput, s.contribution).stroops)
-                : s.amountInput}{" "}
-              XLM
-            </strong>{" "}
-            and lose your place in this deal. This action cannot be undone.
+            {rich(t("exit.confirmBody"), {
+              amount: (
+                <strong>
+                  {t("exit.xlmAmount", {
+                    amount:
+                      parseStroops(s.amountInput, s.contribution).stroops != null
+                        ? formatStroops(parseStroops(s.amountInput, s.contribution).stroops)
+                        : s.amountInput,
+                  })}
+                </strong>
+              ),
+            })}
           </p>
           <div className="exit-confirm-actions">
             <button
@@ -409,7 +442,7 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
               onClick={onUnfundConfirm}
               disabled={s.busy}
             >
-              {s.busy ? "Working…" : "Yes, withdraw"}
+              {s.busy ? t("exit.working") : t("exit.confirmYes")}
             </button>
             <button
               id={`${uid}-confirm-cancel`}
@@ -417,7 +450,7 @@ export default function ExitPanel({ investorAddress, invoiceStatus, onContribRef
               onClick={() => { dispatch({ type: "HIDE_CONFIRM" }); amountInputRef.current?.focus(); }}
               disabled={s.busy}
             >
-              Cancel
+              {t("exit.cancel")}
             </button>
           </div>
         </dialog>

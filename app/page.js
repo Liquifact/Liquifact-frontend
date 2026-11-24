@@ -4,42 +4,49 @@ import LiveStats from "@/components/LiveStats";
 import ContractCard from "@/components/ContractCard";
 import FeaturedInvoice, { FeaturedInvoiceSkeleton } from "@/components/FeaturedInvoice";
 import { API_DOCS_URL, CONTRACT_ID, EXPLORER_URL, NETWORK } from "@/lib/config";
+import { getDictionary, t } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n/server";
+import { pageMeta } from "@/lib/seo";
 
-const STEPS = [
-  { t: "SME submits an invoice", d: "Upload an unpaid B2B invoice with amount, debtor and due date. LiquiFact lists it on the marketplace." },
-  { t: "Investors fund it", d: "Investors browse open invoices and contribute stablecoins. Funds go straight into a Soroban escrow contract." },
-  { t: "SME gets paid today", d: "Once the funding target is reached the SME withdraws liquidity instead of waiting 30–90 days." },
-  { t: "Settlement pays investors", d: "When the debtor pays, the escrow settles and investors claim principal plus the agreed yield." },
-];
+const STEPS = ["submit", "fund", "paid", "settle"];
 
 const FEATURES = [
-  { i: "⛍", t: "On-chain escrow", d: "A Soroban smart contract holds every investor contribution, with explicit states for open, funded and settled." },
-  { i: "⚡", t: "Fast and low-cost", d: "Stellar settles in seconds for fractions of a cent, so small invoices are economical to finance." },
-  { i: "🛡", t: "Built-in safeguards", d: "Legal holds, allowlists, investor caps, funding deadlines and maturity locks are enforced by the contract." },
-  { i: "📈", t: "Transparent yield", d: "Yield is set in basis points per invoice and visible before you commit — no hidden spreads." },
-  { i: "🌍", t: "Global by default", d: "Any SME with a Stellar wallet can raise against receivables; any investor can participate." },
-  { i: "🧩", t: "Open API", d: "A documented REST API powers the app and lets partners integrate invoice origination." },
+  { id: "escrow", icon: "⛍" },
+  { id: "speed", icon: "⚡" },
+  { id: "safeguards", icon: "🛡" },
+  { id: "yield", icon: "📈" },
+  { id: "global", icon: "🌍" },
+  { id: "api", icon: "🧩" },
 ];
 
+export async function generateMetadata() {
+  const dict = getDictionary(await getLocale());
+  const meta = pageMeta({
+    path: "/",
+    title: t(dict, "home.meta.title"),
+    description: t(dict, "home.meta.description"),
+  });
+  return { ...meta, title: { absolute: meta.title } };
+}
 
-export default function Home() {
+export default async function Home() {
+  const dict = getDictionary(await getLocale());
   return (
     <>
       <section className="hero">
         <div className="container hero-grid">
           <div>
-            <div className="pill"><span className="dot" /> Live on Stellar testnet</div>
+            <div className="pill"><span className="dot" /> {t(dict, "home.pill")}</div>
             <h1>
-              Turn unpaid invoices into <span>instant liquidity</span>
+              {t(dict, "home.titlePrefix")}<span>{t(dict, "home.titleHighlight")}</span>
             </h1>
             <p className="lead">
-              LiquiFact is an invoice financing network on Stellar. SMEs tokenize receivables and get paid today;
-              investors fund them through a transparent Soroban escrow and earn yield backed by real trade.
+              {t(dict, "home.lead")}
             </p>
             <div className="btn-row" style={{ marginTop: 28 }}>
-              <Link href="/marketplace" className="btn btn-primary">Explore marketplace</Link>
-              <Link href="/submit" className="btn btn-light">Submit an invoice</Link>
-              <Link href="/docs" className="btn btn-light">Read the docs</Link>
+              <Link href="/marketplace" className="btn btn-primary">{t(dict, "home.cta.explore")}</Link>
+              <Link href="/submit" className="btn btn-light">{t(dict, "home.cta.submit")}</Link>
+              <Link href="/docs" className="btn btn-light">{t(dict, "home.cta.readDocs")}</Link>
             </div>
           </div>
           <Suspense fallback={<FeaturedInvoiceSkeleton />}>
@@ -57,16 +64,16 @@ export default function Home() {
       <section className="section" id="how-it-works">
         <div className="container">
           <div className="center" style={{ marginBottom: 40 }}>
-            <div className="eyebrow">How it works</div>
-            <h2>From invoice to cash in four steps</h2>
-            <p className="lead">Every step is backed by the escrow contract, so funds only move when the rules allow it.</p>
+            <div className="eyebrow">{t(dict, "home.how.eyebrow")}</div>
+            <h2>{t(dict, "home.how.title")}</h2>
+            <p className="lead">{t(dict, "home.how.lead")}</p>
           </div>
           <div className="grid grid-4">
-            {STEPS.map((s, i) => (
-              <div className="card" key={s.t}>
-                <div className="step-num">STEP {i + 1}</div>
-                <h3>{s.t}</h3>
-                <p className="muted" style={{ margin: 0 }}>{s.d}</p>
+            {STEPS.map((id, i) => (
+              <div className="card" key={id}>
+                <div className="step-num">{t(dict, "home.stepLabel", { n: i + 1 })}</div>
+                <h3>{t(dict, `home.step.${id}.title`)}</h3>
+                <p className="muted" style={{ margin: 0 }}>{t(dict, `home.step.${id}.desc`)}</p>
               </div>
             ))}
           </div>
@@ -76,15 +83,15 @@ export default function Home() {
       <section className="section" style={{ paddingTop: 0 }}>
         <div className="container">
           <div className="center" style={{ marginBottom: 40 }}>
-            <div className="eyebrow">Why LiquiFact</div>
-            <h2>Working capital without the waiting</h2>
+            <div className="eyebrow">{t(dict, "home.why.eyebrow")}</div>
+            <h2>{t(dict, "home.why.title")}</h2>
           </div>
           <div className="grid grid-3">
-            {FEATURES.map((f) => (
-              <div className="card" key={f.t}>
-                <div className="icon" aria-hidden="true">{f.i}</div>
-                <h3>{f.t}</h3>
-                <p className="muted" style={{ margin: 0 }}>{f.d}</p>
+            {FEATURES.map((feature) => (
+              <div className="card" key={feature.id}>
+                <div className="icon" aria-hidden="true">{feature.icon}</div>
+                <h3>{t(dict, `home.feature.${feature.id}.title`)}</h3>
+                <p className="muted" style={{ margin: 0 }}>{t(dict, `home.feature.${feature.id}.desc`)}</p>
               </div>
             ))}
           </div>
@@ -95,12 +102,12 @@ export default function Home() {
         <div className="container grid grid-2">
           <ContractCard contractId={CONTRACT_ID} network={NETWORK} />
           <div className="card">
-            <div className="eyebrow">Developers</div>
-            <h3 style={{ marginTop: 6 }}>Build on the LiquiFact API</h3>
-            <p className="muted">List invoices, submit new ones, record funding and read live escrow state from Soroban — all documented with OpenAPI.</p>
+            <div className="eyebrow">{t(dict, "home.dev.eyebrow")}</div>
+            <h3 style={{ marginTop: 6 }}>{t(dict, "home.dev.title")}</h3>
+            <p className="muted">{t(dict, "home.dev.lead")}</p>
             <div className="btn-row">
-              <a className="btn btn-primary" href={API_DOCS_URL}>Open API docs ↗</a>
-              <Link className="btn btn-ghost" href="/docs#architecture">Architecture</Link>
+              <a className="btn btn-primary" href={API_DOCS_URL}>{t(dict, "home.dev.apiDocs")}</a>
+              <Link className="btn btn-ghost" href="/docs#architecture">{t(dict, "home.dev.architecture")}</Link>
             </div>
           </div>
         </div>
@@ -110,12 +117,16 @@ export default function Home() {
         <div className="container">
           <div className="cta">
             <div>
-              <h2 style={{ margin: "0 0 6px" }}>Ready to see it in action?</h2>
-              <p>Browse live invoices or inspect the escrow contract on <a href={EXPLORER_URL} style={{ color: "var(--on-hero-link)" }}>stellar.expert</a>.</p>
+              <h2 style={{ margin: "0 0 6px" }}>{t(dict, "home.cta.title")}</h2>
+              <p>
+                {t(dict, "home.cta.leadPrefix")}
+                <a href={EXPLORER_URL} style={{ color: "var(--on-hero-link)" }}>{t(dict, "home.cta.leadLink")}</a>
+                {t(dict, "home.cta.leadSuffix")}
+              </p>
             </div>
             <div className="btn-row">
-              <Link href="/marketplace" className="btn btn-primary">Go to marketplace</Link>
-              <Link href="/docs" className="btn btn-light">Docs</Link>
+              <Link href="/marketplace" className="btn btn-primary">{t(dict, "home.cta.goMarketplace")}</Link>
+              <Link href="/docs" className="btn btn-light">{t(dict, "home.cta.docs")}</Link>
             </div>
           </div>
         </div>

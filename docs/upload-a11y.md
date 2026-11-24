@@ -1,182 +1,153 @@
 # UploadZone Accessibility Notes
 
-This document describes the accessibility contract for `components/UploadZone.jsx` — the drag-and-drop PDF invoice upload component.
+Accessibility contract for `components/UploadZone.jsx`, the drag-and-drop PDF invoice
+upload zone used by the submit wizard.
+
+---
 
 ## Roles and ARIA Attributes
 
-### Drop Zone
+### Drop zone
 
 | Attribute | Value | Purpose |
-|-----------|-------|---------|
-| `role` | `button` | Exposes the drop zone as an interactive control to assistive technologies |
-| `tabIndex` | `0` | Makes the drop zone keyboard-focusable and part of the natural tab order |
-| `aria-label` | `"Drop PDF invoice here, or click to browse"` | Provides an accessible name describing the component's purpose |
+| --------- | ----- | ------- |
+| `role` | `button` | Exposes the zone as an interactive control |
+| `tabIndex` | `0` (or `-1` when disabled) | Keeps the zone in the natural tab order |
+| `aria-label` | "Drop PDF invoice here, or click to browse" / "Drop a new PDF invoice here, or click to replace" | Names the control; changes when a file is attached |
+| `aria-describedby` | Instructions, status and error IDs | Connects the control to requirements and feedback |
+| `aria-disabled` | `true` when disabled | Communicates the disabled state |
 
-### Error Messages
+The zone handles `click`, `keydown`, `dragenter`, `dragover`, `dragleave` and `drop`.
+Activation with `Enter` or `Space` opens the native file picker. Drag events call
+`preventDefault` so the browser does not navigate to the dropped file.
 
-| Attribute | Value | Purpose |
-|-----------|-------|---------|
-| `role` | `alert` | Immediately announces validation errors to screen readers |
-| `aria-live` | `assertive` | Interrupts current screen reader output to announce the error |
-
-### Status Messages
-
-| Attribute | Value | Purpose |
-|-----------|-------|---------|
-| `role` | `status` | Non-intrusive announcements for progress updates |
-| `aria-live` | `polite` | Waits for the screen reader to finish before announcing |
-
-### Progress Bar (when `progress` prop is provided)
+### File input
 
 | Attribute | Value | Purpose |
-|-----------|-------|---------|
-| `role` | `progressbar` | Identifies the element as a progress indicator |
-| `aria-valuemin` | `0` | Minimum value |
-| `aria-valuemax` | `100` | Maximum value |
-| `aria-valuenow` | `{rounded progress}` | Current progress value |
-| `aria-labelledby` | `upload-status-text` | Links to the status text element |
+| --------- | ----- | ------- |
+| `type` | `file` | Native file picker |
+| `accept` | `.pdf,application/pdf` | Hints the accepted format |
+| `class` | `sr-only` | Visually hidden but still accessible |
+| `tabIndex` | `-1` | Removes the duplicate stop from the tab order |
+| `aria-label` | "Choose a PDF invoice file" | Accessible name for assistive technology |
 
-### File Constraint Notice
+The visible drop zone is the keyboard entry point; the input remains available to
+screen readers and automation.
 
-| Attribute | Value | Purpose |
-|-----------|-------|---------|
-| `role` | `note` | Provides advisory information about file requirements |
-| `aria-label` | `"File upload requirements"` | Accessible name for the notice region |
+### Instructions, status and errors
 
-### Spinner
+| Element | Attributes | Announcement |
+| ------- | ---------- | ------------ |
+| Requirements | `role="note"`, `aria-label="File upload requirements"` | Read when the zone is focused through `aria-describedby` |
+| Progress | `role="status"`, `aria-live="polite"` | "Validating and fingerprinting your PDF…" then the validated filename |
+| Error | `role="alert"`, `aria-live="assertive"` | Invalid type, extension, size, empty file, signature mismatch, read failure, hashing failure |
 
-| Attribute | Value | Purpose |
-|-----------|-------|---------|
-| `role` | `img` | Identifies the spinner as an image |
-| `aria-label` | `"Uploading…"` | Describes the spinner's purpose |
+Error messages come from the `upload.error.*` dictionary keys, so they are localized in
+both English and Spanish.
 
-### Submit Button
+### Metadata and remove action
 
-| Attribute | Value | Purpose |
-|-----------|-------|---------|
-| `disabled` | `{!file \|\| isProcessing}` | Prevents interaction when no file is selected or during processing |
-| `aria-disabled` | `{!file \|\| isProcessing}` | Communicates disabled state to assistive technologies |
+After validation the component renders a `<dl>` with the filename, human-readable size
+and SHA-256 fingerprint, plus a native `<button>` labelled "Remove file". Removing the
+file clears the metadata and returns focus to the drop zone.
 
-## Keyboard Interactions
+---
 
-### Drop Zone
+## Keyboard Interaction
 
-| Key | Action | Notes |
-|-----|--------|-------|
-| `Enter` | Opens the file picker dialog | Equivalent to clicking the drop zone |
-| `Space` | Opens the file picker dialog | Equivalent to clicking the drop zone |
-| `Tab` | Moves focus to/from the drop zone | Part of the natural tab order |
-| `Escape` | No action | Does not open the file picker |
+| Key | Where | Action |
+| --- | ----- | ------ |
+| `Tab` | Page | Moves focus to the drop zone, then to the remove button when a file is attached |
+| `Enter` | Drop zone | Opens the file picker |
+| `Space` | Drop zone | Opens the file picker |
+| `Enter` / `Space` | Remove button | Clears the validated file and focuses the drop zone |
+| `Tab` | Remove button | Continues through the rest of the form |
 
-### Submit Button
-
-| Key | Action | Notes |
-|-----|--------|-------|
-| `Enter` | Submits the form | When the button is not disabled |
-| `Space` | Submits the form | When the button is not disabled |
-| `Tab` | Moves focus to/from the button | Standard button keyboard behavior |
-
-### Reset Button (in success state)
-
-| Key | Action | Notes |
-|-----|--------|-------|
-| `Enter` | Resets the upload and focuses the drop zone | For keyboard users to start a new upload |
-| `Space` | Resets the upload and focuses the drop zone | Standard button keyboard behavior |
-| `Tab` | Moves focus to/from the button | Standard button keyboard behavior |
+---
 
 ## Focus Management
 
-1. **Initial focus**: The drop zone receives focus in the natural tab order
-2. **After reset**: Focus is programmatically moved to the drop zone so keyboard users can immediately start a new upload
-3. **During upload**: Focus remains on the submit button (disabled state)
-4. **After error**: Focus stays on the drop zone for retry
+1. The drop zone is the first focusable element in the component.
+2. After removal, focus moves back to the drop zone so a keyboard user can immediately
+   choose another file.
+3. Errors do not move focus; the assertive live region announces them, and the drop zone
+   stays available for a retry.
+
+---
 
 ## State Transitions
 
-### Idle → Uploading → Tokenizing → Success
-
 ```
-Idle (drop zone focused)
-  ↓ File selected + Submit clicked
-Uploading (submit button disabled, progress announced)
-  ↓ Server responds
-Tokenizing (submit button disabled, status announced)
-  ↓ Tokenization delay completes
-Success (reset button appears)
+idle
+  ↓ file selected / dropped
+validating  (polite status)
+  ↓ validation + SHA-256 succeed          ↓ validation or hashing fails
+ready (metadata + polite status)          error (assertive alert, metadata cleared)
+  ↓ remove / replace
+idle
 ```
 
-### Idle → Error → Idle
+Re-selecting the same file triggers a fresh validation because the hidden input value is
+reset after every change. Starting a new selection cancels any in-flight validation so a
+late result cannot overwrite newer state.
 
-```
-Idle
-  ↓ Invalid file selected
-Error (role="alert" announced)
-  ↓ New valid file selected or reset clicked
-Idle (error cleared)
-```
+---
 
 ## Screen Reader Announcements
 
-### File Selected
-- No announcement (visual feedback only)
+| Event | Live region | Example |
+| ----- | ----------- | ------- |
+| Validating | `role="status"` / polite | "Validating and fingerprinting your PDF…" |
+| Validated | `role="status"` / polite | "invoice.pdf validated and fingerprinted." |
+| Invalid MIME type | `role="alert"` / assertive | "Invalid file type \"text/plain\". Only PDF files are accepted." |
+| Oversized file | `role="alert"` / assertive | "File is 12 MB — exceeds the 10 MB limit." |
+| Spoofed extension or signature | `role="alert"` / assertive | "The selected file does not appear to be a valid PDF." |
+| Read or hash failure | `role="alert"` / assertive | "Could not compute the file fingerprint. Please try again." |
 
-### File Validation Error
-- Announced immediately via `role="alert"` with `aria-live="assertive"`
-- Example: "Invalid file type: text/plain"
+The metadata list itself is not a live region; the polite status announces the filename
+after success.
 
-### Upload Progress (indeterminate)
-- Announced via `role="status"` with `aria-live="polite"`
-- Example: "Uploading invoice…"
+---
 
-### Upload Progress (determinate)
-- Progress bar updates announced via `role="progressbar"`
-- Percentage shown visually and available via `aria-valuenow`
+## Visual Feedback
 
-### Tokenization
-- Announced via `role="status"` with `aria-live="polite"`
-- Example: "Pending tokenization…"
+- The drop zone gets an `is-dragging` class while a file is dragged over it.
+- The drop zone gets an `is-disabled` class and `aria-disabled` when disabled.
+- Error text uses the existing `.err` class; status text uses `.hint`.
+- The fingerprint is rendered in a monospace element with `word-break: break-all`.
+- The component relies on the shared `.focus-ring` / browser focus styles for visible
+  keyboard focus.
 
-### Success
-- Announced via `role="status"` with `aria-live="polite"`
-- Example: "Upload complete!"
-
-## Focus Ring
-
-The submit button uses the `.focus-ring` CSS class for consistent focus-visible styling:
-- Dark theme: `#22d3ee` (cyan-400) → ~10:1 contrast
-- Light theme: `#0891b2` (cyan-600) → ~3.5:1 contrast
-
-The reset button also uses `.focus-ring` for consistent keyboard visibility.
+---
 
 ## Test Coverage
 
-Tests for the accessibility contract are located in:
-- `components/UploadZone.test.jsx` — GROUP 5: Accessibility
-- `components/focus-ring.a11y.test.tsx` — Focus ring presence checks
+| File | Coverage |
+| ---- | -------- |
+| `tests/pdfValidation.test.mjs` | MIME, extension, size, empty file, magic bytes, read failure, SHA-256 output, unavailable Web Crypto |
+| `tests-ui/UploadZone.test.jsx` | Keyboard activation, accessible labels and instructions, assertive rejection, metadata-only callback, fingerprint display, remove and focus return |
 
-### Test Cases
+Run them with:
 
-1. **axe accessibility check in idle state** — Verifies no WCAG violations
-2. **axe accessibility check after file selected** — Verifies no violations with file info displayed
-3. **axe accessibility check after validation error** — Verifies no violations with error displayed
-4. **role="alert" with aria-live="assertive"** — Confirms error announcement attributes
-5. **role="status" with aria-live="polite"** — Confirms progress announcement attributes
-6. **Progress bar ARIA attributes** — Confirms progressbar role and value attributes
-7. **Keyboard activation** — Enter and Space open the file dialog
-8. **Focus management after reset** — Drop zone receives focus after reset
+```bash
+node --test tests/pdfValidation.test.mjs
+npm run test:ui -- tests-ui/UploadZone.test.jsx
+```
+
+---
 
 ## WCAG 2.1 Compliance
 
-This component satisfies the following success criteria:
-
-- **1.1.1 Non-text Content** — All icons have `aria-hidden="true"` or descriptive `aria-label`
-- **1.3.1 Info and Relationships** — Roles and ARIA attributes convey structure
-- **1.3.3 Sensory Characteristics** — State is conveyed via text, not color alone
-- **2.1.1 Keyboard** — All functionality available via keyboard
-- **2.1.2 No Keyboard Trap** — Focus can move freely in and out of the component
-- **2.4.3 Focus Order** — Logical tab order maintained
-- **2.4.7 Focus Visible** — `.focus-ring` class provides visible focus indicator
-- **3.2.1 On Focus** — No unexpected context changes on focus
-- **3.3.1 Error Identification** — Errors clearly identified and described
-- **3.3.3 Error Suggestion** — Error messages provide guidance when possible
-- **4.1.2 Name, Role, Value** — All custom elements have proper ARIA attributes
+- **1.1.1 Non-text Content** — the decorative document emoji is `aria-hidden="true"`.
+- **1.3.1 Info and Relationships** — `<dl>`/`<dt>`/`<dd>` describe file metadata; the
+  hidden input has an accessible label.
+- **2.1.1 Keyboard** — the drop zone is focusable and activates with `Enter` or `Space`.
+- **2.4.3 Focus Order** — the drop zone is a single logical tab stop; the input is not a
+  duplicate stop.
+- **2.4.7 Focus Visible** — native focus indicators remain visible.
+- **3.3.1 Error Identification** — every rejection names the problem in an alert.
+- **3.3.3 Error Suggestion** — messages state the accepted format or size limit.
+- **4.1.2 Name, Role, Value** — the drop zone exposes `role="button"`, an accessible
+  name and `aria-disabled`.
+- **4.1.3 Status Messages** — validation progress and errors use polite and assertive
+  live regions.

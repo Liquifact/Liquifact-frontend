@@ -54,6 +54,7 @@ test("rejects native asset with documented error before touching server or signe
       network: "testnet",
       server,
       signFn,
+      getNetwork: async () => "TESTNET",
       getNetwork,
     }),
     { message: "Trustlines only apply to issued assets" }
@@ -75,6 +76,7 @@ test("rejects missing or issuer-less asset with documented error", async () => {
         network: "testnet",
         server,
         signFn,
+        getNetwork: async () => "TESTNET",
         getNetwork,
       }),
       { message: "Trustlines only apply to issued assets" }
@@ -92,6 +94,8 @@ test("builds a single changeTrust op for the issued asset and returns submitTran
     network: "testnet",
     server,
     signFn,
+    getNetwork: async () => "TESTNET",
+    getNetwork: async () => "testnet",
     getNetwork,
   });
 
@@ -123,6 +127,8 @@ test("selects network passphrase per network (testnet vs public)", async () => {
       network,
       server,
       signFn,
+      getNetwork: async () => network.toUpperCase(),
+      getNetwork: async () => network,
       getNetwork: async () => network,
     });
 

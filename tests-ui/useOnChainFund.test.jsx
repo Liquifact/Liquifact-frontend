@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/stellar/freighter", () => ({
   connectFreighter: vi.fn(),
   signWithFreighter: vi.fn(),
+  getNetworkName: vi.fn(async () => "TESTNET"),
   SignatureCancelled: class SignatureCancelled extends Error {
     constructor() {
       super("Signature cancelled");

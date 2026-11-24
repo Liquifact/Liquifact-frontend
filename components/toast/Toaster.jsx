@@ -56,6 +56,7 @@ function ToastItem({ toast, onDismiss, index }) {
     onDismiss(toast.id);
   }, [toast, onDismiss]);
 
+  /* eslint-disable jsx-a11y/no-static-element-interactions -- Toast container manages hover and focus pause states for auto-dismiss timer */
   return (
     <div
       className={`toast toast-${toast.kind}`}
@@ -97,6 +98,7 @@ function ToastItem({ toast, onDismiss, index }) {
       </div>
     </div>
   );
+  /* eslint-enable jsx-a11y/no-static-element-interactions */
 }
 
 export default function Toaster({ toasts, onDismiss }) {
@@ -106,6 +108,7 @@ export default function Toaster({ toasts, onDismiss }) {
   const reducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Client hydration mount flag
     setMounted(true);
   }, []);
 
@@ -161,7 +164,7 @@ export default function Toaster({ toasts, onDismiss }) {
         data-testid="toast-region-assertive"
       >
         {assertive.map((toast, i) => (
-          <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} index={i} />
+          <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} index={i} />
         ))}
       </div>
     </div>

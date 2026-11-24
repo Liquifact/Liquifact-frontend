@@ -1,7 +1,7 @@
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { SITE_NAME, canonicalUrl, cleanText, invoiceJsonLd, invoiceMeta, pageMeta, stringifyJsonLd } from "../lib/seo.js";
-import { fetchInvoiceById, fetchInvoicesForSitemap, isCancelledInvoice } from "../lib/invoiceSeoData.js";
+import { fetchInvoiceById, fetchInvoicesForSitemap, isCancelledInvoice, loadPublicInvoice } from "../lib/invoiceSeoData.js";
 import sitemap from "../app/sitemap.js";
 import robots from "../app/robots.js";
 
@@ -155,4 +155,13 @@ test("robots publishes the sitemap and host", () => {
   const r = robots();
   assert.ok(r.sitemap.endsWith("/sitemap.xml"));
   assert.ok(r.host.length > 0);
+});
+
+test("loadPublicInvoice hides missing and cancelled invoices like the sitemap (#1522)", async () => {
+  const respond = (invoice) => async () => ({ ok: true, status: 200, json: async () => ({ data: invoice }) });
+  const open = await loadPublicInvoice("INV_X", { fetchFn: respond({ id: "INV_X", status: "open" }) });
+  assert.equal(open.id, "INV_X");
+  assert.equal(await loadPublicInvoice("INV_X", { fetchFn: respond({ id: "INV_X", status: "Cancelled" }) }), null);
+  assert.equal(await loadPublicInvoice("INV_X", { fetchFn: respond({ id: "INV_X", canceled: true }) }), null);
+  assert.equal(await loadPublicInvoice("INV_X", { fetchFn: async () => ({ ok: false, status: 404 }) }), null);
 });

@@ -18,6 +18,7 @@ export default function LiveStats() {
 
   useEffect(() => {
     let alive = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset stats state on refresh mount
     setError(false);
     setTipOpen(false);
     Promise.allSettled([listInvoices(), getHealth()]).then(([listResult, healthResult]) => {
