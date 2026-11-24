@@ -16,6 +16,7 @@ export default async function InvoicePage({ params }) {
   if (!invoice) notFound();
   return (
     <>
+        <script type="application/ld+json">{stringifyJsonLd(invoiceJsonLd(invoice))}</script>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: stringifyJsonLd(invoiceJsonLd(invoice)) }} />
       <InvoiceDetail id={id} initialInvoice={invoice} />
     </>

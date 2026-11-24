@@ -109,6 +109,7 @@ export default function LifecycleTimeline({ invoice, escrow = null, _nowMs }) {
   const intervalRef = useRef(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Client hydration mount flag
     setHydrated(true);
 
     function startInterval() {
@@ -144,6 +145,7 @@ export default function LifecycleTimeline({ invoice, escrow = null, _nowMs }) {
     };
   }, []);
 
+  // eslint-disable-next-line react-hooks/purity -- Fallback timestamp for SSR timeline
   const nowMs = _nowMs ?? Date.now();
   const steps = buildTimeline({ invoice, escrow, nowMs });
   const currentStepIndex = steps.findIndex(
@@ -155,6 +157,7 @@ export default function LifecycleTimeline({ invoice, escrow = null, _nowMs }) {
   void tick;
 
   // Compute live nowMs on each render (after hydration)
+  // eslint-disable-next-line react-hooks/purity -- Current timestamp for post-hydration timeline
   const liveNowMs = _nowMs ?? (hydrated ? Date.now() : nowMs);
 
   return (

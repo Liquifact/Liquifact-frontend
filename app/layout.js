@@ -39,10 +39,12 @@ export default async function RootLayout({ children }) {
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        {/* eslint-disable react/no-danger -- Approved exception: Pre-hydration theme script uses static compile-time constant (THEME_INIT_SCRIPT) with no user input */}
         <script
           nonce={nonce}
           dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
         />
+        {/* eslint-enable react/no-danger */}
       </head>
       <body>
         <I18nProvider locale={locale} dict={dict}>

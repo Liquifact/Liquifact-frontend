@@ -33,6 +33,7 @@ export default function Watchlist() {
     let active = true;
 
     if (!followedIds || followedIds.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Sync loading state when watchlist is empty
       setLoading(false);
       return undefined;
     }

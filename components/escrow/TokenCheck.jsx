@@ -18,6 +18,7 @@ export function useFundingTokenCheck(invoice, { enabled = true, resolve = resolv
   useEffect(() => {
     if (!enabled) return undefined;
     let alive = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset state on token change
     setState(INITIAL);
     (async () => {
       try {

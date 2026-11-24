@@ -54,6 +54,7 @@ export default function SubmitForm() {
     const draft = readDraft();
     if (draft && typeof draft === "object") {
       dispatch({ type: "restore", form: draft });
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Restore draft form state on mount
       setRestored(true);
     }
     const s = urlStep();
