@@ -103,9 +103,19 @@ const ExitPanel = dynamic(() => import("@/components/invest/ExitPanel"), { ssr: 
 // Codes that disable the Fund button outright (amount edits cannot fix them).
 const BLOCKING_CODES = new Set([CODES.PAUSED, CODES.LEGAL_HOLD, CODES.DEADLINE_PASSED, CODES.NOT_OPEN]);
 
-export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints }) {
+// Merge a background revalidation result. An offline fallback never replaces
+// server-rendered data with demo data; it only flags the page as offline.
+function mergeRevalidated(current, result) {
+  if (result?.offline && current.data) return { ...current, loading: false, offline: true };
+  return { loading: false, ...result };
+}
+
+export default function InvoiceDetail({ id, initialInvoice = null, loadConstraintsFn = loadConstraints }) {
+  // With server-prefetched data (#1522) the first render is complete: no skeleton, no fetch.
+  const [state, setState] = useState(() =>
+    initialInvoice ? { loading: false, data: initialInvoice, offline: false } : { loading: true, data: null, offline: false },
+  );
   const t = useT();
-  const [state, setState] = useState({ loading: true, data: null, offline: false });
   const [medians, setMedians] = useState(null);
   const [amount, setAmount] = useState("");
   const [msg, setMsg] = useState(null);
@@ -144,9 +154,18 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
     };
   }, []);
 
+  // A router refresh re-renders the server page and hands us fresh initial data.
+  const seenInitial = useRef(initialInvoice);
+  useEffect(() => {
+    if (!initialInvoice || seenInitial.current === initialInvoice) return;
+    seenInitial.current = initialInvoice;
+    setState((s) => ({ ...s, loading: false, data: initialInvoice }));
+  }, [initialInvoice]);
+
+  // Load (or, with initialInvoice, revalidate in the background) after mount.
   useEffect(() => {
     let alive = true;
-    getInvoice(id).then((r) => alive && setState({ loading: false, ...r }));
+    getInvoice(id).then((r) => alive && setState((s) => mergeRevalidated(s, r)));
     // List medians only refine the risk score; a failed list load never blocks the page.
     Promise.resolve()
       .then(() => listInvoices())
