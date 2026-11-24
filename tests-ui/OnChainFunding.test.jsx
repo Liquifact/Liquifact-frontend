@@ -10,7 +10,7 @@ import { CONTRACT_ID } from "@/lib/config";
 
 vi.mock("@/lib/api", () => ({ getInvoice: vi.fn(), fundInvoice: vi.fn(), getEscrowLive: vi.fn() }));
 vi.mock("@/lib/stellar/fund", () => ({ submitFund: vi.fn() }));
-vi.mock("@/lib/stellar/freighter", async (original) => ({ ...await original(), connectFreighter: vi.fn(), signWithFreighter: vi.fn() }));
+vi.mock("@/lib/stellar/freighter", async (original) => ({ ...await original(), connectFreighter: vi.fn(), signWithFreighter: vi.fn(), getNetworkName: vi.fn(async () => "TESTNET") }));
 // Isolate the funding flow from the other on-chain panels on the page (no network in tests).
 vi.mock("@/components/NotificationsProvider", () => ({
   useNotifications: () => ({ follow: vi.fn(), unfollow: vi.fn(), isFollowing: () => false }),
@@ -70,6 +70,8 @@ test("in-flight submit cannot be triggered twice even through form events", asyn
   await user.type(screen.getByLabelText("Amount (XLM)"), "1");
   const button = screen.getByRole("button", { name: "Sign & fund" });
   fireEvent.submit(button.closest("form")); fireEvent.submit(button.closest("form"));
+  // The wallet network check (#1539) runs before submitFund, so wait for the first submit to land.
+  await screen.findByRole("button", { name: /Waiting for signature/ });
   expect(submitFund).toHaveBeenCalledTimes(1);
   expect(screen.getByRole("button", { name: /Waiting for signature/ }).disabled).toBe(true);
   finish({ status: "SUCCESS", hash });

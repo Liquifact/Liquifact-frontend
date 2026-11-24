@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { loadBalances } from "@/lib/stellar/horizon";
 import { resolveAsset } from "@/lib/stellar/assets";
 import { spendable } from "@/lib/stellar/spendable";
 import { addTrustline } from "@/lib/stellar/trustline";
 import { NETWORK } from "@/lib/config";
+import { useT } from "@/lib/i18n/I18nProvider";
+import { rich } from "@/lib/i18n/rich";
 
 /**
  * Spendable-balance hint + trustline status for the fund form.
@@ -21,6 +23,10 @@ import { NETWORK } from "@/lib/config";
 export default function BalanceHint({ currency, address, amount, onUseMax, onValidation, loadBalancesFn = loadBalances, addTrustlineFn = addTrustline }) {
   const [state, setState] = useState({ status: "idle", data: null, error: null });
   const [trustlineBusy, setTrustlineBusy] = useState(false);
+  const t = useT();
+  // Read through a ref so a locale switch never re-triggers the balance load.
+  const tRef = useRef(t);
+  tRef.current = t;
 
   const asset = resolveAsset(currency, NETWORK);
 
@@ -31,7 +37,7 @@ export default function BalanceHint({ currency, address, amount, onUseMax, onVal
       const data = await loadBalancesFn(address);
       setState({ status: "ready", data, error: null });
     } catch (err) {
-      setState({ status: "error", data: null, error: err?.message || "Balance check failed" });
+      setState({ status: "error", data: null, error: err?.message || tRef.current("balance.checkFailed") });
     }
   }, [address, asset, loadBalancesFn]);
 
@@ -48,10 +54,10 @@ export default function BalanceHint({ currency, address, amount, onUseMax, onVal
 
   useEffect(() => {
     if (!onValidation) return;
-    if (asset === "unsupported") onValidation({ ok: false, message: `Unsupported asset: ${currency}` });
-    else if (overBalance) onValidation({ ok: false, message: `Amount exceeds your spendable balance of ${spendableAmount} ${currency}.` });
+    if (asset === "unsupported") onValidation({ ok: false, message: t("balance.unsupported", { currency }) });
+    else if (overBalance) onValidation({ ok: false, message: t("balance.exceeds", { amount: spendableAmount, currency }) });
     else onValidation({ ok: true, message: null });
-  }, [asset, currency, overBalance, spendableAmount, onValidation]);
+  }, [asset, currency, overBalance, spendableAmount, onValidation, t]);
 
   async function onAddTrustline() {
     setTrustlineBusy(true);
@@ -69,40 +75,46 @@ export default function BalanceHint({ currency, address, amount, onUseMax, onVal
 
   return (
     <div className="balance-hint" aria-live="polite">
-      {state.status === "loading" && <span className="hint">Checking your balance…</span>}
+      {state.status === "loading" && <span className="hint">{t("balance.checking")}</span>}
       {state.status === "error" && (
         <span className="hint balance-warn">
-          Couldn’t check your balance.{" "}
+          {t("balance.error")}{" "}
           <button type="button" className="linklike" onClick={load}>
-            Retry
+            {t("balance.retry")}
           </button>
         </span>
       )}
       {state.status === "ready" && data?.unfunded && (
         <span className="hint balance-warn">
-          This account isn’t funded on {NETWORK}. Fund it with{" "}
-          <a href="https://friendbot.stellar.org" target="_blank" rel="noreferrer">
-            Friendbot
-          </a>{" "}
-          on testnet.
+          {rich(t("balance.unfunded", { network: NETWORK }), {
+            link: (
+              <a href="https://friendbot.stellar.org" target="_blank" rel="noreferrer">
+                {t("balance.friendbot")}
+              </a>
+            ),
+          })}
         </span>
       )}
       {state.status === "ready" && data && !data.unfunded && !hasTrustline && (
         <span className="hint balance-warn">
-          No {currency} trustline on this account.{" "}
+          {t("balance.noTrustline", { currency })}{" "}
           <button type="button" className="linklike" disabled={trustlineBusy} onClick={onAddTrustline}>
-            {trustlineBusy ? "Adding…" : `Add ${currency} trustline`}
+            {trustlineBusy ? t("balance.adding") : t("balance.addTrustline", { currency })}
           </button>
         </span>
       )}
       {state.status === "ready" && data && !data.unfunded && hasTrustline && spendableAmount != null && (
         <span className="hint">
-          Balance: {data.balances.find((b) => b.code === currency)?.balance ?? "0"} {currency} (spendable {spendableAmount})
+          {t("balance.summary", {
+            balance: data.balances.find((b) => b.code === currency)?.balance ?? "0",
+            currency,
+            spendable: spendableAmount,
+          })}
           {onUseMax && (
             <>
               {" "}
               <button type="button" className="linklike" onClick={() => onUseMax(spendableAmount)}>
-                Use max
+                {t("balance.useMax")}
               </button>
             </>
           )}
@@ -110,7 +122,7 @@ export default function BalanceHint({ currency, address, amount, onUseMax, onVal
       )}
       {overBalance && (
         <span className="hint balance-err" role="alert">
-          Amount exceeds your spendable balance of {spendableAmount} {currency}.
+          {t("balance.exceeds", { amount: spendableAmount, currency })}
         </span>
       )}
     </div>
