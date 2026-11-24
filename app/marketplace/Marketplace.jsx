@@ -441,7 +441,7 @@ export default function MarketplaceClient() {
           </div>
         ) : items.length === 0 ? (
           <div className="card center">
-            <h3>{isFiltered ? "No invoices match these filters" : t("marketplace.empty.title")}</h3>
+            <h2>{isFiltered ? "No invoices match these filters" : t("marketplace.empty.title")}</h2>
             <p className="muted">
               {isFiltered ? (
                 <>
