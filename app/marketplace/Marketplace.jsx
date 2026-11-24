@@ -11,6 +11,8 @@ import { useT } from "@/lib/i18n/I18nProvider";
 import { computeListMedians } from "@/lib/risk";
 import { MAX_COMPARE, serializeCompareIds } from "@/lib/compare";
 import { defaultFilename, exportInvoicesCsv } from "@/lib/csv";
+import { canonicalQuery } from "@/lib/savedSearches";
+import SavedSearches from "./SavedSearches";
 import {
   getNetworkName,
   getPublicKey,
@@ -112,6 +114,7 @@ export default function MarketplaceClient() {
 
   useEffect(() => {
     let alive = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial invoice list fetch on mount
     setFetchState((s) => ({ ...s, loading: true }));
     // Fetch the full list once — filter client-side
     listInvoices().then((r) => {
@@ -238,6 +241,15 @@ export default function MarketplaceClient() {
   function clearFilters() {
     setSearchInput("");
     const qs = serializeQuery({ ...DEFAULTS, view: urlState.view });
+    router.push(`/marketplace${qs ? `?${qs}` : ""}`, { scroll: false });
+  }
+
+  // Apply a saved preset (#1526): its filters replace the current ones, the
+  // viewer's cards/table choice is kept, and the URL stays shareable.
+  function applyPreset(preset) {
+    const next = { ...parseQuery(new URLSearchParams(preset.query)), view: urlState.view, page: 1 };
+    setSearchInput(next.q);
+    const qs = serializeQuery(next);
     router.push(`/marketplace${qs ? `?${qs}` : ""}`, { scroll: false });
   }
 
@@ -395,6 +407,9 @@ export default function MarketplaceClient() {
             </select>
           </div>
 
+          {/* Saved searches */}
+          <SavedSearches currentQuery={canonicalQuery(urlState)} onApply={applyPreset} />
+
           {/* Due-date window */}
           <div className="mq-filter-field">
             <label htmlFor="mq-due" className="sr-only">
@@ -448,7 +463,7 @@ export default function MarketplaceClient() {
           </div>
         ) : items.length === 0 ? (
           <div className="card center">
-            <h3>{isFiltered ? "No invoices match these filters" : t("marketplace.empty.title")}</h3>
+            <h2>{isFiltered ? "No invoices match these filters" : t("marketplace.empty.title")}</h2>
             <p className="muted">
               {isFiltered ? (
                 <>

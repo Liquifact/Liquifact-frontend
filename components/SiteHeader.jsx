@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/", labelKey: "nav.home" },
   { href: "/marketplace", labelKey: "nav.marketplace" },
   { href: "/watchlist", labelKey: "nav.watchlist" },
+  { href: "/portfolio", labelKey: "nav.portfolio" },
   { href: "/submit", labelKey: "nav.submit" },
   { href: "/get-started", labelKey: "nav.getStarted" },
   { href: "/docs", labelKey: "nav.docs" },
@@ -27,6 +28,7 @@ export default function SiteHeader() {
 
   // Close on any route change (link click, Back/Forward).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Close navigation menu on route change
     setOpen(false);
   }, [pathname]);
 
