@@ -29,6 +29,25 @@ describe("FundingProgress", () => {
     render(<FundingProgress funded={18000} target={25000} currency="USDC" showLabel />);
     assert.ok(screen.getByText("72% funded, 18,000 of 25,000 USDC"));
   });
+
+  it("localizes the value and numbers in es", () => {
+    render(
+      <I18nProvider locale="es" dict={getDictionary("es")}>
+        <FundingProgress funded={18000.5} target={25000} currency="USDC" showLabel />
+      </I18nProvider>,
+    );
+    const valueText = "72% financiado, 18.000,5 de 25.000 USDC";
+    assert.equal(screen.getByRole("progressbar").getAttribute("aria-valuetext"), valueText);
+    assert.ok(screen.getByText(valueText));
+  });
+
+  it("falls back to English outside an I18nProvider", () => {
+    render(<FundingProgress funded={18000} target={25000} currency="USDC" />);
+    assert.equal(
+      screen.getByRole("progressbar").getAttribute("aria-valuetext"),
+      "72% funded, 18,000 of 25,000 USDC",
+    );
+  });
 });
 
 describe("StatusBadge", () => {

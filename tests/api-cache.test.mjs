@@ -2,6 +2,8 @@ import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { listInvoices, getInvoice, getStats, fundInvoice } from "../lib/api.js";
 
+// Retry behavior for idempotent GETs is covered in tests/api-retry.test.mjs.
+
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
 test("list/detail propagate stale real data and timestamp rather than demo invoices", async () => {

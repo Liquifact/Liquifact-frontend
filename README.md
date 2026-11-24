@@ -20,9 +20,14 @@ Part of the LiquiFact stack: **frontend** (this repo) ·
 | Route | What it does |
 |-------|--------------|
 | `/` | Landing page: product overview, live API stats, escrow contract |
+| `/get-started` | Investor onboarding for setting up a Stellar wallet and testnet account |
 | `/marketplace` | Invoices from the API with status filters |
 | `/marketplace/[id]` | Invoice detail and funding form |
+| `/marketplace/compare` | Side-by-side comparison of invoice yield, tenor, capacity, and risk |
+| `/marketplace/[id]/receipt` | Printable funding receipt for an invoice contribution |
 | `/submit` | Submit an invoice for financing |
+| `/watchlist` | Track followed invoices and their funding progress |
+| `/offline` | Offline fallback with links to saved marketplace content |
 | `/docs` | Product overview, architecture, usage guide, API and contract reference |
 
 The production app can be installed from the browser. Previously viewed invoices
@@ -46,14 +51,29 @@ Requires Node.js 20.9+.
 ```bash
 npm ci
 npm run dev      # http://localhost:3000
-npm test         # unit tests (node:test)
-npm run test:ui  # funding component tests (Vitest)
+npm test         # i18n key parity check, then unit tests (node:test)
+npm run test:ui  # UI tests in tests-ui/ and tests/*.ui.test.* (Vitest)
 npm run build
 ```
 
+`npm test` runs `scripts/check-i18n.mjs` before the Node.js tests in
+`tests/*.test.mjs`. `npm run test:ui` runs Vitest tests from `tests-ui/` and
+`tests/*.ui.test.*`. `npm run build` runs `scripts/prepare-pwa.mjs` before the
+Next.js production build.
+
+## Project layout
+
+- `app/` — Next.js App Router pages and route handlers.
+- `components/` — reusable interface components.
+- `lib/` — application logic, integrations, and shared utilities.
+- `tests/` — Node.js unit tests.
+- `tests-ui/` — Vitest UI tests.
+- `docs/` — product, architecture, and contributor documentation.
+
 ## Configuration
 
-All variables are optional (see [`.env.local.example`](.env.local.example)):
+All variables are optional (see [`.env.local.example`](.env.local.example)).
+See the [configuration reference](docs/configuration.md) for details.
 
 | Variable | Default |
 |----------|---------|

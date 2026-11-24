@@ -15,7 +15,8 @@ import { relativeTime } from "@/lib/notifications/diff";
  *   through the popover controls in a logical order.
  */
 export default function NotificationBell() {
-  const { unreadCount, events, markAllRead, permission, requestPermission, supported } = useNotifications();
+  const { unreadCount, events, markAllRead, permission, requestPermission, supported, browserEnabled, setBrowserEnabled } = useNotifications();
+  const enabled = browserEnabled ?? permission === "granted";
 
   const bellRef = useRef(null);
   const panelRef = useRef(null);
@@ -56,10 +57,12 @@ export default function NotificationBell() {
 
   const handleEnableClick = useCallback(() => {
     // Permission is only ever requested as a direct result of a user click.
-    if (permission !== "granted") {
+    if (setBrowserEnabled) {
+      void setBrowserEnabled(!enabled);
+    } else if (permission !== "granted") {
       requestPermission();
     }
-  }, [permission, requestPermission]);
+  }, [permission, requestPermission, setBrowserEnabled, enabled]);
 
   return (
     <div className="notification-wrapper" style={{ display: "inline-flex", position: "relative" }}>
@@ -157,8 +160,8 @@ export default function NotificationBell() {
                 id="bn-toggle"
                 role="switch"
                 aria-labelledby="bn-label"
-                aria-checked={permission === "granted"}
-                className={`toggle-btn ${permission === "granted" ? "on" : ""}`}
+                aria-checked={enabled}
+                className={`toggle-btn ${enabled ? "on" : ""}`}
                 onClick={handleEnableClick}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -167,7 +170,7 @@ export default function NotificationBell() {
                   }
                 }}
               >
-                {permission === "granted" ? "On" : permission === "denied" ? "Blocked" : "Enable"}
+                {enabled ? "On" : permission === "denied" ? "Blocked" : "Enable"}
               </button>
             </div>
           )}

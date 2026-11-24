@@ -21,6 +21,7 @@ import { validateContribution as checkApiContribution, creditedAmount } from "@/
 import { getWalletAddress } from "@/lib/stellar/freighter";
 import SmeActionsCard from "@/components/sme/SmeActionsCard";
 import LifecycleTimeline from "@/components/invoice/LifecycleTimeline";
+import DueStatusBadge from "@/components/invoice/DueStatusBadge";
 import YieldCalculator from "@/components/invest/YieldCalculator";
 import { escrowFor } from "@/lib/escrow/registry";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
@@ -31,6 +32,8 @@ import { parseToStroops, remainingStroops, stroopsToDisplay } from "@/lib/stella
 import { getDefaultStore } from "@/lib/stellar/txStore";
 import { useOnChainFund } from "@/lib/hooks/useOnChainFund";
 import { CONTRACT_ID, NETWORK } from "@/lib/config";
+import { useT } from "@/lib/i18n/I18nProvider";
+import { rich, translateKnown } from "@/lib/i18n/rich";
 
 const ESCROW_STATUSES = ["open", "funded", "settled", "withdrawn", "cancelled"];
 
@@ -42,24 +45,46 @@ function onChainRemaining(inv) {
   }
 }
 
-function contributionErrorText(error, remaining, currency) {
+function contributionErrorText(t, error, remaining, currency) {
   switch (error) {
     case "REQUIRED":
-      return "Amount is required.";
+      return t("invoice.error.required");
     case "NOT_A_NUMBER":
-      return "Amount must be a number.";
+      return t("invoice.error.notANumber");
     case "NON_POSITIVE":
-      return "Enter a positive amount.";
+      return t("invoice.error.nonPositive");
     case "TOO_MANY_DECIMALS":
-      return "Maximum 7 decimal places allowed.";
+      return t("invoice.error.tooManyDecimals");
     case "EXCEEDS_REMAINING":
-      return `Exceeds the remaining capacity of ${formatAmount(remaining, currency)}.`;
+      return t("invoice.error.exceedsRemaining", { amount: formatAmount(remaining, currency) });
     case "NOT_OPEN":
-      return "This invoice is no longer open for funding.";
+      return t("invoice.error.notOpen");
     default:
-      return "Enter a valid positive amount.";
+      return t("invoice.error.invalid");
   }
 }
+
+// Constraint codes with a dictionary entry (invoice.constraint.<CODE>).
+const CONSTRAINT_KEYS = new Set(["PAUSED", "LEGAL_HOLD", "DEADLINE_PASSED", "NOT_OPEN", "BELOW_FLOOR", "ABOVE_INVESTOR_CAP", "ABOVE_CAPACITY"]);
+
+// Display-only translation of the fixed English phases/messages emitted by
+// useOnChainFund; dynamic messages (wallet/RPC errors) pass through unchanged.
+const CHAIN_MESSAGES = {
+  Preparing: "invoice.phase.preparing",
+  "Waiting for signature": "invoice.phase.waitingSignature",
+  Submitting: "invoice.phase.submitting",
+  Confirmed: "invoice.phase.confirmed",
+  "Pending confirmation": "invoice.phase.pending",
+  Failed: "invoice.phase.failed",
+  "Wallet connected.": "invoice.chain.walletConnected",
+  "Connect Freighter before funding.": "invoice.chain.connectFirst",
+  "Funding confirmed.": "invoice.chain.confirmed",
+  "Funding confirmed. Invoice refresh failed; reload to update its balance.": "invoice.chain.confirmedRefreshFailed",
+  "Confirmation timed out. Check this transaction in the explorer before making another contribution.": "invoice.chain.timeout",
+  "The transaction failed on-chain.": "invoice.chain.txFailed",
+  "Signature cancelled": "invoice.chain.cancelled",
+  "Funding failed.": "invoice.fundingFailed",
+};
 
 // Exact decimal remaining capacity for API-only invoices (BigInt minor units, #1395).
 function offChainRemaining(inv) {
@@ -79,6 +104,7 @@ const ExitPanel = dynamic(() => import("@/components/invest/ExitPanel"), { ssr: 
 const BLOCKING_CODES = new Set([CODES.PAUSED, CODES.LEGAL_HOLD, CODES.DEADLINE_PASSED, CODES.NOT_OPEN]);
 
 export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints }) {
+  const t = useT();
   const [state, setState] = useState({ loading: true, data: null, offline: false });
   const [medians, setMedians] = useState(null);
   const [amount, setAmount] = useState("");
@@ -164,10 +190,13 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
     if (!amount.trim()) return null;
     const stroops = parseToStroops(amount);
     if (stroops === null || stroops <= 0n) {
-      return { ok: false, code: "INVALID", message: "Enter a positive amount (up to 7 decimals)." };
+      return { ok: false, code: "INVALID", message: t("invoice.error.invalidPrecision") };
     }
     return validateContribution(stroops, rules.data);
-  }, [inv?.onChain, rules.data, blocking, amount]);
+  }, [inv?.onChain, rules.data, blocking, amount, t]);
+  // Localized text for a constraint result; falls back to the lib message.
+  const constraintText = (v) => (v && CONSTRAINT_KEYS.has(v.code) ? t(`invoice.constraint.${v.code}`) : v?.message);
+  const chainText = (text) => translateKnown(t, CHAIN_MESSAGES, text);
   const maxFill = rules.data ? maxFillAmount(rules.data) : null;
   const fundDisabled = busy || state.offline || blocking !== null || (validation !== null && !validation.ok);
 
@@ -176,12 +205,12 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
     if (inv?.onChain && rules.data) {
       const stroops = parseToStroops(amount);
       if (stroops === null || stroops <= 0n) {
-        setMsg({ kind: "err", text: "Enter a positive amount." });
+        setMsg({ kind: "err", text: t("invoice.error.nonPositive") });
         return;
       }
       const v = validateContribution(stroops, rules.data);
       if (!v.ok) {
-        setMsg({ kind: "err", text: v.message });
+        setMsg({ kind: "err", text: constraintText(v) });
         return;
       }
     }
@@ -195,7 +224,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
             const store = getDefaultStore();
             store.add({
               hash: result.hash,
-              label: `Fund ${inv.id} (${fundedInput} ${inv.currency || "USDC"})`,
+              label: t("invoice.txLabel", { id: inv.id, amount: fundedInput, currency: inv.currency || "USDC" }),
               invoiceId: inv.id,
             });
             store.update(result.hash, { status: "SUCCESS" });
@@ -212,7 +241,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
     // API invoices: reject amounts above the remaining capacity or on closed invoices (#1396).
     const check = checkApiContribution(amount, inv);
     if (!check.ok) {
-      setMsg({ kind: "err", text: contributionErrorText(check.error, remaining, inv.currency) });
+      setMsg({ kind: "err", text: contributionErrorText(t, check.error, remaining, inv.currency) });
       return;
     }
     // Exact decimal validation (no float coercion); unknown currencies fall back to a numeric check.
@@ -224,7 +253,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
     }
     const n = Number(amount);
     if (!valid) {
-      setMsg({ kind: "err", text: "Enter a positive amount." });
+      setMsg({ kind: "err", text: t("invoice.error.nonPositive") });
       return;
     }
     const before = inv;
@@ -240,20 +269,20 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
       const credited = creditedAmount(before, data);
       const partial = credited > 0 && credited < n;
       const text = partial
-        ? `Only ${formatAmount(credited, data.currency)} was needed to complete funding; ${formatAmount(credited, data.currency)} recorded.`
-        : `Contribution of ${formatAmount(credited > 0 ? credited : n, data.currency)} recorded.`;
+        ? t("invoice.partialRecorded", { amount: formatAmount(credited, data.currency) })
+        : t("invoice.contributionRecorded", { amount: formatAmount(credited > 0 ? credited : n, data.currency) });
       // Fund results are announced as toasts when the app shell provides them (#1399).
-      if (toast) toast.push({ kind: partial ? "warning" : "success", title: "Contribution recorded", description: text });
+      if (toast) toast.push({ kind: partial ? "warning" : "success", title: t("invoice.toast.recorded"), description: text });
       else setMsg({ kind: partial ? "warn" : "ok", text });
     } catch (err) {
       if (err.status === 409) {
         // The invoice closed meanwhile: refresh it and explain instead of a raw API error.
         const refreshed = await getInvoice(id);
         setState((s) => ({ ...s, ...refreshed }));
-        setMsg({ kind: "err", text: "This invoice is no longer open for funding." });
+        setMsg({ kind: "err", text: t("invoice.error.notOpen") });
       } else {
-        const text = err.message || "Funding failed.";
-        if (toast) toast.push({ kind: "error", title: "Funding failed", description: text });
+        const text = err.message || t("invoice.fundingFailed");
+        if (toast) toast.push({ kind: "error", title: t("invoice.toast.failed"), description: text });
         else setMsg({ kind: "err", text });
       }
     } finally {
@@ -277,9 +306,9 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
     return (
       <section className="section">
         <div className="container center">
-          <h1 style={{ fontSize: "2rem" }}>Invoice not found</h1>
-          <p className="lead">We couldn&apos;t find invoice <code>{id}</code>.</p>
-          <Link href="/marketplace" className="btn btn-primary">Back to marketplace</Link>
+          <h1 style={{ fontSize: "2rem" }}>{t("invoice.notFound.title")}</h1>
+          <p className="lead">{rich(t("invoice.notFound.body"), { id: <code>{id}</code> })}</p>
+          <Link href="/marketplace" className="btn btn-primary">{t("invoice.notFound.back")}</Link>
         </div>
       </section>
     );
@@ -302,7 +331,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
     const { escrow } = await readSmeEscrow({ contractId, source });
     const statusIndex = Number(escrow.status);
     const status = ESCROW_STATUSES[statusIndex];
-    if (!status) throw new Error(`Unknown escrow status: ${statusIndex}`);
+    if (!status) throw new Error(t("invoice.error.unknownStatus", { status: statusIndex }));
     const fundedAmount = stroopsToDisplay(BigInt(escrow.funded_amount ?? escrow.fundedAmount ?? 0));
     setState((current) => ({
       ...current,
@@ -313,12 +342,12 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
   return (
     <section className="section invoice-detail">
       <div className="container">
-        <Link href="/marketplace" className="muted">← Marketplace</Link>
+        <Link href="/marketplace" className="muted">{t("invoice.back")}</Link>
         <div className="invoice-head" style={{ marginTop: 14, marginBottom: 24 }}>
           <div>
             <div className="invoice-id">{inv.id}</div>
             <h1 style={{ fontSize: "clamp(1.7rem,4vw,2.4rem)", margin: "4px 0" }}>{inv.sme}</h1>
-            <div className="muted">Debtor: {inv.debtor}</div>
+            <div className="muted">{t("invoice.debtor", { name: inv.debtor })}</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <StatusBadge status={inv.status} live />
@@ -327,10 +356,10 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
             <button
               className="btn-ghost"
               aria-pressed={isFollowing(id)}
-              aria-label={isFollowing(id) ? "Unfollow invoice" : "Follow invoice"}
+              aria-label={isFollowing(id) ? t("invoice.unfollowAria") : t("invoice.followAria")}
               onClick={() => (isFollowing(id) ? unfollow(id) : follow(id))}
             >
-              {isFollowing(id) ? "Following ✓" : "Follow"}
+              {isFollowing(id) ? t("invoice.following") : t("invoice.follow")}
             </button>
           </div>
         </div>
@@ -338,17 +367,22 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
 
         <div className="grid grid-2" style={{ alignItems: "start" }}>
           <div className="card">
-            <h3>Terms</h3>
+            <h3>{t("invoice.terms")}</h3>
             <div className="kv" style={{ marginTop: 12 }}>
-              <div><span className="k">Face value</span>{formatAmount(inv.amount, inv.currency)}</div>
-              <div><span className="k">Investor yield</span>{bpsToPercent(inv.yieldBps)}</div>
-              <div><span className="k">Due date</span>{formatDate(inv.dueDate)}</div>
-              <div><span className="k">Remaining</span>{formatAmount(remaining, inv.currency)}</div>
-              {inv.smeAddress && <div style={{ gridColumn: "1 / -1" }}><span className="k">SME wallet</span><span className="mono">{shortAddress(inv.smeAddress, 8)}</span></div>}
+              <div><span className="k">{t("invoice.faceValue")}</span>{formatAmount(inv.amount, inv.currency)}</div>
+              <div><span className="k">{t("invoice.investorYield")}</span>{bpsToPercent(inv.yieldBps)}</div>
+              <div>
+                <span className="k">{t("invoice.dueDate")}</span>
+                <span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                  {formatDate(inv.dueDate)} <DueStatusBadge invoice={inv} />
+                </span>
+              </div>
+              <div><span className="k">{t("invoice.remaining")}</span>{formatAmount(remaining, inv.currency)}</div>
+              {inv.smeAddress && <div style={{ gridColumn: "1 / -1" }}><span className="k">{t("invoice.smeWallet")}</span><span className="mono">{shortAddress(inv.smeAddress, 8)}</span></div>}
             </div>
             <div style={{ marginTop: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }} className="muted">
-                <span>Funded</span><span>{formatAmount(inv.fundedAmount, inv.currency)} · {pct}%</span>
+                <span>{t("invoice.funded")}</span><span>{formatAmount(inv.fundedAmount, inv.currency)} · {pct}%</span>
               </div>
               <div style={{ marginTop: 6 }}>
                 <FundingProgress funded={inv.fundedAmount} target={inv.amount} currency={inv.currency} size="md" />
@@ -358,19 +392,19 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
           </div>
 
           <div className="card funding-card">
-            <h3>Fund this invoice</h3>
+            <h3>{t("invoice.fundHeading")}</h3>
             {inv.onChain && (
               <div className="wallet-connection">
-                <p className="muted">{chain.address ? `Connected: ${shortAddress(chain.address, 8)}` : "Connect Freighter to fund this invoice."} &middot; {NETWORK}</p>
+                <p className="muted">{chain.address ? t("invoice.wallet.connected", { address: shortAddress(chain.address, 8) }) : t("invoice.wallet.prompt")} &middot; {NETWORK}</p>
                 <button type="button" className="btn btn-ghost focus-ring" onClick={chain.connect} disabled={fundingBusy || chain.pending}>
-                  {chain.connecting ? "Connecting..." : chain.address ? "Reconnect Freighter" : "Connect Freighter"}
+                  {chain.connecting ? t("invoice.wallet.connecting") : chain.address ? t("invoice.wallet.reconnect") : t("invoice.wallet.connect")}
                 </button>
               </div>
             )}
             {inv.status === "open" ? (
               <form className="form" onSubmit={onFund} style={{ marginTop: 12 }}>
                 <div className="field">
-                  <label htmlFor="amount">Amount ({inv.currency})</label>
+                  <label htmlFor="amount">{t("invoice.amountLabel", { currency: inv.currency })}</label>
                   <div className="amount-row">
                     <input
                       id="amount"
@@ -379,7 +413,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                       inputMode="decimal"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      placeholder={`Up to ${remaining}`}
+                      placeholder={t("invoice.amountPlaceholder", { amount: remaining })}
                       aria-invalid={validation && !validation.ok ? true : undefined}
                       aria-describedby="amount-error amount-hint amount-balance"
                       disabled={fundingBusy || (inv.onChain && chain.pending)}
@@ -401,13 +435,13 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                   </div>
                   <span className="hint" id="amount-hint">
                     {inv.onChain && rules.loading
-                      ? "Checking escrow rules…"
+                      ? t("invoice.hint.checkingRules")
                       : inv.onChain
-                        ? `Up to ${remaining} ${inv.currency}. Review the amount and network in Freighter before signing.`
-                        : "Demo mode: contributions are recorded by the API."}
+                        ? t("invoice.hint.onChain", { amount: remaining, currency: inv.currency })
+                        : t("invoice.hint.demo")}
                   </span>
                   <span className="field-error" id="amount-error" aria-live="polite">
-                    {validation && !validation.ok ? validation.message : ""}
+                    {validation && !validation.ok ? constraintText(validation) : ""}
                   </span>
                   <span id="amount-balance">
                     <BalanceHint currency={inv.currency} address={investorAddress} amount={amount} onUseMax={(v) => setAmount(v)} onValidation={setBalanceValidation} />
@@ -415,7 +449,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                 </div>
                 {inv.onChain && rules.error && (
                   <div className="notice notice-warn" role="status" style={{ marginBottom: 10 }}>
-                    Couldn’t read the escrow rules — falling back to basic validation.
+                    {t("invoice.rulesError")}
                   </div>
                 )}
                 {inv.onChain && <TokenCheck invoice={inv} check={tokenCheck} />}
@@ -431,38 +465,37 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                   }
                 >
                   {inv.onChain && chain.busy
-                    ? `${chain.state.phase}...`
+                    ? `${chainText(chain.state.phase)}...`
                     : busy
-                      ? "Submitting…"
+                      ? t("invoice.submitting")
                       : blocking
-                        ? blocking.message
+                        ? constraintText(blocking)
                         : inv.onChain
-                          ? "Sign & fund"
-                          : "Fund invoice"}
+                          ? t("invoice.signAndFund")
+                          : t("invoice.fundInvoice")}
                 </button>
                 {state.offline && (
                   <div className="muted" style={{ marginTop: 8, fontSize: "0.85rem" }}>
-                    Funding is unavailable while the API is unreachable.
+                    {t("invoice.offlineFunding")}
                   </div>
                 )}
               </form>
             ) : (
               <p className="muted" style={{ marginTop: 12 }}>
-                This invoice is <strong>{inv.status}</strong>
-                {isCancelled
-                  ? " — see your exit options below."
-                  : " and no longer accepts contributions."}
+                {rich(t(isCancelled ? "invoice.closed.cancelled" : "invoice.closed.other"), {
+                  status: <strong>{ESCROW_STATUSES.includes(inv.status) ? t(`invoice.statusWord.${inv.status}`) : inv.status}</strong>,
+                })}
               </p>
             )}
             {inv.onChain && (
               <div className="funding-status" role="status" aria-live="polite" aria-atomic="true">
                 {(chain.state.phase || chain.state.message) && (
                   <div className={`notice notice-${chain.state.kind}`}>
-                    {chain.state.phase && <strong>{chain.state.phase}</strong>}
-                    {chain.state.message && <p>{chain.state.message}</p>}
+                    {chain.state.phase && <strong>{chainText(chain.state.phase)}</strong>}
+                    {chain.state.message && <p>{chainText(chain.state.message)}</p>}
                     {chain.state.hash && (
                       <a className="focus-ring tx-hash" href={`https://stellar.expert/explorer/${NETWORK}/tx/${chain.state.hash}`} target="_blank" rel="noopener noreferrer">
-                        View transaction: {chain.state.hash}
+                        {t("invoice.viewTx", { hash: chain.state.hash })}
                       </a>
                     )}
                     {chain.state.phase === "Confirmed" && chain.state.hash && (
@@ -471,7 +504,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                           className="btn btn-ghost focus-ring"
                           href={`/marketplace/${encodeURIComponent(inv.id)}/receipt?tx=${encodeURIComponent(chain.state.hash)}`}
                         >
-                          View receipt
+                          {t("invoice.viewReceipt")}
                         </Link>
                       </div>
                     )}
@@ -493,7 +526,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
             {/* Prompt to connect wallet if not connected and invoice is on-chain */}
             {inv.onChain && !investorAddress && (
               <p className="muted exit-wallet-prompt" style={{ marginTop: 16, fontSize: "0.9rem" }}>
-                Connect your Freighter wallet to manage your position.
+                {t("invoice.exitWalletPrompt")}
               </p>
             )}
           </div>
@@ -530,7 +563,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                 <ContractCard contractId={escrow.contractId} network={NETWORK} />
               ) : (
                 <div className="notice notice-warn" role="alert">
-                  On-chain contract not registered for this invoice
+                  {t("invoice.contractNotRegistered")}
                 </div>
               )}
             </div>

@@ -19,13 +19,11 @@ By default, `reportError` logs errors to the browser console via `console.error(
 
 ### Privacy & Security (Sensitive Key Scrubbing)
 
-The error reporter implements a shallow secrets scrubber. When a `context` object is provided, keys matching `/secret|token|password|seed|key/i` have their values replaced with `[REDACTED]` prior to dispatching to the reporter sink.
-
-_Note: This scrubber operates at the root level of the context object (shallow scrub)._
+The error reporter recursively scrubs plain objects and arrays up to five levels deep. Keys matching `/secret|token|password|seed|key/i` have their values replaced with `[REDACTED]` at every visited level. Stellar secret seed patterns (`S` followed by 55 characters in `A-Z2-7`) are also masked in strings, including error messages, stacks, and `cause` chains. Circular references are handled safely. Values beyond the depth limit and non-plain objects other than `Error` instances are not traversed.
 
 ### Custom Reporter Safety
 
-You can override the default reporting sink using `setReporter(fn)`. If a custom reporter throws an exception during execution, `reportError` catches it safely so that error reporting never causes the application or error UI to crash.
+You can override the default reporting sink using `setReporter(fn)`. The reporter receives a scrubbed error copy and scrubbed context. If a custom reporter throws an exception during execution, `reportError` catches it safely so that error reporting never causes the application or error UI to crash.
 
 ## Injecting a Custom Reporter
 

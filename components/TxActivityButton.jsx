@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
 import { useTxTracker } from "./TxTrackerProvider.jsx";
 import { explorerTxUrl, shortAddress } from "@/lib/stellar/index.js";
 import { formatDate } from "@/lib/format.js";
@@ -241,6 +242,9 @@ export default function TxActivityButton() {
                 )}
               </>
             )}
+            <Link href="/activity" role="listitem" className="tx-full-history" onClick={closeDrawer}>
+              View full transaction history
+            </Link>
           </div>
         </div>
       </div>
@@ -351,6 +355,12 @@ export default function TxActivityButton() {
           margin: 0;
           font-size: 1.05rem;
           font-weight: 700;
+        }
+        .tx-full-history {
+          display: block;
+          padding: 14px 16px;
+          border-top: 1px solid var(--border);
+          font-weight: 600;
         }
         .tx-drawer-close {
           width: 32px;
