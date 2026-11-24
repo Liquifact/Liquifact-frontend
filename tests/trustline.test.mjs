@@ -7,6 +7,7 @@ import { NETWORK_PASSPHRASES } from "../lib/stellar/rpc.js";
 const userKey = Keypair.random();
 const userAddress = userKey.publicKey();
 const issuerAddress = Keypair.random().publicKey();
+const getNetwork = async () => "testnet";
 const issuedAsset = { code: "USDC", issuer: issuerAddress, type: "credit_alphanum4" };
 
 function createFixture({ network = "testnet", submitResult = { hash: "abc123", successful: true } } = {}) {
@@ -54,6 +55,7 @@ test("rejects native asset with documented error before touching server or signe
       server,
       signFn,
       getNetwork: async () => "TESTNET",
+      getNetwork,
     }),
     { message: "Trustlines only apply to issued assets" }
   );
@@ -75,6 +77,7 @@ test("rejects missing or issuer-less asset with documented error", async () => {
         server,
         signFn,
         getNetwork: async () => "TESTNET",
+        getNetwork,
       }),
       { message: "Trustlines only apply to issued assets" }
     );
@@ -93,6 +96,7 @@ test("builds a single changeTrust op for the issued asset and returns submitTran
     signFn,
     getNetwork: async () => "TESTNET",
     getNetwork: async () => "testnet",
+    getNetwork,
   });
 
   assert.equal(calls.loadedAddress, userAddress);
@@ -124,6 +128,7 @@ test("selects network passphrase per network (testnet vs public)", async () => {
       server,
       signFn,
       getNetwork: async () => network.toUpperCase(),
+      getNetwork: async () => network,
       getNetwork: async () => network,
     });
 
