@@ -24,6 +24,7 @@ import { CONFIGURED_NETWORK } from "@/lib/stellar/networks";
 import { normalizeNetworkName } from "@/lib/stellar/networkGuard";
 import {
   DEFAULTS,
+  DUE_WINDOW_OPTIONS,
   MIN_YIELD_OPTIONS,
   SORT_OPTIONS,
   STATUSES,
@@ -219,7 +220,8 @@ export default function MarketplaceClient() {
     urlState.currency !== DEFAULTS.currency ||
     urlState.minYieldBps !== DEFAULTS.minYieldBps ||
     urlState.q !== DEFAULTS.q ||
-    urlState.sort !== DEFAULTS.sort;
+    urlState.sort !== DEFAULTS.sort ||
+    urlState.due !== DEFAULTS.due;
 
   // CSV export (#1387): every invoice matching the current filters, across pages.
   const exportRows = applyQuery(fetchState.data, { ...urlState, page: 1, pageSize: Math.max(1, fetchState.data.length) }).items;
@@ -407,6 +409,26 @@ export default function MarketplaceClient() {
 
           {/* Saved searches */}
           <SavedSearches currentQuery={canonicalQuery(urlState)} onApply={applyPreset} />
+
+          {/* Due-date window */}
+          <div className="mq-filter-field">
+            <label htmlFor="mq-due" className="sr-only">
+              {t("marketplace.dueWindow.label")}
+            </label>
+            <select
+              id="mq-due"
+              className="mq-select"
+              value={urlState.due}
+              onChange={(e) => pushFilter({ due: e.target.value })}
+              aria-label={t("marketplace.dueWindow.label")}
+            >
+              {DUE_WINDOW_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {t(o.labelKey)}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Clear */}
           {isFiltered && (
