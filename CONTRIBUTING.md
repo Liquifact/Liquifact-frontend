@@ -5,6 +5,7 @@
 3. Run `npm run lint`, `npm test` and `npm run build` before opening a PR.
 3. Run `npm test`, `npm run typecheck`, and `npm run build` before opening a PR.
 4. If you change dependencies, commit the regenerated `package-lock.json`.
+5. To check UI test coverage, run `npm run test:coverage`.
 
 Styling lives in `app/globals.css` (design tokens at the top, light and dark
 themes). Shared UI is in `components/`, API access and config in `lib/`.
