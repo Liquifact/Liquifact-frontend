@@ -13,6 +13,7 @@
     "start": "next start",
     "lint": "eslint .",
     "check:size": "node scripts/check-bundle-size.mjs",
+    "typecheck": "tsc -p tsconfig.typecheck.json",
     "test": "node scripts/check-i18n.mjs && node --test tests/*.test.mjs",
     "test:ui": "vitest run"
   },
@@ -33,6 +34,7 @@
     "eslint-config-next": "^16.4.6",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "jsdom": "26.1.0",
+    "typescript": "^5.9.3",
     "vitest": "5.0.5",
     "vitest-axe": "0.1.0"
   }

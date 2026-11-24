@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { THEME_KEY, readPref, resolveTheme } from "@/lib/theme";
+import { LOCAL_DATA_CHANGED_EVENT } from "@/lib/localData";
 
 const OPTIONS = [["light", "Light"], ["dark", "Dark"], ["system", "System"]];
 const CHROME = { light: "#f7f8fc", dark: "#0a0e1f" };
@@ -20,7 +21,20 @@ export default function ThemeToggle() {
   const [pref, setPref] = useState("system"); // matches server render
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- Read theme preference from localStorage on mount
-  useEffect(() => setPref(readPref(window.localStorage)), []);
+  useEffect(() => {
+    const sync = () => {
+      let storage;
+      try { storage = window.localStorage; } catch { storage = null; }
+      setPref(readPref(storage));
+    };
+    sync();
+    window.addEventListener("storage", sync);
+    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, sync);
+    };
+  }, []);
 
   useEffect(() => {
     if (pref !== "system") return;
@@ -34,6 +48,7 @@ export default function ThemeToggle() {
     setPref(next);
     try { window.localStorage.setItem(THEME_KEY, next); } catch {}
     apply(next);
+    window.dispatchEvent(new CustomEvent(LOCAL_DATA_CHANGED_EVENT, { detail: { keys: [THEME_KEY] } }));
   }
 
   return (

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { listInvoices } from "@/lib/api";
 import { buildWatchlist } from "@/lib/watchlist";
-import { formatDate, formatMoney, formatYield } from "@/lib/format";
+import { bpsToPercent, formatAmount, formatDate } from "@/lib/format";
 import { useT } from "@/lib/i18n/I18nProvider";
 import { useNotifications } from "@/components/NotificationsProvider";
 import StatusBadge from "@/components/StatusBadge";
@@ -148,11 +148,11 @@ export default function Watchlist() {
                       <div className="meta-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
                         <div>
                           <div className="muted" style={{ fontSize: "0.75rem" }}>{t("invoice.faceValue")}</div>
-                          <div style={{ fontWeight: 600 }}>{formatMoney(inv.amount, inv.currency)}</div>
+                          <div style={{ fontWeight: 600 }}>{formatAmount(inv.amount, inv.currency)}</div>
                         </div>
                         <div>
                           <div className="muted" style={{ fontSize: "0.75rem" }}>{t("invoice.yield")}</div>
-                          <div style={{ fontWeight: 600 }}>{formatYield(inv.yieldBps)}</div>
+                          <div style={{ fontWeight: 600 }}>{bpsToPercent(inv.yieldBps)}</div>
                         </div>
                         <div>
                           <div className="muted" style={{ fontSize: "0.75rem" }}>{t("invoice.due")}</div>
