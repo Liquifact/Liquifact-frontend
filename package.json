@@ -12,6 +12,7 @@
     "build": "node scripts/prepare-pwa.mjs && next build",
     "start": "next start",
     "check:size": "node scripts/check-bundle-size.mjs",
+    "typecheck": "tsc -p tsconfig.typecheck.json",
     "test": "node scripts/check-i18n.mjs && node --test tests/*.test.mjs",
     "test:ui": "vitest run"
   },
@@ -29,6 +30,7 @@
     "@vitejs/plugin-react": "4.5.2",
     "axe-core": "4.14.0",
     "jsdom": "26.1.0",
+    "typescript": "^5.9.3",
     "vitest": "5.0.5",
     "vitest-axe": "0.1.0"
   }

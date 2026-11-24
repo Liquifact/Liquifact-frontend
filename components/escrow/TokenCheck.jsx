@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { checkCurrency, identifyToken, resolveFundingToken } from "@/lib/escrow/token";
 import { NETWORK } from "@/lib/config";
+import { useT } from "@/lib/i18n/I18nProvider";
+import { rich } from "@/lib/i18n/rich";
 
 const INITIAL = { loading: true, ok: false, reason: "unknown-token", identified: null, tokenId: null, error: false };
 
@@ -44,26 +46,34 @@ function TokenLink({ tokenId, children }) {
 }
 
 export default function TokenCheck({ invoice, check }) {
+  const t = useT();
   const state = check;
-  if (!state || state.loading) return <div aria-live="polite">Verifying token…</div>;
-  if (state.error) return <div className="notice notice-err" role="alert">Couldn&apos;t verify token — funding disabled</div>;
+  if (!state || state.loading) return <div aria-live="polite">{t("token.verifying")}</div>;
+  if (state.error) return <div className="notice notice-err" role="alert">{t("token.verifyFailed")}</div>;
   if (state.ok) {
     return (
       <div className="notice notice-ok" aria-live="polite">
-        Pays in {state.identified?.code} ({state.identified?.issuer === "native" ? "native" : "issued"}) · verified on-chain
+        {t("token.verified", {
+          code: state.identified?.code,
+          kind: state.identified?.issuer === "native" ? t("token.native") : t("token.issued"),
+        })}
       </div>
     );
   }
   if (state.reason === "unknown-token") {
     return (
       <div className="notice notice-err" role="alert">
-        This escrow accepts an <TokenLink tokenId={state.tokenId}>unknown token</TokenLink> — funding disabled
+        {rich(t("token.unknown"), {
+          token: <TokenLink tokenId={state.tokenId}>{t("token.unknownToken")}</TokenLink>,
+        })}
       </div>
     );
   }
   return (
     <div className="notice notice-err" role="alert">
-      This escrow accepts <TokenLink tokenId={state.tokenId}>{state.identified?.code}</TokenLink>, but the listing says {invoice?.currency} — funding disabled
+      {rich(t("token.mismatch", { currency: invoice?.currency }), {
+        token: <TokenLink tokenId={state.tokenId}>{state.identified?.code}</TokenLink>,
+      })}
     </div>
   );
 }
