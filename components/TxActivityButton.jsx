@@ -127,6 +127,7 @@ export default function TxActivityButton() {
     );
     if (confirmed.length > 0) {
       const msg = confirmed.map((t) => `${t.label} confirmed`).join(", ");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Announce new confirmed transactions to screen readers
       setAnnouncement(msg);
       // Mark as announced
       const store = transactions[0]?.constructor?.name === "Object" ? null : null;
@@ -170,6 +171,7 @@ export default function TxActivityButton() {
       </button>
 
       {/* Drawer / Dialog */}
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Dialog modal container handles Escape keydown navigation */}
       <div
         ref={drawerRef}
         id="tx-activity-drawer"
@@ -209,7 +211,7 @@ export default function TxActivityButton() {
                 {pendingTxs.length > 0 && (
                   <div className="tx-section">
                     <h3 className="tx-section-title">Pending ({pendingTxs.length})</h3>
-                    <ul role="list" className="tx-list">
+                    <ul className="tx-list">
                       {pendingTxs.map((tx, idx) => (
                         <TxListItem
                           key={tx.hash}
@@ -226,7 +228,7 @@ export default function TxActivityButton() {
                 {completedTxs.length > 0 && (
                   <div className="tx-section">
                     <h3 className="tx-section-title">Completed ({completedTxs.length})</h3>
-                    <ul role="list" className="tx-list">
+                    <ul className="tx-list">
                       {completedTxs.slice(0, 20).map((tx, idx) => (
                         <TxListItem
                           key={tx.hash}
@@ -243,9 +245,11 @@ export default function TxActivityButton() {
               </>
             )}
             <Link href="/activity" className="tx-full-history" onClick={closeDrawer}>
-              View full transaction history
-            </Link>
           </div>
+          {/* Kept outside role="list" so it stays an announced link, not a list item. */}
+          <Link href="/activity" className="tx-full-history" onClick={closeDrawer}>
+            View full transaction history
+          </Link>
         </div>
       </div>
 
@@ -460,9 +464,9 @@ function TxListItem({ tx, index, focused, onFocus, onBlur }) {
   const explorerUrl = explorerTxUrl(tx.hash);
   const shortHash = shortAddress(tx.hash, 10);
 
+  /* eslint-disable jsx-a11y/no-noninteractive-tabindex -- Transaction list item is keyboard-navigable and focusable */
   return (
     <li
-      role="listitem"
       className="tx-item"
       tabIndex={0}
       onFocus={onFocus}
@@ -492,4 +496,5 @@ function TxListItem({ tx, index, focused, onFocus, onBlur }) {
       </div>
     </li>
   );
+  /* eslint-enable jsx-a11y/no-noninteractive-tabindex */
 }

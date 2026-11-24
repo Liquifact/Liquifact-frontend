@@ -10,9 +10,9 @@ The project enforces the `react/no-danger` ESLint rule at the **error** level. A
 
 A full codebase audit found **one** occurrence of `dangerouslySetInnerHTML` in production source code:
 
-| File            | Line | Usage                                                                                                           | Verdict                                        |
-| --------------- | ---- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `app/layout.js` | 55   | Inline theme script (`THEME_SCRIPT` constant) — runs before React hydration to prevent flash of incorrect theme | Safe — static constant, not user-supplied data |
+| File            | Line | Usage                                                                                                                | Verdict                                        |
+| --------------- | ---- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `app/layout.js` | 45   | Inline theme script (`THEME_INIT_SCRIPT` constant) — runs before React hydration to prevent flash of incorrect theme | Safe — static constant, not user-supplied data |
 
 All other content is rendered via:
 
@@ -22,9 +22,9 @@ All other content is rendered via:
 
 ### Exception Allowlist
 
-| File               | Reason                                                                                                                                          | Approved |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `app/layout.js:55` | Pre-hydration theme script — content is a compile-time constant (`THEME_SCRIPT`), no user input involved. Required for flash-free theme toggle. | ✅       |
+| File               | Reason                                                                                                                                               | Approved |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `app/layout.js:45` | Pre-hydration theme script — content is a compile-time constant (`THEME_INIT_SCRIPT`), no user input involved. Required for flash-free theme toggle. | ✅       |
 
 ### CSP nonce policy
 
@@ -32,12 +32,13 @@ The application now issues a per-request CSP nonce via middleware and applies it
 
 ### CI Enforcement
 
-The lint step in CI runs `npm run lint`, which includes the `react/no-danger` rule. Any new introduction of `dangerouslySetInnerHTML` will be caught and block the pipeline.
+The lint step in CI runs `npm run lint`, which includes the `react/no-danger` rule and accessibility (`jsx-a11y`) rules. Any new introduction of `dangerouslySetInnerHTML` without an approved exception or accessibility violation will be caught and block the pipeline.
 
 ### Dependencies
 
 - **eslint-plugin-react** (bundled via `eslint-config-next`) — provides the `react/no-danger` rule.
-- The rule is configured in `eslint.config.mjs`.
+- **eslint-plugin-jsx-a11y** — provides accessibility rules.
+- The rules are configured in `eslint.config.mjs`.
 
 ---
 

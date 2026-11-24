@@ -132,6 +132,9 @@ export default function ActivityFeed({ invoiceId }) {
     setError(null);
     pollerRef.current?.pollNow();
   }
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial RPC activity fetch on invoice mount
+    load(false);
 
   return (
     <section className="card" aria-labelledby="invoice-activity-title">

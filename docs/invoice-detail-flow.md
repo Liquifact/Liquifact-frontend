@@ -232,6 +232,24 @@ components/
 
 ---
 
+## Localization
+
+All user-visible copy on the invoice detail page and its funding flow
+(`InvoiceDetail.jsx`, `ExitPanel.jsx`, `BalanceHint.jsx`, `TokenCheck.jsx`,
+`EscrowRules.jsx`) is read through `useT()` from
+`lib/i18n/dictionaries/{en,es}.js` under the `invoice.*`, `exit.*`,
+`balance.*`, `token.*` and `rules.*` prefixes.
+
+- Sentences that wrap an element (a link, `<strong>`, `<code>`) keep the whole
+  sentence in one key with a `{name}` token; `rich()` from `lib/i18n/rich.js`
+  swaps the token for the element so translators can reorder it.
+- Fixed English messages produced by lib helpers/hooks (constraint codes,
+  `useOnChainFund` phases, `deriveExitUi` reasons, RPC progress) are translated
+  at render time by code or by a known-message map; dynamic RPC/wallet errors
+  pass through unchanged.
+- `node scripts/check-i18n.mjs` (run by `npm test`) enforces identical key sets
+  and identical `{var}` placeholders across locales.
+
 ## Related docs
 
 - [`docs/architecture.md`](architecture.md) — full route map and state ownership

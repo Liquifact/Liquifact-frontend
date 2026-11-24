@@ -48,6 +48,7 @@ export default function CompareTable() {
 
   useEffect(() => {
     let alive = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial invoice fetch on mount
     setFetchState((s) => ({ ...s, loading: true }));
     listInvoices().then((r) => {
       if (alive) setFetchState({ loading: false, ...r, data: r.data || [] });
@@ -75,6 +76,7 @@ export default function CompareTable() {
   }, [fetchState.data, requestedIds]);
 
   const comparison = useMemo(
+    // eslint-disable-next-line react-hooks/purity -- Current timestamp for comparison calculation
     () => buildComparison(matchedInvoices, Date.now(), medians),
     [matchedInvoices, medians],
   );

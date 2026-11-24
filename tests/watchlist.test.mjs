@@ -133,6 +133,11 @@ test("unfollowing removes row and stops monitor polling when none remain", () =>
     clearTimeout: () => {
       cleared += 1;
     },
+    // The monitor schedules with setTimeout/clearTimeout since the backoff change (#1553).
+    setTimeout: () => ++intervalId,
+    clearTimeout: () => {
+      cleared += 1;
+    },
   });
 
   store.follow("INV-1");
