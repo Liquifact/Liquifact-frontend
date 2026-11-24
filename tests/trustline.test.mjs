@@ -92,6 +92,7 @@ test("builds a single changeTrust op for the issued asset and returns submitTran
     server,
     signFn,
     getNetwork: async () => "TESTNET",
+    getNetwork: async () => "testnet",
   });
 
   assert.equal(calls.loadedAddress, userAddress);
@@ -123,6 +124,7 @@ test("selects network passphrase per network (testnet vs public)", async () => {
       server,
       signFn,
       getNetwork: async () => network.toUpperCase(),
+      getNetwork: async () => network,
     });
 
     assert.equal(calls.signPassphrase, expectedPassphrase);

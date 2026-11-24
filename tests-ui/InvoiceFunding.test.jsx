@@ -21,6 +21,8 @@ vi.mock("@/lib/stellar/freighter", async (importOriginal) => ({
   signWithFreighter: vi.fn(),
   // The funding hook checks the wallet network before signing (#1539).
   getNetworkName: vi.fn(async () => "TESTNET"),
+  // The network guard (#1539) reads Freighter's network before signing.
+  getNetworkName: async () => "TESTNET",
 }));
 vi.mock("@/lib/stellar/fund", () => ({ submitFund: vi.fn() }));
 vi.mock("@/components/wallet/BalanceHint", () => ({ default: () => null }));
