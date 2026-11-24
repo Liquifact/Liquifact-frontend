@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useT } from "@/lib/i18n/I18nProvider";
 import { countProgress, evaluate } from "@/lib/onboarding";
 import { fundWithFriendbot } from "@/lib/stellar/friendbot";
 import {
@@ -15,17 +16,18 @@ import { CONFIGURED_NETWORK } from "@/lib/stellar/networks";
 
 // ── Status icons ──────────────────────────────────────────────────────────────
 const ICON = {
-  done: { symbol: "✓", label: "Complete", color: "var(--ok)" },
-  todo: { symbol: "○", label: "To do", color: "var(--brand)" },
-  blocked: { symbol: "–", label: "Blocked", color: "var(--muted)" },
-  "n/a": { symbol: "·", label: "Not applicable", color: "var(--muted)" },
+  done: { symbol: "✓", labelKey: "getStarted.status.done", color: "var(--ok)" },
+  todo: { symbol: "○", labelKey: "getStarted.status.todo", color: "var(--brand)" },
+  blocked: { symbol: "–", labelKey: "getStarted.status.blocked", color: "var(--muted)" },
+  "n/a": { symbol: "·", labelKey: "getStarted.status.na", color: "var(--muted)" },
 };
 
 function StatusIcon({ status }) {
-  const { symbol, label, color } = ICON[status] ?? ICON.blocked;
+  const t = useT();
+  const { symbol, labelKey, color } = ICON[status] ?? ICON.blocked;
   return (
     <span
-      aria-label={label}
+      aria-label={t(labelKey)}
       style={{
         color,
         fontWeight: 700,
@@ -43,8 +45,10 @@ function StatusIcon({ status }) {
 
 // ── Individual step ───────────────────────────────────────────────────────────
 function ChecklistStep({ step, onAction, busy }) {
+  const t = useT();
   const descId = `desc-${step.id}`;
   const isDone = step.status === "done" || step.status === "n/a";
+  const actionStyle = { fontSize: "0.88rem", padding: "7px 14px" };
 
   return (
     <li
@@ -69,43 +73,40 @@ function ChecklistStep({ step, onAction, busy }) {
             color: isDone ? "var(--muted)" : "var(--fg)",
           }}
         >
-          {step.title}
+          {t(step.titleKey)}
         </div>
         <p
           id={descId}
           className="muted"
           style={{ margin: "4px 0 0", fontSize: "0.875rem" }}
         >
-          {step.description}
+          {t(step.descriptionKey)}
         </p>
       </div>
 
       {step.action && (
         <div style={{ flexShrink: 0 }}>
-          <button
-            className="btn btn-ghost"
-            style={{ fontSize: "0.88rem", padding: "7px 14px" }}
-            onClick={() => onAction(step)}
-            disabled={busy === step.id}
-            aria-busy={busy === step.id}
-          >
-            {busy === step.id ? "Working…" : step.action}
-          </button>
-        </div>
-      )}
-
-      {/* Install Freighter: always show external link */}
-      {step.id === "install" && step.status !== "done" && (
-        <div style={{ flexShrink: 0 }}>
-          <a
-            href="https://freighter.app"
-            target="_blank"
-            rel="noreferrer noopener"
-            className="btn btn-ghost"
-            style={{ fontSize: "0.88rem", padding: "7px 14px" }}
-          >
-            Get Freighter ↗
-          </a>
+          {step.action.type === "link" ? (
+            <a
+              href={step.action.href}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="btn btn-ghost"
+              style={actionStyle}
+            >
+              {t(step.action.labelKey)} ↗
+            </a>
+          ) : (
+            <button
+              className="btn btn-ghost"
+              style={actionStyle}
+              onClick={() => onAction(step)}
+              disabled={busy === step.id}
+              aria-busy={busy === step.id}
+            >
+              {busy === step.id ? t("getStarted.working") : t(step.action.labelKey)}
+            </button>
+          )}
         </div>
       )}
     </li>
@@ -114,6 +115,7 @@ function ChecklistStep({ step, onAction, busy }) {
 
 // ── Main checklist ────────────────────────────────────────────────────────────
 export default function OnboardingChecklist() {
+  const t = useT();
   const [walletState, setWalletState] = useState({
     hasExtension: false,
     connected: false,
@@ -178,6 +180,7 @@ export default function OnboardingChecklist() {
 
   // Initial detection + re-detect on window focus
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial wallet detection on mount
     detectState();
     const onFocus = () => detectState();
     window.addEventListener("focus", onFocus);
@@ -198,7 +201,7 @@ export default function OnboardingChecklist() {
       if (key) {
         await detectState();
       } else {
-        setNotice({ kind: "warn", text: "Wallet access was not granted. Try again in Freighter." });
+        setNotice({ kind: "warn", text: t("getStarted.notice.accessDenied") });
       }
       return;
     }
@@ -206,24 +209,27 @@ export default function OnboardingChecklist() {
     if (step.id === "fund") {
       const { publicKey, network } = walletState;
       if (!publicKey) {
-        setNotice({ kind: "err", text: "No public key found. Connect your wallet first." });
+        setNotice({ kind: "err", text: t("getStarted.notice.noPublicKey") });
         return;
       }
       if (network !== "testnet") {
-        setNotice({ kind: "err", text: "Friendbot is only available on testnet." });
+        setNotice({ kind: "err", text: t("getStarted.notice.friendbotTestnet") });
         return;
       }
       setBusy("fund");
       try {
         const result = await fundWithFriendbot(publicKey, network);
-        if (result.status === "success" || result.status === "already_funded") {
-          setNotice({ kind: "ok", text: result.message });
+        if (result.status === "success") {
+          setNotice({ kind: "ok", text: t("getStarted.notice.funded") });
+          await detectState();
+        } else if (result.status === "already_funded") {
+          setNotice({ kind: "ok", text: t("getStarted.notice.alreadyFunded") });
           await detectState();
         } else {
-          setNotice({ kind: "err", text: result.message });
+          setNotice({ kind: "err", text: t("getStarted.notice.friendbotError", { message: result.message }) });
         }
-      } catch (err) {
-        setNotice({ kind: "err", text: err.message || "Friendbot request failed." });
+      } catch {
+        setNotice({ kind: "err", text: t("getStarted.notice.friendbotFailed") });
       } finally {
         setBusy(null);
       }
@@ -247,21 +253,21 @@ export default function OnboardingChecklist() {
           marginBottom: 4,
         }}
       >
-        <h2 style={{ fontSize: "1.1rem", margin: 0 }}>Setup checklist</h2>
+        <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("getStarted.checklist.title")}</h2>
         <span
           className="muted"
           aria-live="polite"
           aria-atomic="true"
           style={{ fontSize: "0.88rem", fontWeight: 600 }}
         >
-          {evaluated ? `${done} of ${total} complete` : "Checking…"}
+          {evaluated ? t("getStarted.progress", { done, total }) : t("getStarted.checking")}
         </span>
       </div>
 
       {/* Progress bar */}
       <div
         className="progress"
-        aria-label={`${done} of ${total} steps complete`}
+        aria-label={t("getStarted.progressAria", { done, total })}
         style={{ marginBottom: 8 }}
       >
         <span
@@ -280,8 +286,9 @@ export default function OnboardingChecklist() {
           aria-live="polite"
           style={{ marginTop: 12, marginBottom: 4 }}
         >
-          🎉 You&apos;re all set! Head to the{" "}
-          <a href="/marketplace">marketplace</a> to fund your first invoice.
+          {t("getStarted.allDonePrefix")}
+          <a href="/marketplace">{t("getStarted.allDoneLink")}</a>
+          {t("getStarted.allDoneSuffix")}
         </div>
       )}
 
@@ -302,12 +309,12 @@ export default function OnboardingChecklist() {
         <div
           className="skeleton"
           style={{ minHeight: 260, marginTop: 16, borderRadius: 10 }}
-          aria-label="Loading checklist…"
+          aria-label={t("getStarted.loading")}
         />
       ) : (
         <ol
           style={{ listStyle: "none", padding: 0, margin: "8px 0 0" }}
-          aria-label="Onboarding steps"
+          aria-label={t("getStarted.stepsLabel")}
         >
           {steps.map((step) => (
             <ChecklistStep
@@ -324,8 +331,7 @@ export default function OnboardingChecklist() {
         className="muted"
         style={{ fontSize: "0.82rem", marginTop: 16, marginBottom: 0 }}
       >
-        This page re-checks your wallet status every time you return to the
-        tab. Switch networks or connect your wallet in Freighter and come back.
+        {t("getStarted.footnote")}
       </p>
     </div>
   );

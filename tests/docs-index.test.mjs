@@ -38,8 +38,6 @@ const STALE_DOCS = [
   "settings-api.md",
   "settings-data-flow.md",
   "theme-theming.md",
-  "upload-a11y.md",
-  "upload-api.md",
   "upload-data-flow.md",
   "wallet-api-reference.md",
   "wallet-data-flow.md",
@@ -107,6 +105,8 @@ describe("docs/README.md documentation index", () => {
       "getting-started.md",
       "observability.md",
       "security.md",
+      "upload-a11y.md",
+      "upload-api.md",
     ];
 
     for (const filename of currentDocs) {

@@ -11,6 +11,25 @@ function fakeStorage() {
   };
 }
 
+function fakeEventTarget() {
+  const map = new Map();
+  return {
+    addEventListener(type, fn) {
+      if (!map.has(type)) map.set(type, new Set());
+      map.get(type).add(fn);
+    },
+    removeEventListener(type, fn) {
+      map.get(type)?.delete(fn);
+    },
+    dispatch(type, event) {
+      for (const fn of map.get(type) || []) fn(event);
+    },
+    listenerCount(type) {
+      return map.get(type)?.size || 0;
+    },
+  };
+}
+
 test("starts with empty state and zero unread", () => {
   const store = createNotificationStore({ storage: fakeStorage() });
   assert.deepEqual(store.getEvents(), []);
@@ -103,4 +122,96 @@ test("corruption-safe: malformed events array returns clean state", () => {
   storage.setItem("liquifact.notifications.v1", JSON.stringify({ version: 1, snapshot: {}, events: "nope", followedIds: [] }));
   const store = createNotificationStore({ storage });
   assert.equal(store.unreadCount(), 0);
+});
+
+test("cross-tab sync: storage event converges unread count and followed ids without echo writes", () => {
+  const storage = fakeStorage();
+  const targetA = fakeEventTarget();
+  const targetB = fakeEventTarget();
+
+  const tabA = createNotificationStore({ storage, eventTarget: targetA });
+  const tabB = createNotificationStore({ storage, eventTarget: targetB });
+
+  let notifications = 0;
+  tabB.subscribe(() => { notifications++; });
+
+  // Track writes to verify tabB does not echo back to storage
+  let writes = 0;
+  const origSetItem = storage.setItem.bind(storage);
+  storage.setItem = (k, v) => { writes++; origSetItem(k, v); };
+
+  tabA.follow("INV_0007");
+  tabA.addEvent({ id: "INV_0007", type: "funded", from: "open", to: "funded", at: "t1" });
+  const writesAfterTabA = writes;
+
+  // Simulate browser firing storage event in tabB
+  targetB.dispatch("storage", {
+    key: "liquifact.notifications.v1",
+    newValue: storage.getItem("liquifact.notifications.v1"),
+  });
+
+  assert.equal(tabB.isFollowing("INV_0007"), true);
+  assert.equal(tabB.unreadCount(), 1);
+  assert.equal(notifications, 1);
+  assert.equal(writes, writesAfterTabA); // no echo write from tabB
+
+  // Mark all read in tabA -> tabB unread count converges to 0
+  tabA.markAllRead();
+  targetB.dispatch("storage", {
+    key: "liquifact.notifications.v1",
+    newValue: storage.getItem("liquifact.notifications.v1"),
+  });
+
+  assert.equal(tabB.unreadCount(), 0);
+  assert.equal(notifications, 2);
+});
+
+test("cross-tab sync: ignores corrupt payloads and unrelated keys", () => {
+  const storage = fakeStorage();
+  const target = fakeEventTarget();
+  const store = createNotificationStore({ storage, eventTarget: target });
+
+  store.addEvent({ id: "INV_0001", type: "funded", from: "open", to: "funded", at: "t1" });
+  let notifications = 0;
+  store.subscribe(() => { notifications++; });
+
+  // Unrelated key
+  target.dispatch("storage", { key: "other.key", newValue: "{}" });
+  // Corrupt JSON
+  target.dispatch("storage", { key: "liquifact.notifications.v1", newValue: "{broken json" });
+  // Wrong schema version
+  target.dispatch("storage", {
+    key: "liquifact.notifications.v1",
+    newValue: JSON.stringify({ version: 99, snapshot: {}, events: [], followedIds: [] }),
+  });
+
+  assert.equal(store.unreadCount(), 1);
+  assert.equal(notifications, 0);
+});
+
+test("cross-tab sync: dispose removes storage listener", () => {
+  const storage = fakeStorage();
+  const target = fakeEventTarget();
+  const store = createNotificationStore({ storage, eventTarget: target });
+
+  assert.equal(target.listenerCount("storage"), 1);
+
+  let notifications = 0;
+  store.subscribe(() => { notifications++; });
+  store.dispose();
+
+  assert.equal(target.listenerCount("storage"), 0);
+
+  target.dispatch("storage", {
+    key: "liquifact.notifications.v1",
+    newValue: JSON.stringify({
+      version: 1,
+      snapshot: {},
+      events: [{ id: "INV_0009", read: false }],
+      followedIds: ["INV_0009"],
+    }),
+  });
+
+  assert.equal(store.unreadCount(), 0);
+  assert.equal(notifications, 0);
 });

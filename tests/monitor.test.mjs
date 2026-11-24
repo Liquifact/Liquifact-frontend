@@ -227,3 +227,156 @@ test("treats an offline fallback response as a failed poll", async (t) => {
   monitor.stop();
   t.mock.timers.reset();
 });
+
+// ---------------------------------------------------------------------------
+// Multi-source and merge tests
+// ---------------------------------------------------------------------------
+
+test("chain source events are merged with API events and dispatched", async (t) => {
+  t.mock.timers.enable({ toFake: ["setTimeout", "clearTimeout"] });
+  const dispatched = [];
+  const store = makeStore();
+  store.follow("INV_0001");
+  store.follow("INV_0002");
+  store.setSnapshot({ id: "INV_0001", status: "open", fundedAmount: 0, amount: 100 });
+  store.setSnapshot({ id: "INV_0002", status: "open", fundedAmount: 0, amount: 200 });
+
+  // API: INV_0001 moves to funded
+  const listInvoices = async () => ({
+    data: [
+      { id: "INV_0001", status: "funded", fundedAmount: 100, amount: 100 },
+      { id: "INV_0002", status: "open",   fundedAmount: 50,  amount: 200 },
+    ],
+  });
+
+  // Chain source: INV_0002 progress event (not seen by API diff yet)
+  const chainSource = {
+    poll: async () => [
+      { id: "INV_0002", type: "progress", from: "on-chain", to: "progress", at: new Date().toISOString(), chainEventId: "chain-e1" },
+    ],
+  };
+
+  const monitor = createInvoiceMonitor({
+    listInvoices,
+    store,
+    sources: [chainSource],
+    document: makeDocument("visible"),
+    intervalMs: 60000,
+    random: () => 0.5,
+  });
+  monitor.setOnEvent((e) => dispatched.push(e));
+  monitor.start();
+  await flushPromises();
+  t.mock.timers.tick(60000);
+  await flushPromises();
+
+  assert.equal(dispatched.length, 2);
+  const types = dispatched.map((e) => e.type).sort();
+  assert.deepEqual(types, ["funded", "progress"]);
+  t.mock.timers.reset();
+});
+
+test("chain source event suppresses the matching API diff event (dedupe by id+type)", async (t) => {
+  t.mock.timers.enable({ toFake: ["setTimeout", "clearTimeout"] });
+  const dispatched = [];
+  const store = makeStore();
+  store.follow("INV_0001");
+  store.setSnapshot({ id: "INV_0001", status: "open", fundedAmount: 0, amount: 100 });
+
+  // Both API and chain source emit a 'funded' event for INV_0001.
+  const listInvoices = async () => ({
+    data: [{ id: "INV_0001", status: "funded", fundedAmount: 100, amount: 100 }],
+  });
+
+  const chainSource = {
+    poll: async () => [
+      { id: "INV_0001", type: "funded", from: "on-chain", to: "funded", at: new Date().toISOString(), chainEventId: "chain-funded-1" },
+    ],
+  };
+
+  const monitor = createInvoiceMonitor({
+    listInvoices,
+    store,
+    sources: [chainSource],
+    document: makeDocument("visible"),
+    intervalMs: 60000,
+    random: () => 0.5,
+  });
+  monitor.setOnEvent((e) => dispatched.push(e));
+  monitor.start();
+  await flushPromises();
+  t.mock.timers.tick(60000);
+  await flushPromises();
+
+  // Only one notification — the chain event wins.
+  assert.equal(dispatched.length, 1);
+  assert.equal(dispatched[0].chainEventId, "chain-funded-1");
+  t.mock.timers.reset();
+});
+
+test("chain source failure does not fail the whole poll (API events still delivered)", async (t) => {
+  t.mock.timers.enable({ toFake: ["setTimeout", "clearTimeout"] });
+  const dispatched = [];
+  const store = makeStore();
+  store.follow("INV_0001");
+  store.setSnapshot({ id: "INV_0001", status: "open", fundedAmount: 0, amount: 100 });
+
+  const listInvoices = async () => ({
+    data: [{ id: "INV_0001", status: "funded", fundedAmount: 100, amount: 100 }],
+  });
+
+  // Chain source throws — should not propagate.
+  const failingChainSource = {
+    poll: async () => { throw new Error("RPC timeout"); },
+  };
+
+  const monitor = createInvoiceMonitor({
+    listInvoices,
+    store,
+    sources: [failingChainSource],
+    document: makeDocument("visible"),
+    intervalMs: 60000,
+    random: () => 0.5,
+  });
+  monitor.setOnEvent((e) => dispatched.push(e));
+  monitor.start();
+  await flushPromises();
+  t.mock.timers.tick(60000);
+  await flushPromises();
+
+  // API event still arrives, monitor failure counter stays at 0.
+  assert.equal(dispatched.length, 1);
+  assert.equal(dispatched[0].type, "funded");
+  assert.deepEqual(monitor.getStatus(), { failures: 0, nextDelayMs: 60000 });
+  t.mock.timers.reset();
+});
+
+test("monitor without sources behaves identically to the original API-only behaviour", async (t) => {
+  t.mock.timers.enable({ toFake: ["setTimeout", "clearTimeout"] });
+  const dispatched = [];
+  const store = makeStore();
+  store.follow("INV_0001");
+  store.setSnapshot({ id: "INV_0001", status: "open", fundedAmount: 0, amount: 100 });
+
+  const listInvoices = async () => ({
+    data: [{ id: "INV_0001", status: "funded", fundedAmount: 100, amount: 100 }],
+  });
+
+  // No sources option — backward-compatible default.
+  const monitor = createInvoiceMonitor({
+    listInvoices,
+    store,
+    document: makeDocument("visible"),
+    intervalMs: 60000,
+    random: () => 0.5,
+  });
+  monitor.setOnEvent((e) => dispatched.push(e));
+  monitor.start();
+  await flushPromises();
+  t.mock.timers.tick(60000);
+  await flushPromises();
+
+  assert.equal(dispatched.length, 1);
+  assert.equal(dispatched[0].type, "funded");
+  t.mock.timers.reset();
+});
