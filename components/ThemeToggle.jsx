@@ -1,8 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import { THEME_KEY, readPref, resolveTheme } from "@/lib/theme";
+import { useT } from "@/lib/i18n/I18nProvider";
 
-const OPTIONS = [["light", "Light"], ["dark", "Dark"], ["system", "System"]];
+const OPTIONS = [
+  ["light", "theme.light"],
+  ["dark", "theme.dark"],
+  ["system", "theme.system"],
+];
 const CHROME = { light: "#f7f8fc", dark: "#0a0e1f" };
 const mq = () => window.matchMedia("(prefers-color-scheme: dark)");
 
@@ -17,6 +22,7 @@ function apply(pref) {
 }
 
 export default function ThemeToggle() {
+  const t = useT();
   const [pref, setPref] = useState("system"); // matches server render
 
   useEffect(() => setPref(readPref(window.localStorage)), []);
@@ -36,8 +42,8 @@ export default function ThemeToggle() {
   }
 
   return (
-    <div className="theme-toggle" role="radiogroup" aria-label="Theme">
-      {OPTIONS.map(([value, label]) => (
+    <div className="theme-toggle" role="radiogroup" aria-label={t("theme.label")}>
+      {OPTIONS.map(([value, key]) => (
         <button
           key={value}
           type="button"
@@ -45,7 +51,7 @@ export default function ThemeToggle() {
           aria-checked={pref === value}
           onClick={() => choose(value)}
         >
-          {label}
+          {t(key)}
         </button>
       ))}
     </div>
