@@ -15,7 +15,7 @@ export default function ContractCard({ contractId, network = NETWORK }) {
       <div className="contract">
         <span className="addr">{contractId}</span>
         <div className="btn-row">
-          <CopyButton value={contractId} />
+          <CopyButton value={contractId} ariaLabel="Copy escrow contract ID" />
           <a className="btn btn-ghost" href={explorerUrl} target="_blank" rel="noopener noreferrer">
             View on stellar.expert ↗
           </a>

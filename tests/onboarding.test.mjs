@@ -6,6 +6,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { countProgress, evaluate } from "../lib/onboarding.js";
+import en from "../lib/i18n/dictionaries/en.js";
+import es from "../lib/i18n/dictionaries/es.js";
+import { t } from "../lib/i18n/index.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -40,9 +43,13 @@ test("brand-new visitor: install is todo, everything else blocked", () => {
   assert.equal(step(steps, "trustline").status, "blocked");
 });
 
-test("brand-new visitor: install action is 'Get Freighter'", () => {
+test("brand-new visitor: install action is a stable link descriptor", () => {
   const steps = evaluate(state());
-  assert.equal(step(steps, "install").action, "Get Freighter");
+  assert.deepEqual(step(steps, "install").action, {
+    type: "link",
+    href: "https://freighter.app",
+    labelKey: "getStarted.action.getFreighter",
+  });
 });
 
 test("brand-new visitor: no action on blocked steps", () => {
@@ -57,7 +64,10 @@ test("extension present: install is done, connect is todo", () => {
   const steps = evaluate(state({ hasExtension: true }));
   assert.equal(step(steps, "install").status, "done");
   assert.equal(step(steps, "connect").status, "todo");
-  assert.equal(step(steps, "connect").action, "Connect");
+  assert.deepEqual(step(steps, "connect").action, {
+    type: "action",
+    labelKey: "getStarted.action.connect",
+  });
 });
 
 // ── Connected but wrong network ───────────────────────────────────────────
@@ -75,7 +85,7 @@ test("connected-wrong-network: install+connect done, network+fund+trustline bloc
 
 // ── Connected + right network + account not yet funded ───────────────────
 
-test("connected-unfunded: fund step is todo with Friendbot action", () => {
+test("connected-unfunded: fund step is todo with a stable Friendbot action", () => {
   const steps = evaluate(
     state({
       hasExtension: true,
@@ -85,7 +95,10 @@ test("connected-unfunded: fund step is todo with Friendbot action", () => {
     }),
   );
   assert.equal(step(steps, "fund").status, "todo");
-  assert.equal(step(steps, "fund").action, "Fund with Friendbot");
+  assert.deepEqual(step(steps, "fund").action, {
+    type: "action",
+    labelKey: "getStarted.action.fund",
+  });
 });
 
 test("connected-unfunded: trustline is blocked (no account yet)", () => {
@@ -157,7 +170,7 @@ test("mainnet: fund step is n/a (no Friendbot)", () => {
   assert.equal(step(steps, "fund").action, null);
 });
 
-test("mainnet: fund step description does not mention Friendbot", () => {
+test("mainnet: fund step uses the mainnet translation keys", () => {
   const steps = evaluate(
     state({
       hasExtension: true,
@@ -166,10 +179,33 @@ test("mainnet: fund step description does not mention Friendbot", () => {
       network: "mainnet",
     }),
   );
+  assert.equal(step(steps, "fund").titleKey, "getStarted.step.fundMainnet.title");
+  assert.equal(step(steps, "fund").descriptionKey, "getStarted.step.fundMainnet.description");
   assert.ok(
-    !step(steps, "fund").description.includes("Friendbot"),
+    !t(en, step(steps, "fund").descriptionKey).includes("Friendbot"),
     "Mainnet fund description should not mention Friendbot",
   );
+});
+
+test("steps expose stable IDs and translation keys, not English prose", () => {
+  const steps = evaluate(state({ hasExtension: true, connected: true, networkOk: true, network: "testnet" }));
+  for (const s of steps) {
+    assert.equal("title" in s, false);
+    assert.equal("description" in s, false);
+    assert.match(s.titleKey, /^getStarted\.step\.[a-zA-Z]+\.title$/);
+    assert.match(s.descriptionKey, /^getStarted\.step\.[a-zA-Z]+\.description$/);
+    assert.equal(typeof en[s.titleKey], "string", `missing en ${s.titleKey}`);
+    assert.equal(typeof en[s.descriptionKey], "string", `missing en ${s.descriptionKey}`);
+    assert.equal(typeof es[s.titleKey], "string", `missing es ${s.titleKey}`);
+    assert.equal(typeof es[s.descriptionKey], "string", `missing es ${s.descriptionKey}`);
+  }
+  for (const s of steps) {
+    if (s.action) {
+      assert.equal(typeof s.action.labelKey, "string");
+      assert.equal(typeof en[s.action.labelKey], "string", `missing en ${s.action.labelKey}`);
+      assert.equal(typeof es[s.action.labelKey], "string", `missing es ${s.action.labelKey}`);
+    }
+  }
 });
 
 // ── Progress counter ──────────────────────────────────────────────────────

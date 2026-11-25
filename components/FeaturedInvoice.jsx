@@ -37,6 +37,7 @@ export function FeaturedInvoiceSkeleton() {
 }
 
 /** Server component: live featured listing in the hero, demo data as fallback. */
+// eslint-disable-next-line react-hooks/purity -- Server component default fallback timestamp
 export default async function FeaturedInvoice({ now = Date.now(), loadInvoices = fetchOpenInvoices } = {}) {
   const live = await loadInvoices();
   const livePick = live ? pickFeatured(live, now) : null;

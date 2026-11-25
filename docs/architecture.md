@@ -110,6 +110,13 @@ unavailable or throws.
 - `lib/api/fetchWithRetry.js` — non-idempotent requests are only retried with a
 stable `Idempotency-Key` header, and never when the body cannot be replayed.
 
+**Stale sequence recovery.** `buildSignSubmit` (`lib/stellar/rpc.js`) and
+`submitFund` (`lib/stellar/fund.js`) use `isBadSequence`
+(`lib/stellar/badSequence.js`) to decode a failed send's `errorResult`. On
+`tx_bad_seq` they refetch the source account, rebuild and re-sign once, and
+report `Retrying with updated account…` through `onStatus`. Other errors,
+rejected signatures, and a second stale-sequence failure are never retried.
+
 ---
 
 ## Where state lives

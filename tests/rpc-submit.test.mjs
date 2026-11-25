@@ -89,8 +89,12 @@ test("buildSignSubmit uses BASE_FEE + simulated resource fee and resolves on SUC
 
   await buildSignSubmit("refund", buildRefundArgs(signerAddress), signerAddress, onStatus, {
     network: "testnet",
+    getNetwork: async () => "testnet",
     server,
     sign,
+    getNetwork: async () => "TESTNET", // Freighter reports the expected network
+    getNetwork: async () => "testnet",
+    getNetwork: async () => "testnet",
     pollIntervalMs: 5,
     pollTimeoutMs: 500,
   });
@@ -121,8 +125,12 @@ test("buildSignSubmit throws on FAILED transaction status", async () => {
   await assert.rejects(
     buildSignSubmit("refund", buildRefundArgs(signerAddress), signerAddress, onStatus, {
       network: "testnet",
+      getNetwork: async () => "testnet",
       server,
       sign,
+      getNetwork: async () => "TESTNET", // Freighter reports the expected network
+      getNetwork: async () => "testnet",
+      getNetwork: async () => "testnet",
       pollIntervalMs: 5,
       pollTimeoutMs: 500,
     }),
@@ -142,8 +150,12 @@ test("buildSignSubmit throws timeout error when polling expires", async () => {
   await assert.rejects(
     buildSignSubmit("refund", buildRefundArgs(signerAddress), signerAddress, onStatus, {
       network: "testnet",
+      getNetwork: async () => "testnet",
       server,
       sign,
+      getNetwork: async () => "TESTNET", // Freighter reports the expected network
+      getNetwork: async () => "testnet",
+      getNetwork: async () => "testnet",
       pollIntervalMs: 5,
       pollTimeoutMs: 25,
     }),
@@ -161,8 +173,12 @@ test("buildSignSubmit preserves userCancelled error contract when user rejects s
   await assert.rejects(
     buildSignSubmit("refund", buildRefundArgs(signerAddress), signerAddress, onStatus, {
       network: "testnet",
+      getNetwork: async () => "testnet",
       server,
       sign,
+      getNetwork: async () => "TESTNET", // Freighter reports the expected network
+      getNetwork: async () => "testnet",
+      getNetwork: async () => "testnet",
     }),
     (err) => {
       assert.equal(err.userCancelled, true);
@@ -186,8 +202,12 @@ test("buildSignSubmit aborts polling when AbortSignal fires", async () => {
   await assert.rejects(
     buildSignSubmit("refund", buildRefundArgs(signerAddress), signerAddress, onStatus, {
       network: "testnet",
+      getNetwork: async () => "testnet",
       server,
       sign,
+      getNetwork: async () => "TESTNET", // Freighter reports the expected network
+      getNetwork: async () => "testnet",
+      getNetwork: async () => "testnet",
       signal: controller.signal,
       pollIntervalMs: 500,
       pollTimeoutMs: 5000,

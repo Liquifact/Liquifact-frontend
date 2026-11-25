@@ -17,7 +17,7 @@ This project enforces gzip bundle budgets using a dependency-free check script (
 | `/get-started` | 150 KiB (`153600` B) | `app/get-started/page-*.js` (`app/get-started/page`) |
 | `/docs` | 150 KiB (`153600` B) | `app/docs/page-*.js` (`app/docs/page`) |
 
-Budgets are defined in `bundle-budgets.json` at the project root.
+**Note:** Budgets are defined in `bundle-budgets.json` at the project root. Budgets are currently defined but not yet enforced in CI. Enforcement will be added in a future update (see bundle-budget issue for details).
 
 ### Running locally
 
@@ -32,12 +32,33 @@ The `build` step is required first because `scripts/check-bundle-size.mjs` reads
 node scripts/check-bundle-size.mjs --dir .next/static/chunks --budgets bundle-budgets.json
 ```
 
+### Reading `next build` output
+
+Running `npm run build` produces a summary of each route's bundle size in the terminal output. Look for sections like:
+
+```
+Route (app)                              Size     First Load JS
+┌ ○ /                                    3.2 kB        87.2 kB
+├ ○ /marketplace                         4.1 kB        88.1 kB
+├ ○ /marketplace/[id]                    5.3 kB        89.3 kB
+└ λ /submit                             12.4 kB        96.4 kB
+```
+
+- **Size**: The JavaScript chunk for that specific route
+- **First Load JS**: Total JavaScript loaded when navigating to that route (includes shared chunks)
+
+To inspect individual chunks, check `.next/static/chunks/` after building. The chunks are named based on their source (e.g., `app/page-abc123.js` for `app/page.js`).
+
+### Existing optimizations
+
+- **Dynamic imports for SSR-unsafe code**: `app/marketplace/[id]/InvoiceDetail.jsx` uses `next/dynamic` to lazy-load `ExitPanel` (which uses `@stellar/stellar-sdk` and the Freighter browser API) with `{ ssr: false }`. This prevents the Soroban SDK from running on the server and reduces the initial client-side bundle.
+
 ### Updating budgets intentionally
 
 1. Run `npm run build && npm run check:size` to see current chunk gzip sizes and any budget violations.
 2. Edit `bundle-budgets.json` and adjust the relevant byte limit (`maxSingleChunkGzipBytes`, `maxTotalGzipBytes`, or route entry under `routes`).
 3. Update the table above in this file if the budget changed.
-4. Run `npm run check:size` (and `node --test tests/bundle-budget.test.mjs`) to confirm the new budget passes.
+4. Run `npm run check:size` to confirm the new budget passes.
 
 Budget increases should be rare and justified (e.g. a deliberate new feature that adds first-load JS). For routine changes, first optimize the bundle before reaching for a higher limit.
 
@@ -51,39 +72,26 @@ Budget increases should be rare and justified (e.g. a deliberate new feature tha
 
 ## RSC split: Invoice detail page
 
-The invoice detail route (`app/invest/[id]/page.js`) was refactored to separate server-rendered static markup from client-side interactivity.
+The invoice detail route (`app/marketplace/[id]/page.js`) uses a Server Component to render static metadata on the server, with a client component for interactivity.
 
-### Before
+### Architecture
 
-A single `"use client"` file shipped the entire page—markup, copy strings, formatting helpers, wallet logic, and Clipboard API calls—to the browser.
-
-### After
-
-- **`app/invest/[id]/page.js`** (Server Component)
+- **`app/marketplace/[id]/page.js`** (Server Component)
   - No `"use client"` directive
-  - Renders heading, metadata `<dl>`, and JSON-LD script on the server
+  - Generates metadata and JSON-LD script on the server
   - Zero client JavaScript for these static elements
 
-- **`app/invest/[id]/FundActions.jsx`** (Client Component)
-  - Small boundary for the three interactive buttons:
-    - Fund invoice (wallet-state-aware)
-    - Copy link (Clipboard API + textarea fallback)
-    - Print / Save PDF
-  - Disclaimer note (hidden on print)
+- **`app/marketplace/[id]/InvoiceDetail.jsx`** (Client Component)
+  - Contains all interactive functionality: funding, wallet connection, state management
+  - Uses `next/dynamic` to lazy-load `ExitPanel` (SSR-unsafe Soroban SDK code) with `{ ssr: false }`
 
 ### Bundle impact
 
-| Metric | Before (client-only) | After (RSC shell) | Delta |
-|--------|----------------------|-------------------|-------|
-| First-load JS for `/invest/[id]` | X kB | Y kB | –Z kB |
-| Client-side copy strings | 100% | ~15% (interactive only) | –85% |
-| Formatting helpers shipped | 100% | 0% (server-only) | –100% |
-
-Run `npm run build` and inspect `.next/static/chunks/app/invest/[id]/*` to see the before/after comparison. The detail route is now one of the lightest pages in the app.
+The Server Component architecture reduces the initial client-side bundle by keeping metadata generation and JSON-LD on the server. Run `npm run build` and inspect `.next/static/chunks/app/marketplace/[id]/*` to see the chunk sizes.
 
 ### Why it matters
 
-The invoice detail page is the **highest-intent route** — users land here via shared links or after searching the marketplace. Cutting client JavaScript improves:
+The invoice detail page is the **highest-intent route** — users land here via shared links or after searching the marketplace. The RSC split improves:
 
 - **Time to Interactive** — fewer bytes to parse and execute before buttons become clickable
 - **Mobile experience** — slower networks and devices benefit most from reduced JS payloads
@@ -91,11 +99,5 @@ The invoice detail page is the **highest-intent route** — users land here via 
 
 ### Trade-offs
 
-- The page is no longer a drop-in React component you can render in Storybook or Jest without mocking Next.js's `notFound()` and `params` shape.
-- Tests must handle the async Server Component contract (see `app/invest/[id]/page.test.tsx` for patterns).
-
-### References
-
-- Initial implementation: [GitHub issue #458](https://github.com/Liquifact/Liquifact-frontend/issues/458)
-- Test coverage: `app/invest/[id]/page.test.tsx`
-- Related: `docs/architecture.md` (RSC vs. client component boundaries)
+- The page is no longer a drop-in React component you can render in Storybook or Jest without mocking Next.js's `params` shape.
+- Tests must handle the async Server Component contract.

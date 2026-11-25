@@ -371,3 +371,148 @@ describe("Marketplace component", () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Saved searches (#1526)
+// ---------------------------------------------------------------------------
+
+describe("Marketplace saved searches", () => {
+  const PRESETS_KEY = "liquifact-saved-searches";
+
+  beforeEach(() => {
+    window.localStorage.removeItem(PRESETS_KEY);
+  });
+
+  async function openPresets(user, loadedText = "Acme Components") {
+    await waitFor(() => expect(screen.getByText(loadedText)).toBeInTheDocument());
+    const trigger = screen.getByRole("button", { name: /saved searches/i });
+    await user.click(trigger);
+    return { trigger, dialog: screen.getByRole("dialog", { name: "Saved searches" }) };
+  }
+
+  it("saves the current filters and applies them later via the URL", async () => {
+    const user = userEvent.setup();
+    const result = renderMarketplace("status=open&currency=USDC&sort=yield_desc&page=2&view=table");
+
+    const { trigger, dialog } = await openPresets(user, "Northwind Textiles");
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    const nameInput = within(dialog).getByLabelText("Save current filters as");
+    expect(nameInput).toHaveFocus();
+
+    await user.type(nameInput, "  Open USDC  ");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(within(dialog).getByRole("status")).toHaveTextContent("Saved “Open USDC”.");
+
+    // Persisted canonical filters only: no page, no view.
+    const stored = JSON.parse(window.localStorage.getItem(PRESETS_KEY));
+    expect(stored.version).toBe(1);
+    expect(stored.items).toHaveLength(1);
+    expect(stored.items[0]).toMatchObject({ name: "Open USDC", query: "status=open&currency=USDC&sort=yield_desc" });
+
+    // Move elsewhere (the popover stays open across the URL change), then apply the preset.
+    navigate(result, "status=funded");
+    pushLog.length = 0;
+    await user.click(screen.getByRole("button", { name: "Apply saved search Open USDC" }));
+
+    expect(pushLog).toEqual(["/marketplace?status=open&currency=USDC&sort=yield_desc"]);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /saved searches/i })).toHaveFocus();
+  });
+
+  it("keeps the viewer's table view when applying a preset", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(
+      PRESETS_KEY,
+      JSON.stringify({ version: 1, items: [{ id: "p1", name: "Funded", query: "status=funded", createdAt: 1 }] }),
+    );
+    renderMarketplace("view=table");
+    await openPresets(user, "Acme Components");
+    await user.click(screen.getByRole("button", { name: "Apply saved search Funded" }));
+    expect(pushLog.at(-1)).toBe("/marketplace?status=funded&view=table");
+  });
+
+  it("restores presets after a reload and deletes them", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(
+      PRESETS_KEY,
+      JSON.stringify({
+        version: 1,
+        items: [
+          { id: "p1", name: "High yield", query: "minYield=900", createdAt: 1 },
+          { id: "p2", name: "XLM", query: "currency=XLM", createdAt: 2 },
+        ],
+      }),
+    );
+    renderMarketplace();
+    const { trigger, dialog } = await openPresets(user);
+    expect(trigger).toHaveTextContent("2");
+    expect(within(dialog).getByText("2 of 10 saved")).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "Delete saved search High yield" }));
+    expect(within(dialog).queryByRole("button", { name: "Apply saved search High yield" })).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("status")).toHaveTextContent("Deleted “High yield”.");
+    expect(JSON.parse(window.localStorage.getItem(PRESETS_KEY)).items.map((i) => i.id)).toEqual(["p2"]);
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Apply saved search XLM" })).toHaveFocus());
+  });
+
+  it("rejects duplicate names and enforces the 10 preset cap", async () => {
+    const user = userEvent.setup();
+    const items = Array.from({ length: 10 }, (_, i) => ({ id: `p${i}`, name: `Preset ${i}`, query: "", createdAt: i }));
+    window.localStorage.setItem(PRESETS_KEY, JSON.stringify({ version: 1, items }));
+    renderMarketplace("status=open");
+    const { dialog } = await openPresets(user);
+    const input = within(dialog).getByLabelText("Save current filters as");
+
+    await user.type(input, "preset 3{Enter}");
+    expect(within(dialog).getByRole("status")).toHaveTextContent("A saved search with that name already exists.");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+
+    await user.clear(input);
+    await user.type(input, "Eleventh{Enter}");
+    expect(within(dialog).getByRole("status")).toHaveTextContent("You can keep up to 10 saved searches.");
+    expect(JSON.parse(window.localStorage.getItem(PRESETS_KEY)).items).toHaveLength(10);
+  });
+
+  it("ignores corrupt storage", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(PRESETS_KEY, "{not json");
+    renderMarketplace();
+    const { dialog } = await openPresets(user);
+    expect(within(dialog).getByText("No saved searches yet.")).toBeInTheDocument();
+  });
+
+  it("is keyboard operable: Enter opens, Escape closes and restores focus", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(
+      PRESETS_KEY,
+      JSON.stringify({ version: 1, items: [{ id: "p1", name: "Open", query: "status=open", createdAt: 1 }] }),
+    );
+    renderMarketplace();
+    await waitFor(() => expect(screen.getByText("Acme Components")).toBeInTheDocument());
+    const trigger = screen.getByRole("button", { name: /saved searches/i });
+    trigger.focus();
+
+    await user.keyboard("{Enter}");
+    const dialog = screen.getByRole("dialog", { name: "Saved searches" });
+    expect(trigger).toHaveAttribute("aria-controls", dialog.id);
+    expect(within(dialog).getByLabelText("Save current filters as")).toHaveFocus();
+
+    // Tab through: Save button, then the preset's apply button; Enter applies it.
+    await user.tab();
+    expect(within(dialog).getByRole("button", { name: "Save" })).toHaveFocus();
+    await user.tab();
+    expect(within(dialog).getByRole("button", { name: "Apply saved search Open" })).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    await user.keyboard(" ");
+    await user.tab();
+    await user.tab();
+    await user.keyboard("{Enter}");
+    expect(pushLog.at(-1)).toBe("/marketplace?status=open");
+    expect(trigger).toHaveFocus();
+  });
+});

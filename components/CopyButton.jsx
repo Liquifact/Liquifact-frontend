@@ -3,11 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useOptionalToast } from "@/components/toast/ToastProvider";
 
+function truncateValue(value, maxLen = 16) {
+  const str = value == null ? "" : String(value).trim();
+  if (!str) return "";
+  if (str.length <= maxLen) return str;
+  return `${str.slice(0, 6)}…${str.slice(-4)}`;
+}
+
 /**
  * Copy a value to the clipboard. Inside a <ToastProvider> the result is
  * announced with a toast (#1399); standalone it falls back to an inline label.
  */
-export default function CopyButton({ value, label = "Copy" }) {
+export default function CopyButton({ value, label = "Copy", ariaLabel }) {
   const toast = useOptionalToast();
   const [copied, setCopied] = useState(false);
   const mountedRef = useRef(true);
@@ -47,8 +54,16 @@ export default function CopyButton({ value, label = "Copy" }) {
     }
   }, [toast, value]);
 
+  const truncated = truncateValue(value);
+  const computedAriaLabel = ariaLabel || (truncated ? `${label} ${truncated}` : label);
+
   return (
-    <button type="button" className="copy" onClick={handleCopy}>
+    <button
+      type="button"
+      className="copy"
+      aria-label={computedAriaLabel}
+      onClick={handleCopy}
+    >
       {!toast && copied ? "Copied ✓" : label}
     </button>
   );

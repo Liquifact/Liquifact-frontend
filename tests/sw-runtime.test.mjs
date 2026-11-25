@@ -5,7 +5,7 @@ import vm from "node:vm";
 import * as policy from "../lib/pwa/policy.js";
 import * as lru from "../lib/pwa/lru.js";
 
-const source = (await readFile(new URL("../public/sw.js", import.meta.url), "utf8")).replace(/^import .*;\n/gm, "");
+const source = (await readFile(new URL("../public/sw.js", import.meta.url), "utf8")).replace(/^import .*;\r?\n/gm, "");
 function harness(fetch, timeout = setTimeout, overrides = {}) {
   const stores = new Map(), listeners = {};
   const origin = "https://app.example";
@@ -72,7 +72,7 @@ test("worker never handles funding, escrow, Horizon or Soroban requests", async 
 });
 
 test("navigation timeout returns saved page, unknown routes fall back to offline page", async () => {
-  const h = harness(() => new Promise(() => {}), (callback) => setTimeout(callback, 1));
+  const h = harness(() => new Promise(() => { }), (callback) => setTimeout(callback, 1));
   const cache = await h.caches.open("liquifact-pwa-test-shell");
   await cache.put("/marketplace", new Response("saved marketplace"));
   await cache.put("/offline", new Response("friendly offline screen"));

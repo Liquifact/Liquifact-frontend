@@ -24,6 +24,8 @@ export function proxy(request) {
   const reportUri = process.env.CSP_REPORT_URI || process.env.NEXT_PUBLIC_CSP_REPORT_URI;
   const reportTo = process.env.CSP_REPORT_TO || process.env.NEXT_PUBLIC_CSP_REPORT_TO;
 
+  const reportOnly = process.env.NEXT_PUBLIC_CSP_REPORT_ONLY === "1";
+
   const csp = buildCsp({
     nonce,
     apiUrl,
@@ -32,6 +34,7 @@ export function proxy(request) {
     dev,
     reportUri,
     reportTo,
+    reportOnly,
   });
 
   const requestHeaders = new Headers(request.headers);
@@ -44,7 +47,6 @@ export function proxy(request) {
     },
   });
 
-  const reportOnly = process.env.NEXT_PUBLIC_CSP_REPORT_ONLY === "1";
   const headerName = reportOnly
     ? "Content-Security-Policy-Report-Only"
     : "Content-Security-Policy";

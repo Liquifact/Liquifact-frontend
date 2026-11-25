@@ -1,75 +1,42 @@
 # Settings component API
 
-Concise reference for the settings UI surfaces in `app/settings/page.js` and `components/SettingsView.jsx`.
+`/settings` provides device preferences and a confirmed local-data reset. It is linked from the product links in `components/SiteFooter.jsx`.
 
-## Components
+## Route and component
 
-### `SettingsRoute`
+- `app/settings/page.js` exports `SettingsRoute` and localized `generateMetadata()`.
+- `app/settings/SettingsView.jsx` exports the client `SettingsView`. It takes no props and runs within the existing `I18nProvider`, `ToastProvider` and `NotificationsProvider` from the application layout.
+- Appearance uses labelled native theme radio inputs: light, dark and system. Changes apply immediately, persist using `liquifact-theme`, and synchronize the existing header toggle. System follows the browser's color preference.
+- Language reuses `components/LocaleSwitcher.jsx`. Its optional `id` prop defaults to `locale-select`; settings uses `settings-locale` so the footer select has a distinct label target. Changes set the existing `liquifact-locale` cookie and refresh the route. English and Spanish are supported.
+- Browser alerts use the existing notification provider. Permission is requested only on an explicit enable action and only if the browser has not already decided. Users can disable LiquiFact alerts without revoking browser permission. Blocked permission explains how to enable it in browser site settings; unsupported browsers keep the control disabled.
+- Local data shows the number of known stored entries and an approximate byte count. A native modal dialog requires confirmation before deletion, focuses Cancel on opening, supports Escape and returns focus to the trigger. Success or partial failure appears through the existing accessible toast provider.
 
-Default export from `app/settings/page.js`. This is the Next.js route component for `/settings`.
+## Local-data helpers
 
-| Prop | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| `loadSettings` | `Function` | No | `loadMockSettings` | Forwarded to `SettingsPage`; async loader used to fetch settings rows. Receives `{ signal }` with an `AbortSignal`. |
+`lib/localData.js` exports:
 
-### `SettingsPage`
-
-Named export from `app/settings/page.js`. Renders the full settings page, including navigation, filters, loading state, retryable error state, list rows, live-region announcements, and load-more pagination.
-
-| Prop | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| `loadSettings` | `Function` | No | `loadMockSettings` | Async loader. Should resolve to an array of settings rows. Rejections render the retryable error state. |
-
-Settings rows are expected to include `id`, `label`, `description`, `category`, `type`, and `value`.
-
-### `SettingsView`
-
-Default export from `components/SettingsView.jsx`. Wraps `SettingsContent` in `SettingsErrorBoundary`.
-
-| Prop | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| `children` | `ReactNode` | No | `undefined` | Optional content rendered above the built-in email and notification controls. |
-| `loadData` | `Function` | No | `undefined` | Optional async loader for the compact settings form. Should resolve to `{ email, notifications }`. |
-| `...props` | `object` | No | `{}` | Forwarded to the root settings content element. |
-
-### `SettingsContent`
-
-Named export from `components/SettingsView.jsx`. Renders the compact settings form without the error boundary wrapper.
-
-| Prop | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| `children` | `ReactNode` | No | `undefined` | Optional content rendered before the default controls. |
-| `loadData` | `Function` | No | `undefined` | Optional async loader. While pending, renders `Loading settings...`; resolved data sets the form defaults. |
-| `...props` | `object` | No | `{}` | Forwarded to the root `div` with `data-testid="settings-content"`. |
-
-## Helpers
-
-`app/settings/page.js` also exports:
-
-| Export | Description |
+| Export | Contract |
 | --- | --- |
-| `PAGE_SIZE` | Number of settings rows shown per page. |
-| `SEARCH_DEBOUNCE_MS` | Delay before applying search text. |
-| `DEFAULT_FILTERS` | Default filter state: category `all`, empty query. |
-| `getSettingsLoadAnnouncement(settings, options)` | Builds the initial/filter live-region text. |
-| `getSettingsShowingAnnouncement(shown, total)` | Builds the paging live-region text. |
-| `applyFiltersToSettings(list, filters)` | Applies category and text filters to settings rows. |
+| `STORAGE_KEYS` | Frozen list of known theme, notification, transaction, invoice-draft and browser-alert preference keys. |
+| `describeLocalData(storage, keys = STORAGE_KEYS)` | Returns `{ entries, count, bytes, available }`. Each entry is `{ key, present, bytes, readable }`. Bytes estimate UTF-16 key/value storage, not an exact browser quota measurement. Optional keys are filtered against the known list. Raw values are never returned. Throwing or missing storage produces unreadable entries and `available: false`. |
+| `clearLocalData(storage, keys = STORAGE_KEYS)` | Deduplicates and filters the requested keys through `STORAGE_KEYS`, calls only `removeItem`, and returns `{ removed, failed, success }`. It continues after individual failures. Unknown keys are never removed; `storage.clear()` is never used. `removed` means removal succeeded, including an already absent key. |
+| `BROWSER_NOTIFICATIONS_KEY` | `liquifact-browser-notifications`; stores an explicit `true`/`false` alert preference. |
+| `LOCAL_DATA_CHANGED_EVENT` | `liquifact-local-data-changed`; dispatched after settings changes with `{ detail: { keys } }` listing successfully changed keys. Providers listen to synchronize memory in the current tab. |
 
-## Minimal usage
+The reset inspects/clears known localStorage keys and also the current tab’s `liquifact-submit-draft` in sessionStorage, where the invoice form actually saves drafts. It does not clear other sessionStorage keys or drafts in other tabs.
 
-```jsx
-import SettingsView from "@/components/SettingsView";
-import { SettingsPage } from "@/app/settings/page";
+Known keys are `liquifact-theme`, `liquifact.notifications.v1`, `liquifact-txs`, `liquifact-submit-draft` and `liquifact-browser-notifications`. Other apps' data, unknown keys, language cookies, wallet access and on-chain invoices are preserved. Clearing does not change a browser's notification permission. Alerts remain disabled until explicitly enabled again.
 
-export function CompactSettings() {
-  return (
-    <SettingsView loadData={() => Promise.resolve({ email: "user@example.com", notifications: true })}>
-      <p className="text-sm text-slate-400">Account preferences</p>
-    </SettingsView>
-  );
-}
+The notification store exposes `reload()` to rehydrate after deletion. Notification memory and followed invoices refresh immediately; a poll that finishes after all followed invoices are cleared does not recreate deleted state. Transaction and theme widgets also refresh after settings changes. The reset clears local history only; it does not cancel, alter or initiate any Stellar transaction.
 
-export function TestableSettingsPage() {
-  return <SettingsPage loadSettings={() => Promise.resolve([])} />;
-}
+## Verification
+
+```sh
+node --test tests/localData.test.mjs
+node scripts/check-i18n.mjs
+npm run test:ui -- tests-ui/SettingsView.test.jsx
+npm test
+npm run build
 ```
+
+Tests use injected/throwing storage, synthetic notification and transaction data, and mocked browser permission calls. No production credentials or funded transactions are required.

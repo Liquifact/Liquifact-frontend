@@ -6,7 +6,12 @@ out/
 .env
 .DS_Store
 *.tsbuildinfo
+
+# Playwright output
+/test-results/
+/playwright-report/
 next-env.d.ts
+coverage/
 
 # Generated from the tested worker policy and build inputs.
 public/pwa-policy.js

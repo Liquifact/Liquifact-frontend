@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { buildCsp, normalizeOrigin } from "../lib/security/csp.js";
+import { buildCsp, normalizeOrigin, DEFAULT_CSP_REPORT_URI } from "../lib/security/csp.js";
 
 describe("lib/security/csp", () => {
   const dummyNonce = "dGVzdC1ub25jZQ==";
@@ -120,5 +120,37 @@ describe("lib/security/csp", () => {
     });
     assert.match(csp, /report-uri https:\/\/report\.liquifact\.io\/csp/);
     assert.match(csp, /report-to csp-endpoint/);
+  });
+
+  it("defaults report-uri to the first-party endpoint in report-only mode", () => {
+    assert.equal(DEFAULT_CSP_REPORT_URI, "/api/csp-report");
+    const csp = buildCsp({ nonce: dummyNonce, reportOnly: true });
+    assert.match(csp, /report-uri \/api\/csp-report(;|$)/);
+  });
+
+  it("keeps an explicit report-uri in report-only mode", () => {
+    const csp = buildCsp({ nonce: dummyNonce, reportOnly: true, reportUri: "https://report.liquifact.io/csp" });
+    assert.match(csp, /report-uri https:\/\/report\.liquifact\.io\/csp/);
+    assert.doesNotMatch(csp, /\/api\/csp-report/);
+  });
+
+  it("adds no report-uri when enforcing and none is set", () => {
+    const csp = buildCsp({ nonce: dummyNonce, reportOnly: false });
+    assert.doesNotMatch(csp, /report-uri/);
+  });
+
+  it("reads NEXT_PUBLIC_CSP_REPORT_ONLY when reportOnly is not passed", () => {
+    const previous = process.env.NEXT_PUBLIC_CSP_REPORT_ONLY;
+    try {
+      process.env.NEXT_PUBLIC_CSP_REPORT_ONLY = "1";
+      assert.match(buildCsp({ nonce: dummyNonce }), /report-uri \/api\/csp-report/);
+      process.env.NEXT_PUBLIC_CSP_REPORT_ONLY = "0";
+      assert.doesNotMatch(buildCsp({ nonce: dummyNonce }), /report-uri/);
+      delete process.env.NEXT_PUBLIC_CSP_REPORT_ONLY;
+      assert.doesNotMatch(buildCsp({ nonce: dummyNonce }), /report-uri/);
+    } finally {
+      if (previous === undefined) delete process.env.NEXT_PUBLIC_CSP_REPORT_ONLY;
+      else process.env.NEXT_PUBLIC_CSP_REPORT_ONLY = previous;
+    }
   });
 });

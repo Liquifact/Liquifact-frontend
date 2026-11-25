@@ -1,3 +1,5 @@
+"use client";
+
 import { fundedPercent } from "@/lib/format";
 import { useLocale, useT } from "@/lib/i18n/I18nProvider.jsx";
 
