@@ -1,16 +1,25 @@
 import React from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { cleanup, render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import InvoiceDetail from "@/app/marketplace/[id]/InvoiceDetail";
 import { getInvoice, fundInvoice, getEscrowLive } from "@/lib/api";
-import { connectFreighter, SignatureCancelled } from "@/lib/stellar/freighter";
-import { submitFund } from "@/lib/stellar/fund";
+import { connectFreighter, SignatureCancelled, signWithFreighter } from "@/lib/stellar/freighter";
+import { submitFund, prepareFund, signAndSubmit } from "@/lib/stellar/fund";
+import { assertWalletNetwork } from "@/lib/stellar/networkGuard";
 import { CONTRACT_ID } from "@/lib/config";
 
 vi.mock("@/lib/api", () => ({ getInvoice: vi.fn(), fundInvoice: vi.fn(), getEscrowLive: vi.fn() }));
-vi.mock("@/lib/stellar/fund", () => ({ submitFund: vi.fn() }));
+vi.mock("@/lib/stellar/fund", () => ({
+  submitFund: vi.fn(),
+  prepareFund: vi.fn(),
+  signAndSubmit: vi.fn(),
+}));
 vi.mock("@/lib/stellar/freighter", async (original) => ({ ...await original(), connectFreighter: vi.fn(), signWithFreighter: vi.fn() }));
+vi.mock("@/lib/stellar/networkGuard", () => ({
+  assertWalletNetwork: vi.fn(),
+  NetworkMismatchError: class NetworkMismatchError extends Error {},
+}));
 // Isolate the funding flow from the other on-chain panels on the page (no network in tests).
 vi.mock("@/components/NotificationsProvider", () => ({
   useNotifications: () => ({ follow: vi.fn(), unfollow: vi.fn(), isFollowing: () => false }),
@@ -19,23 +28,35 @@ vi.mock("@/lib/escrow/token", async (original) => ({
   ...await original(),
   resolveFundingToken: vi.fn(async () => "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"),
 }));
-vi.mock("@/lib/escrow/constraints", async (original) => ({ ...await original(), loadConstraints: vi.fn(() => new Promise(() => {})) }));
+vi.mock("@/lib/escrow/constraints", async (original) => ({ ...await original(), loadConstraints: vi.fn(() => new Promise(() => { })) }));
 vi.mock("@/components/wallet/BalanceHint", () => ({ default: () => null }));
 vi.mock("@/components/escrow/FundersTable", () => ({ default: () => null }));
 vi.mock("@/components/invest/ExitPanel", () => ({ default: () => null }));
 vi.mock("@/app/marketplace/[id]/ActivityFeed", () => ({ default: () => null }));
 vi.mock("@/components/sme/SmeActionsCard", () => ({ default: () => null }));
+
 const invoice = { id: "INV_0001", sme: "Acme", debtor: "Globex", amount: 100, fundedAmount: 0, currency: "XLM", status: "open", onChain: true, yieldBps: 800, dueDate: "2027-01-17" };
 const address = "GA7TXEBMEPQCLHIYCWDN7RKAO5IMRD2UV7O7TZXMEW6VZUMEXNR4XBB5";
 const hash = "a".repeat(64);
+const mockPrepared = { toXDR: () => "mock-xdr", hash: () => Buffer.from(hash, "hex") };
+
 beforeEach(() => {
   vi.clearAllMocks();
+  assertWalletNetwork.mockResolvedValue("testnet");
   getInvoice.mockResolvedValue({ data: { ...invoice }, offline: false });
   getEscrowLive.mockResolvedValue({ contractId: CONTRACT_ID, escrow: { invoice_id: invoice.id, funding_target: "1000000000", funded_amount: "10000000", status: 0 } });
   connectFreighter.mockResolvedValue(address);
+  prepareFund.mockResolvedValue({
+    prepared: mockPrepared,
+    fee: "100",
+    minResourceFee: "100",
+    hash,
+  });
+  signAndSubmit.mockResolvedValue({ status: "SUCCESS", hash });
   submitFund.mockResolvedValue({ status: "SUCCESS", hash });
 });
 afterEach(cleanup);
+
 async function setup() {
   const user = userEvent.setup();
   render(<InvoiceDetail id={invoice.id} />);
@@ -52,6 +73,7 @@ test("on-chain funding requires a wallet and has accessible status", async () =>
   expect(document.querySelector(".funding-status").getAttribute("aria-live")).toBe("polite");
   expect(fundInvoice).not.toHaveBeenCalled();
 });
+
 test("off-chain invoice still calls the existing API only", async () => {
   getInvoice.mockResolvedValue({ data: { ...invoice, onChain: false }, offline: false });
   fundInvoice.mockResolvedValue({ data: { ...invoice, onChain: false, fundedAmount: 2 } });
@@ -60,58 +82,74 @@ test("off-chain invoice still calls the existing API only", async () => {
   await user.click(screen.getByRole("button", { name: "Fund invoice" }));
   await screen.findByText(/Contribution of 2 XLM recorded/);
   expect(fundInvoice).toHaveBeenCalledWith(invoice.id, 2);
-  expect(submitFund).not.toHaveBeenCalled();
+  expect(prepareFund).not.toHaveBeenCalled();
+  expect(signAndSubmit).not.toHaveBeenCalled();
   expect(screen.queryByRole("button", { name: "Connect Freighter" })).toBeNull();
 });
+
 test("in-flight submit cannot be triggered twice even through form events", async () => {
   let finish;
-  submitFund.mockImplementation(({ onStatus }) => { onStatus("Waiting for signature"); return new Promise((resolve) => { finish = resolve; }); });
+  signAndSubmit.mockImplementation(({ onStatus }) => { onStatus("Waiting for signature"); return new Promise((resolve) => { finish = resolve; }); });
   const user = await setup(); await connect(user);
   await user.type(screen.getByLabelText("Amount (XLM)"), "1");
   const button = screen.getByRole("button", { name: "Sign & fund" });
-  fireEvent.submit(button.closest("form")); fireEvent.submit(button.closest("form"));
-  expect(submitFund).toHaveBeenCalledTimes(1);
-  expect(screen.getByRole("button", { name: /Waiting for signature/ }).disabled).toBe(true);
+  await user.click(button);
+  const confirmBtn = await screen.findByRole("button", { name: "Confirm & Sign" });
+  fireEvent.click(confirmBtn);
+  fireEvent.click(confirmBtn);
+  expect(signAndSubmit).toHaveBeenCalledTimes(1);
   finish({ status: "SUCCESS", hash });
   await screen.findByText("Confirmed");
 });
+
 test("success shows hash and refreshes invoice and live escrow", async () => {
   const user = await setup(); await connect(user);
   await user.type(screen.getByLabelText("Amount (XLM)"), "1");
   await user.click(screen.getByRole("button", { name: "Sign & fund" }));
+  const confirmBtn = await screen.findByRole("button", { name: "Confirm & Sign" });
+  await user.click(confirmBtn);
   expect((await screen.findByRole("link", { name: /View transaction/ })).href).toBe(`https://stellar.expert/explorer/testnet/tx/${hash}`);
   await waitFor(() => expect(getInvoice).toHaveBeenCalledTimes(2));
   expect(getEscrowLive).toHaveBeenCalledTimes(1);
-  expect(submitFund.mock.calls[0][0].amountStroops).toBe(10000000n);
+  expect(prepareFund.mock.calls[0][0].amountStroops).toBe(10000000n);
   await screen.findByText(/1 XLM/);
 });
+
 for (const amount of ["0.00000001", "101", "1e3", "-1"]) {
   test(`invalid amount ${amount} never requests a transaction`, async () => {
     const user = await setup(); await connect(user);
     await user.type(screen.getByLabelText("Amount (XLM)"), amount);
     await user.click(screen.getByRole("button", { name: "Sign & fund" }));
     await screen.findByText("Failed");
-    expect(submitFund).not.toHaveBeenCalled();
+    expect(prepareFund).not.toHaveBeenCalled();
+    expect(signAndSubmit).not.toHaveBeenCalled();
   });
 }
+
 test("signature cancellation returns to idle with neutral copy", async () => {
-  submitFund.mockRejectedValue(new SignatureCancelled());
+  signAndSubmit.mockRejectedValue(new SignatureCancelled());
   const user = await setup(); await connect(user);
   await user.type(screen.getByLabelText("Amount (XLM)"), "1");
   await user.click(screen.getByRole("button", { name: "Sign & fund" }));
+  const confirmBtn = await screen.findByRole("button", { name: "Confirm & Sign" });
+  await user.click(confirmBtn);
   const message = await screen.findByText("Signature cancelled");
   expect(message.closest(".notice").className).not.toContain("notice-err");
   expect(screen.getByRole("button", { name: "Sign & fund" }).disabled).toBe(false);
 });
+
 test("timeout preserves hash and blocks another contribution", async () => {
-  submitFund.mockResolvedValue({ status: "TIMEOUT", hash });
+  signAndSubmit.mockResolvedValue({ status: "TIMEOUT", hash });
   const user = await setup(); await connect(user);
   await user.type(screen.getByLabelText("Amount (XLM)"), "1");
   await user.click(screen.getByRole("button", { name: "Sign & fund" }));
+  const confirmBtn = await screen.findByRole("button", { name: "Confirm & Sign" });
+  await user.click(confirmBtn);
   await screen.findByText("Pending confirmation");
   expect(screen.getByRole("button", { name: "Sign & fund" }).disabled).toBe(true);
   expect(screen.getByRole("link", { name: /View transaction/ })).toBeTruthy();
 });
+
 test("keyboard connects and submits in form order", async () => {
   const user = await setup();
   const button = screen.getByRole("button", { name: "Connect Freighter" });
@@ -119,7 +157,11 @@ test("keyboard connects and submits in form order", async () => {
   await user.tab(); expect(document.activeElement).toBe(screen.getByLabelText("Amount (XLM)"));
   await user.keyboard("1"); await user.tab();
   expect(document.activeElement).toBe(screen.getByRole("button", { name: "Sign & fund" }));
-  await user.keyboard(" "); await screen.findByText("Confirmed");
+  await user.keyboard(" ");
+  const confirmBtn = await screen.findByRole("button", { name: "Confirm & Sign" });
+  confirmBtn.focus();
+  await user.keyboard("{Enter}");
+  await screen.findByText("Confirmed");
 });
 
 for (const [status, label] of [[3, "withdrawn"], [4, "cancelled"]]) {
@@ -128,8 +170,57 @@ for (const [status, label] of [[3, "withdrawn"], [4, "cancelled"]]) {
     const user = await setup(); await connect(user);
     await user.type(screen.getByLabelText("Amount (XLM)"), "1");
     await user.click(screen.getByRole("button", { name: "Sign & fund" }));
+    const confirmBtn = await screen.findByRole("button", { name: "Confirm & Sign" });
+    await user.click(confirmBtn);
     await screen.findByText(/no longer accepts contributions|see your exit options/);
     expect(screen.queryByRole("button", { name: "Sign & fund" })).toBeNull();
     expect(screen.getAllByText(label).length).toBeGreaterThan(0);
   });
 }
+
+test("review dialog shows amount, escrow, network, and estimated fee before wallet opens", async () => {
+  const user = await setup(); await connect(user);
+  await user.type(screen.getByLabelText("Amount (XLM)"), "5");
+  await user.click(screen.getByRole("button", { name: "Sign & fund" }));
+
+  const dialog = await screen.findByRole("dialog");
+  expect(dialog).toBeTruthy();
+  expect(within(dialog).getByText("Review Transaction")).toBeTruthy();
+  expect(within(dialog).getByTestId("review-amount").textContent).toBe("5 XLM");
+  expect(within(dialog).getByText(/Estimated Fee/i)).toBeTruthy();
+  expect(within(dialog).getByTestId("review-fee").textContent).toBe("0.00001 XLM");
+  expect(within(dialog).getByTestId("review-network").textContent).toBe("testnet");
+  expect(signAndSubmit).not.toHaveBeenCalled();
+  expect(signWithFreighter).not.toHaveBeenCalled();
+});
+
+test("cancelling the review closes dialog and never calls signAndSubmit or signer", async () => {
+  const user = await setup(); await connect(user);
+  await user.type(screen.getByLabelText("Amount (XLM)"), "2");
+  await user.click(screen.getByRole("button", { name: "Sign & fund" }));
+
+  await screen.findByRole("dialog");
+  const cancelBtn = screen.getByRole("button", { name: "Cancel" });
+  await user.click(cancelBtn);
+
+  await waitFor(() => {
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+  expect(signAndSubmit).not.toHaveBeenCalled();
+  expect(signWithFreighter).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "Sign & fund" }).disabled).toBe(false);
+});
+
+test("simulation failure skips review dialog and shows mapped error", async () => {
+  prepareFund.mockRejectedValue(new Error("simulation: Error(Contract, #142)"));
+  const user = await setup(); await connect(user);
+  await user.type(screen.getByLabelText("Amount (XLM)"), "1");
+  await user.click(screen.getByRole("button", { name: "Sign & fund" }));
+
+  await screen.findByText("Failed");
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(signAndSubmit).not.toHaveBeenCalled();
+  expect(signWithFreighter).not.toHaveBeenCalled();
+  const statusEl = document.querySelector(".funding-status");
+  expect(statusEl.textContent).toContain("Escrow is not cancelled — refund not available");
+});

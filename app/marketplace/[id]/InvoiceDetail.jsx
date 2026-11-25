@@ -23,6 +23,7 @@ import SmeActionsCard from "@/components/sme/SmeActionsCard";
 import LifecycleTimeline from "@/components/invoice/LifecycleTimeline";
 import DueStatusBadge from "@/components/invoice/DueStatusBadge";
 import YieldCalculator from "@/components/invest/YieldCalculator";
+import TxReview from "@/components/invest/TxReview";
 import { escrowFor } from "@/lib/escrow/registry";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 import * as money from "@/lib/money";
@@ -128,7 +129,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
       .then((listRes) => {
         if (alive && listRes?.data) setMedians(computeListMedians(listRes.data));
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       alive = false;
     };
@@ -172,6 +173,28 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
   const maxFill = rules.data ? maxFillAmount(rules.data) : null;
   const fundDisabled = busy || state.offline || blocking !== null || (validation !== null && !validation.ok);
 
+  async function handleConfirmReview() {
+    const fundedInput = chain.review?.amount || amount.trim();
+    const result = await chain.confirm(refreshInvoice);
+    if (result?.status === "SUCCESS") {
+      if (result.hash) {
+        try {
+          const store = getDefaultStore();
+          store.add({
+            hash: result.hash,
+            label: `Fund ${inv.id} (${fundedInput} ${inv.currency || "USDC"})`,
+            invoiceId: inv.id,
+          });
+          store.update(result.hash, { status: "SUCCESS" });
+        } catch {
+          // Non-fatal: localStorage may be unavailable.
+        }
+      }
+      setAmount("");
+      follow(id); // auto-follow so future status changes surface in the bell
+    }
+  }
+
   async function onFund(e) {
     e.preventDefault();
     if (inv?.onChain && rules.data) {
@@ -187,26 +210,9 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
       }
     }
     if (inv?.onChain) {
-      // On-chain invoices: build + simulate fund(investor, amount), sign with Freighter, submit.
+      // On-chain invoices: simulate & prepare fund(investor, amount), opening review dialog.
       const fundedInput = amount.trim();
-      const result = await chain.fund(inv, fundedInput, refreshInvoice);
-      if (result?.status === "SUCCESS") {
-        if (result.hash) {
-          try {
-            const store = getDefaultStore();
-            store.add({
-              hash: result.hash,
-              label: `Fund ${inv.id} (${fundedInput} ${inv.currency || "USDC"})`,
-              invoiceId: inv.id,
-            });
-            store.update(result.hash, { status: "SUCCESS" });
-          } catch {
-            // Non-fatal: localStorage may be unavailable.
-          }
-        }
-        setAmount("");
-        follow(id); // auto-follow so future status changes surface in the bell
-      }
+      await chain.prepare(inv, fundedInput, refreshInvoice);
       return;
     }
     if (apiLock.current) return;
@@ -486,6 +492,21 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
               </div>
             )}
             {msg && <div role="status" aria-live="polite" className={`notice notice-${msg.kind}`} style={{ marginTop: 14 }}>{msg.text}</div>}
+
+            {/* ── Transaction review dialog before signing ── */}
+            {chain.review && (
+              <TxReview
+                open={Boolean(chain.review)}
+                amount={chain.review.amount}
+                currency={inv.currency || "USDC"}
+                escrow={chain.review.escrow || escrow?.contractId || CONTRACT_ID}
+                fee={chain.review.fee}
+                network={chain.review.network || NETWORK}
+                onConfirm={handleConfirmReview}
+                onCancel={chain.cancel}
+                busy={chain.busy}
+              />
+            )}
 
             {/* ── Investor exit panel (on-chain invoices, connected wallet only) ── */}
             {inv.onChain && investorAddress && (
