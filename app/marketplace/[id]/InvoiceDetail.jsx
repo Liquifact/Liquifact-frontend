@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import OfflineNotice from "@/components/pwa/OfflineNotice";
 import FundingProgress from "@/components/FundingProgress";
 import StatusBadge from "@/components/StatusBadge";
@@ -128,12 +128,7 @@ export default function InvoiceDetail({ id, initialInvoice = null, loadConstrain
   const [balanceValidation, setBalanceValidation] = useState({ ok: true, message: null });
   const tokenCheck = useFundingTokenCheck(state.data, { enabled: Boolean(state.data?.onChain) });
   const apiLock = useRef(false);
-  const chain = useOnChainFund();
-  // Prefer the account explicitly connected for signing; fall back to the detected wallet.
-  const investorAddress = chain.address || walletAddress;
-
-  // Re-read the invoice and overlay the live escrow totals/status after an on-chain contribution.
-  async function refreshInvoice() {
+  const refreshInvoice = useCallback(async () => {
     const [invoice, live] = await Promise.all([getInvoice(id), getEscrowLive().catch(() => null)]);
     if (invoice.data && live?.contractId === CONTRACT_ID && live.escrow?.invoice_id === id) {
       const escrow = live.escrow;
@@ -145,7 +140,10 @@ export default function InvoiceDetail({ id, initialInvoice = null, loadConstrain
       };
     }
     setState({ loading: false, ...invoice });
-  }
+  }, [id]);
+  const chain = useOnChainFund(id, refreshInvoice);
+  // Prefer the account explicitly connected for signing; fall back to the detected wallet.
+  const investorAddress = chain.address || walletAddress;
 
   useEffect(() => {
     let alive = true;

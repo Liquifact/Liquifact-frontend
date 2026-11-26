@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { API_DOCS_URL, API_URL, EXPLORER_URL, REPOS } from "@/lib/config";
+import { API_DOCS_URL, API_URL, EXPLORER_URL, REPOS, networkLabel } from "@/lib/config";
 import { getDictionary, t } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n/server";
 import LocaleSwitcher from "@/components/LocaleSwitcher";
@@ -31,22 +31,22 @@ export default async function SiteFooter() {
         <div>
           <h4>{tr("footer.developers")}</h4>
           <ul>
-            <li><a href={API_DOCS_URL}>{tr("footer.apiDocs")}</a></li>
-            <li><a href={`${API_URL}/health`}>{tr("footer.apiStatus")}</a></li>
-            <li><a href={EXPLORER_URL}>{tr("footer.escrow")}</a></li>
+            <li><a href={API_DOCS_URL} rel="noopener noreferrer">{tr("footer.apiDocs")}</a></li>
+            <li><a href={`${API_URL}/health`} rel="noopener noreferrer">{tr("footer.apiStatus")}</a></li>
+            <li><a href={EXPLORER_URL} rel="noopener noreferrer">{tr("footer.escrow")}</a></li>
           </ul>
         </div>
         <div>
           <h4>{tr("footer.source")}</h4>
           <ul>
-            <li><a href={REPOS.frontend}>{tr("footer.frontend")}</a></li>
-            <li><a href={REPOS.backend}>{tr("footer.backend")}</a></li>
-            <li><a href={REPOS.contracts}>{tr("footer.contracts")}</a></li>
+            <li><a href={REPOS.frontend} rel="noopener noreferrer">{tr("footer.frontend")}</a></li>
+            <li><a href={REPOS.backend} rel="noopener noreferrer">{tr("footer.backend")}</a></li>
+            <li><a href={REPOS.contracts} rel="noopener noreferrer">{tr("footer.contracts")}</a></li>
           </ul>
         </div>
       </div>
       <div className="container muted footer-bottom" style={{ marginTop: 28, fontSize: "0.85rem" }}>
-        <div>{tr("footer.legal", { year: new Date().getFullYear() })}</div>
+        <div>{tr("footer.legal", { year: new Date().getFullYear(), network: networkLabel() })}</div>
         <LocaleSwitcher />
       </div>
     </footer>

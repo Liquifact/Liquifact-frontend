@@ -1,6 +1,7 @@
 import React from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { cleanup, render, screen, waitFor, fireEvent, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import InvoiceDetail from "@/app/marketplace/[id]/InvoiceDetail";
 import { getInvoice, fundInvoice, getEscrowLive } from "@/lib/api";
@@ -8,6 +9,9 @@ import { connectFreighter, SignatureCancelled, signWithFreighter } from "@/lib/s
 import { submitFund, prepareFund, signAndSubmit } from "@/lib/stellar/fund";
 import { assertWalletNetwork } from "@/lib/stellar/networkGuard";
 import { CONTRACT_ID } from "@/lib/config";
+import { TxTrackerProvider } from "@/components/TxTrackerProvider.jsx";
+import { getDefaultStore } from "@/lib/stellar/txStore.js";
+import { pollTransaction, RESULT } from "@/lib/stellar/pollTx.js";
 
 vi.mock("@/lib/api", () => ({ getInvoice: vi.fn(), fundInvoice: vi.fn(), getEscrowLive: vi.fn() }));
 vi.mock("@/lib/stellar/fund", () => ({
@@ -21,21 +25,41 @@ vi.mock("@/lib/stellar/networkGuard", () => ({
   NetworkMismatchError: class NetworkMismatchError extends Error {},
 }));
 vi.mock("@/lib/stellar/fund", () => ({ submitFund: vi.fn() }));
-vi.mock("@/lib/stellar/freighter", async (original) => ({
-  ...await original(),
+vi.mock("@/lib/stellar/pollTx.js", () => ({
+  pollTransaction: vi.fn(() => new Promise(() => {})),
+  RESULT: { SUCCESS: "SUCCESS", FAILED: "FAILED", NOT_FOUND_TIMEOUT: "NOT_FOUND_TIMEOUT" },
+}));
+vi.mock("@/lib/stellar/rpc.js", () => ({ getRpcServer: vi.fn() }));
+vi.mock("@/lib/stellar/freighter", () => ({
+  SignatureCancelled: class SignatureCancelled extends Error {
+    constructor() {
+      super("Signature cancelled");
+      this.name = "SignatureCancelled";
+    }
+  },
   connectFreighter: vi.fn(),
   signWithFreighter: vi.fn(),
-  getNetworkName: vi.fn(async () => "testnet"),
+  getNetworkName: vi.fn(async () => "TESTNET"),
+  getWalletAddress: vi.fn(async () => null),
 }));
-vi.mock("@/lib/stellar/freighter", async (original) => ({ ...await original(), connectFreighter: vi.fn(), signWithFreighter: vi.fn(), getNetworkName: async () => "TESTNET" }));
-vi.mock("@/lib/stellar/freighter", async (original) => ({ ...await original(), connectFreighter: vi.fn(), signWithFreighter: vi.fn(), getNetworkName: vi.fn(async () => "TESTNET") }));
 // Isolate the funding flow from the other on-chain panels on the page (no network in tests).
+vi.mock("@/components/escrow/TokenCheck", () => ({
+  default: () => null,
+  useFundingTokenCheck: () => ({ ok: true }),
+}));
 vi.mock("@/components/NotificationsProvider", () => ({
   useNotifications: () => ({ follow: vi.fn(), unfollow: vi.fn(), isFollowing: () => false }),
 }));
-vi.mock("@/lib/escrow/token", async (original) => ({
-  ...await original(),
-  resolveFundingToken: vi.fn(async () => "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"),
+vi.mock("@/lib/escrow/constraints", () => ({
+  CODES: {
+    PAUSED: "PAUSED",
+    LEGAL_HOLD: "LEGAL_HOLD",
+    DEADLINE_PASSED: "DEADLINE_PASSED",
+    NOT_OPEN: "NOT_OPEN",
+  },
+  loadConstraints: vi.fn(() => new Promise(() => {})),
+  validateContribution: vi.fn(() => ({ ok: true })),
+  maxFillAmount: vi.fn(() => null),
 }));
 vi.mock("@/lib/escrow/constraints", async (original) => ({ ...await original(), loadConstraints: vi.fn(() => new Promise(() => { })) }));
 vi.mock("@/components/wallet/BalanceHint", () => ({ default: () => null }));
@@ -51,6 +75,7 @@ const mockPrepared = { toXDR: () => "mock-xdr", hash: () => Buffer.from(hash, "h
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getDefaultStore().clear();
   assertWalletNetwork.mockResolvedValue("testnet");
   getInvoice.mockResolvedValue({ data: { ...invoice }, offline: false });
   getEscrowLive.mockResolvedValue({ contractId: CONTRACT_ID, escrow: { invoice_id: invoice.id, funding_target: "1000000000", funded_amount: "10000000", status: 0 } });
@@ -68,7 +93,7 @@ afterEach(cleanup);
 
 async function setup() {
   const user = userEvent.setup();
-  render(<InvoiceDetail id={invoice.id} />);
+  render(<TxTrackerProvider><InvoiceDetail id={invoice.id} /></TxTrackerProvider>);
   await screen.findByRole("heading", { name: "Fund this invoice" });
   return user;
 }
@@ -164,7 +189,43 @@ test("timeout preserves hash and blocks another contribution", async () => {
   await screen.findByText("Pending confirmation");
   expect(screen.getByRole("button", { name: "Sign & fund" }).disabled).toBe(true);
   expect(screen.getByRole("link", { name: /View transaction/ })).toBeTruthy();
+  expect(getDefaultStore().hasPendingFor(invoice.id)).toBe(true);
 });
+
+test("a pending funding transaction restored from storage blocks another contribution", async () => {
+  getDefaultStore().add({ hash, invoiceId: invoice.id, label: "Funding invoice" });
+  await setup();
+
+  expect(await screen.findByText("Pending confirmation")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Sign & fund" }).disabled).toBe(true);
+  expect(screen.getByRole("link", { name: /View transaction/ }).href).toBe(`https://stellar.expert/explorer/testnet/tx/${hash}`);
+  expect(submitFund).not.toHaveBeenCalled();
+  await waitFor(() => expect(pollTransaction).toHaveBeenCalledWith(
+    undefined,
+    hash,
+    expect.objectContaining({ signal: expect.any(AbortSignal) }),
+  ));
+});
+
+for (const status of [RESULT.SUCCESS, RESULT.FAILED]) {
+  test(`tracker ${status.toLowerCase()} resolution unblocks funding and refreshes invoice`, async () => {
+    let resolvePoll;
+    pollTransaction.mockImplementationOnce(() => new Promise((resolve) => { resolvePoll = resolve; }));
+    submitFund.mockResolvedValue({ status: "TIMEOUT", hash });
+    const user = await setup();
+    await connect(user);
+    await user.type(screen.getByLabelText("Amount (XLM)"), "1");
+    await user.click(screen.getByRole("button", { name: "Sign & fund" }));
+    await screen.findByText("Pending confirmation");
+    await waitFor(() => expect(resolvePoll).toBeTypeOf("function"));
+
+    await act(async () => resolvePoll(status));
+    await screen.findByText(status === RESULT.SUCCESS ? "Confirmed" : "Failed");
+    await waitFor(() => expect(getInvoice).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Sign & fund" }).disabled).toBe(false));
+    expect(getEscrowLive).toHaveBeenCalled();
+  });
+}
 
 test("keyboard connects and submits in form order", async () => {
   const user = await setup();
