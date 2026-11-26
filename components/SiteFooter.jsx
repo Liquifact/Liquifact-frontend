@@ -31,17 +31,17 @@ export default async function SiteFooter() {
         <div>
           <h4>{tr("footer.developers")}</h4>
           <ul>
-            <li><a href={API_DOCS_URL}>{tr("footer.apiDocs")}</a></li>
-            <li><a href={`${API_URL}/health`}>{tr("footer.apiStatus")}</a></li>
-            <li><a href={EXPLORER_URL}>{tr("footer.escrow")}</a></li>
+            <li><a href={API_DOCS_URL} rel="noopener noreferrer">{tr("footer.apiDocs")}</a></li>
+            <li><a href={`${API_URL}/health`} rel="noopener noreferrer">{tr("footer.apiStatus")}</a></li>
+            <li><a href={EXPLORER_URL} rel="noopener noreferrer">{tr("footer.escrow")}</a></li>
           </ul>
         </div>
         <div>
           <h4>{tr("footer.source")}</h4>
           <ul>
-            <li><a href={REPOS.frontend}>{tr("footer.frontend")}</a></li>
-            <li><a href={REPOS.backend}>{tr("footer.backend")}</a></li>
-            <li><a href={REPOS.contracts}>{tr("footer.contracts")}</a></li>
+            <li><a href={REPOS.frontend} rel="noopener noreferrer">{tr("footer.frontend")}</a></li>
+            <li><a href={REPOS.backend} rel="noopener noreferrer">{tr("footer.backend")}</a></li>
+            <li><a href={REPOS.contracts} rel="noopener noreferrer">{tr("footer.contracts")}</a></li>
           </ul>
         </div>
       </div>
