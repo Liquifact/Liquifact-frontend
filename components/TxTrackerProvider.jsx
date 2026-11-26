@@ -18,21 +18,6 @@ export function TxTrackerProvider({ children }) {
   const storeRef = useRef(null);
   const pollingRef = useRef(new Map()); // hash -> AbortController
 
-  // Initialize store (client-side only)
-  useEffect(() => {
-    storeRef.current = getDefaultStore();
-    refreshFromStore();
-    const sync = (event) => {
-      if (event.detail?.keys?.includes("liquifact-txs") || event.key === "liquifact-txs") refreshFromStore();
-    };
-    window.addEventListener("storage", sync);
-    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, sync);
-    return () => {
-      window.removeEventListener("storage", sync);
-      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, sync);
-    };
-  }, []);
-
   function refreshFromStore() {
     const store = storeRef.current;
     if (!store) return;
@@ -49,6 +34,7 @@ export function TxTrackerProvider({ children }) {
   const track = useCallback(async (hash, meta = {}) => {
     const store = storeRef.current;
     if (!store) return;
+    if (pollingRef.current.has(hash)) return;
 
     // Add to store
     store.add({ hash, label: meta.label || "Transaction", invoiceId: meta.invoiceId || null });
@@ -65,17 +51,33 @@ export function TxTrackerProvider({ children }) {
       let finalStatus;
       if (result === RESULT.SUCCESS) finalStatus = "SUCCESS";
       else if (result === RESULT.FAILED) finalStatus = "FAILED";
-      else finalStatus = "UNKNOWN";
-
-      store.update(hash, { status: finalStatus });
+      if (finalStatus) store.update(hash, { status: finalStatus });
     } catch (e) {
       if (e.name === "AbortError") return; // Clean abort, don't update status
-      store.update(hash, { status: "FAILED", error: e.message });
+      console.error("Transaction polling failed; leaving transaction pending.", e);
     } finally {
       pollingRef.current.delete(hash);
       refreshFromStore();
     }
   }, []);
+
+  // Initialize from persistent storage and resume every pending poll.
+  useEffect(() => {
+    storeRef.current = getDefaultStore();
+    refreshFromStore();
+    for (const tx of storeRef.current.getPending()) {
+      void track(tx.hash, tx);
+    }
+    const sync = (event) => {
+      if (event.detail?.keys?.includes("liquifact-txs") || event.key === "liquifact-txs") refreshFromStore();
+    };
+    window.addEventListener("storage", sync);
+    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, sync);
+    };
+  }, [track]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -92,6 +94,7 @@ export function TxTrackerProvider({ children }) {
     transactions,
     pendingCount,
     refresh: refreshFromStore,
+    hasPendingFor: (invoiceId) => storeRef.current?.hasPendingFor(invoiceId) ?? false,
   };
 
   return (

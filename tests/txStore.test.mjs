@@ -160,6 +160,19 @@ test("txStore: getPending() returns only PENDING entries", () => {
   assert.equal(pending[0].label, "Pending");
 });
 
+test("txStore: hasPendingFor() survives store recreation and ignores resolved or other invoices", () => {
+  const storage = createMockStorage();
+  const firstStore = createTxStore(storage);
+  firstStore.add({ hash: "n".repeat(64), label: "Pending", invoiceId: "INV_001" });
+
+  const reloadedStore = createTxStore(storage);
+  assert.equal(reloadedStore.hasPendingFor("INV_001"), true);
+  assert.equal(reloadedStore.hasPendingFor("INV_002"), false);
+
+  reloadedStore.update("n".repeat(64), { status: STATUS.SUCCESS });
+  assert.equal(reloadedStore.hasPendingFor("INV_001"), false);
+});
+
 // ── Pruning Tests ─────────────────────────────────────────────────────────────
 
 test("txStore: prunes to MAX_ENTRIES (25) on add", () => {
