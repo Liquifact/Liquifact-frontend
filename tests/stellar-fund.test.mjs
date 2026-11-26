@@ -2,8 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Account, Address, Keypair, Networks, scValToNative, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
 import { CONTRACT_ID } from "../lib/config.js";
-import { toStroops, remainingStroops, MAX_I128 } from "../lib/stellar/amount.js";
-import { buildFundTx, submitFund } from "../lib/stellar/fund.js";
+import { toStroops, remainingStroops, formatStroops, MAX_I128 } from "../lib/stellar/amount.js";
+import { buildFundTx, submitFund, prepareFund, signAndSubmit } from "../lib/stellar/fund.js";
 import { SignatureCancelled, walletError } from "../lib/stellar/freighter.js";
 
 for (const [input, expected] of [["1", 10000000n], ["0.0000001", 1n], ["12.50", 125000000n]]) {
@@ -35,9 +35,13 @@ function fixture(overrides = {}) {
     tx.sign(key);
     return { signedTxXdr: tx.toXDR(), signerAddress: investor };
   };
-  return { calls, options: { investor, amountStroops: toStroops("12.50"), server, sign,
-    sleep: async (ms) => { time += ms; }, now: () => time,
-    onStatus: (phase) => calls.phases.push(phase) } };
+  return {
+    calls, options: {
+      investor, amountStroops: toStroops("12.50"), server, sign,
+      sleep: async (ms) => { time += ms; }, now: () => time,
+      onStatus: (phase) => calls.phases.push(phase)
+    }
+  };
 }
 
 test("fund XDR targets configured contract, investor and exact i128 amount", async () => {
@@ -160,18 +164,55 @@ test("lost submission acknowledgement preserves hash without retrying", async ()
 });
 test("temporary polling failure can still confirm", async () => {
   let polls = 0;
-  const { options } = fixture({ getTransaction: async () => {
-    if (++polls === 1) throw new Error("RPC unavailable");
-    return { status: "SUCCESS" };
-  } });
+  const { options } = fixture({
+    getTransaction: async () => {
+      if (++polls === 1) throw new Error("RPC unavailable");
+      return { status: "SUCCESS" };
+    }
+  });
   assert.equal((await submitFund(options)).status, "SUCCESS");
   assert.equal(polls, 2);
 });
 
 test("an RPC poll that never resolves cannot outlive the confirmation deadline", async () => {
-  const { options } = fixture({ getTransaction: () => new Promise(() => {}) });
+  const { options } = fixture({ getTransaction: () => new Promise(() => { }) });
   let time = 0;
   options.now = () => time;
   options.sleep = async () => { time += 30_000; };
   assert.equal((await submitFund(options)).status, "TIMEOUT");
 });
+
+test("prepareFund returns { prepared, fee, minResourceFee, hash } without signing", async () => {
+  const { calls, options } = fixture();
+  const res = await prepareFund(options);
+  assert.equal(calls.signatures, 0);
+  assert.equal(calls.sends, 0);
+  assert(res.prepared);
+  assert(res.fee);
+  assert(res.minResourceFee);
+  assert.match(res.hash, /^[0-9a-f]{64}$/);
+});
+
+test("signAndSubmit signs and submits the prepared transaction", async () => {
+  const { calls, options } = fixture();
+  const { prepared } = await prepareFund(options);
+  const result = await signAndSubmit({
+    prepared,
+    investor,
+    sign: options.sign,
+    server: options.server,
+    sleep: options.sleep,
+    now: options.now,
+    onStatus: options.onStatus,
+  });
+  assert.equal(calls.signatures, 1);
+  assert.equal(calls.sends, 1);
+  assert.equal(result.status, "SUCCESS");
+});
+
+test("fee formatting with formatStroops displays XLM properly", () => {
+  assert.equal(formatStroops("100", "XLM"), "0.00001 XLM");
+  assert.equal(formatStroops("10000000", "XLM"), "1 XLM");
+  assert.equal(formatStroops(100n, "XLM"), "0.00001 XLM");
+});
+
